@@ -1,0 +1,12 @@
+{
+    "files": [
+        "CLForm.py",
+        "CLReport.py",
+        "ClinicalReporting.pyproject.user",
+        "form.ui",
+        "requirements.txt",
+        "ui_form.py",
+        "util.py",
+        "widget.py"
+    ]
+}
