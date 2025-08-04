@@ -594,8 +594,8 @@ def apply_static_filter(df, item, operator, value):
     Args:
         df (DataFrame): The dataframe to filter
         item (str): The column name to filter on
-        operator (str): The operator to use ('=', '!=', '>', '>=', '<', '<=', 'Contains', 'Does not contain', 'In', 'Not in')
-        value (str): The value to compare against
+        operator (str): The operator to use ('=', '!=', '>', '>=', '<', '<=', 'Contains', 'Does not contain', 'In', 'Not in', 'is Null', 'is not Null')
+        value (str): The value to compare against (not used for 'is Null' and 'is not Null' operators)
 
     Returns:
         DataFrame: The filtered dataframe
@@ -683,6 +683,12 @@ def apply_static_filter(df, item, operator, value):
         return df[
             ~df[item].astype(str).str.lower().isin([v.lower() for v in value_list])
         ]
+    elif operator == "is Null":
+        # Return rows where the column is null
+        return df[df[item].isnull()]
+    elif operator == "is not Null":
+        # Return rows where the column is not null
+        return df[~df[item].isnull()]
     else:
         return df
 

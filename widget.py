@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
 )
 from PySide6.QtCore import Qt, QAbstractTableModel
+from PySide6.QtWidgets import QAbstractItemView
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from CLReport import CLReport
 from util import read_data_dict_zip_corelisting
@@ -42,6 +43,14 @@ class Widget(QWidget):
         self.ui.pushButton_select_all_form.clicked.connect(self.click_select_all_form)
         self.ui.pushButton_remove_all_form.clicked.connect(self.click_remove_all_form)
 
+        # Connect double-click events for form list widgets
+        self.ui.listWidget_form_available.itemDoubleClicked.connect(
+            self.on_form_available_double_clicked
+        )
+        self.ui.listWidget_form_selected.itemDoubleClicked.connect(
+            self.on_form_selected_double_clicked
+        )
+
         # * Common items tab
         # Connect common item buttons
         self.ui.pushButton_select_common_item.clicked.connect(
@@ -66,6 +75,22 @@ class Widget(QWidget):
         )
         self.ui.pushButton_remove_all_form_item.clicked.connect(
             self.click_remove_all_form_item
+        )
+
+        # Connect double-click events for form item list widgets
+        self.ui.listWidget_form_item_available.itemDoubleClicked.connect(
+            self.on_form_item_available_double_clicked
+        )
+        self.ui.listWidget_form_item_selected.itemDoubleClicked.connect(
+            self.on_form_item_selected_double_clicked
+        )
+
+        # Connect double-click events for common item list widgets
+        self.ui.listWidget_common_item_available.itemDoubleClicked.connect(
+            self.on_common_item_available_double_clicked
+        )
+        self.ui.listWidget_common_item_selected.itemDoubleClicked.connect(
+            self.on_common_item_selected_double_clicked
         )
 
         # Connect form selection change to update form items
@@ -100,12 +125,18 @@ class Widget(QWidget):
         self.ui.pushButton_run_and_save.clicked.connect(self.click_run_and_save)
 
         # Set selection behavior for dynamic filter table
-        from PySide6.QtWidgets import QAbstractItemView
-
         self.ui.tableWidget_dynamic_filter.setSelectionBehavior(
             QAbstractItemView.SelectRows
         )
         self.ui.tableWidget_dynamic_filter.setSelectionMode(
+            QAbstractItemView.SingleSelection
+        )
+
+        # Set selection behavior for static filter table
+        self.ui.tableWidget_static_filter.setSelectionBehavior(
+            QAbstractItemView.SelectRows
+        )
+        self.ui.tableWidget_static_filter.setSelectionMode(
             QAbstractItemView.SingleSelection
         )
 
@@ -226,6 +257,8 @@ class Widget(QWidget):
                 "Does not contain",
                 "In",
                 "Not in",
+                "is Null",
+                "is not Null",
             ]
             for op in operators:
                 combo.addItem(op)
@@ -270,8 +303,21 @@ class Widget(QWidget):
         """Remove selected rows from the static filter table."""
         # Get selected rows
         selected_rows = set()
+
+        # First try normal selection
         for item in self.ui.tableWidget_static_filter.selectedItems():
             selected_rows.add(item.row())
+
+        # If no rows selected, check current row
+        if not selected_rows:
+            current_row = self.ui.tableWidget_static_filter.currentRow()
+            if current_row >= 0:
+                selected_rows.add(current_row)
+
+        # If still no rows selected, show message and return
+        if not selected_rows:
+            print("No rows selected for removal")
+            return
 
         # Remove rows in reverse order to avoid index shifting
         for row in sorted(selected_rows, reverse=True):
@@ -354,6 +400,8 @@ class Widget(QWidget):
             file_name = file_path.split("/")[-1]
             self.study_name = file_name.split("_")[2]
             self.report.set_data(read_data_dict_zip_corelisting(file_path))
+            # Add Subject to selected common items by default
+            self.report.add_selected_common_item("Subject")
             # Update all UI elements after loading data
             self.update_all_ui()
             self.ui.label_input_file.setText("Input path: " + file_path)
@@ -762,6 +810,10 @@ class Widget(QWidget):
 
             # Connect signal to update join list when changed
             join_order_combo.currentTextChanged.connect(self.update_join_list)
+            # Add new connection for graying out columns
+            join_order_combo.currentTextChanged.connect(
+                lambda value, r=row: self.on_join_order_changed(r, value)
+            )
 
             # Set the combo box as a cell widget
             self.ui.tableWidget_join.setCellWidget(row, 4, join_order_combo)
@@ -783,6 +835,35 @@ class Widget(QWidget):
 
             # Set the combo box as a cell widget
             self.ui.tableWidget_join.setCellWidget(row, 5, join_type_combo)
+
+            # Check if this row needs to be disabled initially
+            if str(default_order) == "1":
+                self.on_join_order_changed(row, "1")
+
+    def on_join_order_changed(self, row, value):
+        """Handle changes to join order column and gray out columns if order is 1.
+
+        Args:
+            row: The row that changed
+            value: The new join order value
+        """
+        # Get the widgets in columns 1-3 (join items) and 5 (join type)
+        item_cols = [1, 2, 3]
+        join_type_col = 5
+
+        # Enable or disable based on join order value
+        enabled = value != "1"
+
+        # Update item dropdowns
+        for col in item_cols:
+            combo = self.ui.tableWidget_join.cellWidget(row, col)
+            if combo:
+                combo.setEnabled(enabled)
+
+        # Update join type dropdown
+        join_type_combo = self.ui.tableWidget_join.cellWidget(row, join_type_col)
+        if join_type_combo:
+            join_type_combo.setEnabled(enabled)
 
     def _add_item_dropdown(self, row, col, form_name, join_data):
         """Add an item dropdown to the specified cell in the join table."""
@@ -818,6 +899,13 @@ class Widget(QWidget):
 
         # Set the combo box as a cell widget
         self.ui.tableWidget_join.setCellWidget(row, col, combo)
+
+        # Check if this is a first join form (will be disabled later if so)
+        join_order = 0
+        if form_name in join_data and join_data[form_name]["order"]:
+            join_order = join_data[form_name]["order"]
+        if str(join_order) == "1":
+            combo.setEnabled(False)
 
     def update_join_list(self):
         """Update the join list in the report based on the current table data."""
@@ -1058,8 +1146,8 @@ class Widget(QWidget):
             if role == Qt.DisplayRole:
                 if orientation == Qt.Horizontal:
                     return str(self._data.columns[section])
-                elif orientation == Qt.Vertical:
-                    return str(self._data.index[section])
+                # Return None for vertical headers to hide row indices
+                return None
             return None
 
     def preview_report(self):
@@ -1077,6 +1165,9 @@ class Widget(QWidget):
 
                 # Set the model for the table view
                 self.ui.tableView_preview.setModel(model)
+
+                # Hide the vertical header (row numbers)
+                self.ui.tableView_preview.verticalHeader().setVisible(False)
 
                 # Resize columns to content
                 self.ui.tableView_preview.resizeColumnsToContents()
@@ -1217,6 +1308,48 @@ class Widget(QWidget):
 
         # Set the new order in the report
         self.report.set_selected_items_order_list(new_order)
+
+    def on_form_item_available_double_clicked(self, item):
+        """Handle double-click on an available form item - select the item."""
+        # Select the item that was double-clicked
+        self.ui.listWidget_form_item_available.setCurrentItem(item)
+        # Call the same function that the select button uses
+        self.click_select_form_item()
+
+    def on_form_item_selected_double_clicked(self, item):
+        """Handle double-click on a selected form item - remove the item."""
+        # Select the item that was double-clicked
+        self.ui.listWidget_form_item_selected.setCurrentItem(item)
+        # Call the same function that the remove button uses
+        self.click_remove_form_item()
+
+    def on_common_item_available_double_clicked(self, item):
+        """Handle double-click on an available common item - select the item."""
+        # Select the item that was double-clicked
+        self.ui.listWidget_common_item_available.setCurrentItem(item)
+        # Call the same function that the select button uses
+        self.click_select_common_item()
+
+    def on_common_item_selected_double_clicked(self, item):
+        """Handle double-click on a selected common item - remove the item."""
+        # Select the item that was double-clicked
+        self.ui.listWidget_common_item_selected.setCurrentItem(item)
+        # Call the same function that the remove button uses
+        self.click_remove_common_item()
+
+    def on_form_available_double_clicked(self, item):
+        """Handle double-click on an available form - select the form."""
+        # Select the item that was double-clicked
+        self.ui.listWidget_form_available.setCurrentItem(item)
+        # Call the same function that the select button uses
+        self.click_select_form()
+
+    def on_form_selected_double_clicked(self, item):
+        """Handle double-click on a selected form - remove the form."""
+        # Select the item that was double-clicked
+        self.ui.listWidget_form_selected.setCurrentItem(item)
+        # Call the same function that the remove button uses
+        self.click_remove_form()
 
 
 if __name__ == "__main__":
