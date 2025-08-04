@@ -791,7 +791,7 @@
       </rect>
      </property>
      <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>300</number>
+      <number>295</number>
      </attribute>
      <column>
       <property name="text">
@@ -1033,7 +1033,7 @@
    </widget>
    <widget class="QWidget" name="tab_rename_order">
     <attribute name="title">
-     <string>Rename</string>
+     <string>Order and Rename</string>
     </attribute>
     <widget class="QTableWidget" name="tableWidget_rename">
      <property name="geometry">

@@ -59,6 +59,9 @@ class CLReport:
         self.dynamic_filter_items = []  # Dynamic filter items: Item Name 1 , Operator, Item Name 2
         self.selected_items_order_list = []
 
+        # Add Subject to selected common items by default
+        self.selected_common_items.append("Subject")
+
     def set_data(self, data: dict):
         """Set the data for the report."""
         self.data = data
@@ -652,5 +655,13 @@ class CLReport:
             # Apply renaming
             if rename_mapping:
                 result_df = result_df.rename(columns=rename_mapping)
+
+        # * Remove possible duplicate within result_df
+        if result_df is not None:
+            result_df = result_df.loc[:, ~result_df.columns.duplicated()]
+
+        # * If Subject is in 1 of the column, sort by Subject
+        if result_df is not None and "Subject" in result_df.columns:
+            result_df = result_df.sort_values(by="Subject")
 
         return result_df
