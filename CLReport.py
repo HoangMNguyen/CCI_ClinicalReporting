@@ -657,6 +657,9 @@ class CLReport:
                 result_df = result_df.rename(columns=rename_mapping)
 
         # * Remove possible duplicate within result_df
+        # remove index
+        if result_df is not None:
+            result_df = result_df.reset_index(drop=True)
         if result_df is not None:
             result_df = result_df.loc[:, ~result_df.columns.duplicated()]
 
