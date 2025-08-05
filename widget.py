@@ -192,12 +192,18 @@ class Widget(QWidget):
 
     def update_static_filter_table(self):
         """Update the static filter table based on selected items."""
+        # Temporarily disconnect itemChanged signal
+        try:
+            self.ui.tableWidget_static_filter.itemChanged.disconnect()
+        except TypeError:
+            pass  # It's OK if it wasn't connected
+
         # Clear the table
         self.ui.tableWidget_static_filter.setRowCount(0)
 
         # Get all static filter items from the report
         filter_items = self.report.get_static_filter_items()
-
+        
         # Add each filter item to the table
         for item, operator, value in filter_items:
             row = self.ui.tableWidget_static_filter.rowCount()
@@ -212,6 +218,36 @@ class Widget(QWidget):
             # Add value field to third column
             value_item = QTableWidgetItem(value)
             self.ui.tableWidget_static_filter.setItem(row, 2, value_item)
+
+        # Reconnect itemChanged signal
+        self.ui.tableWidget_static_filter.itemChanged.connect(self._on_filter_changed)
+    
+    def synchronize_static_filters(self):
+        """Synchronize the static filter items in the report with the UI table."""
+        # Get all current filters from the table
+        new_filters = []
+        
+        for row in range(self.ui.tableWidget_static_filter.rowCount()):
+            item_combo = self.ui.tableWidget_static_filter.cellWidget(row, 0)
+            operator_combo = self.ui.tableWidget_static_filter.cellWidget(row, 1)
+            value_item = self.ui.tableWidget_static_filter.item(row, 2)
+            
+            if item_combo and operator_combo and value_item:
+                item = item_combo.currentText()
+                operator = operator_combo.currentText()
+                value = value_item.text()
+                
+                if item and operator:  # Only add if we have at least item and operator
+                    new_filters.append((item, operator, value))
+        
+        # Clear all existing filters in report
+        self.report.set_static_filter_items([])
+        
+        # Add all the filters from the table
+        for item, operator, value in new_filters:
+            self.report.add_static_filter_item(item, operator, value)
+            
+        print(f"Synchronized static filters: {self.report.get_static_filter_items()}")
 
     def _add_dropdown(self, row, column, dropdown_type, selected_value=None):
         """Add a dropdown with the specified type to the table cell.
@@ -279,6 +315,12 @@ class Widget(QWidget):
         row = self.ui.tableWidget_static_filter.rowCount()
         self.ui.tableWidget_static_filter.insertRow(row)
 
+        # Temporarily disconnect itemChanged signal to avoid triggering events during setup
+        try:
+            self.ui.tableWidget_static_filter.itemChanged.disconnect()
+        except:
+            pass  # It's OK if it wasn't connected
+
         # Add item dropdown to first column
         self._add_dropdown(row, 0, "item")
 
@@ -289,14 +331,21 @@ class Widget(QWidget):
         value_item = QTableWidgetItem("")
         self.ui.tableWidget_static_filter.setItem(row, 2, value_item)
 
-        # Disconnect and reconnect to avoid multiple connections
-        try:
-            self.ui.tableWidget_static_filter.itemChanged.disconnect(
-                self._on_filter_changed
-            )
-        except:
-            pass  # It's OK if it wasn't connected
+        # Get the selected values from the dropdown (to add to the report's data)
+        item_combo = self.ui.tableWidget_static_filter.cellWidget(row, 0)
+        operator_combo = self.ui.tableWidget_static_filter.cellWidget(row, 1)
+        
+        if item_combo and operator_combo:
+            item = item_combo.currentText()
+            operator = operator_combo.currentText()
+            value = ""  # Empty value initially
+            
+            # Add the initial filter to the report (this is the key fix)
+            if item:  # Only add if we have a valid item
+                self.report.add_static_filter_item(item, operator, value)
+                print(f"Added initial filter: {item} {operator} '{value}'")
 
+        # Reconnect itemChanged signal
         self.ui.tableWidget_static_filter.itemChanged.connect(self._on_filter_changed)
 
     def static_filter_remove(self):
@@ -333,6 +382,7 @@ class Widget(QWidget):
 
                 # Remove from report
                 self.report.remove_static_filter_item(item, operator, value)
+                print(f"Removed filter: {item} {operator} '{value}'")
 
             # Remove row from table
             self.ui.tableWidget_static_filter.removeRow(row)
@@ -356,7 +406,23 @@ class Widget(QWidget):
             # When called from itemChanged signal without arguments
             item = self.sender()
             row = item.row()
-        # row is already an integer when called from dropdown change
+        elif row is None:
+            # Try to determine row from sender() for combo boxes
+            sender = self.sender()
+            if sender:
+                # Find the row of this widget
+                for r in range(self.ui.tableWidget_static_filter.rowCount()):
+                    for c in range(2):  # Check first 2 columns (dropdown columns)
+                        if self.ui.tableWidget_static_filter.cellWidget(r, c) == sender:
+                            row = r
+                            break
+                    if row is not None:
+                        break
+
+        # If we still couldn't determine the row, exit
+        if row is None:
+            print("Could not determine which row changed")
+            return
 
         # Get the current values from the row
         item_combo = self.ui.tableWidget_static_filter.cellWidget(row, 0)
@@ -370,22 +436,23 @@ class Widget(QWidget):
 
             # Only process if we have valid item and operator selections
             if item and operator:
-                # First remove any existing filter for this row
-                for i, (old_item, old_operator, old_value) in enumerate(
-                    self.report.get_static_filter_items()
-                ):
-                    if i == row:  # Same row position
-                        self.report.remove_static_filter_item(
-                            old_item, old_operator, old_value
-                        )
-                        break
-
+                # Get the current filters to find what we need to remove
+                current_filters = self.report.get_static_filter_items()
+                
+                # If we have more filters than rows, we need to clean up
+                if len(current_filters) > self.ui.tableWidget_static_filter.rowCount():
+                    # Rebuild the filter list based on the current table state
+                    self.synchronize_static_filters()
+                    return
+                
+                # Otherwise, remove the filter for this row if it exists
+                if row < len(current_filters):
+                    old_item, old_operator, old_value = current_filters[row]
+                    self.report.remove_static_filter_item(old_item, old_operator, old_value)
+                
                 # Add the updated filter
                 self.report.add_static_filter_item(item, operator, value)
-
-                # Print debug info
-                print(f"Updated filter: {item} {operator} {value}")
-                print(f"Current filters: {self.report.get_static_filter_items()}")
+                print(f"Updated filter: {item} {operator} '{value}'")
 
     def click_input_file(self):
         """Open a file dialog to choose the input file."""
