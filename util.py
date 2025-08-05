@@ -81,8 +81,8 @@ def read_data_dict_zip_corelisting(input_dir: str, cut_off_date=None) -> dict:
                             column_name = df.columns[
                                 df.columns.str.contains("End of Study Date", case=False)
                             ][0]
-                            # Convert the relevant column to datetime
-                            df[column_name] = pd.to_datetime(df[column_name])
+                            # Convert the relevant column to datetime date only
+                            df[column_name] = pd.to_datetime(df[column_name]).dt.date
                             # filter out the data that is after the cut off date. If the date is null, keep it
                             df = df[
                                 (df[column_name] <= cut_off_date)

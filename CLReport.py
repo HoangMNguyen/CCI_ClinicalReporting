@@ -109,7 +109,7 @@ class CLReport:
             for item in self.data[form].columns:
                 if item not in self.static_available_common_items:
                     self.selected_forms[form].add_available_form_item(item)
-                    print(f"Adding item {item} to selected form {form}")
+                    # print(f"Adding item {item} to selected form {form}")
             if form in self.available_forms:
                 # remove the form from available forms
                 del self.available_forms[form]
@@ -561,6 +561,12 @@ class CLReport:
             # Get join items
             join_items = [item for item in form.get_join_items() if item]
 
+            # drop index
+            form_df = form_df.reset_index(drop=True)
+
+            # remove duplicate
+            form_df = form_df.drop_duplicates()
+            print(f"form {form_name} before merge:\n{form_df}")
             # If no join items, skip this form
             if not join_items:
                 continue
@@ -571,7 +577,7 @@ class CLReport:
         # Apply dynamic filters after all joins
         if result_df is not None:
             print(f"Applying dynamic filters: {self.dynamic_filter_items}")
-            print(f"Available columns: {result_df.columns.tolist()}")
+            # print(f"Available columns: {result_df.columns.tolist()}")
 
             for item1, operator, item2 in self.dynamic_filter_items:
                 # Handle both with and without form prefix
@@ -657,11 +663,11 @@ class CLReport:
                 result_df = result_df.rename(columns=rename_mapping)
 
         # * Remove possible duplicate within result_df
-        # remove index
+        # remove index as well
         if result_df is not None:
             result_df = result_df.reset_index(drop=True)
-        if result_df is not None:
-            result_df = result_df.loc[:, ~result_df.columns.duplicated()]
+            # Remove duplicate rows
+            result_df = result_df.drop_duplicates()
 
         # * If Subject is in 1 of the column, sort by Subject
         if result_df is not None and "Subject" in result_df.columns:
