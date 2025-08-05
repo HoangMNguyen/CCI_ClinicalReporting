@@ -195,7 +195,7 @@ class Widget(QWidget):
         # Temporarily disconnect itemChanged signal
         try:
             self.ui.tableWidget_static_filter.itemChanged.disconnect()
-        except TypeError:
+        except:
             pass  # It's OK if it wasn't connected
 
         # Clear the table
