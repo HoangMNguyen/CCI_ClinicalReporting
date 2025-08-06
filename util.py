@@ -178,181 +178,6 @@ def add_rename_column_df(
     return new_df
 
 
-def get_stats_df(column, *dfs):
-    """
-    Compute and aggregate statistical measures for a specified column across multiple DataFrames.
-
-    This function calculates various statistical measures for a given column name that is present
-    across multiple pandas DataFrames. The statistics are calculated for each DataFrame and then aggregated.
-
-    Args:
-        column (str): The name of the column for which statistical measures are to be calculated.
-        *dfs (tuple of DataFrame): Variable number of DataFrame objects on which statistics are to be computed.
-
-    Returns:
-        DataFrame: A pandas DataFrame aggregating the calculated statistical measures from each input DataFrame.
-    """
-    # Initialize an empty DataFrame
-    main_df = pd.DataFrame()
-
-    for i, df in enumerate(dfs):
-        # Calculate the mean, standard deviation, median, and range of 'Age at Consent'
-        df.loc[:, column] = pd.to_numeric(df[column], errors="coerce")
-        mean = df[column].mean()
-        std = df[column].std()
-        median = df[column].median()
-        minimum = df[column].min()
-        maximum = df[column].max()
-
-        if np.isnan(std):
-            std = 0
-
-        # Create a DataFrame for the current stats if non of the stats are NaN
-        if (
-            not np.isnan(mean)
-            and not np.isnan(median)
-            and not np.isnan(minimum)
-            and not np.isnan(maximum)
-        ):
-            # Format the mean and standard deviation
-            if mean < 100:
-                mean_std = f"{mean:.2f} ({std:.2f})"
-            else:
-                mean_std = f"{convert_float_2_sci_notation(int(mean))} ({convert_float_2_sci_notation(int(std))})"
-            if median > 100:
-                median = f"{convert_float_2_sci_notation(int(median))}"
-            if minimum < 100 and maximum < 100:
-                range = f"{minimum:.2f} - {maximum:.2f}"
-            else:
-                range = f"{convert_float_2_sci_notation(int(minimum))} - {convert_float_2_sci_notation(int(maximum))}"
-            stats_df = pd.DataFrame(
-                {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
-            )
-        else:
-            stats_df = pd.DataFrame(index=[i])
-        # Append the stats DataFrame to the main DataFrame if it is not empty
-        main_df = pd.concat([main_df, stats_df])
-    # Transpose the DataFrame to switch the axes
-    main_df = main_df.T
-    return main_df
-
-
-def get_stats_perc_df(column, *dfs):
-    """
-    Compute and aggregate percentage-based statistical measures for a specified column across multiple DataFrames.
-
-    This function calculates statistics related to the percentage distribution of values for a given column
-    that exists across multiple pandas DataFrames. It computes these statistics for each DataFrame individually
-    and then aggregates the results.
-
-    Args:
-        column (str): The name of the column for which percentage-based statistical measures are to be calculated.
-        *dfs (tuple of DataFrame): A variable number of DataFrame objects for which the statistics are to be computed.
-
-    Returns:
-        DataFrame: A pandas DataFrame aggregating the percentage-based statistical measures from each input DataFrame.
-    """
-    # Initialize an empty DataFrame
-    main_df = pd.DataFrame()
-
-    for i, df in enumerate(dfs):
-        # Calculate the mean, standard deviation, median, and range of 'Age at Consent'
-        df.loc[:, column] = pd.to_numeric(df[column], errors="coerce")
-        mean = df[column].mean()
-        std = df[column].std()
-        median = df[column].median()
-        minimum = df[column].min()
-        maximum = df[column].max()
-
-        if np.isnan(std):
-            std = 0
-
-        # Create a DataFrame for the current stats if non of the stats are NaN
-        if (
-            not np.isnan(mean)
-            and not np.isnan(median)
-            and not np.isnan(minimum)
-            and not np.isnan(maximum)
-        ):
-            # Format the mean and standard deviation
-            if mean < 100:
-                mean_std = f"{mean:.2f}% ({std:.2f}%)"
-            else:
-                mean_std = f"{convert_float_2_sci_notation(int(mean))}% ({convert_float_2_sci_notation(int(std))}%)"
-            if median > 100:
-                median = f"{convert_float_2_sci_notation(int(median))}%"
-            else:
-                median = f"{median:.2f}%"
-            if minimum < 100 and maximum < 100:
-                range = f"{minimum:.2f}% - {maximum:.2f}%"
-            else:
-                range = f"{convert_float_2_sci_notation(int(minimum))}% - {convert_float_2_sci_notation(int(maximum))}%"
-            stats_df = pd.DataFrame(
-                {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
-            )
-        else:
-            stats_df = pd.DataFrame(index=[i])
-        # Append the stats DataFrame to the main DataFrame if it is not empty
-        main_df = pd.concat([main_df, stats_df])
-    # Transpose the DataFrame to switch the axes
-    main_df = main_df.T
-    return main_df
-
-
-def convert_float_2_sci_notation(n):
-    """
-    Convert a floating-point number to its scientific notation as a string.
-
-    This function takes a floating-point number and converts it into a string that represents its scientific notation.
-    Scientific notation expresses the number as a mantissa multiplied by 10 raised to an exponent. The mantissa is
-    rounded to two decimal places unless it is an integer. If the input number is 0, it simply returns '0'.
-
-    Args:
-        n (float): The floating-point number to be converted into scientific notation.
-
-    Returns:
-        string: A string representing the scientific notation of the input number. The mantissa is formatted to
-                have two decimal places unless it is an integer, followed by 'x10' and the exponent.
-    """
-    if n == 0:
-        return "0"
-    else:
-        exponent = int(math.floor(math.log10(abs(n))))
-        mantissa = n / 10**exponent
-        if mantissa.is_integer():
-            mantissa = int(mantissa)
-            return f"{mantissa}x10^{exponent}"
-        else:
-            return f"{mantissa:.2f}x10^{exponent}"
-
-
-def convert_sci_notation_2_float(s):
-    """
-    Convert a string representing a number in scientific notation to a floating-point number.
-
-    This function takes a string in the format 'mantissax10^exponent', where the mantissa and exponent are
-    separated by 'x10^', and converts it into a floating-point number. If the string is not in the correct format
-    or contains values that cannot be converted to floats, the function handles the error and returns NaN.
-
-    Args:
-        s (str): A string representing a number in scientific notation.
-
-    Returns:
-        float: The floating-point equivalent of the input string. If the string is not properly formatted or
-               contains invalid values, NaN (Not a Number) is returned.
-    """
-    try:
-        parts = s.split("x10^")
-        if len(parts) != 2:
-            return np.nan
-        mantissa = float(parts[0])
-        exponent = float(parts[1])
-        return mantissa * 10**exponent
-
-    except ValueError:
-        return np.nan
-
-
 def convert_integers_to_strings(df, column_name):
     """
     This function takes a dataframe and a column name as input.
@@ -465,39 +290,6 @@ def get_data_from_dict_first(data: dict, input_dict: dict) -> pd.DataFrame:
                 merged_df = pd.merge(
                     merged_df, collected_data, on="Subject", how="left"
                 )
-    return merged_df
-
-
-def age_calculation(merged_df, output_column, DOB: str, CS1: str, CS2: str = ""):
-    """Calculate the age based on the given date of birth (DOB) and two columns (CS1 and CS2).
-
-    Args:
-        merged_df (DataFrame): The merged dataframe containing the data.
-        output_column (str): The name of the column to store the calculated age.
-        DOB (str): The name of the column containing the date of birth.
-        CS1 (str): The name of the first column to use for age calculation.
-        CS2 (str, optional): The name of the second column to use for age calculation. Defaults to ''.
-
-    Returns:
-        DataFrame: The merged dataframe with the calculated age in the specified output column.
-    """
-    # check if the two columns CS1 and DOB are not empty
-    if (DOB in merged_df) and (CS1 in merged_df) and (not merged_df[DOB].empty):
-        if not merged_df[CS1].empty:
-            # find mask for non-NaT values in the two columns
-            mask = ~merged_df[[CS1, DOB]].isnull().any(axis=1)
-            # apply relativedelta only to rows with non-NaT values in both columns
-            merged_df.loc[mask, output_column] = merged_df[mask].apply(
-                lambda x: relativedelta(x[CS1], x[DOB]).years, axis=1
-            )
-        if (CS2 in merged_df) and CS2 != "":
-            # for rows that CS1 isnull but CS2 is not null, then use CS2 instead to calculate age
-            if not merged_df[CS2].empty:
-                merged_df.loc[
-                    (merged_df[CS1].isnull() & merged_df[CS2].notnull()), output_column
-                ] = merged_df.loc[
-                    (merged_df[CS1].isnull() & merged_df[CS2].notnull())
-                ].apply(lambda x: relativedelta(x[CS2], x[DOB]).years, axis=1)
     return merged_df
 
 
@@ -833,6 +625,10 @@ def apply_dynamic_filter(df, item1, operator, item2):
     # Print how many rows were filtered
     filtered_rows = len(result)
     print(f"Dynamic filter reduced rows from {initial_rows} to {filtered_rows}")
+
+    # Change the date columns of result back to the original format
+    for col in result.select_dtypes(include=[np.datetime64]).columns:
+        result.loc[:, col] = result[col].dt.strftime("%m-%d-%Y")
 
     return result
 
