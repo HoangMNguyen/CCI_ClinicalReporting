@@ -41,7 +41,7 @@
     <enum>QTabWidget::TabShape::Rounded</enum>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>4</number>
    </property>
    <widget class="QWidget" name="tab_input">
     <attribute name="title">
@@ -306,7 +306,7 @@
      <property name="geometry">
       <rect>
        <x>400</x>
-       <y>190</y>
+       <y>200</y>
        <width>131</width>
        <height>24</height>
       </rect>
@@ -322,7 +322,7 @@
      <property name="geometry">
       <rect>
        <x>400</x>
-       <y>270</y>
+       <y>280</y>
        <width>131</width>
        <height>24</height>
       </rect>
@@ -338,7 +338,7 @@
      <property name="geometry">
       <rect>
        <x>400</x>
-       <y>350</y>
+       <y>360</y>
        <width>131</width>
        <height>24</height>
       </rect>
@@ -354,7 +354,7 @@
      <property name="geometry">
       <rect>
        <x>400</x>
-       <y>430</y>
+       <y>440</y>
        <width>131</width>
        <height>24</height>
       </rect>
@@ -372,7 +372,7 @@
        <x>10</x>
        <y>90</y>
        <width>301</width>
-       <height>31</height>
+       <height>21</height>
       </rect>
      </property>
      <property name="text">
@@ -388,7 +388,7 @@
        <x>620</x>
        <y>90</y>
        <width>301</width>
-       <height>31</height>
+       <height>21</height>
       </rect>
      </property>
      <property name="text">
@@ -435,7 +435,7 @@
        <x>10</x>
        <y>90</y>
        <width>301</width>
-       <height>31</height>
+       <height>21</height>
       </rect>
      </property>
      <property name="text">
@@ -486,7 +486,7 @@
        <x>620</x>
        <y>90</y>
        <width>301</width>
-       <height>31</height>
+       <height>21</height>
       </rect>
      </property>
      <property name="text">
@@ -499,9 +499,9 @@
     <widget class="QPushButton" name="pushButton_select_common_item">
      <property name="geometry">
       <rect>
-       <x>400</x>
+       <x>390</x>
        <y>190</y>
-       <width>131</width>
+       <width>141</width>
        <height>24</height>
       </rect>
      </property>
@@ -515,9 +515,9 @@
     <widget class="QPushButton" name="pushButton_select_all_common_item">
      <property name="geometry">
       <rect>
-       <x>400</x>
+       <x>390</x>
        <y>350</y>
-       <width>131</width>
+       <width>141</width>
        <height>24</height>
       </rect>
      </property>
@@ -531,9 +531,9 @@
     <widget class="QPushButton" name="pushButton_remove_all_common_item">
      <property name="geometry">
       <rect>
-       <x>400</x>
+       <x>390</x>
        <y>430</y>
-       <width>131</width>
+       <width>141</width>
        <height>24</height>
       </rect>
      </property>
@@ -547,9 +547,9 @@
     <widget class="QPushButton" name="pushButton_remove_common_item">
      <property name="geometry">
       <rect>
-       <x>400</x>
+       <x>390</x>
        <y>270</y>
-       <width>131</width>
+       <width>141</width>
        <height>24</height>
       </rect>
      </property>
@@ -597,7 +597,7 @@
        <x>10</x>
        <y>90</y>
        <width>301</width>
-       <height>31</height>
+       <height>21</height>
       </rect>
      </property>
      <property name="text">
@@ -613,7 +613,7 @@
        <x>620</x>
        <y>90</y>
        <width>301</width>
-       <height>31</height>
+       <height>21</height>
       </rect>
      </property>
      <property name="text">
@@ -626,9 +626,9 @@
     <widget class="QPushButton" name="pushButton_select_form_item">
      <property name="geometry">
       <rect>
-       <x>400</x>
+       <x>390</x>
        <y>190</y>
-       <width>131</width>
+       <width>141</width>
        <height>24</height>
       </rect>
      </property>
@@ -642,9 +642,9 @@
     <widget class="QPushButton" name="pushButton_remove_form_item">
      <property name="geometry">
       <rect>
-       <x>400</x>
+       <x>390</x>
        <y>270</y>
-       <width>131</width>
+       <width>141</width>
        <height>24</height>
       </rect>
      </property>
@@ -658,9 +658,9 @@
     <widget class="QPushButton" name="pushButton_select_all_form_item">
      <property name="geometry">
       <rect>
-       <x>400</x>
+       <x>390</x>
        <y>350</y>
-       <width>131</width>
+       <width>141</width>
        <height>24</height>
       </rect>
      </property>
@@ -674,9 +674,9 @@
     <widget class="QPushButton" name="pushButton_remove_all_form_item">
      <property name="geometry">
       <rect>
-       <x>400</x>
+       <x>390</x>
        <y>430</y>
-       <width>131</width>
+       <width>141</width>
        <height>24</height>
       </rect>
      </property>
@@ -840,7 +840,7 @@
       <number>36</number>
      </attribute>
      <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>145</number>
+      <number>151</number>
      </attribute>
      <attribute name="verticalHeaderDefaultSectionSize">
       <number>30</number>
@@ -926,7 +926,7 @@
       </rect>
      </property>
      <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>290</number>
+      <number>302</number>
      </attribute>
      <column>
       <property name="text">
@@ -1026,7 +1026,7 @@
       </rect>
      </property>
      <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>275</number>
+      <number>279</number>
      </attribute>
      <column>
       <property name="text">
@@ -1079,7 +1079,7 @@
       <rect>
        <x>80</x>
        <y>120</y>
-       <width>261</width>
+       <width>256</width>
        <height>441</height>
       </rect>
      </property>
@@ -1108,57 +1108,6 @@
      </property>
      <property name="text">
       <string>Down</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label_3">
-     <property name="geometry">
-      <rect>
-       <x>80</x>
-       <y>89</y>
-       <width>261</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Column Order</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignmentFlag::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="label_4">
-     <property name="geometry">
-      <rect>
-       <x>358</x>
-       <y>89</y>
-       <width>561</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Column Rename</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignmentFlag::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="Line" name="line">
-     <property name="geometry">
-      <rect>
-       <x>340</x>
-       <y>100</y>
-       <width>20</width>
-       <height>461</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Orientation::Vertical</enum>
      </property>
     </widget>
    </widget>

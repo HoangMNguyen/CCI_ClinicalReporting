@@ -1,7 +1,6 @@
 # This Python file uses the following encoding: utf-8
 import sys
 import os
-from datetime import datetime
 from PySide6.QtWidgets import (
     QApplication,
     QWidget,
@@ -14,9 +13,8 @@ from PySide6.QtCore import Qt, QAbstractTableModel
 from PySide6.QtWidgets import QAbstractItemView
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from CLReport import CLReport
-from util import read_data_dict_zip_corelisting, get_excel_formats
+from util import read_data_dict_zip_corelisting
 import pandas as pd
-import numpy as np
 
 # Important:
 # You need to run the following command to generate the ui_form.py file
@@ -34,9 +32,6 @@ class Widget(QWidget):
         self.study_name = None
         self.report = CLReport()
         self.output_folder_name = None
-
-        # Set up tables
-        self._setup_tables()
 
         # * Setting tab
         self.ui.pushButton_input_file.clicked.connect(self.click_input_file)
@@ -208,7 +203,7 @@ class Widget(QWidget):
 
         # Get all static filter items from the report
         filter_items = self.report.get_static_filter_items()
-
+        
         # Add each filter item to the table
         for item, operator, value in filter_items:
             row = self.ui.tableWidget_static_filter.rowCount()
@@ -226,35 +221,32 @@ class Widget(QWidget):
 
         # Reconnect itemChanged signal
         self.ui.tableWidget_static_filter.itemChanged.connect(self._on_filter_changed)
-
-        # Adjust column widths after populating the table
-        self._adjust_column_widths(self.ui.tableWidget_static_filter)
-
+    
     def synchronize_static_filters(self):
         """Synchronize the static filter items in the report with the UI table."""
         # Get all current filters from the table
         new_filters = []
-
+        
         for row in range(self.ui.tableWidget_static_filter.rowCount()):
             item_combo = self.ui.tableWidget_static_filter.cellWidget(row, 0)
             operator_combo = self.ui.tableWidget_static_filter.cellWidget(row, 1)
             value_item = self.ui.tableWidget_static_filter.item(row, 2)
-
+            
             if item_combo and operator_combo and value_item:
                 item = item_combo.currentText()
                 operator = operator_combo.currentText()
                 value = value_item.text()
-
+                
                 if item and operator:  # Only add if we have at least item and operator
                     new_filters.append((item, operator, value))
-
+        
         # Clear all existing filters in report
         self.report.set_static_filter_items([])
-
+        
         # Add all the filters from the table
         for item, operator, value in new_filters:
             self.report.add_static_filter_item(item, operator, value)
-
+            
         print(f"Synchronized static filters: {self.report.get_static_filter_items()}")
 
     def _add_dropdown(self, row, column, dropdown_type, selected_value=None):
@@ -307,11 +299,6 @@ class Widget(QWidget):
             for op in operators:
                 combo.addItem(op)
 
-            # Connect special handler for operator changes to manage value column
-            combo.currentTextChanged.connect(
-                lambda text, r=row: self._on_operator_changed(r, text)
-            )
-
         # Set selected value if provided
         if selected_value:
             combo.setCurrentText(selected_value)
@@ -321,44 +308,6 @@ class Widget(QWidget):
 
         # Add to table
         self.ui.tableWidget_static_filter.setCellWidget(row, column, combo)
-
-        # If this is an operator dropdown, check initial state for null operators
-        if dropdown_type == "operator" and selected_value in ["is Null", "is not Null"]:
-            self._on_operator_changed(row, selected_value)
-
-    def _on_operator_changed(self, row, operator_text):
-        """Handle changes to the operator dropdown to manage value column.
-
-        Args:
-            row: The row that changed
-            operator_text: The new operator value
-        """
-        # Get the value column item
-        value_item = self.ui.tableWidget_static_filter.item(row, 2)
-
-        # If operator is for null checking, disable value column and clear it
-        if operator_text in ["is Null", "is not Null"]:
-            # Create an empty item if one doesn't exist
-            if not value_item:
-                value_item = QTableWidgetItem("")
-                self.ui.tableWidget_static_filter.setItem(row, 2, value_item)
-
-            # Clear the value and disable the cell
-            value_item.setText("")
-            value_item.setFlags(value_item.flags() & ~Qt.ItemIsEnabled)
-        else:
-            # Enable the cell for editing if it exists
-            if value_item:
-                value_item.setFlags(
-                    value_item.flags() | Qt.ItemIsEnabled | Qt.ItemIsEditable
-                )
-            else:
-                # Create a new editable item if one doesn't exist
-                value_item = QTableWidgetItem("")
-                value_item.setFlags(
-                    value_item.flags() | Qt.ItemIsEnabled | Qt.ItemIsEditable
-                )
-                self.ui.tableWidget_static_filter.setItem(row, 2, value_item)
 
     def static_filter_add(self):
         """Add a new row to the static filter table."""
@@ -385,12 +334,12 @@ class Widget(QWidget):
         # Get the selected values from the dropdown (to add to the report's data)
         item_combo = self.ui.tableWidget_static_filter.cellWidget(row, 0)
         operator_combo = self.ui.tableWidget_static_filter.cellWidget(row, 1)
-
+        
         if item_combo and operator_combo:
             item = item_combo.currentText()
             operator = operator_combo.currentText()
             value = ""  # Empty value initially
-
+            
             # Add the initial filter to the report (this is the key fix)
             if item:  # Only add if we have a valid item
                 self.report.add_static_filter_item(item, operator, value)
@@ -398,10 +347,6 @@ class Widget(QWidget):
 
         # Reconnect itemChanged signal
         self.ui.tableWidget_static_filter.itemChanged.connect(self._on_filter_changed)
-
-        # Set appropriate state for value column based on initial operator
-        if operator_combo:
-            self._on_operator_changed(row, operator_combo.currentText())
 
     def static_filter_remove(self):
         """Remove selected rows from the static filter table."""
@@ -493,20 +438,18 @@ class Widget(QWidget):
             if item and operator:
                 # Get the current filters to find what we need to remove
                 current_filters = self.report.get_static_filter_items()
-
+                
                 # If we have more filters than rows, we need to clean up
                 if len(current_filters) > self.ui.tableWidget_static_filter.rowCount():
                     # Rebuild the filter list based on the current table state
                     self.synchronize_static_filters()
                     return
-
+                
                 # Otherwise, remove the filter for this row if it exists
                 if row < len(current_filters):
                     old_item, old_operator, old_value = current_filters[row]
-                    self.report.remove_static_filter_item(
-                        old_item, old_operator, old_value
-                    )
-
+                    self.report.remove_static_filter_item(old_item, old_operator, old_value)
+                
                 # Add the updated filter
                 self.report.add_static_filter_item(item, operator, value)
                 print(f"Updated filter: {item} {operator} '{value}'")
@@ -865,9 +808,6 @@ class Widget(QWidget):
         # Reconnect the signal
         self.ui.tableWidget_rename.cellChanged.connect(self.on_rename_cell_changed)
 
-        # Adjust column widths after populating the table
-        self._adjust_column_widths(self.ui.tableWidget_rename)
-
     def on_rename_cell_changed(self, row, column):
         """Handle changes to cells in the rename table."""
         # Only process changes to the "New Item Name" column (column 1)
@@ -967,9 +907,6 @@ class Widget(QWidget):
             if str(default_order) == "1":
                 self.on_join_order_changed(row, "1")
 
-        # Adjust column widths after populating the table
-        self._adjust_column_widths(self.ui.tableWidget_join)
-
     def on_join_order_changed(self, row, value):
         """Handle changes to join order column and gray out columns if order is 1.
 
@@ -983,24 +920,6 @@ class Widget(QWidget):
 
         # Enable or disable based on join order value
         enabled = value != "1"
-
-        # If the join order is 1, clear the values in the item and join type columns
-        if value == "1":
-            # Clear item dropdowns
-            for col in item_cols:
-                combo = self.ui.tableWidget_join.cellWidget(row, col)
-                if combo:
-                    combo.setCurrentIndex(0)  # Set to first item (usually empty)
-
-            # Clear join type dropdown
-            join_type_combo = self.ui.tableWidget_join.cellWidget(row, join_type_col)
-            if join_type_combo:
-                join_type_combo.setCurrentIndex(
-                    0
-                )  # Set to first item (usually "Left join")
-
-            # Update the join list to reflect the cleared values
-            self.update_join_list()
 
         # Update item dropdowns
         for col in item_cols:
@@ -1121,9 +1040,6 @@ class Widget(QWidget):
 
             # Add item2 dropdown to third column
             self._add_dynamic_dropdown(row, 2, "item", item2)
-
-        # Adjust column widths after populating the table
-        self._adjust_column_widths(self.ui.tableWidget_dynamic_filter)
 
     def _add_dynamic_dropdown(self, row, column, dropdown_type, selected_value=None):
         """Add a dropdown to the dynamic filter table.
@@ -1288,23 +1204,8 @@ class Widget(QWidget):
 
             if role == Qt.DisplayRole:
                 value = self._data.iloc[index.row(), index.column()]
-
-                # Handle null values
-                if pd.isna(value):
-                    return ""
-
-                # Format datetime objects to mm-dd-yyyy
-                if isinstance(value, (pd.Timestamp, datetime, np.datetime64)):
-                    return pd.Timestamp(value).strftime("%m-%d-%Y")
-
-                # Handle numeric values - display integers without decimal point
-                if isinstance(value, (float, np.floating)):
-                    # Check if the float has no decimal part
-                    if value == int(value):
-                        return str(int(value))
-
-                # Convert other values to string
-                return str(value)
+                # Convert value to string for display
+                return str(value) if pd.notna(value) else ""
 
             return None
 
@@ -1312,9 +1213,8 @@ class Widget(QWidget):
             if role == Qt.DisplayRole:
                 if orientation == Qt.Horizontal:
                     return str(self._data.columns[section])
-                # Return row number for vertical headers
-                elif orientation == Qt.Vertical:
-                    return str(section + 1)  # Add 1 to make it 1-based indexing
+                # Return None for vertical headers to hide row indices
+                return None
             return None
 
     def preview_report(self):
@@ -1327,17 +1227,14 @@ class Widget(QWidget):
             result_df = self.report.create_report()
 
             if result_df is not None and not result_df.empty:
-                # Reset the index to ensure row numbers are sequential after filtering
-                result_df = result_df.reset_index(drop=True)
-
                 # Create model from the DataFrame
                 model = self.PandasModel(result_df)
 
                 # Set the model for the table view
                 self.ui.tableView_preview.setModel(model)
 
-                # Show the vertical header (row numbers)
-                self.ui.tableView_preview.verticalHeader().setVisible(True)
+                # Hide the vertical header (row numbers)
+                self.ui.tableView_preview.verticalHeader().setVisible(False)
 
                 # Resize columns to content
                 self.ui.tableView_preview.resizeColumnsToContents()
@@ -1373,9 +1270,6 @@ class Widget(QWidget):
             if result_df is not None and not result_df.empty:
                 # Get the file name
                 file_name = self.ui.lineEdit_file_name.text()
-                # Add timestamp before extension
-                timestamp = datetime.now().strftime(" %y%m%d_%H%M%S")
-                file_name += timestamp
                 if not file_name.endswith(".xlsx"):
                     file_name += ".xlsx"
 
@@ -1383,40 +1277,8 @@ class Widget(QWidget):
                 if self.output_folder_name:
                     file_path = os.path.join(self.output_folder_name, file_name)
 
-                    # Create a copy of the dataframe for export
-                    export_df = result_df.copy()
-
-                    # First handle datetime columns - explicitly format to mm-dd-yyyy
-                    for col in export_df.select_dtypes(
-                        include=["datetime64", "datetime", np.datetime64]
-                    ).columns:
-                        export_df[col] = (
-                            export_df[col].dt.strftime("%m-%d-%Y").replace("NaT", "")
-                        )
-
-                    # Also check columns that might contain dates but aren't properly typed
-                    for col in export_df.columns:
-                        if "date" in col.lower() or "time" in col.lower():
-                            if pd.api.types.is_object_dtype(export_df[col]):
-                                # Try to convert to datetime first then format
-                                try:
-                                    temp_col = pd.to_datetime(
-                                        export_df[col], errors="coerce"
-                                    )
-                                    export_df[col] = temp_col.dt.strftime(
-                                        "%m-%d-%Y"
-                                    ).replace("NaT", "")
-                                except:
-                                    # If conversion fails, just treat as string
-                                    export_df[col] = (
-                                        export_df[col].astype(str).replace("NaT", "")
-                                    )
-
-                    # Replace NaN and infinite values with empty strings
-                    export_df = export_df.replace([np.nan, np.inf, -np.inf], "")
-
-                    # Use simple pandas Excel export without xlsxwriter formatting
-                    export_df.to_excel(file_path, index=False, sheet_name="Report")
+                    # Save to Excel
+                    result_df.to_excel(file_path, index=False)
 
                     # Update confirmation label
                     self.ui.label_confirmation.setText(
@@ -1443,9 +1305,6 @@ class Widget(QWidget):
                     "No data to save. Please check your selections and filters."
                 )
         except Exception as e:
-            import traceback
-
-            print(f"Error details: {traceback.format_exc()}")
             self.ui.label_confirmation.setText(f"Error saving report: {str(e)}")
 
     def update_items_order_list(self):
@@ -1558,59 +1417,6 @@ class Widget(QWidget):
         self.ui.listWidget_form_selected.setCurrentItem(item)
         # Call the same function that the remove button uses
         self.click_remove_form()
-
-    def _setup_tables(self):
-        """Set up all table widgets with proper column widths and behaviors."""
-        # Set up table widget properties
-        tables = [
-            self.ui.tableWidget_join,
-            self.ui.tableWidget_static_filter,
-            self.ui.tableWidget_dynamic_filter,
-            self.ui.tableWidget_rename,
-        ]
-
-        for table in tables:
-            # Set selection behavior
-            table.setSelectionBehavior(QAbstractItemView.SelectRows)
-            table.setSelectionMode(QAbstractItemView.SingleSelection)
-
-            # Make columns fit evenly
-            self._adjust_column_widths(table)
-
-            # Connect to resizing events
-            table.horizontalHeader().sectionResized.connect(
-                lambda index, oldSize, newSize, t=table: self._adjust_column_widths(t)
-            )
-
-    def _adjust_column_widths(self, table):
-        """Adjust column widths to fit evenly in the table."""
-        if table.columnCount() == 0:
-            return
-
-        # Get available width
-        available_width = table.width()
-
-        # Account for vertical header width (row indices)
-        if not table.verticalHeader().isHidden():
-            available_width -= table.verticalHeader().width()
-
-        # Account for frame width (borders)
-        available_width -= 20
-
-        # If vertical scrollbar is visible, adjust width
-        if table.verticalScrollBar().isVisible():
-            available_width -= table.verticalScrollBar().width()
-
-        # Account for potential grid line widths
-        if table.showGrid():
-            available_width -= table.columnCount() * 2
-
-        # Calculate column width, ensure it's at least 50 pixels
-        column_width = max(50, available_width // table.columnCount())
-
-        # Set each column to the same width
-        for col in range(table.columnCount()):
-            table.setColumnWidth(col, column_width)
 
 
 if __name__ == "__main__":
