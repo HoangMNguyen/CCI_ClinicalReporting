@@ -683,8 +683,10 @@ class CLReport:
                 try:
                     # Convert to datetime first (in case it's not already)
                     result_df[col] = pd.to_datetime(result_df[col], errors="coerce")
-                    # Format to the desired format
-                    result_df.loc[:, col] = result_df[col].dt.strftime("%m-%d-%Y")
+                    # Format without leading zeros
+                    result_df[col] = result_df[col].apply(
+                        lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
+                    )
                 except:
                     print(f"Could not format column {col} as date")
 
