@@ -1,7 +1,6 @@
 from CLForm import CLForm
 from copy import deepcopy
 import json
-import numpy as np
 
 
 class CLReport:
@@ -17,47 +16,58 @@ class CLReport:
         self.order_list = []
         self.rename_dict = {}
         self.file_path = None
-        self.static_available_common_items = []  # Initialize as empty, will be populated dynamically
+        self.static_available_common_items = [
+            "Study",
+            "Study Country",
+            "Study Site",
+            "Subject",
+            "Event Group Label",
+            "Event Group Name",
+            "Event Group Sequence Number",
+            "Event Label",
+            "Event Name",
+            "Event Date",
+            "Form Casebook Version",
+            "Form Label",
+            "Form Name",
+            "Form Sequence Number",
+            "Form Status",
+            "Datetime of Form Creation",
+            "Form First Submission Date",
+            "Form Last Submission Date",
+            "Form ILB Status",
+            "Form ILB Reason",
+            "Item Group Sequence Number",
+            "Datetime of Last Data Change",
+            "Data Listing As Of",
+            "Opened Queries",
+            "Closed Queries",
+            "Form SDV Status",
+            "Form SDV Datetime",
+            "Form DMR Status",
+            "Form DMR Datetime",
+            "Form Frozen Status",
+            "Form Frozen Datetime",
+            "Form Locked Status",
+            "Form Locked Datetime",
+            "Form Signed Status",
+            "Form Signed Datetime",
+            "Visit Method",
+            "LINKEDTO",
+        ]
         self.static_filter_items = []  # Static filter items: Item Name, Operator, Value
         self.dynamic_filter_items = []  # Dynamic filter items: Item Name 1 , Operator, Item Name 2
         self.selected_items_order_list = []
 
-    def identify_common_items(self):
-        """Identify columns that exist in all forms of the data."""
-        if not self.data:
-            return
-
-        # Get all forms
-        forms = list(self.data.keys())
-        if not forms:
-            return
-
-        # Start with all columns from the first form
-        common_columns = set(self.data[forms[0]].columns)
-
-        # Find intersection with all other forms
-        for form in forms[1:]:
-            form_columns = set(self.data[form].columns)
-            common_columns = common_columns.intersection(form_columns)
-
-        # Update static_available_common_items with the common columns
-        self.static_available_common_items = sorted(list(common_columns))
-
-        if "Subject" in self.static_available_common_items:
-            # Move "Subject" to the front of the list
-            self.add_selected_common_item("Subject")
+        # Add Subject to selected common items by default
+        self.selected_common_items.append("Subject")
 
     def set_data(self, data: dict):
         """Set the data for the report."""
         self.data = data
-
-        # Identify common columns across all forms
-        self.identify_common_items()
-
         # by default, all forms are available.
         # for each form in data, create a CLForm object
         self.add_all_available_forms()
-
         # by default, all common items are available.
         self.add_all_available_common_items()
 
@@ -556,6 +566,7 @@ class CLReport:
 
             # remove duplicate
             form_df = form_df.drop_duplicates()
+            print(f"form {form_name} before merge:\n{form_df}")
             # If no join items, skip this form
             if not join_items:
                 continue
@@ -651,44 +662,8 @@ class CLReport:
             if rename_mapping:
                 result_df = result_df.rename(columns=rename_mapping)
 
-        # make sure all date columns are formatted to %m-%d-%Y
-        if result_df is not None:
-            # Use a more comprehensive approach to catch all date columns
-            date_cols = []
-
-            # Method 1: Using select_dtypes with all datetime types
-            date_cols.extend(
-                result_df.select_dtypes(
-                    include=["datetime64", "datetime", np.datetime64]
-                ).columns
-            )
-
-            # Method 2: Check column names containing 'Date'/'date'
-            for col in result_df.columns:
-                if "date" in col.lower() and col not in date_cols:
-                    try:
-                        # Attempt to convert to datetime to confirm it's a date column
-                        if (
-                            pd.api.types.is_datetime64_dtype(result_df[col])
-                            or pd.to_datetime(result_df[col], errors="coerce")
-                            .notna()
-                            .any()
-                        ):
-                            date_cols.append(col)
-                    except:
-                        pass
-
-            # Format each identified date column
-            for col in date_cols:
-                try:
-                    # Convert to datetime first (in case it's not already)
-                    result_df[col] = pd.to_datetime(result_df[col], errors="coerce")
-                    # Format to the desired format
-                    result_df.loc[:, col] = result_df[col].dt.strftime("%m-%d-%Y")
-                except:
-                    print(f"Could not format column {col} as date")
-
         # * Remove possible duplicate within result_df
+        # remove index as well
         if result_df is not None:
             result_df = result_df.reset_index(drop=True)
             # Remove duplicate rows
