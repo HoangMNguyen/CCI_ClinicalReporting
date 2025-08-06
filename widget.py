@@ -1293,9 +1293,10 @@ class Widget(QWidget):
                 if pd.isna(value):
                     return ""
 
-                # Format datetime objects to mm-dd-yyyy
+                # Format datetime objects to m/d/yyyy without leading zeros
                 if isinstance(value, (pd.Timestamp, datetime, np.datetime64)):
-                    return pd.Timestamp(value).strftime("%m-%d-%Y")
+                    date = pd.Timestamp(value)
+                    return f"{date.month}/{date.day}/{date.year}"
 
                 # Handle numeric values - display integers without decimal point
                 if isinstance(value, (float, np.floating)):
@@ -1386,12 +1387,15 @@ class Widget(QWidget):
                     # Create a copy of the dataframe for export
                     export_df = result_df.copy()
 
-                    # First handle datetime columns - explicitly format to mm-dd-yyyy
+                    # First handle datetime columns - format to m/d/yyyy without leading zeros
                     for col in export_df.select_dtypes(
                         include=["datetime64", "datetime", np.datetime64]
                     ).columns:
-                        export_df[col] = (
-                            export_df[col].dt.strftime("%m-%d-%Y").replace("NaT", "")
+                        # Convert to string format without leading zeros
+                        export_df[col] = export_df[col].apply(
+                            lambda x: f"{x.month}/{x.day}/{x.year}"
+                            if pd.notnull(x)
+                            else ""
                         )
 
                     # Also check columns that might contain dates but aren't properly typed
@@ -1403,14 +1407,15 @@ class Widget(QWidget):
                                     temp_col = pd.to_datetime(
                                         export_df[col], errors="coerce"
                                     )
-                                    export_df[col] = temp_col.dt.strftime(
-                                        "%m-%d-%Y"
-                                    ).replace("NaT", "")
+                                    # Format without leading zeros
+                                    export_df[col] = temp_col.apply(
+                                        lambda x: f"{x.month}/{x.day}/{x.year}"
+                                        if pd.notnull(x)
+                                        else ""
+                                    )
                                 except:
                                     # If conversion fails, just treat as string
-                                    export_df[col] = (
-                                        export_df[col].astype(str).replace("NaT", "")
-                                    )
+                                    export_df[col] = export_df[col].astype(str)
 
                     # Replace NaN and infinite values with empty strings
                     export_df = export_df.replace([np.nan, np.inf, -np.inf], "")
