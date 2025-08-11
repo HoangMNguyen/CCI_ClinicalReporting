@@ -1398,28 +1398,6 @@ class Widget(QWidget):
                             else ""
                         )
 
-                    # Also check columns that might contain dates but aren't properly typed
-                    for col in export_df.columns:
-                        if "date" in col.lower() or "time" in col.lower():
-                            if pd.api.types.is_object_dtype(export_df[col]):
-                                # Try to convert to datetime first then format
-                                try:
-                                    temp_col = pd.to_datetime(
-                                        export_df[col], errors="coerce"
-                                    )
-                                    # Format without leading zeros
-                                    export_df[col] = temp_col.apply(
-                                        lambda x: f"{x.month}/{x.day}/{x.year}"
-                                        if pd.notnull(x)
-                                        else ""
-                                    )
-                                except:
-                                    # If conversion fails, just treat as string
-                                    export_df[col] = export_df[col].astype(str)
-
-                    # Replace NaN and infinite values with empty strings
-                    export_df = export_df.replace([np.nan, np.inf, -np.inf], "")
-
                     # Use simple pandas Excel export without xlsxwriter formatting
                     export_df.to_excel(file_path, index=False, sheet_name="Report")
 
