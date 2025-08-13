@@ -521,6 +521,8 @@ class Widget(QWidget):
             "Zip files (*.zip);;All Files (*)",
         )
         if file_path:
+            # Create a new CLReport instance to clear all previous data
+            self.report = CLReport()
             file_name = file_path.split("/")[-1]
             self.study_name = file_name.split("_")[2]
             self.report.set_data(read_data_dict_zip_corelisting(file_path))
