@@ -63,31 +63,19 @@ def read_data_dict_zip_corelisting(input_dir: str, cut_off_date=None) -> dict:
                     df = pd.read_csv(f)
                     # check if df has Event Date column and none of the data is blank
                     if (
-                        "Event Date" in df.columns
-                        and df["Event Date"].isnull().sum() != len(df["Event Date"])
+                        "Event Date" in df.columns and df["Event Date"].isnull().sum() != len(df["Event Date"])
                     ) or "EOS" in file_name_noCSV.split("_")[-1]:
                         df["Event Date"] = pd.to_datetime(df["Event Date"])
                         # if cut_off_date is not None, then filter the data based on the cut_off_date
-                        if (
-                            cut_off_date is not None
-                            and "EOS" not in file_name_noCSV.split("_")[-1]
-                        ):
+                        if cut_off_date is not None and "EOS" not in file_name_noCSV.split("_")[-1]:
                             df = df[df["Event Date"] <= cut_off_date]
-                        elif (
-                            cut_off_date is not None
-                            and "EOS" in file_name_noCSV.split("_")[-1]
-                        ):
+                        elif cut_off_date is not None and "EOS" in file_name_noCSV.split("_")[-1]:
                             # find the column header that contains "End of Study Date"
-                            column_name = df.columns[
-                                df.columns.str.contains("End of Study Date", case=False)
-                            ][0]
+                            column_name = df.columns[df.columns.str.contains("End of Study Date", case=False)][0]
                             # Convert the relevant column to datetime date only
                             df[column_name] = pd.to_datetime(df[column_name]).dt.date
                             # filter out the data that is after the cut off date. If the date is null, keep it
-                            df = df[
-                                (df[column_name] <= cut_off_date)
-                                | (df[column_name].isnull())
-                            ]
+                            df = df[(df[column_name] <= cut_off_date) | (df[column_name].isnull())]
 
                     # Remove all columns if the column names contains "_RAW"
                     df = df.loc[:, ~df.columns.str.contains("_RAW")]
@@ -98,7 +86,10 @@ def read_data_dict_zip_corelisting(input_dir: str, cut_off_date=None) -> dict:
                     df = df[df["Form Status"] == "Submitted"]
                     # only get data that is not ILB status
                     df = df[df["Form ILB Status"] == False]
-                data[file_name_noCSV.split("_")[-1]] = df
+                if file_name_noCSV.split("_")[-1] != "2":
+                    data[file_name_noCSV.split("_")[-1]] = df
+                else:
+                    data[file_name_noCSV.split("_")[-2] + "_" + file_name_noCSV.split("_")[-1]] = df
 
     return data
 
@@ -192,9 +183,7 @@ def convert_integers_to_strings(df, column_name):
         raise ValueError(f"Column '{column_name}' does not exist in the dataframe")
 
     # Convert integers to strings, if the value is an integer, else return Nan
-    df[column_name] = df[column_name].apply(
-        lambda x: str(x) if isinstance(x, int) else np.NaN
-    )
+    df[column_name] = df[column_name].apply(lambda x: str(x) if isinstance(x, int) else np.NaN)
 
     return df
 
@@ -227,24 +216,20 @@ def get_data_from_dict(data: dict, input_dict: dict, *exclude) -> pd.DataFrame:
             # input_key is not within the exclude list
             if key not in exclude:
                 # if there are more than one row for the same subject, keep the one with the last 'Event Date'
-                collected_data = collected_data.sort_values(
-                    ["Subject", "Event Date"]
-                ).drop_duplicates(subset=["Subject"], keep="last")
+                collected_data = collected_data.sort_values(["Subject", "Event Date"]).drop_duplicates(
+                    subset=["Subject"], keep="last"
+                )
             # check if value contains 'Date' in the column name, then convert to datetime
             for col in collected_data.columns:
                 if "Date" in col:
-                    collected_data[col] = pd.to_datetime(
-                        collected_data[col], errors="coerce"
-                    )
+                    collected_data[col] = pd.to_datetime(collected_data[col], errors="coerce")
             # drop 'Event Date' column
             collected_data = collected_data.drop("Event Date", axis=1)
             # merge dataframes
             if keys_list.index(key) == 0:
                 merged_df = collected_data
             else:
-                merged_df = pd.merge(
-                    merged_df, collected_data, on="Subject", how="left"
-                )
+                merged_df = pd.merge(merged_df, collected_data, on="Subject", how="left")
 
     return merged_df
 
@@ -272,24 +257,20 @@ def get_data_from_dict_first(data: dict, input_dict: dict) -> pd.DataFrame:
             collected_data = data[key][input_keys].copy()
             collected_data.rename(columns=input_dict[key], inplace=True)
             # if there are more than one row for the same subject, keep the one with the last 'Event Date'
-            collected_data = collected_data.sort_values(
-                ["Subject", "Event Date"]
-            ).drop_duplicates(subset=["Subject"], keep="first")
+            collected_data = collected_data.sort_values(["Subject", "Event Date"]).drop_duplicates(
+                subset=["Subject"], keep="first"
+            )
             # check if value contains 'Date' in the column name, then convert to datetime
             for col in collected_data.columns:
                 if "Date" in col:
-                    collected_data[col] = pd.to_datetime(
-                        collected_data[col], errors="coerce"
-                    )
+                    collected_data[col] = pd.to_datetime(collected_data[col], errors="coerce")
             # drop 'Event Date' column
             collected_data = collected_data.drop("Event Date", axis=1)
             # merge dataframes
             if keys_list.index(key) == 0:
                 merged_df = collected_data
             else:
-                merged_df = pd.merge(
-                    merged_df, collected_data, on="Subject", how="left"
-                )
+                merged_df = pd.merge(merged_df, collected_data, on="Subject", how="left")
     return merged_df
 
 
@@ -460,9 +441,7 @@ def apply_static_filter(df, item, operator, value):
             except:
                 pass
         # Case-insensitive check for string values
-        return df[
-            df[item].astype(str).str.lower().isin([v.lower() for v in value_list])
-        ]
+        return df[df[item].astype(str).str.lower().isin([v.lower() for v in value_list])]
     elif operator == "Not in":
         value_list = [v.strip() for v in str(value).split(",")]
         if is_numeric:
@@ -472,9 +451,7 @@ def apply_static_filter(df, item, operator, value):
             except:
                 pass
         # Case-insensitive check for string values
-        return df[
-            ~df[item].astype(str).str.lower().isin([v.lower() for v in value_list])
-        ]
+        return df[~df[item].astype(str).str.lower().isin([v.lower() for v in value_list])]
     elif operator == "is Null":
         # Return rows where the column is null
         return df[df[item].isnull()]
@@ -512,14 +489,7 @@ def apply_dynamic_filter(df, item1, operator, item2):
 
     # Check if column names contain 'Date' which is a good indicator that they might be dates
     date_columns = False
-    if (
-        "Date" in item1
-        or "date" in item1
-        or "DATE" in item1
-        or "Date" in item2
-        or "date" in item2
-        or "DATE" in item2
-    ):
+    if "Date" in item1 or "date" in item1 or "DATE" in item1 or "Date" in item2 or "date" in item2 or "DATE" in item2:
         date_columns = True
 
     # First try to convert columns to datetime if they might be dates
@@ -543,14 +513,12 @@ def apply_dynamic_filter(df, item1, operator, item2):
         # Try to determine if columns are numeric without forcing conversion
         try:
             is_numeric1 = all(
-                isinstance(x, (int, float))
-                or (isinstance(x, str) and x.replace(".", "", 1).isdigit())
+                isinstance(x, (int, float)) or (isinstance(x, str) and x.replace(".", "", 1).isdigit())
                 for x in sample1
                 if x is not None and pd.notna(x)
             )
             is_numeric2 = all(
-                isinstance(x, (int, float))
-                or (isinstance(x, str) and x.replace(".", "", 1).isdigit())
+                isinstance(x, (int, float)) or (isinstance(x, str) and x.replace(".", "", 1).isdigit())
                 for x in sample2
                 if x is not None and pd.notna(x)
             )
@@ -559,9 +527,7 @@ def apply_dynamic_filter(df, item1, operator, item2):
                 try:
                     df_copy[item1] = pd.to_numeric(df_copy[item1], errors="coerce")
                     df_copy[item2] = pd.to_numeric(df_copy[item2], errors="coerce")
-                    print(
-                        f"Converted columns {item1} and {item2} to numeric for comparison"
-                    )
+                    print(f"Converted columns {item1} and {item2} to numeric for comparison")
                     numeric_columns = True
                 except Exception as e:
                     print(f"Could not convert columns to numeric: {str(e)}")
@@ -581,8 +547,7 @@ def apply_dynamic_filter(df, item1, operator, item2):
         if string_columns:
             # Case-insensitive equality for strings
             result = df_copy[
-                df_copy[item1].astype(str).str.lower().str.strip()
-                == df_copy[item2].astype(str).str.lower().str.strip()
+                df_copy[item1].astype(str).str.lower().str.strip() == df_copy[item2].astype(str).str.lower().str.strip()
             ]
         else:
             result = df_copy[df_copy[item1] == df_copy[item2]]
@@ -590,8 +555,7 @@ def apply_dynamic_filter(df, item1, operator, item2):
         if string_columns:
             # Case-insensitive inequality for strings
             result = df_copy[
-                df_copy[item1].astype(str).str.lower().str.strip()
-                != df_copy[item2].astype(str).str.lower().str.strip()
+                df_copy[item1].astype(str).str.lower().str.strip() != df_copy[item2].astype(str).str.lower().str.strip()
             ]
         else:
             result = df_copy[df_copy[item1] != df_copy[item2]]
@@ -653,11 +617,7 @@ def join_dataframes(left_df, right_df, join_items, join_type="left"):
         return left_df
 
     # Ensure join items exist in both dataframes
-    valid_join_items = [
-        item
-        for item in join_items
-        if item in left_df.columns and item in right_df.columns
-    ]
+    valid_join_items = [item for item in join_items if item in left_df.columns and item in right_df.columns]
 
     if not valid_join_items:
         return left_df  # If no valid join items, return left dataframe

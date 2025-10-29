@@ -36,6 +36,19 @@ class Widget(QWidget):
         self.output_folder_name = None
         self.settings_directory = None
 
+        # Cache commonly used confirmation labels and reset them
+        self.label_run_confirmation = getattr(self.ui, "label_run_confirmation", None)
+        self.label_save_confirmation = getattr(self.ui, "label_save_confirmation", None)
+        self.label_output_folder = getattr(self.ui, "label_output_folder", None)
+        if self.label_save_confirmation is None and hasattr(self.ui, "label_confirmation"):
+            self.label_save_confirmation = self.ui.label_confirmation
+        if self.label_run_confirmation is not None:
+            self.label_run_confirmation.setText("")
+        if self.label_save_confirmation is not None:
+            self.label_save_confirmation.setText("")
+        if self.label_save_confirmation is not None and not hasattr(self.ui, "label_save_confirmation"):
+            self.ui.label_save_confirmation = self.label_save_confirmation
+
         # Disable settings directory selector until needed
         self.ui.pushButton_setting_location.setEnabled(False)
 
@@ -105,8 +118,12 @@ class Widget(QWidget):
         # Connect tab change signal to handle preview tab
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
 
-        # Connect Run and Save button
+        # Connect Run and Save buttons
         self.ui.pushButton_run.clicked.connect(self.click_run)
+        self.ui.pushButton_save_setting.clicked.connect(self.click_save_setting)
+        self.ui.pushButton_output_setting.clicked.connect(self.click_output_setting_folder)
+        self.ui.checkBox_save_current_setting.stateChanged.connect(self.on_save_current_setting_state_changed)
+        self._update_save_setting_controls()
 
         # Set selection behavior for dynamic filter table
         self.ui.tableWidget_dynamic_filter.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -120,6 +137,81 @@ class Widget(QWidget):
         self.add_listWidget_form_selected()
         self.add_listWidget_common_item_available()
         self.add_listWidget_common_item_selected()
+
+    def _set_label_text(self, label, message):
+        """Safely update a QLabel if it exists."""
+        if label is not None:
+            label.setText(message)
+
+    def _update_save_setting_controls(self):
+        """Enable or disable save-setting controls based on the checkbox state."""
+        enabled = self.ui.checkBox_save_current_setting.isChecked()
+        self.ui.pushButton_save_setting.setEnabled(enabled)
+        self.ui.pushButton_output_setting.setEnabled(enabled)
+        if not enabled:
+            self._set_label_text(self.label_save_confirmation, "")
+
+    def on_save_current_setting_state_changed(self, _state):
+        """Update UI state when the save-current-setting checkbox changes."""
+        self._update_save_setting_controls()
+
+    def click_output_setting_folder(self):
+        """Let the user choose where settings should be stored."""
+        if not self.ui.checkBox_save_current_setting.isChecked():
+            self._set_label_text(
+                self.label_save_confirmation,
+                "Enable 'Save the current setting?' before selecting a settings folder.",
+            )
+            return
+
+        default_dir = self.settings_directory or self._get_default_settings_directory()
+        settings_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Select Settings Folder",
+            default_dir,
+        )
+
+        if settings_dir:
+            self.settings_directory = settings_dir
+            self._set_label_text(self.label_save_confirmation, f"Settings folder set to {settings_dir}")
+            if self.ui.checkBox_saved_setting.isChecked():
+                self._refresh_saved_settings()
+
+    def click_save_setting(self):
+        """Persist the current report settings to disk."""
+        if not self.ui.checkBox_save_current_setting.isChecked():
+            self._set_label_text(
+                self.label_save_confirmation,
+                "Enable 'Save the current setting?' before saving.",
+            )
+            return
+
+        settings_name = self.ui.lineEdit_setting_name.text().strip()
+        if not settings_name:
+            self._set_label_text(self.label_save_confirmation, "Please enter a setting name before saving.")
+            return
+
+        settings_dir = self.settings_directory or self._get_default_settings_directory()
+        self.settings_directory = settings_dir
+
+        try:
+            os.makedirs(settings_dir, exist_ok=True)
+        except OSError as exc:
+            self._set_label_text(self.label_save_confirmation, f"Failed to prepare settings folder: {exc}")
+            return
+
+        settings_path = os.path.join(settings_dir, f"{settings_name}.json")
+
+        try:
+            self.report.save_setting_to_json(settings_path, setting_name=settings_name)
+        except Exception as exc:
+            self._set_label_text(self.label_save_confirmation, f"Failed to save settings: {exc}")
+            return
+
+        self._set_label_text(self.label_save_confirmation, f"Settings saved to {settings_path}")
+
+        if self.ui.checkBox_saved_setting.isChecked():
+            self._refresh_saved_settings()
 
     # ---- Hierarchical UI Update System ----
 
@@ -509,8 +601,12 @@ class Widget(QWidget):
         output_folder_name = QFileDialog.getExistingDirectory(self, "Select Output Folder", default_dir)
         # output filename to screen
         if output_folder_name:
-            self.ui.label_output_folder.setText("Output path: " + output_folder_name)
             self.output_folder_name = output_folder_name
+            if self.label_output_folder is not None:
+                self.label_output_folder.setText("Output path: " + output_folder_name)
+            else:
+                # Fall back to run confirmation label so the user still sees feedback
+                self._set_label_text(self.label_run_confirmation, f"Output path set to {output_folder_name}")
 
     def click_checkBox_saved_setting(self):
         """When box is checked for checkBox_saved_setting, enable comboBox_saved_setting.
@@ -604,7 +700,7 @@ class Widget(QWidget):
             settings_data = self.report.load_setting_from_json(file_path)
         except Exception as exc:
             print(f"Failed to load settings from {file_path}: {exc}")
-            self.ui.label_confirmation.setText(f"Failed to load settings: {exc}")
+            self._set_label_text(self.label_save_confirmation, f"Failed to load settings: {exc}")
             return
 
         # Synchronize UI with loaded settings
@@ -616,7 +712,7 @@ class Widget(QWidget):
         setting_name = self.ui.comboBox_saved_setting.currentText()
         if setting_name:
             self.ui.lineEdit_setting_name.setText(setting_name)
-        self.ui.label_confirmation.setText(f"Loaded settings from {os.path.basename(file_path)}")
+        self._set_label_text(self.label_save_confirmation, f"Loaded settings from {os.path.basename(file_path)}")
 
     def add_listWidget_form_available(self):
         """Add available forms to the list widget."""
@@ -1367,8 +1463,7 @@ class Widget(QWidget):
     def preview_report(self):
         """Generate a preview of the report and display it in the table view."""
         try:
-            # Show status in confirmation label
-            self.ui.label_confirmation.setText("Generating preview...")
+            self._set_label_text(self.label_run_confirmation, "Generating preview...")
 
             # Call create_report to generate the report
             result_df = self.report.create_report()
@@ -1389,14 +1484,14 @@ class Widget(QWidget):
                 # Resize columns to content
                 self.ui.tableView_preview.resizeColumnsToContents()
 
-                # Update confirmation label with success message
-                self.ui.label_confirmation.setText(
-                    f"Preview generated successfully. Found {len(result_df)} rows with {len(result_df.columns)} columns."
+                self._set_label_text(
+                    self.label_run_confirmation,
+                    f"Preview generated successfully. Found {len(result_df)} rows with {len(result_df.columns)} columns.",
                 )
             else:
-                # Handle empty result
-                self.ui.label_confirmation.setText(
-                    "No data found. Please check your form selections, filters, and join settings."
+                self._set_label_text(
+                    self.label_run_confirmation,
+                    "No data found. Please check your form selections, filters, and join settings.",
                 )
                 # Clear the table view
                 self.ui.tableView_preview.setModel(None)
@@ -1406,82 +1501,45 @@ class Widget(QWidget):
 
             error_details = traceback.format_exc()
             print(f"Error generating preview: {error_details}")
-            self.ui.label_confirmation.setText(f"Error generating preview: {str(e)}")
+            self._set_label_text(self.label_run_confirmation, f"Error generating preview: {str(e)}")
             # Clear the table view
             self.ui.tableView_preview.setModel(None)
 
-    # Update the Run and Save button handler to also run the report
     def click_run(self):
         """Run the report and save the results to a file."""
         try:
-            # Generate the report
             result_df = self.report.create_report()
 
-            if result_df is not None and not result_df.empty:
-                # Get the file name
-                file_name = self.ui.lineEdit_file_name.text()
-                # Add timestamp before extension
-                timestamp = datetime.now().strftime(" %y%m%d_%H%M%S")
-                file_name += timestamp
-                if not file_name.endswith(".xlsx"):
-                    file_name += ".xlsx"
+            if result_df is None or result_df.empty:
+                self._set_label_text(
+                    self.label_run_confirmation,
+                    "No data to save. Please check your selections and filters.",
+                )
+                return
 
-                # Get the output folder
-                if self.output_folder_name:
-                    file_path = os.path.join(self.output_folder_name, file_name)
+            if not self.output_folder_name:
+                self._set_label_text(self.label_run_confirmation, "Please select an output folder first.")
+                return
 
-                    # Create a copy of the dataframe for export
-                    export_df = result_df.copy()
+            file_name = self.ui.lineEdit_file_name.text()
+            timestamp = datetime.now().strftime(" %y%m%d_%H%M%S")
+            file_name += timestamp
+            if not file_name.endswith(".xlsx"):
+                file_name += ".xlsx"
 
-                    # First handle datetime columns - format to m/d/yyyy without leading zeros
-                    for col in export_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns:
-                        # Convert to string format without leading zeros
-                        export_df[col] = export_df[col].apply(
-                            lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
-                        )
+            file_path = os.path.join(self.output_folder_name, file_name)
 
-                    # Use simple pandas Excel export without xlsxwriter formatting
-                    export_df.to_excel(file_path, index=False, sheet_name="Report")
+            export_df = result_df.copy()
+            for col in export_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns:
+                export_df[col] = export_df[col].apply(lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else "")
 
-                    # Update confirmation label
-                    self.ui.label_confirmation.setText(f"Report saved successfully to {file_path}")
-
-                    # Save settings locally if requested
-                    if self.ui.checkBox_save_current_setting.isChecked() and self.ui.radioButton_local.isChecked():
-                        settings_name = self.ui.lineEdit_setting_name.text().strip()
-                        if not settings_name:
-                            self.ui.label_confirmation.setText(
-                                f"{self.ui.label_confirmation.text()}\nPlease enter a setting name before saving."
-                            )
-                        else:
-                            settings_dir = self.settings_directory or self._get_default_settings_directory()
-                            self.settings_directory = settings_dir
-                            try:
-                                os.makedirs(settings_dir, exist_ok=True)
-                                settings_path = os.path.join(settings_dir, f"{settings_name}.json")
-                                self.report.save_setting_to_json(
-                                    settings_path,
-                                    setting_name=settings_name,
-                                )
-                            except OSError as exc:
-                                self.ui.label_confirmation.setText(
-                                    f"{self.ui.label_confirmation.text()}\nFailed to save settings: {exc}"
-                                )
-                            else:
-                                self.ui.label_confirmation.setText(
-                                    f"{self.ui.label_confirmation.text()}\nSettings saved to {settings_path}"
-                                )
-                                if self.ui.checkBox_saved_setting.isChecked():
-                                    self._refresh_saved_settings()
-                else:
-                    self.ui.label_confirmation.setText("Please select an output folder first.")
-            else:
-                self.ui.label_confirmation.setText("No data to save. Please check your selections and filters.")
+            export_df.to_excel(file_path, index=False, sheet_name="Report")
+            self._set_label_text(self.label_run_confirmation, f"Report saved successfully to {file_path}")
         except Exception as e:
             import traceback
 
             print(f"Error details: {traceback.format_exc()}")
-            self.ui.label_confirmation.setText(f"Error saving report: {str(e)}")
+            self._set_label_text(self.label_run_confirmation, f"Error saving report: {str(e)}")
 
     def update_items_order_list(self):
         """Update the items order list widget with all selected items in their current order."""

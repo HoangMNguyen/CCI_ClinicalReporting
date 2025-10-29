@@ -41,7 +41,7 @@
     <enum>QTabWidget::TabShape::Rounded</enum>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>8</number>
    </property>
    <widget class="QWidget" name="tab_input">
     <attribute name="title">
@@ -1090,7 +1090,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Run and Save</string>
+      <string>Save Setting</string>
      </property>
      <property name="icon">
       <iconset theme="QIcon::ThemeIcon::DocumentSend"/>
@@ -1132,7 +1132,7 @@
       <string>Setting name</string>
      </property>
     </widget>
-    <widget class="QLabel" name="label_confirmation">
+    <widget class="QLabel" name="label_save_confirmation">
      <property name="geometry">
       <rect>
        <x>640</x>
@@ -1232,13 +1232,13 @@
       </rect>
      </property>
      <property name="text">
-      <string>Run and Save</string>
+      <string>Run</string>
      </property>
      <property name="icon">
       <iconset theme="QIcon::ThemeIcon::DocumentSend"/>
      </property>
     </widget>
-    <widget class="QLabel" name="label_confirmation_2">
+    <widget class="QLabel" name="label_run_confirmation">
      <property name="geometry">
       <rect>
        <x>640</x>
