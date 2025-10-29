@@ -1,6 +1,8 @@
 # This Python file uses the following encoding: utf-8
 import sys
 import os
+import json
+from pathlib import Path
 from datetime import datetime
 from PySide6.QtWidgets import (
     QApplication,
@@ -8,13 +10,11 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QTableWidgetItem,
     QComboBox,
-    QLineEdit,
 )
 from PySide6.QtCore import Qt, QAbstractTableModel
 from PySide6.QtWidgets import QAbstractItemView
-from PySide6.QtGui import QStandardItemModel, QStandardItem
 from CLReport import CLReport
-from util import read_data_dict_zip_corelisting, get_excel_formats
+from util import read_data_dict_zip_corelisting
 import pandas as pd
 import numpy as np
 
@@ -34,6 +34,10 @@ class Widget(QWidget):
         self.study_name = None
         self.report = CLReport()
         self.output_folder_name = None
+        self.settings_directory = None
+
+        # Disable settings directory selector until needed
+        self.ui.pushButton_setting_location.setEnabled(False)
 
         # Set up tables
         self._setup_tables()
@@ -41,6 +45,11 @@ class Widget(QWidget):
         # * Setting tab
         self.ui.pushButton_input_file.clicked.connect(self.click_input_file)
         self.ui.pushButton_output_folder.clicked.connect(self.click_output_file)
+        self.ui.checkBox_saved_setting.stateChanged.connect(self.click_checkBox_saved_setting)
+        self.ui.comboBox_saved_setting.setEnabled(False)
+        self.ui.comboBox_saved_setting.clear()
+        self.ui.comboBox_saved_setting.currentIndexChanged.connect(self.on_saved_setting_changed)
+        self.ui.pushButton_setting_location.clicked.connect(self.click_setting_location)
 
         # * Form tab
         self.ui.pushButton_select_form.clicked.connect(self.click_select_form)
@@ -49,65 +58,37 @@ class Widget(QWidget):
         self.ui.pushButton_remove_all_form.clicked.connect(self.click_remove_all_form)
 
         # Connect double-click events for form list widgets
-        self.ui.listWidget_form_available.itemDoubleClicked.connect(
-            self.on_form_available_double_clicked
-        )
-        self.ui.listWidget_form_selected.itemDoubleClicked.connect(
-            self.on_form_selected_double_clicked
-        )
+        self.ui.listWidget_form_available.itemDoubleClicked.connect(self.on_form_available_double_clicked)
+        self.ui.listWidget_form_selected.itemDoubleClicked.connect(self.on_form_selected_double_clicked)
 
         # * Common items tab
         # Connect common item buttons
-        self.ui.pushButton_select_common_item.clicked.connect(
-            self.click_select_common_item
-        )
-        self.ui.pushButton_remove_common_item.clicked.connect(
-            self.click_remove_common_item
-        )
-        self.ui.pushButton_select_all_common_item.clicked.connect(
-            self.click_select_all_common_item
-        )
-        self.ui.pushButton_remove_all_common_item.clicked.connect(
-            self.click_remove_all_common_item
-        )
+        self.ui.pushButton_select_common_item.clicked.connect(self.click_select_common_item)
+        self.ui.pushButton_remove_common_item.clicked.connect(self.click_remove_common_item)
+        self.ui.pushButton_select_all_common_item.clicked.connect(self.click_select_all_common_item)
+        self.ui.pushButton_remove_all_common_item.clicked.connect(self.click_remove_all_common_item)
 
         # * Form items tab
         # Connect form item buttons
         self.ui.pushButton_select_form_item.clicked.connect(self.click_select_form_item)
         self.ui.pushButton_remove_form_item.clicked.connect(self.click_remove_form_item)
-        self.ui.pushButton_select_all_form_item.clicked.connect(
-            self.click_select_all_form_item
-        )
-        self.ui.pushButton_remove_all_form_item.clicked.connect(
-            self.click_remove_all_form_item
-        )
+        self.ui.pushButton_select_all_form_item.clicked.connect(self.click_select_all_form_item)
+        self.ui.pushButton_remove_all_form_item.clicked.connect(self.click_remove_all_form_item)
 
         # Connect double-click events for form item list widgets
-        self.ui.listWidget_form_item_available.itemDoubleClicked.connect(
-            self.on_form_item_available_double_clicked
-        )
-        self.ui.listWidget_form_item_selected.itemDoubleClicked.connect(
-            self.on_form_item_selected_double_clicked
-        )
+        self.ui.listWidget_form_item_available.itemDoubleClicked.connect(self.on_form_item_available_double_clicked)
+        self.ui.listWidget_form_item_selected.itemDoubleClicked.connect(self.on_form_item_selected_double_clicked)
 
         # Connect double-click events for common item list widgets
-        self.ui.listWidget_common_item_available.itemDoubleClicked.connect(
-            self.on_common_item_available_double_clicked
-        )
-        self.ui.listWidget_common_item_selected.itemDoubleClicked.connect(
-            self.on_common_item_selected_double_clicked
-        )
+        self.ui.listWidget_common_item_available.itemDoubleClicked.connect(self.on_common_item_available_double_clicked)
+        self.ui.listWidget_common_item_selected.itemDoubleClicked.connect(self.on_common_item_selected_double_clicked)
 
         # Connect form selection change to update form items
-        self.ui.listWidget_form_selected.itemSelectionChanged.connect(
-            self.update_form_dependent_ui
-        )
+        self.ui.listWidget_form_selected.itemSelectionChanged.connect(self.update_form_dependent_ui)
         # * Filter tab
         # Connect push buttons for filter functionality
         self.ui.pushButton_static_filter_add.clicked.connect(self.static_filter_add)
-        self.ui.pushButton_static_filter_remove.clicked.connect(
-            self.static_filter_remove
-        )
+        self.ui.pushButton_static_filter_remove.clicked.connect(self.static_filter_remove)
 
         # * Comparison and Rename tab
         # Connect table cell changes for rename functionality
@@ -119,31 +100,21 @@ class Widget(QWidget):
 
         # Add connections for dynamic filter buttons
         self.ui.pushButton_dynamic_filter_add.clicked.connect(self.dynamic_filter_add)
-        self.ui.pushButton_dynamic_filter_remove.clicked.connect(
-            self.dynamic_filter_remove
-        )
+        self.ui.pushButton_dynamic_filter_remove.clicked.connect(self.dynamic_filter_remove)
 
         # Connect tab change signal to handle preview tab
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
 
         # Connect Run and Save button
-        self.ui.pushButton_run_and_save.clicked.connect(self.click_run_and_save)
+        self.ui.pushButton_run.clicked.connect(self.click_run)
 
         # Set selection behavior for dynamic filter table
-        self.ui.tableWidget_dynamic_filter.setSelectionBehavior(
-            QAbstractItemView.SelectRows
-        )
-        self.ui.tableWidget_dynamic_filter.setSelectionMode(
-            QAbstractItemView.SingleSelection
-        )
+        self.ui.tableWidget_dynamic_filter.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.ui.tableWidget_dynamic_filter.setSelectionMode(QAbstractItemView.SingleSelection)
 
         # Set selection behavior for static filter table
-        self.ui.tableWidget_static_filter.setSelectionBehavior(
-            QAbstractItemView.SelectRows
-        )
-        self.ui.tableWidget_static_filter.setSelectionMode(
-            QAbstractItemView.SingleSelection
-        )
+        self.ui.tableWidget_static_filter.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.ui.tableWidget_static_filter.setSelectionMode(QAbstractItemView.SingleSelection)
 
         self.add_listWidget_form_available()
         self.add_listWidget_form_selected()
@@ -200,7 +171,7 @@ class Widget(QWidget):
         # Temporarily disconnect itemChanged signal
         try:
             self.ui.tableWidget_static_filter.itemChanged.disconnect()
-        except:
+        except Exception:
             pass  # It's OK if it wasn't connected
 
         # Clear the table
@@ -308,9 +279,7 @@ class Widget(QWidget):
                 combo.addItem(op)
 
             # Connect special handler for operator changes to manage value column
-            combo.currentTextChanged.connect(
-                lambda text, r=row: self._on_operator_changed(r, text)
-            )
+            combo.currentTextChanged.connect(lambda text, r=row: self._on_operator_changed(r, text))
 
         # Set selected value if provided
         if selected_value:
@@ -349,15 +318,11 @@ class Widget(QWidget):
         else:
             # Enable the cell for editing if it exists
             if value_item:
-                value_item.setFlags(
-                    value_item.flags() | Qt.ItemIsEnabled | Qt.ItemIsEditable
-                )
+                value_item.setFlags(value_item.flags() | Qt.ItemIsEnabled | Qt.ItemIsEditable)
             else:
                 # Create a new editable item if one doesn't exist
                 value_item = QTableWidgetItem("")
-                value_item.setFlags(
-                    value_item.flags() | Qt.ItemIsEnabled | Qt.ItemIsEditable
-                )
+                value_item.setFlags(value_item.flags() | Qt.ItemIsEnabled | Qt.ItemIsEditable)
                 self.ui.tableWidget_static_filter.setItem(row, 2, value_item)
 
     def static_filter_add(self):
@@ -369,7 +334,7 @@ class Widget(QWidget):
         # Temporarily disconnect itemChanged signal to avoid triggering events during setup
         try:
             self.ui.tableWidget_static_filter.itemChanged.disconnect()
-        except:
+        except Exception:
             pass  # It's OK if it wasn't connected
 
         # Add item dropdown to first column
@@ -503,9 +468,7 @@ class Widget(QWidget):
                 # Otherwise, remove the filter for this row if it exists
                 if row < len(current_filters):
                     old_item, old_operator, old_value = current_filters[row]
-                    self.report.remove_static_filter_item(
-                        old_item, old_operator, old_value
-                    )
+                    self.report.remove_static_filter_item(old_item, old_operator, old_value)
 
                 # Add the updated filter
                 self.report.add_static_filter_item(item, operator, value)
@@ -523,31 +486,142 @@ class Widget(QWidget):
         if file_path:
             # Create a new CLReport instance to clear all previous data
             self.report = CLReport()
-            file_name = file_path.split("/")[-1]
-            self.study_name = file_name.split("_")[2]
+            file_name = os.path.basename(file_path)
+            file_parts = file_name.split("_")
+            if len(file_parts) > 2:
+                self.study_name = file_parts[2]
+            else:
+                self.study_name = os.path.splitext(file_name)[0]
+            self.report.set_study_name(self.study_name)
             self.report.set_data(read_data_dict_zip_corelisting(file_path))
             # Add Subject to selected common items by default
             self.report.add_selected_common_item("Subject")
             # Update all UI elements after loading data
             self.update_all_ui()
             self.ui.label_input_file.setText("Input path: " + file_path)
+            if self.ui.checkBox_saved_setting.isChecked():
+                if self.settings_directory is None:
+                    self.settings_directory = self._get_default_settings_directory()
+                self._refresh_saved_settings()
 
     def click_output_file(self):
         default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-        output_folder_name = QFileDialog.getExistingDirectory(
-            self, "Select Output Folder", default_dir
-        )
+        output_folder_name = QFileDialog.getExistingDirectory(self, "Select Output Folder", default_dir)
         # output filename to screen
         if output_folder_name:
             self.ui.label_output_folder.setText("Output path: " + output_folder_name)
             self.output_folder_name = output_folder_name
 
+    def click_checkBox_saved_setting(self):
+        """When box is checked for checkBox_saved_setting, enable comboBox_saved_setting.
+        When box is not checked (by default), disable comboBox_saved_setting"""
+        if self.ui.checkBox_saved_setting.isChecked():
+            self.ui.comboBox_saved_setting.setEnabled(True)
+            self.ui.pushButton_setting_location.setEnabled(True)
+            if self.settings_directory is None:
+                self.settings_directory = self._get_default_settings_directory()
+            self._refresh_saved_settings()
+        else:
+            self.ui.comboBox_saved_setting.setEnabled(False)
+            self.ui.pushButton_setting_location.setEnabled(False)
+            self.ui.comboBox_saved_setting.blockSignals(True)
+            self.ui.comboBox_saved_setting.clear()
+            self.ui.comboBox_saved_setting.blockSignals(False)
+
+    def _get_default_settings_directory(self) -> str:
+        """Return the default directory for storing report settings."""
+        return os.path.join(os.path.expanduser("~"), "Documents")
+
+    def click_setting_location(self):
+        """Open a directory chooser to select where settings JSON files are stored."""
+        default_dir = self.settings_directory or self._get_default_settings_directory()
+        settings_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Select Settings Folder",
+            default_dir,
+        )
+
+        if settings_dir:
+            self.settings_directory = settings_dir
+            if self.ui.checkBox_saved_setting.isChecked():
+                self._refresh_saved_settings()
+
+    def _refresh_saved_settings(self):
+        """Populate the saved settings combo box using the current directory and study name."""
+        if not self.ui.checkBox_saved_setting.isChecked():
+            return
+
+        combo = self.ui.comboBox_saved_setting
+        combo.blockSignals(True)
+        combo.clear()
+
+        if not self.settings_directory or not os.path.isdir(self.settings_directory):
+            combo.addItem("Select a settings folder", None)
+            combo.setCurrentIndex(0)
+            combo.blockSignals(False)
+            return
+
+        if not self.study_name:
+            combo.addItem("Select an input file to load settings", None)
+            combo.setCurrentIndex(0)
+            combo.blockSignals(False)
+            return
+
+        saved_any = False
+        for settings_file in sorted(Path(self.settings_directory).glob("*.json")):
+            try:
+                with open(settings_file, "r", encoding="utf-8") as handle:
+                    data = json.load(handle)
+            except (OSError, json.JSONDecodeError) as exc:
+                print(f"Skipping invalid settings file {settings_file}: {exc}")
+                continue
+
+            if data.get("study_name") != self.study_name:
+                continue
+
+            display_name = data.get("setting_name") or settings_file.stem
+            combo.addItem(display_name, str(settings_file))
+            saved_any = True
+
+        if saved_any:
+            combo.insertItem(0, "Select a saved setting", None)
+        else:
+            combo.addItem("No saved settings found for this study", None)
+
+        combo.setCurrentIndex(0)
+        combo.blockSignals(False)
+
+    def on_saved_setting_changed(self, index: int):
+        """Load the selected saved setting into the report."""
+        if index < 0:
+            return
+
+        file_path = self.ui.comboBox_saved_setting.itemData(index)
+        if not file_path:
+            return
+
+        try:
+            settings_data = self.report.load_setting_from_json(file_path)
+        except Exception as exc:
+            print(f"Failed to load settings from {file_path}: {exc}")
+            self.ui.label_confirmation.setText(f"Failed to load settings: {exc}")
+            return
+
+        # Synchronize UI with loaded settings
+        loaded_study_name = settings_data.get("study_name") if isinstance(settings_data, dict) else None
+        if loaded_study_name:
+            self.study_name = loaded_study_name
+        self.report.set_study_name(self.study_name)
+        self.update_all_ui()
+        setting_name = self.ui.comboBox_saved_setting.currentText()
+        if setting_name:
+            self.ui.lineEdit_setting_name.setText(setting_name)
+        self.ui.label_confirmation.setText(f"Loaded settings from {os.path.basename(file_path)}")
+
     def add_listWidget_form_available(self):
         """Add available forms to the list widget."""
         self.ui.listWidget_form_available.clear()
-        available_forms = sorted(
-            self.report.get_available_forms_list()
-        )  # Sort alphabetically
+        available_forms = sorted(self.report.get_available_forms_list())  # Sort alphabetically
         for form in available_forms:
             self.ui.listWidget_form_available.addItem(form)
 
@@ -648,9 +722,7 @@ class Widget(QWidget):
     def click_select_all_common_item(self):
         """Select all available common items and add them to the selected items."""
         available_items = self.report.get_available_common_items()
-        for item in available_items[
-            :
-        ]:  # Create a copy to avoid modification during iteration
+        for item in available_items[:]:  # Create a copy to avoid modification during iteration
             self.report.add_selected_common_item(item)
 
         # Update UI with hierarchical dependencies
@@ -659,9 +731,7 @@ class Widget(QWidget):
     def click_remove_all_common_item(self):
         """Remove all selected common items and add them back to the available items."""
         selected_items = self.report.get_selected_common_items()
-        for item in selected_items[
-            :
-        ]:  # Create a copy to avoid modification during iteration
+        for item in selected_items[:]:  # Create a copy to avoid modification during iteration
             self.report.add_available_common_item(item)
 
         # Update UI with hierarchical dependencies
@@ -695,9 +765,7 @@ class Widget(QWidget):
         all_available_items = set()
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
-                form_items = self.report.selected_forms[
-                    form_name
-                ].get_available_form_items()
+                form_items = self.report.selected_forms[form_name].get_available_form_items()
                 for item in form_items:
                     all_available_items.add(f"{form_name}.{item}")
 
@@ -723,9 +791,7 @@ class Widget(QWidget):
         all_selected_items = []
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
-                form_items = self.report.selected_forms[
-                    form_name
-                ].get_selected_form_items()
+                form_items = self.report.selected_forms[form_name].get_selected_form_items()
                 for item in form_items:
                     all_selected_items.append(f"{form_name}.{item}")
 
@@ -744,9 +810,7 @@ class Widget(QWidget):
             if "." in item_text:
                 form_name, item_name = item_text.split(".", 1)
                 if form_name in self.report.selected_forms:
-                    self.report.selected_forms[form_name].add_selected_form_item(
-                        item_name
-                    )
+                    self.report.selected_forms[form_name].add_selected_form_item(item_name)
 
         # Update UI with hierarchical dependencies
         self.update_form_items_ui()
@@ -763,9 +827,7 @@ class Widget(QWidget):
             if "." in item_text:
                 form_name, item_name = item_text.split(".", 1)
                 if form_name in self.report.selected_forms:
-                    self.report.selected_forms[form_name].add_available_form_item(
-                        item_name
-                    )
+                    self.report.selected_forms[form_name].add_available_form_item(item_name)
 
         # Update UI with hierarchical dependencies
         self.update_form_items_ui()
@@ -776,12 +838,8 @@ class Widget(QWidget):
 
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
-                available_items = self.report.selected_forms[
-                    form_name
-                ].get_available_form_items()
-                for item in available_items[
-                    :
-                ]:  # Create a copy to avoid modification during iteration
+                available_items = self.report.selected_forms[form_name].get_available_form_items()
+                for item in available_items[:]:  # Create a copy to avoid modification during iteration
                     self.report.selected_forms[form_name].add_selected_form_item(item)
 
         self.add_listWidget_form_item_available()
@@ -795,12 +853,8 @@ class Widget(QWidget):
 
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
-                selected_items = self.report.selected_forms[
-                    form_name
-                ].get_selected_form_items()
-                for item in selected_items[
-                    :
-                ]:  # Create a copy to avoid modification during iteration
+                selected_items = self.report.selected_forms[form_name].get_selected_form_items()
+                for item in selected_items[:]:  # Create a copy to avoid modification during iteration
                     self.report.selected_forms[form_name].add_available_form_item(item)
 
         self.add_listWidget_form_item_available()
@@ -812,10 +866,8 @@ class Widget(QWidget):
         """Update the rename table with all selected items."""
         # Disconnect the signal temporarily to avoid triggering while setting up
         try:
-            self.ui.tableWidget_rename.cellChanged.disconnect(
-                self.on_rename_cell_changed
-            )
-        except:
+            self.ui.tableWidget_rename.cellChanged.disconnect(self.on_rename_cell_changed)
+        except Exception:
             pass  # Signal might not be connected yet
 
         # Clear the table
@@ -940,9 +992,7 @@ class Widget(QWidget):
             # Connect signal to update join list when changed
             join_order_combo.currentTextChanged.connect(self.update_join_list)
             # Add new connection for graying out columns
-            join_order_combo.currentTextChanged.connect(
-                lambda value, r=row: self.on_join_order_changed(r, value)
-            )
+            join_order_combo.currentTextChanged.connect(lambda value, r=row: self.on_join_order_changed(r, value))
 
             # Set the combo box as a cell widget
             self.ui.tableWidget_join.setCellWidget(row, 4, join_order_combo)
@@ -997,9 +1047,7 @@ class Widget(QWidget):
             # Clear join type dropdown
             join_type_combo = self.ui.tableWidget_join.cellWidget(row, join_type_col)
             if join_type_combo:
-                join_type_combo.setCurrentIndex(
-                    0
-                )  # Set to first item (usually "Left join")
+                join_type_combo.setCurrentIndex(0)  # Set to first item (usually "Left join")
 
             # Update the join list to reflect the cleared values
             self.update_join_list()
@@ -1250,13 +1298,9 @@ class Widget(QWidget):
 
             # Update the dynamic filter items in the report
             # First remove any existing filter for this row
-            for i, (old_item1, old_operator, old_item2) in enumerate(
-                self.report.get_dynamic_filter_items()
-            ):
+            for i, (old_item1, old_operator, old_item2) in enumerate(self.report.get_dynamic_filter_items()):
                 if i == row:  # Same row position
-                    self.report.remove_dynamic_filter_item(
-                        old_item1, old_operator, old_item2
-                    )
+                    self.report.remove_dynamic_filter_item(old_item1, old_operator, old_item2)
                     break
 
             # Add the updated filter if both items are selected
@@ -1367,7 +1411,7 @@ class Widget(QWidget):
             self.ui.tableView_preview.setModel(None)
 
     # Update the Run and Save button handler to also run the report
-    def click_run_and_save(self):
+    def click_run(self):
         """Run the report and save the results to a file."""
         try:
             # Generate the report
@@ -1390,43 +1434,49 @@ class Widget(QWidget):
                     export_df = result_df.copy()
 
                     # First handle datetime columns - format to m/d/yyyy without leading zeros
-                    for col in export_df.select_dtypes(
-                        include=["datetime64", "datetime", np.datetime64]
-                    ).columns:
+                    for col in export_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns:
                         # Convert to string format without leading zeros
                         export_df[col] = export_df[col].apply(
-                            lambda x: f"{x.month}/{x.day}/{x.year}"
-                            if pd.notnull(x)
-                            else ""
+                            lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
                         )
 
                     # Use simple pandas Excel export without xlsxwriter formatting
                     export_df.to_excel(file_path, index=False, sheet_name="Report")
 
                     # Update confirmation label
-                    self.ui.label_confirmation.setText(
-                        f"Report saved successfully to {file_path}"
-                    )
+                    self.ui.label_confirmation.setText(f"Report saved successfully to {file_path}")
 
-                    # Save settings if requested
-                    if self.ui.checkBox_save_current_setting.isChecked():
-                        settings_name = self.ui.lineEdit_setting_name.text()
-                        if settings_name:
-                            settings_path = os.path.join(
-                                self.output_folder_name, f"{settings_name}.json"
-                            )
-                            self.report.save_setting_to_json(settings_path)
+                    # Save settings locally if requested
+                    if self.ui.checkBox_save_current_setting.isChecked() and self.ui.radioButton_local.isChecked():
+                        settings_name = self.ui.lineEdit_setting_name.text().strip()
+                        if not settings_name:
                             self.ui.label_confirmation.setText(
-                                f"{self.ui.label_confirmation.text()}\nSettings saved to {settings_path}"
+                                f"{self.ui.label_confirmation.text()}\nPlease enter a setting name before saving."
                             )
+                        else:
+                            settings_dir = self.settings_directory or self._get_default_settings_directory()
+                            self.settings_directory = settings_dir
+                            try:
+                                os.makedirs(settings_dir, exist_ok=True)
+                                settings_path = os.path.join(settings_dir, f"{settings_name}.json")
+                                self.report.save_setting_to_json(
+                                    settings_path,
+                                    setting_name=settings_name,
+                                )
+                            except OSError as exc:
+                                self.ui.label_confirmation.setText(
+                                    f"{self.ui.label_confirmation.text()}\nFailed to save settings: {exc}"
+                                )
+                            else:
+                                self.ui.label_confirmation.setText(
+                                    f"{self.ui.label_confirmation.text()}\nSettings saved to {settings_path}"
+                                )
+                                if self.ui.checkBox_saved_setting.isChecked():
+                                    self._refresh_saved_settings()
                 else:
-                    self.ui.label_confirmation.setText(
-                        "Please select an output folder first."
-                    )
+                    self.ui.label_confirmation.setText("Please select an output folder first.")
             else:
-                self.ui.label_confirmation.setText(
-                    "No data to save. Please check your selections and filters."
-                )
+                self.ui.label_confirmation.setText("No data to save. Please check your selections and filters.")
         except Exception as e:
             import traceback
 

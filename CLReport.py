@@ -2,12 +2,14 @@ from CLForm import CLForm
 from copy import deepcopy
 import json
 import numpy as np
+from typing import Dict, Any, Optional
 
 
 class CLReport:
     """A class to represent a report that contains multiple forms and columns."""
 
     def __init__(self):
+        self.study_name = None
         self.data = {}
         self.available_forms = {}
         self.selected_forms = {}
@@ -21,6 +23,10 @@ class CLReport:
         self.static_filter_items = []  # Static filter items: Item Name, Operator, Value
         self.dynamic_filter_items = []  # Dynamic filter items: Item Name 1 , Operator, Item Name 2
         self.selected_items_order_list = []
+
+    def set_study_name(self, study_name: str):
+        """Set the study name for the report."""
+        self.study_name = study_name
 
     def identify_common_items(self):
         """Identify columns that exist in all forms of the data."""
@@ -249,48 +255,98 @@ class CLReport:
 
         return self.selected_items_order_list
 
-    def save_setting_to_json(self, file_path: str):
+    @staticmethod
+    def _serialize_form(form: CLForm) -> Dict[str, Any]:
+        """Convert a CLForm instance into a JSON-serializable dictionary."""
+
+        return {
+            "name": form.get_name(),
+            "available_form_items": deepcopy(form.get_available_form_items()),
+            "selected_form_items": deepcopy(form.get_selected_form_items()),
+            "join_items": deepcopy(form.get_join_items()),
+            "join_order": form.get_join_order(),
+            "join_how": form.get_join_how(),
+        }
+
+    @staticmethod
+    def _deserialize_form(form_name: str, data: Dict[str, Any]) -> CLForm:
+        """Recreate a CLForm instance from persisted data."""
+
+        form = CLForm(data.get("name", form_name))
+        form.available_form_items = deepcopy(data.get("available_form_items", []))
+        form.selected_form_items = deepcopy(data.get("selected_form_items", []))
+        form.join_items = deepcopy(data.get("join_items", []))
+        form.join_order = data.get("join_order")
+        form.join_how = data.get("join_how")
+        return form
+
+    def save_setting_to_json(self, file_path: str, setting_name: Optional[str] = None):
         """Save the report settings to a JSON file."""
 
         settings = {
-            "available_forms": {k: v.__dict__ for k, v in self.available_forms.items()},
-            "selected_forms": {k: v.__dict__ for k, v in self.selected_forms.items()},
-            "available_common_items": self.available_common_items,
-            "selected_common_items": self.selected_common_items,
-            "new_items": self.new_items,
-            "order_list": self.order_list,
-            "rename_dict": self.rename_dict,
-            "static_filter_items": self.static_filter_items,
-            "dynamic_filter_items": self.dynamic_filter_items,
-            "selected_items_order_list": self.selected_items_order_list,
+            "study_name": self.study_name,
+            "setting_name": setting_name,
+            "available_forms": {k: self._serialize_form(v) for k, v in self.available_forms.items()},
+            "selected_forms": {k: self._serialize_form(v) for k, v in self.selected_forms.items()},
+            "available_common_items": deepcopy(self.available_common_items),
+            "selected_common_items": deepcopy(self.selected_common_items),
+            "static_available_common_items": deepcopy(self.static_available_common_items),
+            "new_items": deepcopy(self.new_items),
+            "order_list": deepcopy(self.order_list),
+            "rename_dict": deepcopy(self.rename_dict),
+            "static_filter_items": [list(item) for item in self.static_filter_items],
+            "dynamic_filter_items": [list(item) for item in self.dynamic_filter_items],
+            "selected_items_order_list": deepcopy(self.selected_items_order_list),
         }
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=4)
 
-    def load_setting_from_json(self, file_path: str):
+    def load_setting_from_json(self, file_path: str) -> Dict[str, Any]:
         """Load the report settings from a JSON file."""
-        with open(file_path, "r") as f:
+
+        with open(file_path, "r", encoding="utf-8") as f:
             settings = json.load(f)
-            self.available_forms = {
-                k: CLForm(**v) for k, v in settings["available_forms"].items()
-            }
-            self.selected_forms = {
-                k: CLForm(**v) for k, v in settings["selected_forms"].items()
-            }
-            self.available_common_items = settings["available_common_items"]
-            self.selected_common_items = settings["selected_common_items"]
-            self.new_items = settings["new_items"]
-            self.order_list = settings["order_list"]
-            self.rename_dict = settings["rename_dict"]
-            # Load filter items if they exist in the settings
-            if "static_filter_items" in settings:
-                self.static_filter_items = settings["static_filter_items"]
-            if "dynamic_filter_items" in settings:
-                self.dynamic_filter_items = settings["dynamic_filter_items"]
-            if "selected_items_order_list" in settings:
-                self.selected_items_order_list = settings["selected_items_order_list"]
-            else:
-                self.update_selected_items_order_list()
+
+        self.study_name = settings.get("study_name", self.study_name)
+
+        available_forms_data = settings.get("available_forms", {})
+        self.available_forms = {
+            name: self._deserialize_form(name, form_data) for name, form_data in available_forms_data.items()
+        }
+
+        selected_forms_data = settings.get("selected_forms", {})
+        self.selected_forms = {
+            name: self._deserialize_form(name, form_data) for name, form_data in selected_forms_data.items()
+        }
+
+        self.available_common_items = list(settings.get("available_common_items", []))
+        self.selected_common_items = list(settings.get("selected_common_items", []))
+        self.static_available_common_items = list(
+            settings.get("static_available_common_items", self.static_available_common_items)
+        )
+        self.new_items = list(settings.get("new_items", []))
+        self.order_list = list(settings.get("order_list", []))
+        self.rename_dict = dict(settings.get("rename_dict", {}))
+
+        static_filters = settings.get("static_filter_items")
+        if static_filters is not None:
+            self.static_filter_items = [tuple(item) for item in static_filters]
+        else:
+            self.static_filter_items = []
+
+        dynamic_filters = settings.get("dynamic_filter_items")
+        if dynamic_filters is not None:
+            self.dynamic_filter_items = [tuple(item) for item in dynamic_filters]
+        else:
+            self.dynamic_filter_items = []
+
+        selected_items_order_list = settings.get("selected_items_order_list")
+        if selected_items_order_list is not None:
+            self.selected_items_order_list = list(selected_items_order_list)
+        else:
+            self.update_selected_items_order_list()
+
+        return settings
 
     def get_join_list(self):
         """Get the list of join items."""
@@ -349,10 +405,7 @@ class CLReport:
             # Item is form-prefixed (e.g. "DM.Legal Sex (ig_DM1.SEX)")
             form_name, item_name = item.split(".", 1)
             if form_name in self.selected_forms:
-                if (
-                    item_name
-                    in self.selected_forms[form_name].get_selected_form_items()
-                ):
+                if item_name in self.selected_forms[form_name].get_selected_form_items():
                     if (item, operator, value) not in self.static_filter_items:
                         self.static_filter_items.append((item, operator, value))
         else:
@@ -366,18 +419,12 @@ class CLReport:
         # Add debug print
         print(f"After adding filter: {self.static_filter_items}")
 
-    def remove_static_filter_item(
-        self, item: str, operator: str = None, value: str = None
-    ):
+    def remove_static_filter_item(self, item: str, operator: str = None, value: str = None):
         """Remove a static filter item."""
         self.static_filter_items = [
             f
             for f in self.static_filter_items
-            if not (
-                f[0] == item
-                and (operator is None or f[1] == operator)
-                and (value is None or f[2] == value)
-            )
+            if not (f[0] == item and (operator is None or f[1] == operator) and (value is None or f[2] == value))
         ]
 
     def set_static_filter_items(self, items: list):
@@ -402,9 +449,7 @@ class CLReport:
             self.dynamic_filter_items.append((item1, operator, item2))
             print(f"Added dynamic filter: {item1} {operator} {item2}")
 
-    def remove_dynamic_filter_item(
-        self, item1: str = None, operator: str = None, item2: str = None
-    ):
+    def remove_dynamic_filter_item(self, item1: str = None, operator: str = None, item2: str = None):
         """Remove a dynamic filter item.
 
         If any parameter is None, it matches any value for that position.
@@ -449,10 +494,7 @@ class CLReport:
         selected_forms = self.get_selected_forms_list()
 
         # Create a list of forms with their join order for sorting
-        form_order_list = [
-            (form, self.selected_forms[form].get_join_order() or 999)
-            for form in selected_forms
-        ]
+        form_order_list = [(form, self.selected_forms[form].get_join_order() or 999) for form in selected_forms]
 
         # Sort forms by join order
         form_order_list.sort(key=lambda x: x[1])
@@ -471,19 +513,12 @@ class CLReport:
 
             # Add join items if they exist in this form
             for item in form.get_join_items():
-                if (
-                    item
-                    and item in self.data[form_name].columns
-                    and item not in columns_to_select
-                ):
+                if item and item in self.data[form_name].columns and item not in columns_to_select:
                     columns_to_select.append(item)
 
             # Add form-specific items
             for item in form.get_selected_form_items():
-                if (
-                    item in self.data[form_name].columns
-                    and item not in columns_to_select
-                ):
+                if item in self.data[form_name].columns and item not in columns_to_select:
                     columns_to_select.append(item)
 
             # Get data for this form with selected columns
@@ -502,9 +537,7 @@ class CLReport:
                 elif "." in item:
                     prefix, col_name = item.split(".", 1)
                     if prefix == form_name and col_name in form_df.columns:
-                        form_df = apply_static_filter(
-                            form_df, col_name, operator, value
-                        )
+                        form_df = apply_static_filter(form_df, col_name, operator, value)
 
             # If this is the first form, set it as the result and continue
             if result_df is None:
@@ -524,10 +557,7 @@ class CLReport:
             # Add form prefix to non-common columns
             rename_cols = {}
             for col in form_df.columns:
-                if (
-                    col not in self.selected_common_items
-                    and col not in form.get_join_items()
-                ):
+                if col not in self.selected_common_items and col not in form.get_join_items():
                     rename_cols[col] = f"{form_name}.{col}"
 
             if rename_cols:
@@ -598,13 +628,9 @@ class CLReport:
                 # Apply filter if both columns were found
                 if item1_col is not None and item2_col is not None:
                     print(f"Applying filter: {item1_col} {operator} {item2_col}")
-                    result_df = apply_dynamic_filter(
-                        result_df, item1_col, operator, item2_col
-                    )
+                    result_df = apply_dynamic_filter(result_df, item1_col, operator, item2_col)
                 else:
-                    print(
-                        f"Could not find columns for filter: {item1} {operator} {item2}"
-                    )
+                    print(f"Could not find columns for filter: {item1} {operator} {item2}")
                     print(f"item1_col: {item1_col}, item2_col: {item2_col}")
 
         # Reorder columns according to order_list if it exists (before renaming)
@@ -613,9 +639,7 @@ class CLReport:
             valid_order = [col for col in self.order_list if col in result_df.columns]
 
             # Get columns that are in result_df but not in order_list
-            remaining_cols = [
-                col for col in result_df.columns if col not in valid_order
-            ]
+            remaining_cols = [col for col in result_df.columns if col not in valid_order]
 
             # Reorder columns
             if valid_order:
@@ -624,16 +648,10 @@ class CLReport:
         # Use the selected_items_order_list if it exists (priority over order_list)
         elif result_df is not None and self.selected_items_order_list:
             # Filter selected_items_order_list to only include columns that exist in result_df
-            valid_order = [
-                col
-                for col in self.selected_items_order_list
-                if col in result_df.columns
-            ]
+            valid_order = [col for col in self.selected_items_order_list if col in result_df.columns]
 
             # Get columns that are in result_df but not in the order list
-            remaining_cols = [
-                col for col in result_df.columns if col not in valid_order
-            ]
+            remaining_cols = [col for col in result_df.columns if col not in valid_order]
 
             # Reorder columns
             if valid_order:
@@ -657,11 +675,7 @@ class CLReport:
             date_cols = []
 
             # Method 1: Using select_dtypes with all datetime types
-            date_cols.extend(
-                result_df.select_dtypes(
-                    include=["datetime64", "datetime", np.datetime64]
-                ).columns
-            )
+            date_cols.extend(result_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns)
 
             # Method 2: Check column names containing 'Date'/'date'
             for col in result_df.columns:
@@ -670,12 +684,10 @@ class CLReport:
                         # Attempt to convert to datetime to confirm it's a date column
                         if (
                             pd.api.types.is_datetime64_dtype(result_df[col])
-                            or pd.to_datetime(result_df[col], errors="coerce")
-                            .notna()
-                            .any()
+                            or pd.to_datetime(result_df[col], errors="coerce").notna().any()
                         ):
                             date_cols.append(col)
-                    except:
+                    except Exception:
                         pass
 
             # Format each identified date column
@@ -687,7 +699,7 @@ class CLReport:
                     result_df[col] = result_df[col].apply(
                         lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
                     )
-                except:
+                except Exception:
                     print(f"Could not format column {col} as date")
 
         # * Remove possible duplicate within result_df
