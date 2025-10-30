@@ -1407,7 +1407,7 @@ class Widget(QWidget):
     def on_tab_changed(self, index):
         """Handle tab changes and perform actions based on the selected tab."""
         tab_text = self.ui.tabWidget.tabText(index)
-        if tab_text == "Preview and Run":
+        if tab_text == "Preview and Save":
             self.preview_report()
 
     # Add PandasModel class for displaying DataFrames in QTableView
