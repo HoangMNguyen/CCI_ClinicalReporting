@@ -410,7 +410,7 @@ class Ui_Widget(object):
 
         self.retranslateUi(Widget)
 
-        self.tabWidget.setCurrentIndex(8)
+        self.tabWidget.setCurrentIndex(0)
         self.pushButton_output_setting.setDefault(False)
 
 
