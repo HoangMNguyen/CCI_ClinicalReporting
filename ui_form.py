@@ -502,8 +502,8 @@ class Ui_Widget(object):
         self.lineEdit_file_name.setPlaceholderText("")
         self.label_2.setText(QCoreApplication.translate("Widget", u"Output file name:", None))
         self.pushButton_output_setting.setText(QCoreApplication.translate("Widget", u"Setting Folder", None))
-        self.pushButton_run.setText(QCoreApplication.translate("Widget", u"Run", None))
+        self.pushButton_run.setText(QCoreApplication.translate("Widget", u"Save Output", None))
         self.label_run_confirmation.setText(QCoreApplication.translate("Widget", u"Confirmation:", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_preview_run), QCoreApplication.translate("Widget", u"Pre-view and Run", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_preview_run), QCoreApplication.translate("Widget", u"Preview and Save", None))
     # retranslateUi
 

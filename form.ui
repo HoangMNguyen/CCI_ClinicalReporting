@@ -1078,7 +1078,7 @@
    </widget>
    <widget class="QWidget" name="tab_preview_run">
     <attribute name="title">
-     <string>Pre-view and Run</string>
+     <string>Preview and Save</string>
     </attribute>
     <widget class="QPushButton" name="pushButton_save_setting">
      <property name="geometry">
@@ -1232,7 +1232,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Run</string>
+      <string>Save Output</string>
      </property>
      <property name="icon">
       <iconset theme="QIcon::ThemeIcon::DocumentSend"/>
