@@ -587,7 +587,7 @@ class Widget(QWidget):
             self.report.set_study_name(self.study_name)
             self.report.set_data(read_data_dict_zip_corelisting(file_path))
             # Add Subject to selected common items by default
-            self.report.add_selected_common_item("Subject")
+            self.report.set_common_item_state("Subject", selected=True)
             # Update all UI elements after loading data
             self.update_all_ui()
             self.ui.label_input_file.setText("Input path: " + file_path)
@@ -797,7 +797,7 @@ class Widget(QWidget):
 
         for item in selected_items:
             item_name = item.text()
-            self.report.add_selected_common_item(item_name)
+            self.report.set_common_item_state(item_name, selected=True)
 
         # Update UI with hierarchical dependencies
         self.update_common_items_ui()
@@ -810,7 +810,7 @@ class Widget(QWidget):
 
         for item in selected_items:
             item_name = item.text()
-            self.report.add_available_common_item(item_name)
+            self.report.set_common_item_state(item_name, selected=False)
 
         # Update UI with hierarchical dependencies
         self.update_common_items_ui()
@@ -819,7 +819,7 @@ class Widget(QWidget):
         """Select all available common items and add them to the selected items."""
         available_items = self.report.get_available_common_items()
         for item in available_items[:]:  # Create a copy to avoid modification during iteration
-            self.report.add_selected_common_item(item)
+            self.report.set_common_item_state(item, selected=True)
 
         # Update UI with hierarchical dependencies
         self.update_common_items_ui()
@@ -828,7 +828,7 @@ class Widget(QWidget):
         """Remove all selected common items and add them back to the available items."""
         selected_items = self.report.get_selected_common_items()
         for item in selected_items[:]:  # Create a copy to avoid modification during iteration
-            self.report.add_available_common_item(item)
+            self.report.set_common_item_state(item, selected=False)
 
         # Update UI with hierarchical dependencies
         self.update_common_items_ui()
@@ -906,7 +906,9 @@ class Widget(QWidget):
             if "." in item_text:
                 form_name, item_name = item_text.split(".", 1)
                 if form_name in self.report.selected_forms:
-                    self.report.selected_forms[form_name].add_selected_form_item(item_name)
+                    self.report.selected_forms[form_name].set_form_item_state(
+                        item_name, selected=True
+                    )
 
         # Update UI with hierarchical dependencies
         self.update_form_items_ui()
@@ -923,7 +925,9 @@ class Widget(QWidget):
             if "." in item_text:
                 form_name, item_name = item_text.split(".", 1)
                 if form_name in self.report.selected_forms:
-                    self.report.selected_forms[form_name].add_available_form_item(item_name)
+                    self.report.selected_forms[form_name].set_form_item_state(
+                        item_name, selected=False
+                    )
 
         # Update UI with hierarchical dependencies
         self.update_form_items_ui()
@@ -936,7 +940,9 @@ class Widget(QWidget):
             if form_name in self.report.selected_forms:
                 available_items = self.report.selected_forms[form_name].get_available_form_items()
                 for item in available_items[:]:  # Create a copy to avoid modification during iteration
-                    self.report.selected_forms[form_name].add_selected_form_item(item)
+                    self.report.selected_forms[form_name].set_form_item_state(
+                        item, selected=True
+                    )
 
         self.add_listWidget_form_item_available()
         self.add_listWidget_form_item_selected()
@@ -951,7 +957,9 @@ class Widget(QWidget):
             if form_name in self.report.selected_forms:
                 selected_items = self.report.selected_forms[form_name].get_selected_form_items()
                 for item in selected_items[:]:  # Create a copy to avoid modification during iteration
-                    self.report.selected_forms[form_name].add_available_form_item(item)
+                    self.report.selected_forms[form_name].set_form_item_state(
+                        item, selected=False
+                    )
 
         self.add_listWidget_form_item_available()
         self.add_listWidget_form_item_selected()

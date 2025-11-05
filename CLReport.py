@@ -2,7 +2,7 @@ from CLForm import CLForm
 from copy import deepcopy
 import json
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 
 class CLReport:
@@ -23,6 +23,25 @@ class CLReport:
         self.static_filter_items = []  # Static filter items: Item Name, Operator, Value
         self.dynamic_filter_items = []  # Dynamic filter items: Item Name 1 , Operator, Item Name 2
         self.selected_items_order_list = []
+
+    @staticmethod
+    def _move_between_lists(
+        item: str,
+        source: Optional[List[str]],
+        target: Optional[List[str]],
+    ) -> bool:
+        """Move ``item`` between ``source`` and ``target`` while avoiding duplicates."""
+
+        changed = False
+        if source is not None and item in source:
+            source.remove(item)
+            changed = True
+
+        if target is not None and item not in target:
+            target.append(item)
+            changed = True
+
+        return changed
 
     def set_study_name(self, study_name: str):
         """Set the study name for the report."""
@@ -51,7 +70,7 @@ class CLReport:
 
         if "Subject" in self.static_available_common_items:
             # Move "Subject" to the front of the list
-            self.add_selected_common_item("Subject")
+            self.set_common_item_state("Subject", selected=True)
 
     def set_data(self, data: dict):
         """Set the data for the report."""
@@ -104,7 +123,7 @@ class CLReport:
             # add items from data to the selected form, excluding the items in static_available_common_items
             for item in self.data[form].columns:
                 if item not in self.static_available_common_items:
-                    self.selected_forms[form].add_available_form_item(item)
+                    self.selected_forms[form].set_form_item_state(item, selected=False)
                     # print(f"Adding item {item} to selected form {form}")
             if form in self.available_forms:
                 # remove the form from available forms
@@ -128,21 +147,10 @@ class CLReport:
         """Get the list of selected forms."""
         return list(self.selected_forms.keys())
 
-    def add_available_common_item(self, item: str):
-        """Add the available common item to the available common items list."""
-        if item not in self.available_common_items:
-            self.available_common_items.append(item)
-            self.remove_selected_common_item(item)
-
     def add_all_available_common_items(self):
         """Add all static available common items to the available common items list."""
         for item in self.static_available_common_items:
-            self.add_available_common_item(item)
-
-    def remove_available_common_item(self, item: str):
-        """Remove the available common item from the available common items list."""
-        if item in self.available_common_items:
-            self.available_common_items.remove(item)
+            self.set_common_item_state(item, selected=False)
 
     def remove_all_available_common_items(self):
         """Remove all available common items from the available common items list."""
@@ -152,49 +160,19 @@ class CLReport:
         """Get the list of available common items."""
         return self.available_common_items
 
-    def add_selected_common_item(self, item: str):
-        """Add the selected common item to the selected common items list."""
-        if item not in self.selected_common_items:
-            self.selected_common_items.append(item)
-            self.remove_available_common_item(item)
+    def set_common_item_state(self, item: str, *, selected: bool) -> bool:
+        """Ensure ``item`` only exists in one of the common item collections."""
 
-    def remove_selected_common_item(self, item: str):
-        """Remove the selected common item from the selected common items list."""
-        if item in self.selected_common_items:
-            self.selected_common_items.remove(item)
+        source, target = (
+            (self.available_common_items, self.selected_common_items)
+            if selected
+            else (self.selected_common_items, self.available_common_items)
+        )
+        return self._move_between_lists(item, source, target)
 
     def get_selected_common_items(self):
         """Get the list of selected common items."""
         return self.selected_common_items
-
-    def add_selected_form_item(self, item: str):
-        """Add the selected form item to the selected form items list."""
-        for form in self.selected_forms.keys():
-            if (
-                item not in self.selected_forms[form].get_selected_form_items()
-                and item in self.available_forms[form].get_available_form_items()
-            ):
-                self.selected_forms[form].add_selected_form_item(item)
-
-    def add_all_selected_form_items(self):
-        """Add all available form items to the selected form items list."""
-        for form in self.selected_forms.keys():
-            # get all available form items from the selected form
-            items = self.selected_forms[form].get_available_form_items()
-            for item in items:
-                self.selected_forms[form].add_selected_form_item(item)
-
-    def remove_selected_form_item(self, item: str):
-        """Remove the selected form item from the selected form items list."""
-        for form in self.selected_forms.keys():
-            if item in self.selected_forms[form].get_selected_form_items():
-                self.selected_forms[form].add_available_form_item(item)
-
-    def remove_all_selected_form_items(self):
-        """Remove all selected form items from the selected form items list."""
-        for form in self.selected_forms.keys():
-            for item in self.selected_forms[form].get_selected_form_items():
-                self.selected_forms[form].add_available_form_item(item)
 
     def set_order_list(self, order_list: list):
         """Set the order list for the report."""
@@ -366,7 +344,7 @@ class CLReport:
     def add_join_item(self, form: str, item: str, order: int, how: str):
         """Add a join item to the form."""
         if form in self.selected_forms.keys():
-            self.selected_forms[form].add_join_item(item)
+            self.selected_forms[form].set_join_item_state(item, include=True)
             self.selected_forms[form].set_join_order(order)
             self.selected_forms[form].set_join_how(how)
 
