@@ -123,7 +123,7 @@ class Widget(QWidget):
         self.ui.pushButton_save_setting.clicked.connect(self.click_save_setting)
         self.ui.pushButton_output_setting.clicked.connect(self.click_output_setting_folder)
         self.ui.checkBox_save_current_setting.stateChanged.connect(self.on_save_current_setting_state_changed)
-        self._update_save_setting_controls()
+        self.on_save_current_setting_state_changed()
 
         # Set selection behavior for dynamic filter table
         self.ui.tableWidget_dynamic_filter.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -191,17 +191,13 @@ class Widget(QWidget):
         if label is not None:
             label.setText(message)
 
-    def _update_save_setting_controls(self):
-        """Enable or disable save-setting controls based on the checkbox state."""
+    def on_save_current_setting_state_changed(self):
+        """Update UI state when the save-current-setting checkbox changes."""
         enabled = self.ui.checkBox_save_current_setting.isChecked()
         self.ui.pushButton_save_setting.setEnabled(enabled)
         self.ui.pushButton_output_setting.setEnabled(enabled)
         if not enabled:
             self._set_label_text(self.label_save_confirmation, "")
-
-    def on_save_current_setting_state_changed(self, _state):
-        """Update UI state when the save-current-setting checkbox changes."""
-        self._update_save_setting_controls()
 
     def click_output_setting_folder(self):
         """Let the user choose where settings should be stored."""
