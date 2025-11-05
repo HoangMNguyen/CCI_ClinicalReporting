@@ -136,6 +136,22 @@ class Widget(
             if table is not None:
                 self._adjust_column_widths(table)
 
+        self._refresh_ui_hierarchy()
+
+    def _refresh_ui_hierarchy(self) -> None:
+        """Request a repaint pass for the widget tree after geometry updates."""
+
+        self.updateGeometry()
+        self.update()
+
+        for widget in self.findChildren(QWidget):
+            # Skip orphaned widgets that may have been destroyed during resize.
+            if widget.parent() is None:
+                continue
+
+            widget.updateGeometry()
+            widget.update()
+
 
 def main() -> int:
     """Entry point used by local testing."""
