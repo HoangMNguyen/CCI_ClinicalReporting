@@ -13,7 +13,12 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import QRect, Qt
-from PySide6.QtWidgets import QApplication, QAbstractScrollArea, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QAbstractScrollArea,
+    QTabWidget,
+    QWidget,
+)
 
 from ui_form import Ui_Widget
 
@@ -81,7 +86,13 @@ class Widget(
         ):
             if child is self:
                 continue
-            self._initial_geometries.append((depth, child, child.geometry()))
+
+            object_name = child.objectName() or ""
+            parent_is_tab_widget = isinstance(widget, QTabWidget)
+            is_qt_internal = object_name.startswith("qt_")
+
+            if not (parent_is_tab_widget or is_qt_internal):
+                self._initial_geometries.append((depth, child, child.geometry()))
 
             # Avoid traversing into Qt-managed scroll area internals.
             if isinstance(child, QAbstractScrollArea):
