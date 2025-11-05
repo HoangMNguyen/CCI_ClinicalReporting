@@ -15,6 +15,7 @@ import sys
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtWidgets import (
     QApplication,
+    QAbstractItemView,
     QAbstractScrollArea,
     QTabWidget,
     QWidget,
@@ -150,7 +151,10 @@ class Widget(
                 continue
 
             widget.updateGeometry()
-            widget.update()
+            if isinstance(widget, QAbstractItemView):
+                widget.viewport().update()
+            else:
+                widget.update()
 
 
 def main() -> int:
