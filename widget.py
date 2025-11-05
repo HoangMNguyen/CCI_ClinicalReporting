@@ -138,6 +138,54 @@ class Widget(QWidget):
         self.add_listWidget_common_item_available()
         self.add_listWidget_common_item_selected()
 
+    def _after_form_selection_change(self):
+        """Refresh UI elements that depend on the selected forms."""
+        self.update_forms_ui()
+        self.update_common_items_ui()
+        self.update_form_dependent_ui()
+
+    def _apply_form_selection_action(self, action):
+        """Mutate report form selections based on the requested action.
+
+        Args:
+            action (str): One of "select", "remove", "select_all", "remove_all".
+
+        Returns:
+            bool: True when the report was updated, otherwise False.
+        """
+
+        if action == "select":
+            selected_items = self.ui.listWidget_form_available.selectedItems()
+            if not selected_items:
+                return False
+            for item in selected_items:
+                self.report.add_selected_form(item.text())
+            return True
+
+        if action == "remove":
+            selected_items = self.ui.listWidget_form_selected.selectedItems()
+            if not selected_items:
+                return False
+            for item in selected_items:
+                self.report.add_available_form(item.text())
+            return True
+
+        if action == "select_all":
+            available_forms = self.report.get_available_forms_list()
+            if not available_forms:
+                return False
+            self.report.add_all_selected_forms()
+            return True
+
+        if action == "remove_all":
+            selected_forms = self.report.get_selected_forms_list()
+            if not selected_forms:
+                return False
+            self.report.add_all_available_forms()
+            return True
+
+        raise ValueError(f"Unknown form selection action: {action}")
+
     def _set_label_text(self, label, message):
         """Safely update a QLabel if it exists."""
         if label is not None:
@@ -730,49 +778,23 @@ class Widget(QWidget):
 
     def click_select_form(self):
         """Select a form from the available forms and add it to the selected forms."""
-        selected_items = self.ui.listWidget_form_available.selectedItems()
-        if not selected_items:
-            return
-
-        for item in selected_items:
-            form_name = item.text()
-            self.report.add_selected_form(form_name)
-
-        # Update UI with hierarchical dependencies
-        self.update_forms_ui()
-        self.update_common_items_ui()  # Add this to update common items when forms change
-        self.update_form_dependent_ui()
+        if self._apply_form_selection_action("select"):
+            self._after_form_selection_change()
 
     def click_remove_form(self):
         """Remove a form from the selected forms."""
-        selected_items = self.ui.listWidget_form_selected.selectedItems()
-        if not selected_items:
-            return
-
-        for item in selected_items:
-            form_name = item.text()
-            self.report.add_available_form(form_name)
-
-        # Update UI with hierarchical dependencies
-        self.update_forms_ui()
-        self.update_common_items_ui()  # Add this to update common items when forms change
-        self.update_form_dependent_ui()
+        if self._apply_form_selection_action("remove"):
+            self._after_form_selection_change()
 
     def click_select_all_form(self):
         """Select all available forms and add them to the selected forms."""
-        self.report.add_all_selected_forms()
-        # Update UI with hierarchical dependencies
-        self.update_forms_ui()
-        self.update_common_items_ui()  # Add this to update common items when forms change
-        self.update_form_dependent_ui()
+        if self._apply_form_selection_action("select_all"):
+            self._after_form_selection_change()
 
     def click_remove_all_form(self):
         """Remove all selected forms and add them back to the available forms."""
-        self.report.add_all_available_forms()
-        # Update UI with hierarchical dependencies
-        self.update_forms_ui()
-        self.update_common_items_ui()  # Add this to update common items when forms change
-        self.update_form_dependent_ui()
+        if self._apply_form_selection_action("remove_all"):
+            self._after_form_selection_change()
 
     def add_listWidget_common_item_available(self):
         """Add available common items to the list widget."""
