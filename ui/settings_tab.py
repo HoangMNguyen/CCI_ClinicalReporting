@@ -68,6 +68,7 @@ class SettingsTabMixin:
         self.report.set_common_item_state("Subject", selected=True)
         self.update_all_ui()
         self.ui.label_input_file.setText("Input path: " + file_path)
+        self._set_label_text(self.label_setting, "")
 
         if self.ui.checkBox_saved_setting.isChecked():
             if self.settings_directory is None:
@@ -99,6 +100,7 @@ class SettingsTabMixin:
         else:
             self.ui.comboBox_saved_setting.clear()
             self.ui.comboBox_saved_setting.setEnabled(False)
+            self._set_label_text(self.label_setting, "")
 
     def _get_default_settings_directory(self) -> str:
         """Return the default folder used to store saved settings."""
@@ -160,8 +162,10 @@ class SettingsTabMixin:
 
         if saved_any:
             combo.insertItem(0, "Select a saved setting", None)
+            combo.setEnabled(True)
         else:
             combo.addItem("No saved settings found for this study", None)
+            combo.setEnabled(False)
 
         combo.setCurrentIndex(0)
         combo.blockSignals(False)
@@ -173,6 +177,7 @@ class SettingsTabMixin:
 
         file_path: Optional[str] = self.ui.comboBox_saved_setting.itemData(index)
         if not file_path:
+            self._set_label_text(self.label_setting, "")
             return
 
         try:
@@ -183,6 +188,7 @@ class SettingsTabMixin:
                 self.label_save_confirmation,
                 f"Failed to load settings: {exc}",
             )
+            self._set_label_text(self.label_setting, "")
             return
 
         loaded_study_name = (
@@ -191,7 +197,26 @@ class SettingsTabMixin:
         if loaded_study_name:
             self.study_name = loaded_study_name
         self.report.set_study_name(self.study_name)
+
+        reconciliation = self.report.reconcile_with_current_data()
         self.update_all_ui()
+        self.update_items_dependent_ui()
+
+        missing_forms = reconciliation.get("forms", [])
+        missing_items = reconciliation.get("items", [])
+        if missing_forms or missing_items:
+            message_parts = []
+            if missing_forms:
+                message_parts.append(
+                    "Missing forms: " + ", ".join(missing_forms)
+                )
+            if missing_items:
+                message_parts.append(
+                    "Missing items: " + ", ".join(missing_items)
+                )
+            self._set_label_text(self.label_setting, "\n".join(message_parts))
+        else:
+            self._set_label_text(self.label_setting, "")
 
         setting_name = self.ui.comboBox_saved_setting.currentText()
         if setting_name:

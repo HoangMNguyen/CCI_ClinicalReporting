@@ -33,15 +33,18 @@ class WidgetBaseMixin:
         self.label_run_confirmation = getattr(self.ui, "label_run_confirmation", None)
         self.label_save_confirmation = getattr(self.ui, "label_save_confirmation", None)
         self.label_output_folder = getattr(self.ui, "label_output_folder", None)
+        self.label_setting = getattr(self.ui, "label_setting", None)
         if self.label_save_confirmation is None and hasattr(self.ui, "label_confirmation"):
             self.label_save_confirmation = self.ui.label_confirmation
         if self.label_run_confirmation is not None:
             self.label_run_confirmation.setText("")
         if self.label_save_confirmation is not None:
             self.label_save_confirmation.setText("")
+        if self.label_setting is not None:
+            self.label_setting.setText("")
         if self.label_save_confirmation is not None and not hasattr(self.ui, "label_save_confirmation"):
             self.ui.label_save_confirmation = self.label_save_confirmation
-
+        
         # Disable settings directory selector until persistence is enabled.
         self.ui.pushButton_setting_location.setEnabled(False)
 

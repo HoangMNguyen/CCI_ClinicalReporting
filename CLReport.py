@@ -326,6 +326,102 @@ class CLReport:
 
         return settings
 
+    def reconcile_with_current_data(self) -> Dict[str, list[str]]:
+        """Align loaded settings with the currently available study data."""
+
+        missing_forms: set[str] = set()
+        missing_items: set[str] = set()
+
+        data_forms = set(self.data.keys())
+
+        # Determine the true common items from the loaded data.
+        actual_common_items: set[str] = set()
+        if self.data:
+            iter_forms = iter(self.data.values())
+            first_form = next(iter_forms, None)
+            if first_form is not None:
+                actual_common_items = set(first_form.columns)
+                for form_df in iter_forms:
+                    actual_common_items &= set(form_df.columns)
+
+        self.static_available_common_items = sorted(actual_common_items)
+
+        for item in list(self.selected_common_items):
+            if item not in actual_common_items:
+                self.selected_common_items.remove(item)
+                missing_items.add(item)
+
+        self.available_common_items = sorted(actual_common_items - set(self.selected_common_items))
+
+        valid_selected_forms: dict[str, CLForm] = {}
+        for form_name, form in list(self.selected_forms.items()):
+            if form_name not in data_forms:
+                missing_forms.add(form_name)
+                continue
+
+            form_columns = set(self.data[form_name].columns)
+            for item in list(form.get_selected_form_items()):
+                if item not in form_columns:
+                    form.remove_form_item(item)
+                    missing_items.add(f"{form_name}.{item}")
+
+            for join_item in list(form.get_join_items()):
+                if join_item not in form_columns and join_item not in actual_common_items:
+                    form.set_join_item_state(join_item, include=False)
+                    missing_items.add(f"{form_name}.{join_item}")
+
+            selected_items = set(form.get_selected_form_items())
+            available_items = sorted(
+                column
+                for column in form_columns
+                if column not in actual_common_items and column not in selected_items
+            )
+            form.available_form_items = available_items
+            valid_selected_forms[form_name] = form
+
+        self.selected_forms = valid_selected_forms
+
+        valid_selected_form_names = set(self.selected_forms.keys())
+        self.available_forms = {}
+        for form_name in sorted(data_forms - valid_selected_form_names):
+            new_form = CLForm(form_name)
+            form_columns = set(self.data[form_name].columns)
+            new_form.available_form_items = sorted(
+                column for column in form_columns if column not in actual_common_items
+            )
+            self.available_forms[form_name] = new_form
+
+        # Build a set of valid identifiers for filters and ordering.
+        valid_identifiers: set[str] = set(self.selected_common_items)
+        for form_name, form in self.selected_forms.items():
+            for item in form.get_selected_form_items():
+                valid_identifiers.add(item)
+                valid_identifiers.add(f"{form_name}.{item}")
+
+        self.order_list = [item for item in self.order_list if item in valid_identifiers]
+        self.selected_items_order_list = [
+            item for item in self.selected_items_order_list if item in valid_identifiers
+        ]
+        self.rename_dict = {
+            key: value for key, value in self.rename_dict.items() if key in valid_identifiers
+        }
+
+        self.static_filter_items = [
+            item
+            for item in self.static_filter_items
+            if item and item[0] in valid_identifiers
+        ]
+        self.dynamic_filter_items = [
+            item
+            for item in self.dynamic_filter_items
+            if item and item[0] in valid_identifiers and item[2] in valid_identifiers
+        ]
+
+        return {
+            "forms": sorted(missing_forms),
+            "items": sorted(missing_items),
+        }
+
     def get_join_list(self):
         """Get the list of join items."""
         join_list = []
