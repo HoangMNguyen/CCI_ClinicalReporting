@@ -346,12 +346,15 @@ class CLReport:
 
         self.static_available_common_items = sorted(actual_common_items)
 
+        self.available_common_items = sorted(actual_common_items)
         for item in list(self.selected_common_items):
-            if item not in actual_common_items:
+            if item not in self.available_common_items:
                 self.selected_common_items.remove(item)
                 missing_items.add(item)
 
-        self.available_common_items = sorted(actual_common_items - set(self.selected_common_items))
+        self.available_common_items = [
+            item for item in self.available_common_items if item not in self.selected_common_items
+        ]
 
         valid_selected_forms: dict[str, CLForm] = {}
         for form_name, form in list(self.selected_forms.items()):
@@ -360,23 +363,16 @@ class CLReport:
                 continue
 
             form_columns = set(self.data[form_name].columns)
+
+            form.available_form_items = sorted(column for column in form_columns if column not in actual_common_items)
+
             for item in list(form.get_selected_form_items()):
-                if item not in form_columns:
+                if item not in form.available_form_items:
                     form.remove_form_item(item)
                     missing_items.add(f"{form_name}.{item}")
 
-            for join_item in list(form.get_join_items()):
-                if join_item not in form_columns and join_item not in actual_common_items:
-                    form.set_join_item_state(join_item, include=False)
-                    missing_items.add(f"{form_name}.{join_item}")
-
             selected_items = set(form.get_selected_form_items())
-            available_items = sorted(
-                column
-                for column in form_columns
-                if column not in actual_common_items and column not in selected_items
-            )
-            form.available_form_items = available_items
+            form.available_form_items = [column for column in form.available_form_items if column not in selected_items]
             valid_selected_forms[form_name] = form
 
         self.selected_forms = valid_selected_forms
@@ -399,18 +395,10 @@ class CLReport:
                 valid_identifiers.add(f"{form_name}.{item}")
 
         self.order_list = [item for item in self.order_list if item in valid_identifiers]
-        self.selected_items_order_list = [
-            item for item in self.selected_items_order_list if item in valid_identifiers
-        ]
-        self.rename_dict = {
-            key: value for key, value in self.rename_dict.items() if key in valid_identifiers
-        }
+        self.selected_items_order_list = [item for item in self.selected_items_order_list if item in valid_identifiers]
+        self.rename_dict = {key: value for key, value in self.rename_dict.items() if key in valid_identifiers}
 
-        self.static_filter_items = [
-            item
-            for item in self.static_filter_items
-            if item and item[0] in valid_identifiers
-        ]
+        self.static_filter_items = [item for item in self.static_filter_items if item and item[0] in valid_identifiers]
         self.dynamic_filter_items = [
             item
             for item in self.dynamic_filter_items
