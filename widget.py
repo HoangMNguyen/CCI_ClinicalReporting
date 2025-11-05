@@ -30,13 +30,31 @@ class Widget(QWidget):
         super().__init__(parent)
         self.ui = Ui_Widget()
         self.ui.setupUi(self)
+
+        # Centralize UI and application state initialization so that the constructor
+        # reads as a short series of high-level steps.
+        self._initialize_state()
+        self._setup_tables()
+        self._init_settings_tab()
+        self._init_form_tab()
+        self._init_common_items_tab()
+        self._init_form_items_tab()
+        self._init_filters_tab()
+        self._init_comparison_and_order_tab()
+        self._init_run_and_save_controls()
+        self._init_tab_navigation()
+        self._initialize_list_views()
+
+    def _initialize_state(self):
+        """Set up core state values and reusable label references."""
         self.setWindowTitle("Clinical Reporting Tool")
         self.study_name = None
         self.report = CLReport()
         self.output_folder_name = None
         self.settings_directory = None
 
-        # Cache commonly used confirmation labels and reset them
+        # Cache commonly used confirmation labels and reset them so that status
+        # messages start blank on launch.
         self.label_run_confirmation = getattr(self.ui, "label_run_confirmation", None)
         self.label_save_confirmation = getattr(self.ui, "label_save_confirmation", None)
         self.label_output_folder = getattr(self.ui, "label_output_folder", None)
@@ -49,13 +67,11 @@ class Widget(QWidget):
         if self.label_save_confirmation is not None and not hasattr(self.ui, "label_save_confirmation"):
             self.ui.label_save_confirmation = self.label_save_confirmation
 
-        # Disable settings directory selector until needed
+        # Disable settings directory selector until needed.
         self.ui.pushButton_setting_location.setEnabled(False)
 
-        # Set up tables
-        self._setup_tables()
-
-        # * Setting tab
+    def _init_settings_tab(self):
+        """Wire up controls on the settings tab."""
         self.ui.pushButton_input_file.clicked.connect(self.click_input_file)
         self.ui.pushButton_output_folder.clicked.connect(self.click_output_file)
         self.ui.checkBox_saved_setting.stateChanged.connect(self.click_checkBox_saved_setting)
@@ -64,75 +80,64 @@ class Widget(QWidget):
         self.ui.comboBox_saved_setting.currentIndexChanged.connect(self.on_saved_setting_changed)
         self.ui.pushButton_setting_location.clicked.connect(self.click_setting_location)
 
-        # * Form tab
+    def _init_form_tab(self):
+        """Attach handlers used to manage form selection widgets."""
         self.ui.pushButton_select_form.clicked.connect(self.click_select_form)
         self.ui.pushButton_remove_form.clicked.connect(self.click_remove_form)
         self.ui.pushButton_select_all_form.clicked.connect(self.click_select_all_form)
         self.ui.pushButton_remove_all_form.clicked.connect(self.click_remove_all_form)
 
-        # Connect double-click events for form list widgets
         self.ui.listWidget_form_available.itemDoubleClicked.connect(self.on_form_available_double_clicked)
         self.ui.listWidget_form_selected.itemDoubleClicked.connect(self.on_form_selected_double_clicked)
+        self.ui.listWidget_form_selected.itemSelectionChanged.connect(self.update_form_dependent_ui)
 
-        # * Common items tab
-        # Connect common item buttons
+    def _init_common_items_tab(self):
+        """Connect signals for the common items tab."""
         self.ui.pushButton_select_common_item.clicked.connect(self.click_select_common_item)
         self.ui.pushButton_remove_common_item.clicked.connect(self.click_remove_common_item)
         self.ui.pushButton_select_all_common_item.clicked.connect(self.click_select_all_common_item)
         self.ui.pushButton_remove_all_common_item.clicked.connect(self.click_remove_all_common_item)
 
-        # * Form items tab
-        # Connect form item buttons
+        self.ui.listWidget_common_item_available.itemDoubleClicked.connect(self.on_common_item_available_double_clicked)
+        self.ui.listWidget_common_item_selected.itemDoubleClicked.connect(self.on_common_item_selected_double_clicked)
+
+    def _init_form_items_tab(self):
+        """Connect signals for selecting per-form items."""
         self.ui.pushButton_select_form_item.clicked.connect(self.click_select_form_item)
         self.ui.pushButton_remove_form_item.clicked.connect(self.click_remove_form_item)
         self.ui.pushButton_select_all_form_item.clicked.connect(self.click_select_all_form_item)
         self.ui.pushButton_remove_all_form_item.clicked.connect(self.click_remove_all_form_item)
 
-        # Connect double-click events for form item list widgets
         self.ui.listWidget_form_item_available.itemDoubleClicked.connect(self.on_form_item_available_double_clicked)
         self.ui.listWidget_form_item_selected.itemDoubleClicked.connect(self.on_form_item_selected_double_clicked)
 
-        # Connect double-click events for common item list widgets
-        self.ui.listWidget_common_item_available.itemDoubleClicked.connect(self.on_common_item_available_double_clicked)
-        self.ui.listWidget_common_item_selected.itemDoubleClicked.connect(self.on_common_item_selected_double_clicked)
-
-        # Connect form selection change to update form items
-        self.ui.listWidget_form_selected.itemSelectionChanged.connect(self.update_form_dependent_ui)
-        # * Filter tab
-        # Connect push buttons for filter functionality
+    def _init_filters_tab(self):
+        """Attach filter-related buttons."""
         self.ui.pushButton_static_filter_add.clicked.connect(self.static_filter_add)
         self.ui.pushButton_static_filter_remove.clicked.connect(self.static_filter_remove)
-
-        # * Comparison and Rename tab
-        # Connect table cell changes for rename functionality
-        self.ui.tableWidget_rename.cellChanged.connect(self.on_rename_cell_changed)
-
-        # Connect buttons for items reordering
-        self.ui.pushButton_order_up.clicked.connect(self.click_order_up)
-        self.ui.pushButton_order_down.clicked.connect(self.click_order_down)
-
-        # Add connections for dynamic filter buttons
         self.ui.pushButton_dynamic_filter_add.clicked.connect(self.dynamic_filter_add)
         self.ui.pushButton_dynamic_filter_remove.clicked.connect(self.dynamic_filter_remove)
 
-        # Connect tab change signal to handle preview tab
-        self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
+    def _init_comparison_and_order_tab(self):
+        """Configure rename table and ordering controls."""
+        self.ui.tableWidget_rename.cellChanged.connect(self.on_rename_cell_changed)
+        self.ui.pushButton_order_up.clicked.connect(self.click_order_up)
+        self.ui.pushButton_order_down.clicked.connect(self.click_order_down)
 
-        # Connect Run and Save buttons
+    def _init_run_and_save_controls(self):
+        """Connect run, save, and persistence-related buttons."""
         self.ui.pushButton_run.clicked.connect(self.click_run)
         self.ui.pushButton_save_setting.clicked.connect(self.click_save_setting)
         self.ui.pushButton_output_setting.clicked.connect(self.click_output_setting_folder)
         self.ui.checkBox_save_current_setting.stateChanged.connect(self.on_save_current_setting_state_changed)
         self.on_save_current_setting_state_changed()
 
-        # Set selection behavior for dynamic filter table
-        self.ui.tableWidget_dynamic_filter.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.ui.tableWidget_dynamic_filter.setSelectionMode(QAbstractItemView.SingleSelection)
+    def _init_tab_navigation(self):
+        """Register tab navigation handlers."""
+        self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
 
-        # Set selection behavior for static filter table
-        self.ui.tableWidget_static_filter.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.ui.tableWidget_static_filter.setSelectionMode(QAbstractItemView.SingleSelection)
-
+    def _initialize_list_views(self):
+        """Populate list widgets with initial values."""
         self.add_listWidget_form_available()
         self.add_listWidget_form_selected()
         self.add_listWidget_common_item_available()
@@ -186,6 +191,111 @@ class Widget(QWidget):
 
         raise ValueError(f"Unknown form selection action: {action}")
 
+    def _toggle_common_item_selection(self, widget, *, selected):
+        """Update common item state for all entries selected in a widget."""
+        selected_items = widget.selectedItems()
+        if not selected_items:
+            return False
+
+        for item in selected_items:
+            self.report.set_common_item_state(item.text(), selected=selected)
+
+        return True
+
+    def _apply_common_item_action(self, action):
+        """Mutate common item selections using a shared implementation."""
+        if action == "select":
+            return self._toggle_common_item_selection(
+                self.ui.listWidget_common_item_available, selected=True
+            )
+
+        if action == "remove":
+            return self._toggle_common_item_selection(
+                self.ui.listWidget_common_item_selected, selected=False
+            )
+
+        if action == "select_all":
+            available_items = list(self.report.get_available_common_items())
+            if not available_items:
+                return False
+            for item in available_items:
+                self.report.set_common_item_state(item, selected=True)
+            return True
+
+        if action == "remove_all":
+            selected_items = list(self.report.get_selected_common_items())
+            if not selected_items:
+                return False
+            for item in selected_items:
+                self.report.set_common_item_state(item, selected=False)
+            return True
+
+        raise ValueError(f"Unknown common item action: {action}")
+
+    def _iter_form_item_pairs(self, widget):
+        """Yield (form_name, item_name) tuples from the widget selections."""
+        for item in widget.selectedItems():
+            item_text = item.text()
+            if "." in item_text:
+                yield item_text.split(".", 1)
+
+    def _toggle_form_item_selection(self, widget, *, selected):
+        """Update form item state for all entries selected in a widget."""
+        changed = False
+        for form_name, item_name in self._iter_form_item_pairs(widget):
+            if form_name in self.report.selected_forms:
+                self.report.selected_forms[form_name].set_form_item_state(
+                    item_name, selected=selected
+                )
+                changed = True
+        return changed
+
+    def _apply_form_item_action(self, action):
+        """Mutate form item selections using a shared implementation."""
+        if action == "select":
+            return self._toggle_form_item_selection(
+                self.ui.listWidget_form_item_available, selected=True
+            )
+
+        if action == "remove":
+            return self._toggle_form_item_selection(
+                self.ui.listWidget_form_item_selected, selected=False
+            )
+
+        if action == "select_all":
+            changed = False
+            for form_name in self.report.get_selected_forms_list():
+                if form_name in self.report.selected_forms:
+                    available_items = self.report.selected_forms[
+                        form_name
+                    ].get_available_form_items()
+                    if not available_items:
+                        continue
+                    for item in available_items[:]:
+                        self.report.selected_forms[form_name].set_form_item_state(
+                            item, selected=True
+                        )
+                    changed = True
+            return changed
+
+        if action == "remove_all":
+            changed = False
+            for form_name in self.report.get_selected_forms_list():
+                if form_name in self.report.selected_forms:
+                    selected_items = self.report.selected_forms[
+                        form_name
+                    ].get_selected_form_items()
+                    if not selected_items:
+                        continue
+                    for item in selected_items[:]:
+                        self.report.selected_forms[form_name].set_form_item_state(
+                            item, selected=False
+                        )
+                    changed = True
+            return changed
+
+        raise ValueError(f"Unknown form item action: {action}")
+
     def _set_label_text(self, label, message):
         """Safely update a QLabel if it exists."""
         if label is not None:
@@ -235,27 +345,39 @@ class Widget(QWidget):
             self._set_label_text(self.label_save_confirmation, "Please enter a setting name before saving.")
             return
 
-        settings_dir = self.settings_directory or self._get_default_settings_directory()
-        self.settings_directory = settings_dir
-
-        try:
-            os.makedirs(settings_dir, exist_ok=True)
-        except OSError as exc:
-            self._set_label_text(self.label_save_confirmation, f"Failed to prepare settings folder: {exc}")
+        settings_dir, error = self._prepare_settings_directory()
+        if error:
+            self._set_label_text(self.label_save_confirmation, error)
             return
 
         settings_path = os.path.join(settings_dir, f"{settings_name}.json")
-
-        try:
-            self.report.save_setting_to_json(settings_path, setting_name=settings_name)
-        except Exception as exc:
-            self._set_label_text(self.label_save_confirmation, f"Failed to save settings: {exc}")
+        error = self._save_settings_to_path(settings_path, settings_name)
+        if error:
+            self._set_label_text(self.label_save_confirmation, error)
             return
 
         self._set_label_text(self.label_save_confirmation, f"Settings saved to {settings_path}")
 
         if self.ui.checkBox_saved_setting.isChecked():
             self._refresh_saved_settings()
+
+    def _prepare_settings_directory(self):
+        """Ensure the settings directory exists before persisting a file."""
+        settings_dir = self.settings_directory or self._get_default_settings_directory()
+        self.settings_directory = settings_dir
+        try:
+            os.makedirs(settings_dir, exist_ok=True)
+        except OSError as exc:
+            return settings_dir, f"Failed to prepare settings folder: {exc}"
+        return settings_dir, None
+
+    def _save_settings_to_path(self, path, settings_name):
+        """Serialize the current report to ``path`` and return an error message if any."""
+        try:
+            self.report.save_setting_to_json(path, setting_name=settings_name)
+        except Exception as exc:  # pylint: disable=broad-except
+            return f"Failed to save settings: {exc}"
+        return None
 
     # ---- Hierarchical UI Update System ----
 
@@ -809,46 +931,22 @@ class Widget(QWidget):
 
     def click_select_common_item(self):
         """Select a common item from the available items and add it to the selected items."""
-        selected_items = self.ui.listWidget_common_item_available.selectedItems()
-        if not selected_items:
-            return
-
-        for item in selected_items:
-            item_name = item.text()
-            self.report.set_common_item_state(item_name, selected=True)
-
-        # Update UI with hierarchical dependencies
-        self.update_common_items_ui()
+        if self._apply_common_item_action("select"):
+            self.update_common_items_ui()
 
     def click_remove_common_item(self):
         """Remove a common item from the selected items."""
-        selected_items = self.ui.listWidget_common_item_selected.selectedItems()
-        if not selected_items:
-            return
-
-        for item in selected_items:
-            item_name = item.text()
-            self.report.set_common_item_state(item_name, selected=False)
-
-        # Update UI with hierarchical dependencies
-        self.update_common_items_ui()
+        if self._apply_common_item_action("remove"):
+            self.update_common_items_ui()
 
     def click_select_all_common_item(self):
         """Select all available common items and add them to the selected items."""
-        available_items = self.report.get_available_common_items()
-        for item in available_items[:]:  # Create a copy to avoid modification during iteration
-            self.report.set_common_item_state(item, selected=True)
-
-        # Update UI with hierarchical dependencies
+        self._apply_common_item_action("select_all")
         self.update_common_items_ui()
 
     def click_remove_all_common_item(self):
         """Remove all selected common items and add them back to the available items."""
-        selected_items = self.report.get_selected_common_items()
-        for item in selected_items[:]:  # Create a copy to avoid modification during iteration
-            self.report.set_common_item_state(item, selected=False)
-
-        # Update UI with hierarchical dependencies
+        self._apply_common_item_action("remove_all")
         self.update_common_items_ui()
 
     def update_form_items(self):
@@ -914,74 +1012,22 @@ class Widget(QWidget):
 
     def click_select_form_item(self):
         """Select a form item from the available items and add it to the selected items."""
-        selected_items = self.ui.listWidget_form_item_available.selectedItems()
-        if not selected_items:
-            return
-
-        for item in selected_items:
-            item_text = item.text()
-            # Parse form name and item name from "form_name.item_name"
-            if "." in item_text:
-                form_name, item_name = item_text.split(".", 1)
-                if form_name in self.report.selected_forms:
-                    self.report.selected_forms[form_name].set_form_item_state(
-                        item_name, selected=True
-                    )
-
-        # Update UI with hierarchical dependencies
-        self.update_form_items_ui()
+        if self._apply_form_item_action("select"):
+            self.update_form_items_ui()
 
     def click_remove_form_item(self):
         """Remove a form item from the selected items."""
-        selected_items = self.ui.listWidget_form_item_selected.selectedItems()
-        if not selected_items:
-            return
-
-        for item in selected_items:
-            item_text = item.text()
-            # Parse form name and item name from "form_name.item_name"
-            if "." in item_text:
-                form_name, item_name = item_text.split(".", 1)
-                if form_name in self.report.selected_forms:
-                    self.report.selected_forms[form_name].set_form_item_state(
-                        item_name, selected=False
-                    )
-
-        # Update UI with hierarchical dependencies
-        self.update_form_items_ui()
+        if self._apply_form_item_action("remove"):
+            self.update_form_items_ui()
 
     def click_select_all_form_item(self):
         """Select all available form items and add them to the selected items."""
-        selected_forms = self.report.get_selected_forms_list()
-
-        for form_name in selected_forms:
-            if form_name in self.report.selected_forms:
-                available_items = self.report.selected_forms[form_name].get_available_form_items()
-                for item in available_items[:]:  # Create a copy to avoid modification during iteration
-                    self.report.selected_forms[form_name].set_form_item_state(
-                        item, selected=True
-                    )
-
-        self.add_listWidget_form_item_available()
-        self.add_listWidget_form_item_selected()
-        # Update UI with hierarchical dependencies
+        self._apply_form_item_action("select_all")
         self.update_form_items_ui()
 
     def click_remove_all_form_item(self):
         """Remove all selected form items and add them back to the available items."""
-        selected_forms = self.report.get_selected_forms_list()
-
-        for form_name in selected_forms:
-            if form_name in self.report.selected_forms:
-                selected_items = self.report.selected_forms[form_name].get_selected_form_items()
-                for item in selected_items[:]:  # Create a copy to avoid modification during iteration
-                    self.report.selected_forms[form_name].set_form_item_state(
-                        item, selected=False
-                    )
-
-        self.add_listWidget_form_item_available()
-        self.add_listWidget_form_item_selected()
-        # Update UI with hierarchical dependencies
+        self._apply_form_item_action("remove_all")
         self.update_form_items_ui()
 
     def update_rename_table(self):
