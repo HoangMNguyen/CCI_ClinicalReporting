@@ -341,6 +341,26 @@ class CLReport:
 
         return join_list
 
+    def get_join_list_dict(self) -> Dict[str, Dict[str, Any]]:
+        """Return the join configuration keyed by form name.
+
+        The refactored join UI works with dictionaries so that it can look up
+        a specific form's existing join items, order, and join strategy when
+        populating table widgets.  The original implementation only exposed a
+        flattened list; this helper simply repackages the same information in a
+        structure that is easier for the UI to consume while keeping behaviour
+        identical to the previous widget.
+        """
+
+        join_data: Dict[str, Dict[str, Any]] = {}
+        for form_name, form in self.selected_forms.items():
+            join_data[form_name] = {
+                "items": list(form.get_join_items()),
+                "order": form.get_join_order(),
+                "how": form.get_join_how(),
+            }
+        return join_data
+
     def add_join_item(self, form: str, item: str, order: int, how: str):
         """Add a join item to the form."""
         if form in self.selected_forms.keys():

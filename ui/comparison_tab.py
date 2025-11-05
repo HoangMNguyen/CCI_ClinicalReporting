@@ -29,9 +29,7 @@ class ComparisonTabMixin:
     def update_rename_table(self) -> None:
         """Populate the rename table with selected items."""
         try:
-            self.ui.tableWidget_rename.cellChanged.disconnect(
-                self.on_rename_cell_changed
-            )
+            self.ui.tableWidget_rename.cellChanged.disconnect(self.on_rename_cell_changed)
         except Exception:
             pass
 
@@ -113,9 +111,7 @@ class ComparisonTabMixin:
                 default_order = str(join_data[form_name]["order"])
             join_order_combo.setCurrentText(default_order)
             join_order_combo.currentTextChanged.connect(self.update_join_list)
-            join_order_combo.currentTextChanged.connect(
-                lambda value, r=row: self.on_join_order_changed(r, value)
-            )
+            join_order_combo.currentTextChanged.connect(lambda value, r=row: self.on_join_order_changed(r, value))
             self.ui.tableWidget_join.setCellWidget(row, 4, join_order_combo)
 
             join_type_combo = QComboBox()
@@ -267,4 +263,3 @@ class ComparisonTabMixin:
             if item:
                 new_order.append(item.text())
         self.report.set_selected_items_order_list(new_order)
-
