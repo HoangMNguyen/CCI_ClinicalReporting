@@ -143,44 +143,23 @@ class Widget(QWidget):
         self.add_listWidget_common_item_available()
         self.add_listWidget_common_item_selected()
 
-    def _after_form_selection_change(self):
-        """Refresh UI elements that depend on the selected forms."""
-        self.update_forms_ui()
-        self.update_common_items_ui()
-        self.update_form_dependent_ui()
+Historically the entire UI implementation lived in this module.  The
+codebase now organises the logic into the :mod:`ui` package; this file is
+kept so existing imports (``from widget import Widget``) continue to work
+without modification.
+"""
 
-    def _apply_form_selection_action(self, action):
-        """Mutate report form selections based on the requested action.
+from __future__ import annotations
 
-        Args:
-            action (str): One of "select", "remove", "select_all", "remove_all".
+from ui.main_widget import Widget, main
 
-        Returns:
-            bool: True when the report was updated, otherwise False.
-        """
+__all__ = ["Widget", "main"]
 
-        if action == "select":
-            selected_items = self.ui.listWidget_form_available.selectedItems()
-            if not selected_items:
-                return False
-            for item in selected_items:
-                self.report.add_selected_form(item.text())
-            return True
 
-        if action == "remove":
-            selected_items = self.ui.listWidget_form_selected.selectedItems()
-            if not selected_items:
-                return False
-            for item in selected_items:
-                self.report.add_available_form(item.text())
-            return True
+if __name__ == "__main__":  # pragma: no cover - manual execution helper
+    import sys
 
-        if action == "select_all":
-            available_forms = self.report.get_available_forms_list()
-            if not available_forms:
-                return False
-            self.report.add_all_selected_forms()
-            return True
+    sys.exit(main())
 
         if action == "remove_all":
             selected_forms = self.report.get_selected_forms_list()
