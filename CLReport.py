@@ -677,7 +677,7 @@ class CLReport:
 
         # Apply dynamic filters after all joins
         if result_df is not None:
-            print(f"Applying dynamic filters: {self.dynamic_filter_items}")
+            # print(f"Applying dynamic filters: {self.dynamic_filter_items}")
             # print(f"Available columns: {result_df.columns.tolist()}")
 
             for item1, operator, item2 in self.dynamic_filter_items:
