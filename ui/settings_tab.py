@@ -77,7 +77,7 @@ class SettingsTabMixin:
 
     def click_output_file(self) -> None:
         """Allow the user to choose the output directory for reports."""
-        default_dir = os.path.join(os.path.expanduser("~"), "Documents")
+        default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
         folder = QFileDialog.getExistingDirectory(
             self,
             "Select Output Folder",
@@ -105,7 +105,7 @@ class SettingsTabMixin:
     def _get_default_settings_directory(self) -> str:
         """Return the default folder used to store saved settings."""
         home = Path.home()
-        default_dir = home / "Documents" / "ClinicalReporting" / "settings"
+        default_dir = home / "Documents"
         return str(default_dir)
 
     def click_setting_location(self) -> None:
