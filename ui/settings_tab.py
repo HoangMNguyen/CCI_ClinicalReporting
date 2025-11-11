@@ -26,17 +26,11 @@ class SettingsTabMixin:
         """Wire up controls on the settings tab."""
         self.ui.pushButton_input_file.clicked.connect(self.click_input_file)
         self.ui.pushButton_output_folder.clicked.connect(self.click_output_file)
-        self.ui.checkBox_saved_setting.stateChanged.connect(
-            self.click_checkBox_saved_setting
-        )
+        self.ui.checkBox_saved_setting.stateChanged.connect(self.click_checkBox_saved_setting)
         self.ui.comboBox_saved_setting.setEnabled(False)
         self.ui.comboBox_saved_setting.clear()
-        self.ui.comboBox_saved_setting.currentIndexChanged.connect(
-            self.on_saved_setting_changed
-        )
-        self.ui.pushButton_setting_location.clicked.connect(
-            self.click_setting_location
-        )
+        self.ui.comboBox_saved_setting.currentIndexChanged.connect(self.on_saved_setting_changed)
+        self.ui.pushButton_setting_location.clicked.connect(self.click_setting_location)
 
     # ------------------------------------------------------------------
     # Slots bound to settings tab buttons
@@ -110,7 +104,7 @@ class SettingsTabMixin:
 
     def click_setting_location(self) -> None:
         """Let the user choose the directory that stores saved settings."""
-        default_dir = self.settings_directory or self._get_default_settings_directory()
+        default_dir = self._get_default_settings_directory()
         settings_dir = QFileDialog.getExistingDirectory(
             self,
             "Select Settings Folder",
@@ -191,9 +185,7 @@ class SettingsTabMixin:
             self._set_label_text(self.label_setting, "")
             return
 
-        loaded_study_name = (
-            settings_data.get("study_name") if isinstance(settings_data, dict) else None
-        )
+        loaded_study_name = settings_data.get("study_name") if isinstance(settings_data, dict) else None
         if loaded_study_name:
             self.study_name = loaded_study_name
         self.report.set_study_name(self.study_name)
@@ -207,13 +199,9 @@ class SettingsTabMixin:
         if missing_forms or missing_items:
             message_parts = []
             if missing_forms:
-                message_parts.append(
-                    "Missing forms: " + ", ".join(missing_forms)
-                )
+                message_parts.append("Missing forms: " + ", ".join(missing_forms))
             if missing_items:
-                message_parts.append(
-                    "Missing items: " + ", ".join(missing_items)
-                )
+                message_parts.append("Missing items: " + ", ".join(missing_items))
             self._set_label_text(self.label_setting, "\n".join(message_parts))
         else:
             self._set_label_text(self.label_setting, "")
@@ -225,4 +213,3 @@ class SettingsTabMixin:
             self.label_save_confirmation,
             f"Loaded settings from {os.path.basename(file_path)}",
         )
-
