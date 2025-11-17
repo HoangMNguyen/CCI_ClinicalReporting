@@ -190,6 +190,21 @@ class CLReport:
         """Set the rename dictionary for the report."""
         self.rename_dict = rename_dict
 
+    def set_rename_item(self, original_name: str, new_name: str) -> None:
+        """Set or update a single rename mapping.
+
+        If ``new_name`` is falsy or identical to ``original_name``, the mapping
+        is removed to avoid no-op entries.
+        """
+        if not new_name or new_name == original_name:
+            self.rename_dict.pop(original_name, None)
+            return
+        self.rename_dict[original_name] = new_name
+
+    def remove_rename_item(self, original_name: str) -> None:
+        """Remove a single rename mapping if it exists."""
+        self.rename_dict.pop(original_name, None)
+
     def set_file_path(self, file_path: str):
         """Set the file path for the report."""
         self.file_path = file_path
@@ -259,16 +274,34 @@ class CLReport:
         return form
 
     def save_setting_to_json(self, file_path: str, setting_name: Optional[str] = None):
-        """Save the report settings to a JSON file."""
+        """Save the report settings to a JSON file.
+
+        Only persist selected forms/items and user-configured settings. Do not
+        persist available items or unselected forms since those are derived from
+        the current input data and can be reconstructed when loading.
+        """
+
+        # Serialize only selected forms with their selected items and join config
+        selected_forms_payload = {}
+        for name, form in self.selected_forms.items():
+            selected_forms_payload[name] = {
+                "name": form.get_name(),
+                # Only the items the user selected
+                "selected_form_items": deepcopy(form.get_selected_form_items()),
+                # Join configuration
+                "join_items": deepcopy(form.get_join_items()),
+                "join_order": form.get_join_order(),
+                "join_how": form.get_join_how(),
+            }
 
         settings = {
             "study_name": self.study_name,
             "setting_name": setting_name,
-            "available_forms": {k: self._serialize_form(v) for k, v in self.available_forms.items()},
-            "selected_forms": {k: self._serialize_form(v) for k, v in self.selected_forms.items()},
-            "available_common_items": deepcopy(self.available_common_items),
+            # Only selected forms; available/unselected forms are omitted
+            "selected_forms": selected_forms_payload,
+            # Only the selected common items; available/common pools are omitted
             "selected_common_items": deepcopy(self.selected_common_items),
-            "static_available_common_items": deepcopy(self.static_available_common_items),
+            # User-configured settings
             "new_items": deepcopy(self.new_items),
             "order_list": deepcopy(self.order_list),
             "rename_dict": deepcopy(self.rename_dict),
@@ -287,21 +320,14 @@ class CLReport:
 
         self.study_name = settings.get("study_name", self.study_name)
 
-        available_forms_data = settings.get("available_forms", {})
-        self.available_forms = {
-            name: self._deserialize_form(name, form_data) for name, form_data in available_forms_data.items()
-        }
-
+        # Only selected forms are persisted; available forms are reconstructed later
         selected_forms_data = settings.get("selected_forms", {})
         self.selected_forms = {
             name: self._deserialize_form(name, form_data) for name, form_data in selected_forms_data.items()
         }
 
-        self.available_common_items = list(settings.get("available_common_items", []))
+        # Only selected common items are persisted; available/common pools are reconstructed later
         self.selected_common_items = list(settings.get("selected_common_items", []))
-        self.static_available_common_items = list(
-            settings.get("static_available_common_items", self.static_available_common_items)
-        )
         self.new_items = list(settings.get("new_items", []))
         self.order_list = list(settings.get("order_list", []))
         self.rename_dict = dict(settings.get("rename_dict", {}))

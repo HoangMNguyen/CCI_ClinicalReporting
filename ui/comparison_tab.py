@@ -94,6 +94,9 @@ class ComparisonTabMixin:
 
         self.ui.tableWidget_join.setRowCount(0)
         join_data = self.report.get_join_list_dict()
+        # Max join order equals number of selected forms
+        selected_forms = self.report.get_selected_forms_list()
+        max_order = max(1, len(selected_forms))
 
         for row, form_name in enumerate(self.report.get_selected_forms_list()):
             self.ui.tableWidget_join.insertRow(row)
@@ -105,14 +108,25 @@ class ComparisonTabMixin:
                 self._add_item_dropdown(row, col, form_name, join_data)
 
             join_order_combo = QComboBox()
-            join_order_combo.addItems([str(i) for i in range(1, 6)])
-            default_order = "1"
+            join_order_combo.addItems([str(i) for i in range(1, max_order + 1)])
+            # Determine current/default order; clamp to available range if needed
+            desired_order = 1
             if form_name in join_data and join_data[form_name]["order"]:
-                default_order = str(join_data[form_name]["order"])
-            join_order_combo.setCurrentText(default_order)
+                try:
+                    desired_order = int(join_data[form_name]["order"])
+                except (TypeError, ValueError):
+                    desired_order = 1
+            clamped_order = min(max(1, desired_order), max_order)
+            join_order_combo.setCurrentText(str(clamped_order))
             join_order_combo.currentTextChanged.connect(self.update_join_list)
             join_order_combo.currentTextChanged.connect(lambda value, r=row: self.on_join_order_changed(r, value))
             self.ui.tableWidget_join.setCellWidget(row, 4, join_order_combo)
+
+            # If we had to clamp the value, persist it immediately to the model
+            if clamped_order != desired_order:
+                items = join_data.get(form_name, {}).get("items", [])
+                how = join_data.get(form_name, {}).get("how", "Left join")
+                self.report.update_join_items(form_name, items, clamped_order, how)
 
             join_type_combo = QComboBox()
             join_types = ["Left join", "Right join", "Inner join", "Outer join"]
@@ -125,7 +139,7 @@ class ComparisonTabMixin:
             join_type_combo.currentTextChanged.connect(self.update_join_list)
             self.ui.tableWidget_join.setCellWidget(row, 5, join_type_combo)
 
-            if default_order == "1":
+            if clamped_order == 1:
                 self.on_join_order_changed(row, "1")
 
         self._adjust_column_widths(self.ui.tableWidget_join)
