@@ -550,6 +550,23 @@ class CLReport:
         """Set the dynamic filter items."""
         self.dynamic_filter_items = deepcopy(items)
 
+    def update_dynamic_filter_item(self, row: int, item1: str, operator: str, item2: str) -> None:
+        """Update or append a dynamic filter item by row.
+
+        If ``row`` is within the current list bounds, replace that entry.
+        If ``row`` is at or beyond the end, append a new entry.
+        """
+        new_item = (item1, operator, item2)
+
+        if row < 0:
+            return
+
+        if row < len(self.dynamic_filter_items):
+            self.dynamic_filter_items[row] = new_item
+        else:
+            # Append when adding a brand new dynamic filter row from the UI
+            self.dynamic_filter_items.append(new_item)
+
     def create_report(self):
         """Create the report based on the stored info.
         This method should be implemented to generate the report based on the selected forms,
@@ -763,11 +780,24 @@ class CLReport:
             for col in result_df.columns:
                 if "date" in col.lower() and col not in date_cols:
                     try:
-                        # Attempt to convert to datetime to confirm it's a date column
-                        if (
-                            pd.api.types.is_datetime64_dtype(result_df[col])
-                            or pd.to_datetime(result_df[col], errors="coerce").notna().any()
-                        ):
+                        # Attempt to convert to datetime to confirm it's a date column,
+                        # prefer using a mixed format to avoid inference warnings.
+                        inferred_datetime = False
+                        if pd.api.types.is_datetime64_dtype(result_df[col]):
+                            inferred_datetime = True
+                        else:
+                            try:
+                                parsed = pd.to_datetime(result_df[col], errors="coerce", format="mixed")
+                            except TypeError:
+                                # Older pandas may not support format="mixed"; fall back and suppress warning
+                                import warnings as _warnings
+
+                                with _warnings.catch_warnings():
+                                    _warnings.simplefilter("ignore", category=UserWarning)
+                                    parsed = pd.to_datetime(result_df[col], errors="coerce")
+                            inferred_datetime = parsed.notna().any()
+
+                        if inferred_datetime:
                             date_cols.append(col)
                     except Exception:
                         pass
@@ -775,8 +805,17 @@ class CLReport:
             # Format each identified date column
             for col in date_cols:
                 try:
-                    # Convert to datetime first (in case it's not already)
-                    result_df[col] = pd.to_datetime(result_df[col], errors="coerce")
+                    # Convert to datetime first (in case it's not already), avoiding format inference warnings
+                    try:
+                        parsed = pd.to_datetime(result_df[col], errors="coerce", format="mixed")
+                    except TypeError:
+                        import warnings as _warnings
+
+                        with _warnings.catch_warnings():
+                            _warnings.simplefilter("ignore", category=UserWarning)
+                            parsed = pd.to_datetime(result_df[col], errors="coerce")
+
+                    result_df[col] = parsed
                     # Format without leading zeros
                     result_df[col] = result_df[col].apply(
                         lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
