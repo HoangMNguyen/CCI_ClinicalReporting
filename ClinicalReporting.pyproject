@@ -7,6 +7,6 @@
         "requirements.txt",
         "ui_form.py",
         "util.py",
-        "widget.py"
+        "Clinical_Reporting.py"
     ]
 }
