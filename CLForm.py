@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import List, Optional
 
 
 class CLForm:
@@ -6,11 +7,38 @@ class CLForm:
 
     def __init__(self, name: str):
         self.name = name  # Fixed: Initialize with the given name instead of None
-        self.available_form_items = []
-        self.selected_form_items = []
-        self.join_items = []
+        self.available_form_items: List[str] = []
+        self.selected_form_items: List[str] = []
+        self.join_items: List[str] = []
         self.join_order = None  # order of form to join
         self.join_how = None
+
+    def _move_item(
+        self,
+        source: Optional[List[str]],
+        target: Optional[List[str]],
+        item: str,
+    ) -> bool:
+        """Move ``item`` between collections while keeping them mutually exclusive.
+
+        The helper removes ``item`` from ``source`` (if provided) and adds it to ``target``
+        (if provided) only when it is not already present there. This centralises the
+        transfer-and-deduplicate behaviour for form and join items so callers do not
+        need to manually juggle both lists.
+
+        Returns ``True`` when any collection changed.
+        """
+
+        changed = False
+        if source is not None and item in source:
+            source.remove(item)
+            changed = True
+
+        if target is not None and item not in target:
+            target.append(item)
+            changed = True
+
+        return changed
 
     def get_name(self):
         """Get the name of the form."""
@@ -24,31 +52,26 @@ class CLForm:
         """Get the list of selected form items."""
         return self.selected_form_items
 
-    def add_selected_form_item(self, item: str):
-        """Add an item to the selected form items list."""
-        if item not in self.selected_form_items:
-            self.selected_form_items.append(item)
-            self.remove_available_form_item(item)
+    def set_form_item_state(self, item: str, *, selected: bool) -> bool:
+        """Ensure ``item`` appears only in the selected or available form items list."""
 
-    def remove_selected_form_item(self, item: str):
-        """Remove an item from the selected form items list."""
-        if item in self.selected_form_items:
-            self.selected_form_items.remove(item)
+        source, target = (
+            (self.available_form_items, self.selected_form_items)
+            if selected
+            else (self.selected_form_items, self.available_form_items)
+        )
+        return self._move_item(source, target, item)
 
     def get_available_form_items(self):
         """Get the list of available form items."""
         return self.available_form_items
 
-    def add_available_form_item(self, item: str):
-        """Add an item to the available form items list."""
-        if item not in self.available_form_items:
-            self.available_form_items.append(item)
-            self.remove_selected_form_item(item)
+    def remove_form_item(self, item: str) -> bool:
+        """Remove ``item`` from both selected and available collections, if present."""
 
-    def remove_available_form_item(self, item: str):
-        """Remove an item from the available form items list."""
-        if item in self.available_form_items:
-            self.available_form_items.remove(item)
+        removed_selected = self._move_item(self.selected_form_items, None, item)
+        removed_available = self._move_item(self.available_form_items, None, item)
+        return removed_selected or removed_available
 
     def set_join_how(self, how: str):
         """Set the join method for the form."""
@@ -58,15 +81,12 @@ class CLForm:
         """Get the join method for the form."""
         return self.join_how
 
-    def add_join_item(self, item: str):
-        """Add an item to the join items list."""
-        if item not in self.join_items:
-            self.join_items.append(item)
+    def set_join_item_state(self, item: str, *, include: bool) -> bool:
+        """Add or remove a join item while preventing duplicates."""
 
-    def remove_join_item(self, item: str):
-        """Remove an item from the join items list."""
-        if item in self.join_items:
-            self.join_items.remove(item)
+        if include:
+            return self._move_item(None, self.join_items, item)
+        return self._move_item(self.join_items, None, item)
 
     def clear_join_items(self):
         """Clear the join items list."""
