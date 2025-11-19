@@ -14,7 +14,7 @@ from typing import Iterable, Optional
 
 from PySide6.QtWidgets import QAbstractItemView
 
-from CLReport import CLReport
+from clinical_reporting.core.report import CLReport
 
 
 class WidgetBaseMixin:

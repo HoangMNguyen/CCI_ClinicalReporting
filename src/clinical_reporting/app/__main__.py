@@ -7,7 +7,15 @@ without modification.
 
 from __future__ import annotations
 
-from ui.main_widget import Widget, main
+import sys
+from pathlib import Path
+
+PACKAGE_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = PACKAGE_DIR.parent
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from clinical_reporting.ui.main_widget import Widget, main
 
 __all__ = ["Widget", "main"]
 
