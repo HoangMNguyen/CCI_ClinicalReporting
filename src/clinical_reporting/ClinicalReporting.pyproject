@@ -1,0 +1,13 @@
+{
+    "files": [
+        "Clinical_Reporting.py",
+        "app/__main__.py",
+        "core/forms.py",
+        "core/report.py",
+        "services/util.py",
+        "ui/ui_form.py",
+        "ClinicalReporting.pyproject.user",
+        "../resource/form.ui",
+        "../requirements.txt"
+    ]
+}
