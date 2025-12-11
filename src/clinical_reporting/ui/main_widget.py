@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from .ui_form import Ui_Widget
 
+from .tabs.additional_input import AdditionalInputTabMixin
 from .tabs.common_items import CommonItemsTabMixin
 from .tabs.comparison import ComparisonTabMixin
 from .tabs.filters import FiltersTabMixin
@@ -38,6 +39,7 @@ class Widget(
     QWidget,
     WidgetBaseMixin,
     SettingsTabMixin,
+    AdditionalInputTabMixin,
     FormsTabMixin,
     CommonItemsTabMixin,
     FormItemsTabMixin,
@@ -58,6 +60,7 @@ class Widget(
         self._initialize_state()
         self._setup_tables()
         self._init_settings_tab()
+        self._init_additional_input_tab()
         self._init_form_tab()
         self._init_common_items_tab()
         self._init_form_items_tab()
