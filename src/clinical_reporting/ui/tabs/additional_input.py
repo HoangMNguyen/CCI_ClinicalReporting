@@ -327,6 +327,14 @@ class AdditionalInputTabMixin:
         if not hasattr(self, "report") or self.report is None:
             self.report = CLReport()
 
+        # Capture current selections to restore if still applicable.
+        previous_selected_forms = set(self.report.get_selected_forms_list())
+        previous_selected_common = set(getattr(self.report, "selected_common_items", []))
+        previous_form_items = {
+            form: set(cl_form.get_selected_form_items())
+            for form, cl_form in getattr(self.report, "selected_forms", {}).items()
+        }
+
         base_data = dict(getattr(self.report, "data", {}) or {})
         # Remove previously injected additional forms.
         for form_key in getattr(self, "_additional_form_keys", set()):
@@ -335,7 +343,6 @@ class AdditionalInputTabMixin:
         additional_data = self._build_additional_data_map()
 
         combined_data = {**base_data, **additional_data}
-        previous_selected_forms = set(self.report.get_selected_forms_list())
 
         self.report.set_data(combined_data)
         self._additional_form_keys = set(additional_data.keys())
@@ -345,11 +352,31 @@ class AdditionalInputTabMixin:
             if form in self.report.available_forms:
                 self.report.add_selected_form(form)
 
+        # Re-select form items that are still available on their forms.
+        for form_name, items in previous_form_items.items():
+            if form_name not in self.report.selected_forms:
+                continue
+            cl_form = self.report.selected_forms[form_name]
+            available_items = set(cl_form.get_available_form_items())
+            for item in items:
+                if item in available_items:
+                    cl_form.set_form_item_state(item, selected=True)
+
+        # Re-select common items that are still common; always include Subject if present.
+        self.report.selected_common_items = []
+        self.report.available_common_items = list(self.report.static_available_common_items)
+        for common_item in previous_selected_common:
+            if common_item in self.report.static_available_common_items:
+                self.report.set_common_item_state(common_item, selected=True)
+        if "Subject" in getattr(self.report, "static_available_common_items", []):
+            self.report.set_common_item_state("Subject", selected=True)
+
         self.update_all_ui()
 
     @staticmethod
     def _strip_upcc_prefix(value):
         """Remove leading 'UPCC' (with optional separators) from a subject string."""
         if isinstance(value, str):
-            return re.sub(r"^UPCC[-\\s]*", "", value)
+            cleaned = re.sub(r"^UPCC[-\s]*", "", value, flags=re.IGNORECASE)
+            return cleaned.lstrip()
         return value
