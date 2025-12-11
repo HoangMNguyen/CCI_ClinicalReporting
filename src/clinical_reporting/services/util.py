@@ -7,11 +7,56 @@ import numpy as np
 import os
 import math
 import zipfile
-from typing import Optional, List, Dict, Tuple, Union
+from pathlib import Path
+from typing import Iterable, Optional, List, Dict, Tuple, Union
 import pandas as pd
 
 
 # TODO: implement type hints for all functions
+
+def load_tabular_file(file_path: str, *, sheet: Union[int, str, None] = 0) -> pd.DataFrame:
+    """
+    Load a tabular file (CSV or Excel) into a dataframe.
+
+    Args:
+        file_path: Path to the CSV/XLS/XLSX file.
+        sheet: Sheet name or index for Excel files. Ignored for CSV.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the extension is not supported.
+
+    Returns:
+        A pandas DataFrame containing the loaded data.
+    """
+    path = Path(file_path).expanduser()
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    suffix = path.suffix.lower()
+    if suffix == ".csv":
+        return pd.read_csv(path)
+    if suffix in {".xls", ".xlsx"}:
+        return pd.read_excel(path, sheet_name=sheet)
+
+    raise ValueError(f"Unsupported file type for additional input: {suffix or 'unknown'}")
+
+
+def load_additional_inputs(file_paths: Iterable[str]) -> Dict[str, pd.DataFrame]:
+    """
+    Load multiple tabular files into dataframes keyed by absolute path.
+
+    Args:
+        file_paths: Iterable of CSV/XLS/XLSX file paths.
+
+    Returns:
+        Dictionary mapping each resolved file path to its DataFrame.
+    """
+    additional_inputs: Dict[str, pd.DataFrame] = {}
+    for file_path in file_paths:
+        resolved_path = str(Path(file_path).expanduser().resolve())
+        additional_inputs[resolved_path] = load_tabular_file(resolved_path)
+    return additional_inputs
 
 
 def format_timedelta(td: timedelta) -> str:

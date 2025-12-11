@@ -81,6 +81,45 @@ class Ui_Widget(object):
         self.pushButton_setting_location.setObjectName(u"pushButton_setting_location")
         self.pushButton_setting_location.setGeometry(QRect(340, 190, 131, 24))
         self.tabWidget.addTab(self.tab_input, "")
+        self.tab_additional_input = QWidget()
+        self.tab_additional_input.setObjectName(u"tab_additional_input")
+        self.pushButton_additional_file_add = QPushButton(self.tab_additional_input)
+        self.pushButton_additional_file_add.setObjectName(u"pushButton_additional_file_add")
+        self.pushButton_additional_file_add.setGeometry(QRect(10, 10, 121, 31))
+        self.tableWidget_update_column_name = QTableWidget(self.tab_additional_input)
+        if (self.tableWidget_update_column_name.columnCount() < 2):
+            self.tableWidget_update_column_name.setColumnCount(2)
+        __qtablewidgetitem = QTableWidgetItem()
+        self.tableWidget_update_column_name.setHorizontalHeaderItem(0, __qtablewidgetitem)
+        __qtablewidgetitem1 = QTableWidgetItem()
+        self.tableWidget_update_column_name.setHorizontalHeaderItem(1, __qtablewidgetitem1)
+        self.tableWidget_update_column_name.setObjectName(u"tableWidget_update_column_name")
+        self.tableWidget_update_column_name.setGeometry(QRect(480, 190, 441, 371))
+        self.tableWidget_update_column_name.horizontalHeader().setCascadingSectionResizes(False)
+        self.tableWidget_update_column_name.horizontalHeader().setDefaultSectionSize(200)
+        self.tableWidget_update_column_name.horizontalHeader().setStretchLastSection(True)
+        self.tableWidget_update_form_name = QTableWidget(self.tab_additional_input)
+        if (self.tableWidget_update_form_name.columnCount() < 2):
+            self.tableWidget_update_form_name.setColumnCount(2)
+        __qtablewidgetitem2 = QTableWidgetItem()
+        self.tableWidget_update_form_name.setHorizontalHeaderItem(0, __qtablewidgetitem2)
+        __qtablewidgetitem3 = QTableWidgetItem()
+        self.tableWidget_update_form_name.setHorizontalHeaderItem(1, __qtablewidgetitem3)
+        self.tableWidget_update_form_name.setObjectName(u"tableWidget_update_form_name")
+        self.tableWidget_update_form_name.setGeometry(QRect(10, 190, 441, 371))
+        self.tableWidget_update_form_name.horizontalHeader().setCascadingSectionResizes(False)
+        self.tableWidget_update_form_name.horizontalHeader().setDefaultSectionSize(200)
+        self.tableWidget_update_form_name.horizontalHeader().setStretchLastSection(True)
+        self.listWidget_additional_file = QListWidget(self.tab_additional_input)
+        self.listWidget_additional_file.setObjectName(u"listWidget_additional_file")
+        self.listWidget_additional_file.setGeometry(QRect(140, 10, 501, 171))
+        self.pushButton_additional_file_remove = QPushButton(self.tab_additional_input)
+        self.pushButton_additional_file_remove.setObjectName(u"pushButton_additional_file_remove")
+        self.pushButton_additional_file_remove.setGeometry(QRect(10, 60, 121, 31))
+        self.pushButton_additional_file_add_2 = QPushButton(self.tab_additional_input)
+        self.pushButton_additional_file_add_2.setObjectName(u"pushButton_additional_file_add_2")
+        self.pushButton_additional_file_add_2.setGeometry(QRect(780, 60, 131, 51))
+        self.tabWidget.addTab(self.tab_additional_input, "")
         self.tab_forms = QWidget()
         self.tab_forms.setObjectName(u"tab_forms")
         self.frame_5 = QFrame(self.tab_forms)
@@ -235,12 +274,12 @@ class Ui_Widget(object):
         self.tableWidget_static_filter = QTableWidget(self.tab_static_filter)
         if (self.tableWidget_static_filter.columnCount() < 3):
             self.tableWidget_static_filter.setColumnCount(3)
-        __qtablewidgetitem = QTableWidgetItem()
-        self.tableWidget_static_filter.setHorizontalHeaderItem(0, __qtablewidgetitem)
-        __qtablewidgetitem1 = QTableWidgetItem()
-        self.tableWidget_static_filter.setHorizontalHeaderItem(1, __qtablewidgetitem1)
-        __qtablewidgetitem2 = QTableWidgetItem()
-        self.tableWidget_static_filter.setHorizontalHeaderItem(2, __qtablewidgetitem2)
+        __qtablewidgetitem4 = QTableWidgetItem()
+        self.tableWidget_static_filter.setHorizontalHeaderItem(0, __qtablewidgetitem4)
+        __qtablewidgetitem5 = QTableWidgetItem()
+        self.tableWidget_static_filter.setHorizontalHeaderItem(1, __qtablewidgetitem5)
+        __qtablewidgetitem6 = QTableWidgetItem()
+        self.tableWidget_static_filter.setHorizontalHeaderItem(2, __qtablewidgetitem6)
         self.tableWidget_static_filter.setObjectName(u"tableWidget_static_filter")
         self.tableWidget_static_filter.setGeometry(QRect(10, 100, 911, 421))
         self.tableWidget_static_filter.horizontalHeader().setDefaultSectionSize(295)
@@ -258,18 +297,18 @@ class Ui_Widget(object):
         self.tableWidget_join = QTableWidget(self.tab_join)
         if (self.tableWidget_join.columnCount() < 6):
             self.tableWidget_join.setColumnCount(6)
-        __qtablewidgetitem3 = QTableWidgetItem()
-        self.tableWidget_join.setHorizontalHeaderItem(0, __qtablewidgetitem3)
-        __qtablewidgetitem4 = QTableWidgetItem()
-        self.tableWidget_join.setHorizontalHeaderItem(1, __qtablewidgetitem4)
-        __qtablewidgetitem5 = QTableWidgetItem()
-        self.tableWidget_join.setHorizontalHeaderItem(2, __qtablewidgetitem5)
-        __qtablewidgetitem6 = QTableWidgetItem()
-        self.tableWidget_join.setHorizontalHeaderItem(3, __qtablewidgetitem6)
         __qtablewidgetitem7 = QTableWidgetItem()
-        self.tableWidget_join.setHorizontalHeaderItem(4, __qtablewidgetitem7)
+        self.tableWidget_join.setHorizontalHeaderItem(0, __qtablewidgetitem7)
         __qtablewidgetitem8 = QTableWidgetItem()
-        self.tableWidget_join.setHorizontalHeaderItem(5, __qtablewidgetitem8)
+        self.tableWidget_join.setHorizontalHeaderItem(1, __qtablewidgetitem8)
+        __qtablewidgetitem9 = QTableWidgetItem()
+        self.tableWidget_join.setHorizontalHeaderItem(2, __qtablewidgetitem9)
+        __qtablewidgetitem10 = QTableWidgetItem()
+        self.tableWidget_join.setHorizontalHeaderItem(3, __qtablewidgetitem10)
+        __qtablewidgetitem11 = QTableWidgetItem()
+        self.tableWidget_join.setHorizontalHeaderItem(4, __qtablewidgetitem11)
+        __qtablewidgetitem12 = QTableWidgetItem()
+        self.tableWidget_join.setHorizontalHeaderItem(5, __qtablewidgetitem12)
         self.tableWidget_join.setObjectName(u"tableWidget_join")
         self.tableWidget_join.setGeometry(QRect(10, 100, 911, 461))
         self.tableWidget_join.horizontalHeader().setMinimumSectionSize(36)
@@ -291,12 +330,12 @@ class Ui_Widget(object):
         self.tableWidget_dynamic_filter = QTableWidget(self.tab_dynamic_filter)
         if (self.tableWidget_dynamic_filter.columnCount() < 3):
             self.tableWidget_dynamic_filter.setColumnCount(3)
-        __qtablewidgetitem9 = QTableWidgetItem()
-        self.tableWidget_dynamic_filter.setHorizontalHeaderItem(0, __qtablewidgetitem9)
-        __qtablewidgetitem10 = QTableWidgetItem()
-        self.tableWidget_dynamic_filter.setHorizontalHeaderItem(1, __qtablewidgetitem10)
-        __qtablewidgetitem11 = QTableWidgetItem()
-        self.tableWidget_dynamic_filter.setHorizontalHeaderItem(2, __qtablewidgetitem11)
+        __qtablewidgetitem13 = QTableWidgetItem()
+        self.tableWidget_dynamic_filter.setHorizontalHeaderItem(0, __qtablewidgetitem13)
+        __qtablewidgetitem14 = QTableWidgetItem()
+        self.tableWidget_dynamic_filter.setHorizontalHeaderItem(1, __qtablewidgetitem14)
+        __qtablewidgetitem15 = QTableWidgetItem()
+        self.tableWidget_dynamic_filter.setHorizontalHeaderItem(2, __qtablewidgetitem15)
         self.tableWidget_dynamic_filter.setObjectName(u"tableWidget_dynamic_filter")
         self.tableWidget_dynamic_filter.setGeometry(QRect(10, 100, 911, 421))
         self.tableWidget_dynamic_filter.horizontalHeader().setDefaultSectionSize(290)
@@ -324,10 +363,10 @@ class Ui_Widget(object):
         self.tableWidget_rename = QTableWidget(self.tab_rename_order)
         if (self.tableWidget_rename.columnCount() < 2):
             self.tableWidget_rename.setColumnCount(2)
-        __qtablewidgetitem12 = QTableWidgetItem()
-        self.tableWidget_rename.setHorizontalHeaderItem(0, __qtablewidgetitem12)
-        __qtablewidgetitem13 = QTableWidgetItem()
-        self.tableWidget_rename.setHorizontalHeaderItem(1, __qtablewidgetitem13)
+        __qtablewidgetitem16 = QTableWidgetItem()
+        self.tableWidget_rename.setHorizontalHeaderItem(0, __qtablewidgetitem16)
+        __qtablewidgetitem17 = QTableWidgetItem()
+        self.tableWidget_rename.setHorizontalHeaderItem(1, __qtablewidgetitem17)
         self.tableWidget_rename.setObjectName(u"tableWidget_rename")
         self.tableWidget_rename.setGeometry(QRect(360, 120, 561, 441))
         self.tableWidget_rename.horizontalHeader().setDefaultSectionSize(275)
@@ -429,6 +468,18 @@ class Ui_Widget(object):
         self.label_input_file.setText(QCoreApplication.translate("Widget", u"Input path:", None))
         self.pushButton_setting_location.setText(QCoreApplication.translate("Widget", u"Settings location", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_input), QCoreApplication.translate("Widget", u"Settings", None))
+        self.pushButton_additional_file_add.setText(QCoreApplication.translate("Widget", u"Input Files", None))
+        ___qtablewidgetitem = self.tableWidget_update_column_name.horizontalHeaderItem(0)
+        ___qtablewidgetitem.setText(QCoreApplication.translate("Widget", u"New Column", None));
+        ___qtablewidgetitem1 = self.tableWidget_update_column_name.horizontalHeaderItem(1)
+        ___qtablewidgetitem1.setText(QCoreApplication.translate("Widget", u"Updated Column Name", None));
+        ___qtablewidgetitem2 = self.tableWidget_update_form_name.horizontalHeaderItem(0)
+        ___qtablewidgetitem2.setText(QCoreApplication.translate("Widget", u"File Name", None));
+        ___qtablewidgetitem3 = self.tableWidget_update_form_name.horizontalHeaderItem(1)
+        ___qtablewidgetitem3.setText(QCoreApplication.translate("Widget", u"Updated Form Name", None));
+        self.pushButton_additional_file_remove.setText(QCoreApplication.translate("Widget", u"Remove Input Files", None))
+        self.pushButton_additional_file_add_2.setText(QCoreApplication.translate("Widget", u"Add Forms", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_additional_input), QCoreApplication.translate("Widget", u"Additional input (optional)", None))
         self.label_5.setText(QCoreApplication.translate("Widget", u"Instruction:", None))
         self.pushButton_select_form.setText(QCoreApplication.translate("Widget", u"Select Form", None))
         self.pushButton_remove_form.setText(QCoreApplication.translate("Widget", u"Remove Form", None))
@@ -454,43 +505,43 @@ class Ui_Widget(object):
         self.label_35.setText(QCoreApplication.translate("Widget", u"Instruction:", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_form_items), QCoreApplication.translate("Widget", u"Form Items", None))
         self.label_36.setText(QCoreApplication.translate("Widget", u"Instruction:", None))
-        ___qtablewidgetitem = self.tableWidget_static_filter.horizontalHeaderItem(0)
-        ___qtablewidgetitem.setText(QCoreApplication.translate("Widget", u"Item Name", None));
-        ___qtablewidgetitem1 = self.tableWidget_static_filter.horizontalHeaderItem(1)
-        ___qtablewidgetitem1.setText(QCoreApplication.translate("Widget", u"Operator", None));
-        ___qtablewidgetitem2 = self.tableWidget_static_filter.horizontalHeaderItem(2)
-        ___qtablewidgetitem2.setText(QCoreApplication.translate("Widget", u"Value", None));
+        ___qtablewidgetitem4 = self.tableWidget_static_filter.horizontalHeaderItem(0)
+        ___qtablewidgetitem4.setText(QCoreApplication.translate("Widget", u"Item Name", None));
+        ___qtablewidgetitem5 = self.tableWidget_static_filter.horizontalHeaderItem(1)
+        ___qtablewidgetitem5.setText(QCoreApplication.translate("Widget", u"Operator", None));
+        ___qtablewidgetitem6 = self.tableWidget_static_filter.horizontalHeaderItem(2)
+        ___qtablewidgetitem6.setText(QCoreApplication.translate("Widget", u"Value", None));
         self.pushButton_static_filter_remove.setText(QCoreApplication.translate("Widget", u"Remove Item", None))
         self.pushButton_static_filter_add.setText(QCoreApplication.translate("Widget", u"Add New Item", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_static_filter), QCoreApplication.translate("Widget", u"Filter", None))
-        ___qtablewidgetitem3 = self.tableWidget_join.horizontalHeaderItem(0)
-        ___qtablewidgetitem3.setText(QCoreApplication.translate("Widget", u"Form Name", None));
-        ___qtablewidgetitem4 = self.tableWidget_join.horizontalHeaderItem(1)
-        ___qtablewidgetitem4.setText(QCoreApplication.translate("Widget", u"Item 1", None));
-        ___qtablewidgetitem5 = self.tableWidget_join.horizontalHeaderItem(2)
-        ___qtablewidgetitem5.setText(QCoreApplication.translate("Widget", u"Item 2", None));
-        ___qtablewidgetitem6 = self.tableWidget_join.horizontalHeaderItem(3)
-        ___qtablewidgetitem6.setText(QCoreApplication.translate("Widget", u"Item 3", None));
-        ___qtablewidgetitem7 = self.tableWidget_join.horizontalHeaderItem(4)
-        ___qtablewidgetitem7.setText(QCoreApplication.translate("Widget", u"Join Order", None));
-        ___qtablewidgetitem8 = self.tableWidget_join.horizontalHeaderItem(5)
-        ___qtablewidgetitem8.setText(QCoreApplication.translate("Widget", u"Join type", None));
+        ___qtablewidgetitem7 = self.tableWidget_join.horizontalHeaderItem(0)
+        ___qtablewidgetitem7.setText(QCoreApplication.translate("Widget", u"Form Name", None));
+        ___qtablewidgetitem8 = self.tableWidget_join.horizontalHeaderItem(1)
+        ___qtablewidgetitem8.setText(QCoreApplication.translate("Widget", u"Item 1", None));
+        ___qtablewidgetitem9 = self.tableWidget_join.horizontalHeaderItem(2)
+        ___qtablewidgetitem9.setText(QCoreApplication.translate("Widget", u"Item 2", None));
+        ___qtablewidgetitem10 = self.tableWidget_join.horizontalHeaderItem(3)
+        ___qtablewidgetitem10.setText(QCoreApplication.translate("Widget", u"Item 3", None));
+        ___qtablewidgetitem11 = self.tableWidget_join.horizontalHeaderItem(4)
+        ___qtablewidgetitem11.setText(QCoreApplication.translate("Widget", u"Join Order", None));
+        ___qtablewidgetitem12 = self.tableWidget_join.horizontalHeaderItem(5)
+        ___qtablewidgetitem12.setText(QCoreApplication.translate("Widget", u"Join type", None));
         self.label_37.setText(QCoreApplication.translate("Widget", u"Instruction:", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_join), QCoreApplication.translate("Widget", u"Join Forms", None))
-        ___qtablewidgetitem9 = self.tableWidget_dynamic_filter.horizontalHeaderItem(0)
-        ___qtablewidgetitem9.setText(QCoreApplication.translate("Widget", u"Item 1", None));
-        ___qtablewidgetitem10 = self.tableWidget_dynamic_filter.horizontalHeaderItem(1)
-        ___qtablewidgetitem10.setText(QCoreApplication.translate("Widget", u"Operator", None));
-        ___qtablewidgetitem11 = self.tableWidget_dynamic_filter.horizontalHeaderItem(2)
-        ___qtablewidgetitem11.setText(QCoreApplication.translate("Widget", u"Item 2", None));
+        ___qtablewidgetitem13 = self.tableWidget_dynamic_filter.horizontalHeaderItem(0)
+        ___qtablewidgetitem13.setText(QCoreApplication.translate("Widget", u"Item 1", None));
+        ___qtablewidgetitem14 = self.tableWidget_dynamic_filter.horizontalHeaderItem(1)
+        ___qtablewidgetitem14.setText(QCoreApplication.translate("Widget", u"Operator", None));
+        ___qtablewidgetitem15 = self.tableWidget_dynamic_filter.horizontalHeaderItem(2)
+        ___qtablewidgetitem15.setText(QCoreApplication.translate("Widget", u"Item 2", None));
         self.label_38.setText(QCoreApplication.translate("Widget", u"Instruction:", None))
         self.pushButton_dynamic_filter_add.setText(QCoreApplication.translate("Widget", u"Add New Item", None))
         self.pushButton_dynamic_filter_remove.setText(QCoreApplication.translate("Widget", u"Remove Item", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_dynamic_filter), QCoreApplication.translate("Widget", u"Comparison", None))
-        ___qtablewidgetitem12 = self.tableWidget_rename.horizontalHeaderItem(0)
-        ___qtablewidgetitem12.setText(QCoreApplication.translate("Widget", u"Original Item Name", None));
-        ___qtablewidgetitem13 = self.tableWidget_rename.horizontalHeaderItem(1)
-        ___qtablewidgetitem13.setText(QCoreApplication.translate("Widget", u"New Item Name", None));
+        ___qtablewidgetitem16 = self.tableWidget_rename.horizontalHeaderItem(0)
+        ___qtablewidgetitem16.setText(QCoreApplication.translate("Widget", u"Original Item Name", None));
+        ___qtablewidgetitem17 = self.tableWidget_rename.horizontalHeaderItem(1)
+        ___qtablewidgetitem17.setText(QCoreApplication.translate("Widget", u"New Item Name", None));
         self.label_39.setText(QCoreApplication.translate("Widget", u"Instruction:", None))
         self.pushButton_order_up.setText(QCoreApplication.translate("Widget", u"Up", None))
         self.pushButton_order_down.setText(QCoreApplication.translate("Widget", u"Down", None))
