@@ -10,6 +10,7 @@ instead of duplicating low-level list management code.
 
 from __future__ import annotations
 
+import re
 from typing import Iterable, Optional
 
 from PySide6.QtWidgets import QAbstractItemView
@@ -225,6 +226,18 @@ class WidgetBaseMixin:
         """Safely update a ``QLabel`` if it exists."""
         if label is not None:
             label.setText(message or "")
+
+    def _compile_search_pattern(
+        self, pattern_text: str
+    ) -> Optional[re.Pattern[str]]:
+        """Compile a case-insensitive search regex; return ``None`` if empty/invalid."""
+        if not pattern_text:
+            return None
+
+        try:
+            return re.compile(pattern_text, flags=re.IGNORECASE)
+        except re.error:
+            return None
 
     # ------------------------------------------------------------------
     # Table configuration helpers

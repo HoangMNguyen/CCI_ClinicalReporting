@@ -6,8 +6,8 @@
         "core/report.py",
         "services/util.py",
         "ui/ui_form.py",
+        "ui/form.ui",
         "ClinicalReporting.pyproject.user",
-        "../../resource/form.ui",
         "../../requirements.txt"
     ]
 }
