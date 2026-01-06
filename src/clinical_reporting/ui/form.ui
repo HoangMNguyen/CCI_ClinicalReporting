@@ -299,48 +299,13 @@
     <attribute name="title">
      <string>Form</string>
     </attribute>
-    <widget class="QFrame" name="frame_5">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>911</width>
-       <height>81</height>
-      </rect>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-     <widget class="QLabel" name="label_5">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>891</width>
-        <height>61</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Instruction:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </widget>
     <widget class="QListWidget" name="listWidget_form_available">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>120</y>
+       <y>60</y>
        <width>300</width>
-       <height>441</height>
+       <height>501</height>
       </rect>
      </property>
      <property name="verticalScrollBarPolicy">
@@ -351,9 +316,9 @@
      <property name="geometry">
       <rect>
        <x>620</x>
-       <y>120</y>
+       <y>60</y>
        <width>300</width>
-       <height>441</height>
+       <height>501</height>
       </rect>
      </property>
      <property name="verticalScrollBarPolicy">
@@ -428,7 +393,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>90</y>
+       <y>0</y>
        <width>301</width>
        <height>31</height>
       </rect>
@@ -444,7 +409,7 @@
      <property name="geometry">
       <rect>
        <x>620</x>
-       <y>90</y>
+       <y>0</y>
        <width>301</width>
        <height>31</height>
       </rect>
@@ -456,6 +421,16 @@
       <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
+    <widget class="QLineEdit" name="lineEdit_form_search">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>301</width>
+       <height>24</height>
+      </rect>
+     </property>
+    </widget>
    </widget>
    <widget class="QWidget" name="tab_common_items">
     <attribute name="title">
@@ -465,9 +440,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>120</y>
+       <y>60</y>
        <width>300</width>
-       <height>441</height>
+       <height>501</height>
       </rect>
      </property>
      <property name="verticalScrollBarPolicy">
@@ -478,9 +453,9 @@
      <property name="geometry">
       <rect>
        <x>620</x>
-       <y>120</y>
+       <y>60</y>
        <width>300</width>
-       <height>441</height>
+       <height>501</height>
       </rect>
      </property>
      <property name="verticalScrollBarPolicy">
@@ -491,7 +466,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>90</y>
+       <y>0</y>
        <width>301</width>
        <height>31</height>
       </rect>
@@ -503,46 +478,11 @@
       <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
-    <widget class="QFrame" name="frame_21">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>911</width>
-       <height>81</height>
-      </rect>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-     <widget class="QLabel" name="label_33">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>891</width>
-        <height>61</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Instruction:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </widget>
     <widget class="QLabel" name="label_34">
      <property name="geometry">
       <rect>
        <x>620</x>
-       <y>90</y>
+       <y>0</y>
        <width>301</width>
        <height>31</height>
       </rect>
@@ -618,6 +558,16 @@
       <iconset theme="QIcon::ThemeIcon::ListRemove"/>
      </property>
     </widget>
+    <widget class="QLineEdit" name="lineEdit_common_item_search">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>301</width>
+       <height>24</height>
+      </rect>
+     </property>
+    </widget>
    </widget>
    <widget class="QWidget" name="tab_form_items">
     <attribute name="title">
@@ -627,9 +577,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>120</y>
+       <y>60</y>
        <width>300</width>
-       <height>441</height>
+       <height>501</height>
       </rect>
      </property>
      <property name="verticalScrollBarPolicy">
@@ -640,9 +590,9 @@
      <property name="geometry">
       <rect>
        <x>620</x>
-       <y>120</y>
+       <y>60</y>
        <width>300</width>
-       <height>441</height>
+       <height>501</height>
       </rect>
      </property>
      <property name="verticalScrollBarPolicy">
@@ -653,7 +603,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>90</y>
+       <y>0</y>
        <width>301</width>
        <height>31</height>
       </rect>
@@ -669,7 +619,7 @@
      <property name="geometry">
       <rect>
        <x>620</x>
-       <y>90</y>
+       <y>0</y>
        <width>301</width>
        <height>31</height>
       </rect>
@@ -745,40 +695,15 @@
       <iconset theme="QIcon::ThemeIcon::MediaSeekBackward"/>
      </property>
     </widget>
-    <widget class="QFrame" name="frame_22">
+    <widget class="QLineEdit" name="lineEdit_form_item_search">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>10</y>
-       <width>911</width>
-       <height>81</height>
+       <y>30</y>
+       <width>301</width>
+       <height>24</height>
       </rect>
      </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-     <widget class="QLabel" name="label_35">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>891</width>
-        <height>61</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Instruction:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
     </widget>
    </widget>
    <widget class="QWidget" name="tab_static_filter">

@@ -34,6 +34,9 @@ class FormsTabMixin:
         self.ui.listWidget_form_selected.itemSelectionChanged.connect(
             self.update_form_dependent_ui
         )
+        self.ui.lineEdit_form_search.textChanged.connect(
+            self.add_listWidget_form_available
+        )
 
     # ------------------------------------------------------------------
     # Refresh helpers used by :class:`ui.base.WidgetBaseMixin`
@@ -46,8 +49,13 @@ class FormsTabMixin:
     def add_listWidget_form_available(self) -> None:
         """Populate the available forms list widget."""
         self.ui.listWidget_form_available.clear()
+        pattern = self._compile_search_pattern(
+            self.ui.lineEdit_form_search.text()
+        )
         available_forms = sorted(self.report.get_available_forms_list())
         for form in available_forms:
+            if pattern is not None and not pattern.search(form):
+                continue
             self.ui.listWidget_form_available.addItem(form)
 
     def add_listWidget_form_selected(self) -> None:
