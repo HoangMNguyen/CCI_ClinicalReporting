@@ -15,8 +15,8 @@ from typing import Optional
 
 from PySide6.QtWidgets import QFileDialog
 
-from CLReport import CLReport
-from util import read_data_dict_zip_corelisting
+from clinical_reporting.core.report import CLReport
+from clinical_reporting.services.util import read_data_dict_zip_corelisting
 
 
 class SettingsTabMixin:

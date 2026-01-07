@@ -21,23 +21,25 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui_form import Ui_Widget
+from .ui_form import Ui_Widget
 
-from .base import WidgetBaseMixin
-from .common_items_tab import CommonItemsTabMixin
-from .comparison_tab import ComparisonTabMixin
-from .filters_tab import FiltersTabMixin
-from .form_items_tab import FormItemsTabMixin
-from .forms_tab import FormsTabMixin
-from .navigation import NavigationMixin
-from .run_save import RunAndSaveMixin
-from .settings_tab import SettingsTabMixin
+from .tabs.additional_input import AdditionalInputTabMixin
+from .tabs.common_items import CommonItemsTabMixin
+from .tabs.comparison import ComparisonTabMixin
+from .tabs.filters import FiltersTabMixin
+from .tabs.form_items import FormItemsTabMixin
+from .tabs.forms import FormsTabMixin
+from .tabs.settings import SettingsTabMixin
+from .widgets.base import WidgetBaseMixin
+from .widgets.navigation import NavigationMixin
+from .widgets.run_save import RunAndSaveMixin
 
 
 class Widget(
     QWidget,
     WidgetBaseMixin,
     SettingsTabMixin,
+    AdditionalInputTabMixin,
     FormsTabMixin,
     CommonItemsTabMixin,
     FormItemsTabMixin,
@@ -58,6 +60,7 @@ class Widget(
         self._initialize_state()
         self._setup_tables()
         self._init_settings_tab()
+        self._init_additional_input_tab()
         self._init_form_tab()
         self._init_common_items_tab()
         self._init_form_items_tab()
@@ -167,4 +170,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
