@@ -718,6 +718,23 @@ class CLReport:
             if not join_items:
                 continue
 
+            # Align join column dtypes to prevent merge errors (e.g., object vs datetime)
+            for join_col in join_items:
+                if join_col in result_df.columns and join_col in form_df.columns:
+                    left_series = result_df[join_col]
+                    right_series = form_df[join_col]
+                    is_date_column = (
+                        "date" in join_col.lower()
+                        or pd.api.types.is_datetime64_any_dtype(left_series)
+                        or pd.api.types.is_datetime64_any_dtype(right_series)
+                    )
+                    if is_date_column:
+                        result_df[join_col] = pd.to_datetime(left_series, errors="coerce")
+                        form_df[join_col] = pd.to_datetime(right_series, errors="coerce")
+                    elif left_series.dtype != right_series.dtype:
+                        result_df[join_col] = left_series.astype(str)
+                        form_df[join_col] = right_series.astype(str)
+
             # Perform the join
             result_df = pd.merge(result_df, form_df, on=join_items, how=how)
 

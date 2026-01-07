@@ -20,12 +20,13 @@ class DummyWidget(AdditionalInputTabMixin):
         self.update_all_ui_calls += 1
 
 
-def test_strip_upcc_prefix():
+def test_strip_prefix():
     widget = DummyWidget()
-    assert widget._strip_upcc_prefix("UPCC-12345") == "12345"
-    assert widget._strip_upcc_prefix("UPCC 987") == "987"
-    assert widget._strip_upcc_prefix("NO_PREFIX") == "NO_PREFIX"
-    assert widget._strip_upcc_prefix(123) == 123  # non-string unaffected
+    assert widget._strip_prefix("UPCC-12345") == "12345"
+    assert widget._strip_prefix("UPCC 987") == "987"
+    assert widget._strip_prefix("100-555") == "555"
+    assert widget._strip_prefix("NO_PREFIX") == "NO_PREFIX"
+    assert widget._strip_prefix(123) == 123  # non-string unaffected
 
 
 def test_build_additional_data_map_cleans_subject_and_drops_unnamed():
@@ -33,9 +34,9 @@ def test_build_additional_data_map_cleans_subject_and_drops_unnamed():
     file_path = "/tmp/sample.csv"
     widget.additional_inputs[file_path] = pd.DataFrame(
         {
-            "Subject": ["UPCC-111", "UPCC222"],
-            "keep": [1, 2],
-            "Unnamed: 0": [0, 0],
+            "Subject": ["UPCC-111", "UPCC222", "100-333"],
+            "keep": [1, 2, 3],
+            "Unnamed: 0": [0, 0, 0],
         }
     )
     widget.additional_form_names[file_path] = "FormX"
@@ -46,7 +47,7 @@ def test_build_additional_data_map_cleans_subject_and_drops_unnamed():
     assert "FormX" in result
     df = result["FormX"]
     assert list(df.columns) == ["Subject", "keep"]
-    assert df["Subject"].tolist() == ["111", "222"]
+    assert df["Subject"].tolist() == ["111", "222", "333"]
 
 
 def test_apply_additional_inputs_preserves_available_selections_only():

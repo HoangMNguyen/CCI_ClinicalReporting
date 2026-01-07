@@ -316,7 +316,7 @@ class AdditionalInputTabMixin:
                 df_clean = df_clean.rename(columns=rename_map)
 
             if "Subject" in df_clean.columns:
-                df_clean["Subject"] = df_clean["Subject"].apply(self._strip_upcc_prefix)
+                df_clean["Subject"] = df_clean["Subject"].apply(self._strip_prefix)
 
             data_map[form_name] = df_clean
         return data_map
@@ -374,9 +374,9 @@ class AdditionalInputTabMixin:
         self.update_all_ui()
 
     @staticmethod
-    def _strip_upcc_prefix(value):
-        """Remove leading 'UPCC' (with optional separators) from a subject string."""
+    def _strip_prefix(value):
+        """Remove leading 'UPCC' or '100-' (with optional separators) from a subject string."""
         if isinstance(value, str):
-            cleaned = re.sub(r"^UPCC[-\s]*", "", value, flags=re.IGNORECASE)
+            cleaned = re.sub(r"^(?:UPCC[-\s]*|100-)", "", value, flags=re.IGNORECASE)
             return cleaned.lstrip()
         return value
