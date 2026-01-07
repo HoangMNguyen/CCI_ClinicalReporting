@@ -34,6 +34,9 @@ class CommonItemsTabMixin:
         self.ui.listWidget_common_item_selected.itemDoubleClicked.connect(
             self.on_common_item_selected_double_clicked
         )
+        self.ui.lineEdit_common_item_search.textChanged.connect(
+            self.add_listWidget_common_item_available
+        )
 
     def update_common_items_ui(self) -> None:
         """Refresh both available and selected common item lists."""
@@ -45,7 +48,12 @@ class CommonItemsTabMixin:
     def add_listWidget_common_item_available(self) -> None:
         """Populate the available common item list widget."""
         self.ui.listWidget_common_item_available.clear()
+        pattern = self._compile_search_pattern(
+            self.ui.lineEdit_common_item_search.text()
+        )
         for item in sorted(self.report.get_available_common_items()):
+            if pattern is not None and not pattern.search(item):
+                continue
             self.ui.listWidget_common_item_available.addItem(item)
 
     def add_listWidget_common_item_selected(self) -> None:
