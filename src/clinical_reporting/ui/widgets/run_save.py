@@ -63,12 +63,8 @@ class RunAndSaveMixin:
         """Connect run, save, and persistence-related buttons."""
         self.ui.pushButton_run.clicked.connect(self.click_run)
         self.ui.pushButton_save_setting.clicked.connect(self.click_save_setting)
-        self.ui.pushButton_output_setting.clicked.connect(
-            self.click_output_setting_folder
-        )
-        self.ui.checkBox_save_current_setting.stateChanged.connect(
-            self.on_save_current_setting_state_changed
-        )
+        self.ui.pushButton_output_setting.clicked.connect(self.click_output_setting_folder)
+        self.ui.checkBox_save_current_setting.stateChanged.connect(self.on_save_current_setting_state_changed)
         self.on_save_current_setting_state_changed()
 
     def on_save_current_setting_state_changed(self) -> None:
@@ -91,7 +87,7 @@ class RunAndSaveMixin:
             )
             return
 
-        default_dir = self.settings_directory or self._get_default_settings_directory()
+        default_dir = self._get_default_settings_directory()
         settings_dir = QFileDialog.getExistingDirectory(
             self,
             "Select Settings Folder",
@@ -220,12 +216,8 @@ class RunAndSaveMixin:
 
             file_path = os.path.join(self.output_folder_name, file_name)
             export_df = result_df.copy()
-            for col in export_df.select_dtypes(
-                include=["datetime64", "datetime", np.datetime64]
-            ).columns:
-                export_df[col] = export_df[col].apply(
-                    lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
-                )
+            for col in export_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns:
+                export_df[col] = export_df[col].apply(lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else "")
 
             export_df.to_excel(file_path, index=False, sheet_name="Report")
             self._set_label_text(
@@ -240,4 +232,3 @@ class RunAndSaveMixin:
                 self.label_run_confirmation,
                 f"Error saving report: {exc}",
             )
-

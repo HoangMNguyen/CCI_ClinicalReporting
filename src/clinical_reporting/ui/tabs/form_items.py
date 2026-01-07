@@ -35,6 +35,9 @@ class FormItemsTabMixin:
         self.ui.listWidget_form_item_selected.itemDoubleClicked.connect(
             self.on_form_item_selected_double_clicked
         )
+        self.ui.lineEdit_form_item_search.textChanged.connect(
+            self.add_listWidget_form_item_available
+        )
 
     def update_form_items_ui(self) -> None:
         """Refresh the form-item widgets and any dependent UI elements."""
@@ -49,12 +52,18 @@ class FormItemsTabMixin:
         if not selected_forms:
             return
 
+        pattern = self._compile_search_pattern(
+            self.ui.lineEdit_form_item_search.text()
+        )
         all_available_items = set()
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
                 form_items = self.report.selected_forms[form_name].get_available_form_items()
                 for item in form_items:
-                    all_available_items.add(f"{form_name}.{item}")
+                    display_text = f"{form_name}.{item}"
+                    if pattern is not None and not pattern.search(display_text):
+                        continue
+                    all_available_items.add(display_text)
 
         for item in sorted(all_available_items):
             self.ui.listWidget_form_item_available.addItem(item)
