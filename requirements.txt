@@ -1,1 +1,5 @@
 PySide6
+numpy
+pandas
+requests
+python-dateutil
