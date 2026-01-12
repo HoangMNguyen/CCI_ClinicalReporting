@@ -34,6 +34,7 @@ class AdditionalInputTabMixin:
         self.additional_form_names: Dict[str, str] = {}
         self.additional_column_names: Dict[Tuple[str, str], str] = {}
         self._additional_form_keys: Set[str] = set()
+        self._additional_input_signature: Dict[str, Tuple[str, ...]] = {}
         self._populating_additional_tables = False
 
         add_button = getattr(self.ui, "pushButton_additional_file_add", None)
@@ -322,6 +323,16 @@ class AdditionalInputTabMixin:
             data_map[form_name] = df_clean
         return data_map
 
+    @staticmethod
+    def _build_additional_input_signature(
+        data_map: Dict[str, pd.DataFrame]
+    ) -> Dict[str, Tuple[str, ...]]:
+        """Summarize additional inputs by form name and column names."""
+        signature: Dict[str, Tuple[str, ...]] = {}
+        for form_name, df in data_map.items():
+            signature[form_name] = tuple(str(column) for column in df.columns)
+        return signature
+
     def _collect_additional_form_names(self) -> Dict[str, str]:
         """Return a mapping of file path -> form name for additional inputs."""
         form_names = {}
@@ -382,6 +393,8 @@ class AdditionalInputTabMixin:
         if not hasattr(self, "report") or self.report is None:
             self.report = CLReport()
 
+        previous_signature = dict(getattr(self, "_additional_input_signature", {}))
+
         # Capture current selections to restore if still applicable.
         previous_selected_forms = set(self.report.get_selected_forms_list())
         previous_selected_common = set(getattr(self.report, "selected_common_items", []))
@@ -399,11 +412,26 @@ class AdditionalInputTabMixin:
             return
 
         additional_data = self._build_additional_data_map()
+        new_signature = self._build_additional_input_signature(additional_data)
+        signature_changed = new_signature != previous_signature
 
         combined_data = {**base_data, **additional_data}
 
         self.report.set_data(combined_data)
         self._additional_form_keys = set(additional_data.keys())
+        self._additional_input_signature = new_signature
+
+        if (
+            signature_changed
+            and new_signature
+            and getattr(self, "_pending_saved_setting_reapply", False)
+            and getattr(self, "_last_loaded_setting_path", None)
+        ):
+            if self._apply_saved_setting_from_path(
+                self._last_loaded_setting_path,
+                update_confirmation=False,
+            ):
+                return
 
         # Re-select previously selected forms when they still exist.
         for form in previous_selected_forms:
