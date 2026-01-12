@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QTableWidgetItem,
     QAbstractItemView,
+    QMessageBox,
 )
 
 from clinical_reporting.core.report import CLReport
@@ -321,6 +322,60 @@ class AdditionalInputTabMixin:
             data_map[form_name] = df_clean
         return data_map
 
+    def _collect_additional_form_names(self) -> Dict[str, str]:
+        """Return a mapping of file path -> form name for additional inputs."""
+        form_names = {}
+        for file_path in self.additional_inputs:
+            form_name = self.additional_form_names.get(file_path) or Path(file_path).name
+            form_names[file_path] = form_name
+        return form_names
+
+    def _warn_on_additional_form_conflicts(self, existing_forms: Set[str]) -> bool:
+        """Warn when additional forms would overwrite existing form names."""
+        name_map = self._collect_additional_form_names()
+        if not name_map:
+            return False
+
+        name_to_paths: Dict[str, list[str]] = {}
+        for file_path, form_name in name_map.items():
+            name_to_paths.setdefault(form_name, []).append(file_path)
+
+        duplicates = {
+            form_name: paths
+            for form_name, paths in name_to_paths.items()
+            if len(paths) > 1
+        }
+        conflicts = {
+            form_name: paths
+            for form_name, paths in name_to_paths.items()
+            if form_name in existing_forms
+        }
+
+        if not duplicates and not conflicts:
+            return False
+
+        message_parts = [
+            "Cannot add forms because some form names would overwrite existing data."
+        ]
+        if duplicates:
+            message_parts.append("Duplicate names in additional forms:")
+            for form_name in sorted(duplicates):
+                file_list = ", ".join(
+                    sorted(Path(path).name for path in duplicates[form_name])
+                )
+                message_parts.append(f"  - {form_name}: {file_list}")
+        if conflicts:
+            message_parts.append("Conflicts with existing report forms:")
+            for form_name in sorted(conflicts):
+                file_list = ", ".join(
+                    sorted(Path(path).name for path in conflicts[form_name])
+                )
+                message_parts.append(f"  - {form_name}: {file_list}")
+        message_parts.append("Rename the forms in the table and try again.")
+
+        QMessageBox.warning(self, "Form Name Conflict", "\n".join(message_parts))
+        return True
+
     def _apply_additional_inputs_to_report(self) -> None:
         """Merge additional inputs into the current report and refresh UI."""
         # Ensure a report object exists.
@@ -339,6 +394,9 @@ class AdditionalInputTabMixin:
         # Remove previously injected additional forms.
         for form_key in getattr(self, "_additional_form_keys", set()):
             base_data.pop(form_key, None)
+
+        if self._warn_on_additional_form_conflicts(set(base_data)):
+            return
 
         additional_data = self._build_additional_data_map()
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 from typing import Iterable, Optional
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QAbstractItemView
 
 from clinical_reporting.core.report import CLReport
@@ -161,6 +162,13 @@ class WidgetBaseMixin:
     def _iter_form_item_pairs(self, widget) -> Iterable[tuple[str, str]]:
         """Yield ``(form_name, item_name)`` tuples from the widget selections."""
         for item in widget.selectedItems():
+            data = item.data(Qt.UserRole)
+            if data and isinstance(data, (tuple, list)) and len(data) == 2:
+                form_name, item_name = data
+                yield str(form_name), str(item_name)
+                continue
+
+            # Fallback for legacy entries that store only text with a dot separator
             item_text = item.text()
             if "." in item_text:
                 yield item_text.split(".", 1)

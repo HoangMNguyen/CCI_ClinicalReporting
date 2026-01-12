@@ -78,6 +78,10 @@ class CLReport:
         """Set the data for the report."""
         self.data = data
 
+        # Reset form collections to match the new dataset.
+        self.remove_all_available_forms()
+        self.remove_all_selected_forms()
+
         # Identify common columns across all forms
         self.identify_common_items()
 
@@ -101,8 +105,6 @@ class CLReport:
         """Add all available forms from the data to the available forms dictionary."""
         for form_name in self.data.keys():
             self.add_available_form(form_name)
-            # remove all selected forms
-            self.remove_all_selected_forms()
 
     def remove_available_form(self, form: str):
         """Remove the available form from the available forms dictionary."""
