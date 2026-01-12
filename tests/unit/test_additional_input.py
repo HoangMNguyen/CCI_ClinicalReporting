@@ -1,6 +1,7 @@
 import pandas as pd
 
 from clinical_reporting.core.report import CLReport
+from clinical_reporting.ui.tabs import additional_input as additional_input_module
 from clinical_reporting.ui.tabs.additional_input import AdditionalInputTabMixin
 
 
@@ -81,3 +82,62 @@ def test_apply_additional_inputs_preserves_available_selections_only():
     assert "FormB" in widget.report.available_forms
     # UI refresh was invoked.
     assert widget.update_all_ui_calls == 1
+
+
+def test_renaming_additional_form_replaces_old_entry():
+    widget = DummyWidget()
+    file_path = "/tmp/RSC.csv"
+    widget.additional_inputs[file_path] = pd.DataFrame({"Subject": ["S1"], "A": [1]})
+
+    # Initial apply with default form name RSC.csv
+    widget.click_apply_additional_forms()
+    assert "RSC.csv" in widget.report.get_available_forms_list()
+
+    # Rename to RSC and re-apply; the old name should be removed
+    widget.additional_form_names[file_path] = "RSC"
+    widget.click_apply_additional_forms()
+
+    forms = widget.report.get_available_forms_list()
+    assert "RSC" in forms
+    assert "RSC.csv" not in forms
+    assert set(widget.report.data.keys()) == {"RSC"}
+
+
+def test_warn_on_additional_form_conflicts_detects_duplicates(monkeypatch):
+    widget = DummyWidget()
+    widget.additional_inputs["/tmp/a.csv"] = pd.DataFrame({"Subject": ["S1"]})
+    widget.additional_inputs["/tmp/b.csv"] = pd.DataFrame({"Subject": ["S2"]})
+    widget.additional_form_names["/tmp/a.csv"] = "DupForm"
+    widget.additional_form_names["/tmp/b.csv"] = "DupForm"
+
+    calls = []
+
+    def fake_warning(parent, title, message):
+        calls.append((title, message))
+
+    monkeypatch.setattr(additional_input_module.QMessageBox, "warning", fake_warning)
+
+    assert widget._warn_on_additional_form_conflicts(set()) is True
+    assert calls
+    assert "DupForm" in calls[0][1]
+
+
+def test_apply_additional_inputs_aborts_on_form_name_conflict(monkeypatch):
+    widget = DummyWidget()
+    base_df = pd.DataFrame({"Subject": ["S1"], "A1": [1]})
+    widget.report.set_data({"FormA": base_df})
+
+    add_path = "/tmp/formA.csv"
+    widget.additional_inputs[add_path] = pd.DataFrame({"Subject": ["S1"], "B1": [2]})
+    widget.additional_form_names[add_path] = "FormA"
+
+    def fake_warning(parent, title, message):
+        return None
+
+    monkeypatch.setattr(additional_input_module.QMessageBox, "warning", fake_warning)
+
+    widget.click_apply_additional_forms()
+
+    assert set(widget.report.data.keys()) == {"FormA"}
+    assert widget.report.data["FormA"].equals(base_df)
+    assert widget.update_all_ui_calls == 0

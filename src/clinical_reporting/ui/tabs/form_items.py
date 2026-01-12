@@ -8,6 +8,7 @@ forms.
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QListWidgetItem
 
 
@@ -55,7 +56,7 @@ class FormItemsTabMixin:
         pattern = self._compile_search_pattern(
             self.ui.lineEdit_form_item_search.text()
         )
-        all_available_items = set()
+        available_entries = []
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
                 form_items = self.report.selected_forms[form_name].get_available_form_items()
@@ -63,10 +64,12 @@ class FormItemsTabMixin:
                     display_text = f"{form_name}.{item}"
                     if pattern is not None and not pattern.search(display_text):
                         continue
-                    all_available_items.add(display_text)
+                    available_entries.append((display_text, form_name, item))
 
-        for item in sorted(all_available_items):
-            self.ui.listWidget_form_item_available.addItem(item)
+        for display_text, form_name, item in sorted(available_entries, key=lambda x: x[0]):
+            list_item = QListWidgetItem(display_text)
+            list_item.setData(Qt.UserRole, (form_name, item))
+            self.ui.listWidget_form_item_available.addItem(list_item)
 
     def add_listWidget_form_item_selected(self) -> None:
         """Populate the per-form selected item list."""
@@ -80,10 +83,12 @@ class FormItemsTabMixin:
             if form_name in self.report.selected_forms:
                 form_items = self.report.selected_forms[form_name].get_selected_form_items()
                 for item in form_items:
-                    combined_items.append(f"{form_name}.{item}")
+                    combined_items.append((f"{form_name}.{item}", form_name, item))
 
-        for item in combined_items:
-            self.ui.listWidget_form_item_selected.addItem(item)
+        for display_text, form_name, item in combined_items:
+            list_item = QListWidgetItem(display_text)
+            list_item.setData(Qt.UserRole, (form_name, item))
+            self.ui.listWidget_form_item_selected.addItem(list_item)
 
     def click_select_form_item(self) -> None:
         """Move highlighted per-form items into the selected list."""
