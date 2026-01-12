@@ -49,6 +49,8 @@ class SettingsTabMixin:
 
         # Reset the report to avoid stale state from a previous load.
         self.report = CLReport()
+        self._last_loaded_setting_path = None
+        self._pending_saved_setting_reapply = False
         file_name = os.path.basename(file_path)
         file_parts = file_name.split("_")
         if len(file_parts) > 2:
@@ -95,6 +97,8 @@ class SettingsTabMixin:
             self.ui.comboBox_saved_setting.clear()
             self.ui.comboBox_saved_setting.setEnabled(False)
             self._set_label_text(self.label_setting, "")
+            self._last_loaded_setting_path = None
+            self._pending_saved_setting_reapply = False
 
     def _get_default_settings_directory(self) -> str:
         """Return the default folder used to store saved settings."""
@@ -164,16 +168,45 @@ class SettingsTabMixin:
         combo.setCurrentIndex(0)
         combo.blockSignals(False)
 
-    def on_saved_setting_changed(self, index: int) -> None:
-        """Load the selected saved setting into the report."""
-        if index < 0:
-            return
+    def _update_saved_setting_warning(self, reconciliation: dict) -> None:
+        """Update the warning label and reapply flag for missing setting data."""
+        missing_forms = reconciliation.get("forms", [])
+        missing_items = reconciliation.get("items", [])
 
-        file_path: Optional[str] = self.ui.comboBox_saved_setting.itemData(index)
-        if not file_path:
+        self._pending_saved_setting_reapply = bool(missing_forms or missing_items)
+
+        if missing_forms or missing_items:
+            message_parts = []
+            if missing_forms:
+                message_parts.append("Missing forms: " + ", ".join(missing_forms))
+            if missing_items:
+                common_items = []
+                form_items: dict[str, list[str]] = {}
+                for item in missing_items:
+                    item_str = str(item)
+                    if "." in item_str:
+                        form_name, item_name = item_str.split(".", 1)
+                        if form_name and item_name:
+                            form_items.setdefault(form_name, []).append(item_name)
+                        else:
+                            common_items.append(item_str)
+                    else:
+                        common_items.append(item_str)
+
+                if common_items:
+                    message_parts.append(
+                        "Missing common items: " + ", ".join(sorted(common_items))
+                    )
+                for form_name in sorted(form_items):
+                    message_parts.append(
+                        f"Missing items in {form_name}: " + ", ".join(sorted(form_items[form_name]))
+                    )
+            self._set_label_text(self.label_setting, "\n".join(message_parts))
+        else:
             self._set_label_text(self.label_setting, "")
-            return
 
+    def _apply_saved_setting_from_path(self, file_path: str, *, update_confirmation: bool = True) -> bool:
+        """Load saved settings from ``file_path`` and reconcile with current data."""
         try:
             settings_data = self.report.load_setting_from_json(file_path)
         except Exception as exc:  # pylint: disable=broad-except
@@ -183,7 +216,8 @@ class SettingsTabMixin:
                 f"Failed to load settings: {exc}",
             )
             self._set_label_text(self.label_setting, "")
-            return
+            self._pending_saved_setting_reapply = False
+            return False
 
         loaded_study_name = settings_data.get("study_name") if isinstance(settings_data, dict) else None
         if loaded_study_name:
@@ -193,23 +227,34 @@ class SettingsTabMixin:
         reconciliation = self.report.reconcile_with_current_data()
         self.update_all_ui()
         self.update_items_dependent_ui()
+        self._update_saved_setting_warning(reconciliation)
 
-        missing_forms = reconciliation.get("forms", [])
-        missing_items = reconciliation.get("items", [])
-        if missing_forms or missing_items:
-            message_parts = []
-            if missing_forms:
-                message_parts.append("Missing forms: " + ", ".join(missing_forms))
-            if missing_items:
-                message_parts.append("Missing items: " + ", ".join(missing_items))
-            self._set_label_text(self.label_setting, "\n".join(message_parts))
-        else:
+        if update_confirmation:
+            self._set_label_text(
+                self.label_save_confirmation,
+                f"Loaded settings from {os.path.basename(file_path)}",
+            )
+        return True
+
+    def on_saved_setting_changed(self, index: int) -> None:
+        """Load the selected saved setting into the report."""
+        if index < 0:
+            return
+
+        file_path: Optional[str] = self.ui.comboBox_saved_setting.itemData(index)
+        if not file_path:
             self._set_label_text(self.label_setting, "")
+            self._last_loaded_setting_path = None
+            self._pending_saved_setting_reapply = False
+            return
+
+        if not self._apply_saved_setting_from_path(file_path, update_confirmation=True):
+            self._last_loaded_setting_path = None
+            self._pending_saved_setting_reapply = False
+            return
+
+        self._last_loaded_setting_path = file_path
 
         setting_name = self.ui.comboBox_saved_setting.currentText()
         if setting_name:
             self.ui.lineEdit_setting_name.setText(setting_name)
-        self._set_label_text(
-            self.label_save_confirmation,
-            f"Loaded settings from {os.path.basename(file_path)}",
-        )
