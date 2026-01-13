@@ -27,26 +27,3 @@ class DummyFormItemsWidget(FormItemsTabMixin, WidgetBaseMixin):
             listWidget_form_item_selected=QListWidget(),
             lineEdit_form_item_search=types.SimpleNamespace(text=lambda: ""),
         )
-
-
-def test_form_items_handle_dotted_form_names(qapp):
-    form_name = "Lab.2024"
-    form = CLForm(form_name)
-    form.available_form_items = ["Result"]
-
-    report = CLReport()
-    report.selected_forms = {form_name: form}
-
-    widget = DummyFormItemsWidget(report)
-    widget.add_listWidget_form_item_available()
-
-    available_list = widget.ui.listWidget_form_item_available
-    assert available_list.count() == 1
-
-    item = available_list.item(0)
-    assert item.data(Qt.UserRole) == (form_name, "Result")
-    assert item.text() == f"{form_name}.Result"
-
-    available_list.setCurrentRow(0)
-    pairs = list(widget._iter_form_item_pairs(available_list))
-    assert pairs == [(form_name, "Result")]

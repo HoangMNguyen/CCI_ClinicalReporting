@@ -7,6 +7,7 @@ Desktop application for assembling clinical report outputs through a guided PySi
 - Form, common and per-form item pickers with regex-based case insensitive search filters.
 - Join, rename, comparison and filter configuration tables tailored for clinical datasets.
 - Save/load settings plus quick run helpers for generating reports.
+- Form names cannot include `.` because it is reserved for the form/item separator; additional inputs default to the file name and must be renamed to remove dots.
 
 ## Project Structure
 - `src/clinical_reporting/core/`: Core domain models (`forms.py`, `report.py`).

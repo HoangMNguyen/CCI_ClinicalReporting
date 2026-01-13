@@ -213,10 +213,20 @@ class ComparisonTabMixin:
             form_name = form_name_item.text()
 
             join_items = []
+            join_combos = []
             for col in range(1, 4):
                 combo = self.ui.tableWidget_join.cellWidget(row, col)
                 if combo:
                     join_items.append(combo.currentText())
+                    join_combos.append(combo)
+
+            deduped_items, normalized_items = self._dedupe_join_items(join_items)
+            if normalized_items != join_items:
+                for combo, normalized in zip(join_combos, normalized_items):
+                    if combo.currentText() != normalized:
+                        combo.blockSignals(True)
+                        combo.setCurrentText(normalized)
+                        combo.blockSignals(False)
 
             join_order_combo = self.ui.tableWidget_join.cellWidget(row, 4)
             join_order = 1
@@ -231,9 +241,27 @@ class ComparisonTabMixin:
             if join_type_combo:
                 join_type = join_type_combo.currentText()
 
-            join_list.append([form_name, join_items, join_order, join_type])
+            join_list.append([form_name, deduped_items, join_order, join_type])
 
         self.report.update_join_list(join_list)
+
+    @staticmethod
+    def _dedupe_join_items(join_items: List[str]) -> tuple[List[str], List[str]]:
+        """Return deduped items and normalized UI values without duplicates."""
+        seen: set[str] = set()
+        deduped: List[str] = []
+        normalized: List[str] = []
+        for item in join_items:
+            if not item:
+                normalized.append("")
+                continue
+            if item in seen:
+                normalized.append("")
+                continue
+            seen.add(item)
+            deduped.append(item)
+            normalized.append(item)
+        return deduped, normalized
 
     # ------------------------------------------------------------------
     # Item ordering list
