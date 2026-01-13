@@ -59,9 +59,7 @@ class AdditionalInputTabMixin:
             apply_button.clicked.connect(self.click_apply_additional_forms)
 
         if hasattr(self.ui, "listWidget_additional_file"):
-            self.ui.listWidget_additional_file.itemSelectionChanged.connect(
-                self._update_additional_buttons_state
-            )
+            self.ui.listWidget_additional_file.itemSelectionChanged.connect(self._update_additional_buttons_state)
 
         form_table = getattr(self.ui, "tableWidget_update_form_name", None)
         column_table = getattr(self.ui, "tableWidget_update_column_name", None)
@@ -324,9 +322,7 @@ class AdditionalInputTabMixin:
         return data_map
 
     @staticmethod
-    def _build_additional_input_signature(
-        data_map: Dict[str, pd.DataFrame]
-    ) -> Dict[str, Tuple[str, ...]]:
+    def _build_additional_input_signature(data_map: Dict[str, pd.DataFrame]) -> Dict[str, Tuple[str, ...]]:
         """Summarize additional inputs by form name and column names."""
         signature: Dict[str, Tuple[str, ...]] = {}
         for form_name, df in data_map.items():
@@ -347,40 +343,30 @@ class AdditionalInputTabMixin:
         if not name_map:
             return False
 
+        dotted_names = sorted({name for name in name_map.values() if "." in name})
         name_to_paths: Dict[str, list[str]] = {}
         for file_path, form_name in name_map.items():
             name_to_paths.setdefault(form_name, []).append(file_path)
 
-        duplicates = {
-            form_name: paths
-            for form_name, paths in name_to_paths.items()
-            if len(paths) > 1
-        }
-        conflicts = {
-            form_name: paths
-            for form_name, paths in name_to_paths.items()
-            if form_name in existing_forms
-        }
+        duplicates = {form_name: paths for form_name, paths in name_to_paths.items() if len(paths) > 1}
+        conflicts = {form_name: paths for form_name, paths in name_to_paths.items() if form_name in existing_forms}
 
-        if not duplicates and not conflicts:
+        if not dotted_names and not duplicates and not conflicts:
             return False
 
-        message_parts = [
-            "Cannot add forms because some form names would overwrite existing data."
-        ]
+        message_parts = ["Cannot add forms because some form names are invalid or conflict with existing data."]
+        if dotted_names:
+            message_parts.append("Form names cannot include '.':")
+            message_parts.append("  - " + ", ".join(dotted_names))
         if duplicates:
             message_parts.append("Duplicate names in additional forms:")
             for form_name in sorted(duplicates):
-                file_list = ", ".join(
-                    sorted(Path(path).name for path in duplicates[form_name])
-                )
+                file_list = ", ".join(sorted(Path(path).name for path in duplicates[form_name]))
                 message_parts.append(f"  - {form_name}: {file_list}")
         if conflicts:
             message_parts.append("Conflicts with existing report forms:")
             for form_name in sorted(conflicts):
-                file_list = ", ".join(
-                    sorted(Path(path).name for path in conflicts[form_name])
-                )
+                file_list = ", ".join(sorted(Path(path).name for path in conflicts[form_name]))
                 message_parts.append(f"  - {form_name}: {file_list}")
         message_parts.append("Rename the forms in the table and try again.")
 

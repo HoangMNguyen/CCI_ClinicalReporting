@@ -26,4 +26,6 @@
 
 ## Agent Tips
 - Many helper functions expect Pandas objects; when scripting automated checks, remember to seed `numpy`/`pandas` imports or mock them to keep headless runs lightweight.
-- Avoid modifying generated `build/` or `dist/` artifacts; focus on source and tests so merges stay clean.*** End Patch
+- Avoid modifying generated `build/` or `dist/` artifacts; focus on source and tests so merges stay clean.
+- Form names must not include `.` (reserved for form/item separators); additional inputs default to the file name and require a dot-free rename or they will be rejected.
+- Join key selections are deduplicated in the UI; update tests accordingly when changing join behavior.
