@@ -48,7 +48,7 @@ class WidgetBaseMixin:
             self.label_setting.setText("")
         if self.label_save_confirmation is not None and not hasattr(self.ui, "label_save_confirmation"):
             self.ui.label_save_confirmation = self.label_save_confirmation
-        
+
         # Disable settings directory selector until persistence is enabled.
         self.ui.pushButton_setting_location.setEnabled(False)
 
@@ -134,14 +134,10 @@ class WidgetBaseMixin:
     def _apply_common_item_action(self, action: str) -> bool:
         """Mutate common item selections using a shared implementation."""
         if action == "select":
-            return self._toggle_common_item_selection(
-                self.ui.listWidget_common_item_available, selected=True
-            )
+            return self._toggle_common_item_selection(self.ui.listWidget_common_item_available, selected=True)
 
         if action == "remove":
-            return self._toggle_common_item_selection(
-                self.ui.listWidget_common_item_selected, selected=False
-            )
+            return self._toggle_common_item_selection(self.ui.listWidget_common_item_selected, selected=False)
 
         if action == "select_all":
             available_items = list(self.report.get_available_common_items())
@@ -164,13 +160,6 @@ class WidgetBaseMixin:
     def _iter_form_item_pairs(self, widget) -> Iterable[tuple[str, str]]:
         """Yield ``(form_name, item_name)`` tuples from the widget selections."""
         for item in widget.selectedItems():
-            data = item.data(Qt.UserRole)
-            if data and isinstance(data, (tuple, list)) and len(data) == 2:
-                form_name, item_name = data
-                yield str(form_name), str(item_name)
-                continue
-
-            # Fallback for legacy entries that store only text with a dot separator
             item_text = item.text()
             if "." in item_text:
                 yield item_text.split(".", 1)
@@ -180,37 +169,27 @@ class WidgetBaseMixin:
         changed = False
         for form_name, item_name in self._iter_form_item_pairs(widget):
             if form_name in self.report.selected_forms:
-                self.report.selected_forms[form_name].set_form_item_state(
-                    item_name, selected=selected
-                )
+                self.report.selected_forms[form_name].set_form_item_state(item_name, selected=selected)
                 changed = True
         return changed
 
     def _apply_form_item_action(self, action: str) -> bool:
         """Mutate form item selections using a shared implementation."""
         if action == "select":
-            return self._toggle_form_item_selection(
-                self.ui.listWidget_form_item_available, selected=True
-            )
+            return self._toggle_form_item_selection(self.ui.listWidget_form_item_available, selected=True)
 
         if action == "remove":
-            return self._toggle_form_item_selection(
-                self.ui.listWidget_form_item_selected, selected=False
-            )
+            return self._toggle_form_item_selection(self.ui.listWidget_form_item_selected, selected=False)
 
         if action == "select_all":
             changed = False
             for form_name in self.report.get_selected_forms_list():
                 if form_name in self.report.selected_forms:
-                    available_items = self.report.selected_forms[
-                        form_name
-                    ].get_available_form_items()
+                    available_items = self.report.selected_forms[form_name].get_available_form_items()
                     if not available_items:
                         continue
                     for item in available_items[:]:
-                        self.report.selected_forms[form_name].set_form_item_state(
-                            item, selected=True
-                        )
+                        self.report.selected_forms[form_name].set_form_item_state(item, selected=True)
                     changed = True
             return changed
 
@@ -218,15 +197,11 @@ class WidgetBaseMixin:
             changed = False
             for form_name in self.report.get_selected_forms_list():
                 if form_name in self.report.selected_forms:
-                    selected_items = self.report.selected_forms[
-                        form_name
-                    ].get_selected_form_items()
+                    selected_items = self.report.selected_forms[form_name].get_selected_form_items()
                     if not selected_items:
                         continue
                     for item in selected_items[:]:
-                        self.report.selected_forms[form_name].set_form_item_state(
-                            item, selected=False
-                        )
+                        self.report.selected_forms[form_name].set_form_item_state(item, selected=False)
                     changed = True
             return changed
 
@@ -237,9 +212,7 @@ class WidgetBaseMixin:
         if label is not None:
             label.setText(message or "")
 
-    def _compile_search_pattern(
-        self, pattern_text: str
-    ) -> Optional[re.Pattern[str]]:
+    def _compile_search_pattern(self, pattern_text: str) -> Optional[re.Pattern[str]]:
         """Compile a case-insensitive search regex; return ``None`` if empty/invalid."""
         if not pattern_text:
             return None
@@ -286,4 +259,3 @@ class WidgetBaseMixin:
         column_width = max(50, available_width // table.columnCount())
         for col in range(table.columnCount()):
             table.setColumnWidth(col, column_width)
-

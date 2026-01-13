@@ -89,18 +89,19 @@ def test_renaming_additional_form_replaces_old_entry():
     file_path = "/tmp/RSC.csv"
     widget.additional_inputs[file_path] = pd.DataFrame({"Subject": ["S1"], "A": [1]})
 
-    # Initial apply with default form name RSC.csv
-    widget.click_apply_additional_forms()
-    assert "RSC.csv" in widget.report.get_available_forms_list()
-
-    # Rename to RSC and re-apply; the old name should be removed
+    # Initial apply with explicit form name to avoid dotted default
     widget.additional_form_names[file_path] = "RSC"
+    widget.click_apply_additional_forms()
+    assert "RSC" in widget.report.get_available_forms_list()
+
+    # Rename to RSC_clean and re-apply; the old name should be removed
+    widget.additional_form_names[file_path] = "RSC_clean"
     widget.click_apply_additional_forms()
 
     forms = widget.report.get_available_forms_list()
-    assert "RSC" in forms
-    assert "RSC.csv" not in forms
-    assert set(widget.report.data.keys()) == {"RSC"}
+    assert "RSC_clean" in forms
+    assert "RSC" not in forms
+    assert set(widget.report.data.keys()) == {"RSC_clean"}
 
 
 def test_warn_on_additional_form_conflicts_detects_duplicates(monkeypatch):
@@ -120,6 +121,23 @@ def test_warn_on_additional_form_conflicts_detects_duplicates(monkeypatch):
     assert widget._warn_on_additional_form_conflicts(set()) is True
     assert calls
     assert "DupForm" in calls[0][1]
+
+
+def test_warn_on_additional_form_conflicts_detects_dots(monkeypatch):
+    widget = DummyWidget()
+    widget.additional_inputs["/tmp/a.csv"] = pd.DataFrame({"Subject": ["S1"]})
+    widget.additional_form_names["/tmp/a.csv"] = "Form.With.Dot"
+
+    calls = []
+
+    def fake_warning(parent, title, message):
+        calls.append((title, message))
+
+    monkeypatch.setattr(additional_input_module.QMessageBox, "warning", fake_warning)
+
+    assert widget._warn_on_additional_form_conflicts(set()) is True
+    assert calls
+    assert "Form.With.Dot" in calls[0][1]
 
 
 def test_apply_additional_inputs_aborts_on_form_name_conflict(monkeypatch):
