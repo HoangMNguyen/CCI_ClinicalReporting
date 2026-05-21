@@ -13,6 +13,31 @@ import pandas as pd
 
 
 # TODO: implement type hints for all functions
+_DEFAULT_NA_VALUES_EXCEPT_LITERAL_NA = [
+    "",
+    "#N/A",
+    "#N/A N/A",
+    "#NA",
+    "-1.#IND",
+    "-1.#QNAN",
+    "-NaN",
+    "-nan",
+    "1.#IND",
+    "1.#QNAN",
+    "<NA>",
+    # "N/A",
+    "NULL",
+    "NaN",
+    # "None",
+    # "n/a",
+    "nan",
+    "null",
+]
+_READ_TABULAR_KWARGS = {
+    "keep_default_na": False,
+    "na_values": _DEFAULT_NA_VALUES_EXCEPT_LITERAL_NA,
+}
+
 
 def load_tabular_file(file_path: str, *, sheet: Union[int, str, None] = 0) -> pd.DataFrame:
     """
@@ -35,9 +60,9 @@ def load_tabular_file(file_path: str, *, sheet: Union[int, str, None] = 0) -> pd
 
     suffix = path.suffix.lower()
     if suffix == ".csv":
-        return pd.read_csv(path)
+        return pd.read_csv(path, **_READ_TABULAR_KWARGS)
     if suffix in {".xls", ".xlsx"}:
-        return pd.read_excel(path, sheet_name=sheet)
+        return pd.read_excel(path, sheet_name=sheet, **_READ_TABULAR_KWARGS)
 
     raise ValueError(f"Unsupported file type for additional input: {suffix or 'unknown'}")
 
@@ -105,7 +130,7 @@ def read_data_dict_zip_corelisting(input_dir: str, cut_off_date=None) -> dict:
 
                 # Load the CSV file into a Pandas data frame
                 with z.open(file_name) as f:
-                    df = pd.read_csv(f)
+                    df = pd.read_csv(f, **_READ_TABULAR_KWARGS)
                     # check if df has Event Date column and none of the data is blank
                     if (
                         "Event Date" in df.columns and df["Event Date"].isnull().sum() != len(df["Event Date"])
