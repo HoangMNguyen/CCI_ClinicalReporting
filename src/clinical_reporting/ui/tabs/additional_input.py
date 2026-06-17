@@ -59,7 +59,9 @@ class AdditionalInputTabMixin:
             apply_button.clicked.connect(self.click_apply_additional_forms)
 
         if hasattr(self.ui, "listWidget_additional_file"):
-            self.ui.listWidget_additional_file.itemSelectionChanged.connect(self._update_additional_buttons_state)
+            self.ui.listWidget_additional_file.itemSelectionChanged.connect(
+                self._update_additional_buttons_state
+            )
 
         form_table = getattr(self.ui, "tableWidget_update_form_name", None)
         column_table = getattr(self.ui, "tableWidget_update_column_name", None)
