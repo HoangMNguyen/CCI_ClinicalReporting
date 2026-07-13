@@ -1,7 +1,6 @@
-"""Tests for core.constants and the shared core._helpers.move_item helper."""
+"""Tests for domain labels, identifiers, and the shared move helper."""
 
-from clinical_reporting.core._helpers import move_item
-from clinical_reporting.core.constants import (
+from clinical_reporting.models import (
     FORM_ITEM_SEPARATOR,
     SUBJECT_COLUMN,
     JoinHow,
@@ -9,6 +8,7 @@ from clinical_reporting.core.constants import (
     is_qualified,
     qualify,
     split_qualified,
+    move_item,
 )
 
 

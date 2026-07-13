@@ -1,8 +1,8 @@
-"""Report execution engine.
+"""Report execution pipeline and its DataFrame filter operations.
 
 Separates report *execution* (joining forms, applying filters, ordering,
 renaming, date formatting) from the report *state* held by
-:class:`~clinical_reporting.core.report.CLReport`. ``CLReport.create_report``
+:class:`~clinical_reporting.report.CLReport`. ``CLReport.create_report``
 delegates here, so public behaviour is unchanged while the previously
 ~285-line method is broken into small, individually testable steps.
 """
@@ -15,16 +15,146 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from clinical_reporting.core.constants import (
+from clinical_reporting.models import (
     SUBJECT_COLUMN,
     JoinHow,
     is_qualified,
     qualify,
     split_qualified,
 )
-from clinical_reporting.services.transforms import apply_dynamic_filter, apply_static_filter
-
 logger = logging.getLogger(__name__)
+
+
+def apply_static_filter(df, item, operator, value):
+    """Filter rows by comparing one column with a configured value."""
+    if df is None or df.empty or item not in df.columns:
+        return df
+
+    is_numeric = False
+    try:
+        numeric_value = pd.to_numeric(value)
+        numeric_column = pd.to_numeric(df[item], errors="coerce")
+        is_numeric = True
+    except Exception:
+        pass
+
+    if operator == "=":
+        if is_numeric:
+            return df[numeric_column == numeric_value]
+        return df[df[item].astype(str).str.lower() == str(value).lower()]
+    if operator == "!=":
+        if is_numeric:
+            return df[numeric_column != numeric_value]
+        return df[df[item].astype(str).str.lower() != str(value).lower()]
+    if operator == ">":
+        return df[numeric_column > numeric_value] if is_numeric else df[df[item] > value]
+    if operator == ">=":
+        return df[numeric_column >= numeric_value] if is_numeric else df[df[item] >= value]
+    if operator == "<":
+        return df[numeric_column < numeric_value] if is_numeric else df[df[item] < value]
+    if operator == "<=":
+        return df[numeric_column <= numeric_value] if is_numeric else df[df[item] <= value]
+    if operator == "Contains":
+        return df[df[item].astype(str).str.contains(str(value), case=False, na=False)]
+    if operator == "Does not contain":
+        return df[~df[item].astype(str).str.contains(str(value), case=False, na=False)]
+    if operator in {"In", "Not in"}:
+        value_list = [part.strip() for part in str(value).split(",")]
+        if is_numeric:
+            try:
+                matches = numeric_column.isin([pd.to_numeric(part) for part in value_list])
+            except Exception:
+                matches = df[item].astype(str).str.lower().isin(
+                    [part.lower() for part in value_list]
+                )
+        else:
+            matches = df[item].astype(str).str.lower().isin(
+                [part.lower() for part in value_list]
+            )
+        return df[matches] if operator == "In" else df[~matches]
+    if operator == "is Null":
+        return df[df[item].isnull()]
+    if operator == "is not Null":
+        return df[~df[item].isnull()]
+    return df
+
+
+def _looks_numeric(sample) -> bool:
+    """Return whether sampled non-null values use the legacy numeric format."""
+    return all(
+        isinstance(value, (int, float))
+        or (isinstance(value, str) and value.replace(".", "", 1).isdigit())
+        for value in sample
+        if value is not None and pd.notna(value)
+    )
+
+
+def apply_dynamic_filter(df, item1, operator, item2):
+    """Filter rows by comparing two columns with compatible inferred types."""
+    if df is None or df.empty:
+        return df
+    if item1 not in df.columns or item2 not in df.columns:
+        logger.warning("Columns '%s' or '%s' not found in dataframe.", item1, item2)
+        return df
+
+    df_copy = df.copy()
+    date_tokens = ("Date", "date", "DATE")
+    date_columns = any(token in item1 for token in date_tokens) or any(
+        token in item2 for token in date_tokens
+    )
+    if date_columns:
+        try:
+            df_copy[item1] = pd.to_datetime(df_copy[item1], errors="coerce")
+            df_copy[item2] = pd.to_datetime(df_copy[item2], errors="coerce")
+            logger.debug(
+                "Converted columns %s and %s to datetime for comparison",
+                item1,
+                item2,
+            )
+        except Exception as error:
+            logger.debug("Could not convert columns to datetime: %s", error)
+            date_columns = False
+
+    numeric_columns = False
+    if not date_columns:
+        try:
+            sample1 = df_copy[item1].dropna().head(10)
+            sample2 = df_copy[item2].dropna().head(10)
+            if _looks_numeric(sample1) and _looks_numeric(sample2):
+                df_copy[item1] = pd.to_numeric(df_copy[item1], errors="coerce")
+                df_copy[item2] = pd.to_numeric(df_copy[item2], errors="coerce")
+                numeric_columns = True
+                logger.debug(
+                    "Converted columns %s and %s to numeric for comparison",
+                    item1,
+                    item2,
+                )
+        except Exception as error:
+            logger.debug("Error converting numeric columns: %s", error)
+
+    left = df_copy[item1]
+    right = df_copy[item2]
+    string_columns = not date_columns and not numeric_columns
+    if string_columns and operator in {"=", "!="}:
+        left = left.astype(str).str.lower().str.strip()
+        right = right.astype(str).str.lower().str.strip()
+
+    operations = {
+        "=": lambda: left == right,
+        "!=": lambda: left != right,
+        ">": lambda: left > right,
+        ">=": lambda: left >= right,
+        "<": lambda: left < right,
+        "<=": lambda: left <= right,
+    }
+    result = df_copy[operations[operator]()] if operator in operations else df_copy
+    logger.debug(
+        "Dynamic filter reduced rows from %s to %s", len(df_copy), len(result)
+    )
+
+    for column in result.select_dtypes(include=[np.datetime64]).columns:
+        result.loc[:, column] = result[column].dt.strftime("%m-%d-%Y")
+    return result
 
 
 class ReportEngine:
@@ -39,7 +169,7 @@ class ReportEngine:
         # Keep direct engine use as safe as ``CLReport.create_report``. Invalid
         # mutable UI state must never be interpreted as permission to silently
         # omit a form, filter, or join from the output.
-        from clinical_reporting.core.validation import raise_for_report
+        from clinical_reporting.validation import raise_for_report
 
         raise_for_report(self.report)
         result_df = self._build_joined_table()

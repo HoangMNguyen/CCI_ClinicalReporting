@@ -3,11 +3,11 @@
 These exercise the building blocks that let the reporting engine be driven
 without the PySide6 UI (tool chaining):
 
-* ``core.config.ReportConfig`` -- declarative config wrapper over the settings JSON
-* ``core.report.CLReport.load_setting_from_dict`` / ``apply_config`` -- file-free
+* ``models.ReportConfig`` -- declarative config wrapper over the settings JSON
+* ``report.CLReport.load_setting_from_dict`` / ``apply_config`` -- file-free
   configuration + reconciliation
-* ``services.loaders`` -- data loading / input shaping
-* ``services.exporter`` -- xlsx / csv / bytes export
+* ``data`` -- data loading / input shaping
+* ``export`` -- xlsx / csv / bytes export
 
 The capstone tests cover the end-to-end chain (load -> configure -> run ->
 export) and assert that a config saved from the UI flow produces an identical
@@ -21,15 +21,17 @@ import openpyxl
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from clinical_reporting.core import CLReport, ReportConfig
-from clinical_reporting.services import corelisting, loaders, tabular
-from clinical_reporting.services.exporter import (
+import clinical_reporting as api
+from clinical_reporting import data
+from clinical_reporting.export import (
     dataframe_to_xlsx_bytes,
     prepare_export_dataframe,
     write_csv,
     write_xlsx,
 )
-from clinical_reporting.services.loaders import (
+from clinical_reporting.models import ReportConfig
+from clinical_reporting.report import CLReport
+from clinical_reporting.data import (
     build_additional_data_map,
     parse_study_name,
     strip_subject_prefix,
@@ -314,18 +316,18 @@ def test_build_additional_data_map_form_name_defaults_to_filename():
     assert "sample.csv" in data_map
 
 
-def test_loaders_reexports_are_the_canonical_readers():
-    """loaders is the single entry point but does not duplicate the readers."""
-    assert loaders.load_tabular_file is tabular.load_tabular_file
-    assert loaders.load_additional_inputs is tabular.load_additional_inputs
-    assert loaders.read_data_dict_zip_corelisting is corelisting.read_data_dict_zip_corelisting
+def test_package_reexports_are_the_canonical_readers():
+    """The public package API does not duplicate reader implementations."""
+    assert api.load_tabular_file is data.load_tabular_file
+    assert api.load_additional_inputs is data.load_additional_inputs
+    assert api.read_data_dict_zip_corelisting is data.read_data_dict_zip_corelisting
 
 
 def test_load_additional_inputs_via_loaders(tmp_path):
     csv_path = tmp_path / "extra.csv"
     csv_path.write_text("Subject,Value\n001,5\n", encoding="utf-8")
 
-    loaded = loaders.load_additional_inputs([str(csv_path)])
+    loaded = data.load_additional_inputs([str(csv_path)])
 
     assert len(loaded) == 1
     (df,) = loaded.values()

@@ -2,8 +2,8 @@ import types
 
 import pytest
 
-from clinical_reporting.core.forms import CLForm
-from clinical_reporting.core.report import CLReport
+from clinical_reporting.models import CLForm
+from clinical_reporting.report import CLReport
 
 
 # Lightweight stand-in for pandas DataFrame objects used during form setup.

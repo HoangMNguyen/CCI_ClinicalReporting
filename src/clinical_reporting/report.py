@@ -3,13 +3,18 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-from clinical_reporting.core._helpers import move_item
-from clinical_reporting.core.constants import SUBJECT_COLUMN, is_qualified, qualify, split_qualified
-from clinical_reporting.core.forms import CLForm
+from clinical_reporting.models import (
+    SUBJECT_COLUMN,
+    CLForm,
+    is_qualified,
+    move_item,
+    qualify,
+    split_qualified,
+)
 
 if TYPE_CHECKING:
-    from clinical_reporting.core.config import ReportConfig
-    from clinical_reporting.core.validation import ReportValidationIssue
+    from clinical_reporting.models import ReportConfig
+    from clinical_reporting.validation import ReportValidationIssue
 
 logger = logging.getLogger(__name__)
 
@@ -381,7 +386,7 @@ class CLReport:
 
         This is the file-free counterpart of :meth:`load_setting_from_json`; it
         performs no I/O so it can be driven directly from a
-        :class:`~clinical_reporting.core.config.ReportConfig` or any program
+        :class:`~clinical_reporting.models.ReportConfig` or any program
         that constructs the settings schema itself.
         """
 
@@ -712,7 +717,7 @@ class CLReport:
         """Create the report from the stored selections, filters, joins, and renames.
 
         Execution is delegated to
-        :class:`clinical_reporting.core.engine.ReportEngine`, which performs the
+        :class:`clinical_reporting.pipeline.ReportEngine`, which performs the
         join -> dynamic-filter -> reorder -> rename -> date-format -> finalize
         pipeline. See that class for the step-by-step details.
 
@@ -723,13 +728,13 @@ class CLReport:
             ReportValidationError: If the current selections, joins, filters,
                 ordering, or output names do not form an executable report.
         """
-        from clinical_reporting.core.engine import ReportEngine
+        from clinical_reporting.pipeline import ReportEngine
 
         return ReportEngine(self).run()
 
     def validate(self) -> List["ReportValidationIssue"]:
         """Return structured issues that currently prevent report execution."""
 
-        from clinical_reporting.core.validation import validate_report
+        from clinical_reporting.validation import validate_report
 
         return validate_report(self)

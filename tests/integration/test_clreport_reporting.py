@@ -1,8 +1,8 @@
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from clinical_reporting.core.forms import CLForm
-from clinical_reporting.core.report import CLReport
+from clinical_reporting.models import CLForm
+from clinical_reporting.report import CLReport
 
 
 def _init_form(name, *, selected_items, join_order, join_how="Left join"):
