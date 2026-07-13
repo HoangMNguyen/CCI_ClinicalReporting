@@ -1,9 +1,9 @@
 import pandas as pd
 
-from clinical_reporting.core.report import CLReport
-from clinical_reporting.ui.tabs import additional_input as additional_input_module
-from clinical_reporting.ui.tabs.additional_input import AdditionalInputTabMixin
-from clinical_reporting.ui.widgets.base import WidgetBaseMixin
+from clinical_reporting.report import CLReport
+from clinical_reporting.ui import workspace as additional_input_module
+from clinical_reporting.ui.window import WidgetBaseMixin
+from clinical_reporting.ui.workspace import AdditionalInputTabMixin
 
 
 class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):

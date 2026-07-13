@@ -9,9 +9,8 @@ reordering tab may change the arrangement.
 import pandas as pd
 import pytest
 
-from clinical_reporting.core.constants import JoinHow
-from clinical_reporting.core.forms import CLForm
-from clinical_reporting.core.report import CLReport
+from clinical_reporting.models import CLForm, JoinHow
+from clinical_reporting.report import CLReport
 
 
 # Lightweight stand-in for pandas DataFrame objects used during form setup.

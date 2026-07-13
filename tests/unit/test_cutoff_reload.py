@@ -10,10 +10,10 @@ import datetime
 
 import pandas as pd
 
-from clinical_reporting.core.report import CLReport
-from clinical_reporting.ui.tabs import settings as settings_module
-from clinical_reporting.ui.tabs.settings import SettingsTabMixin
-from clinical_reporting.ui.widgets.base import WidgetBaseMixin
+from clinical_reporting.report import CLReport
+from clinical_reporting.ui import workspace as settings_module
+from clinical_reporting.ui.window import WidgetBaseMixin
+from clinical_reporting.ui.workspace import SettingsTabMixin
 
 
 class _FakeCheckBox:

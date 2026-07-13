@@ -11,7 +11,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable, Optional
 
-from clinical_reporting.core.constants import (
+from clinical_reporting.models import (
     FORM_ITEM_SEPARATOR,
     JoinHow,
     Operator,

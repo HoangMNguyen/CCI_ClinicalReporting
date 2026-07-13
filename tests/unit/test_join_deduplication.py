@@ -3,9 +3,9 @@ import types
 import pytest
 from PySide6.QtWidgets import QApplication, QComboBox, QTableWidget, QTableWidgetItem
 
-from clinical_reporting.core.forms import CLForm
-from clinical_reporting.core.report import CLReport
-from clinical_reporting.ui.tabs.comparison import ComparisonTabMixin
+from clinical_reporting.models import CLForm
+from clinical_reporting.report import CLReport
+from clinical_reporting.ui.rules import ComparisonTabMixin
 
 
 @pytest.fixture(scope="module")

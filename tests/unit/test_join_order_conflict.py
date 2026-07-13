@@ -4,11 +4,10 @@ import types
 
 import pandas as pd
 
-from clinical_reporting.core.constants import JoinHow
-from clinical_reporting.core.forms import CLForm
-from clinical_reporting.core.report import CLReport
-from clinical_reporting.ui.widgets.base import WidgetBaseMixin
-from clinical_reporting.ui.widgets.run_save import RunAndSaveMixin
+from clinical_reporting.models import CLForm, JoinHow
+from clinical_reporting.report import CLReport
+from clinical_reporting.ui.output import RunAndSaveMixin
+from clinical_reporting.ui.window import WidgetBaseMixin
 
 
 def _report_with_orders(orders: dict) -> CLReport:

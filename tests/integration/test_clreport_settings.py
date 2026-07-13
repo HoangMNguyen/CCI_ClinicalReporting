@@ -2,8 +2,8 @@ import json
 
 import pandas as pd
 
-from clinical_reporting.core.forms import CLForm
-from clinical_reporting.core.report import CLReport
+from clinical_reporting.models import CLForm
+from clinical_reporting.report import CLReport
 
 
 def _make_form(name, *, selected_items=None, join_items=None, join_order=None, join_how=None):

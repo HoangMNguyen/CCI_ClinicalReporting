@@ -1,8 +1,8 @@
-"""Tests for the services.transforms static/dynamic DataFrame filters."""
+"""Tests for the pipeline static/dynamic DataFrame filters."""
 
 import pandas as pd
 
-from clinical_reporting.services.transforms import apply_dynamic_filter, apply_static_filter
+from clinical_reporting.pipeline import apply_dynamic_filter, apply_static_filter
 
 
 def _people():
