@@ -6,9 +6,9 @@ to load CSV/Excel files, manage the selected list, and rename forms/columns.
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
-import re
 from typing import Dict, Tuple, Set
 
 import pandas as pd
@@ -22,7 +22,13 @@ from PySide6.QtWidgets import (
 )
 
 from clinical_reporting.core.report import CLReport
-from clinical_reporting.services.util import load_tabular_file
+from clinical_reporting.services.loaders import (
+    build_additional_data_map,
+    load_tabular_file,
+    strip_subject_prefix,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class AdditionalInputTabMixin:
@@ -98,8 +104,8 @@ class AdditionalInputTabMixin:
                 continue
             try:
                 self.additional_inputs[resolved_path] = load_tabular_file(resolved_path)
-            except Exception as exc:  # pylint: disable=broad-except
-                print(f"Failed to load additional input '{file_path}': {exc}")
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("Failed to load additional input '%s'", file_path)
 
         self._refresh_additional_files_ui()
         self._refresh_additional_tables()
@@ -295,33 +301,16 @@ class AdditionalInputTabMixin:
     # Report integration
 
     def _build_additional_data_map(self) -> Dict[str, pd.DataFrame]:
-        """Construct a dict of form_name -> dataframe with applied renames."""
-        data_map: Dict[str, pd.DataFrame] = {}
-        for file_path, df in self.additional_inputs.items():
-            form_name = self.additional_form_names.get(file_path) or Path(file_path).name
+        """Construct a dict of form_name -> dataframe with applied renames.
 
-            df_clean = df.copy()
-            drop_cols = []
-            rename_map = {}
-            for column in df_clean.columns:
-                column_str = str(column)
-                if not column_str or column_str.lower().startswith("unnamed"):
-                    drop_cols.append(column)
-                    continue
-                updated_name = self.additional_column_names.get((file_path, column_str))
-                if updated_name and updated_name != column:
-                    rename_map[column] = updated_name
-
-            if drop_cols:
-                df_clean = df_clean.drop(columns=drop_cols)
-            if rename_map:
-                df_clean = df_clean.rename(columns=rename_map)
-
-            if "Subject" in df_clean.columns:
-                df_clean["Subject"] = df_clean["Subject"].apply(self._strip_prefix)
-
-            data_map[form_name] = df_clean
-        return data_map
+        Delegates to :func:`clinical_reporting.services.loaders.build_additional_data_map`
+        so the same shaping logic is reusable headlessly.
+        """
+        return build_additional_data_map(
+            self.additional_inputs,
+            self.additional_form_names,
+            self.additional_column_names,
+        )
 
     @staticmethod
     def _build_additional_input_signature(data_map: Dict[str, pd.DataFrame]) -> Dict[str, Tuple[str, ...]]:
@@ -383,13 +372,9 @@ class AdditionalInputTabMixin:
 
         previous_signature = dict(getattr(self, "_additional_input_signature", {}))
 
-        # Capture current selections to restore if still applicable.
-        previous_selected_forms = set(self.report.get_selected_forms_list())
-        previous_selected_common = set(getattr(self.report, "selected_common_items", []))
-        previous_form_items = {
-            form: set(cl_form.get_selected_form_items())
-            for form, cl_form in getattr(self.report, "selected_forms", {}).items()
-        }
+        # Capture current selections (forms/items/common/join) to restore after
+        # ``set_data`` rebuilds fresh CLForm objects with defaults.
+        selection_state = self._capture_selection_state()
 
         base_data = dict(getattr(self.report, "data", {}) or {})
         # Remove previously injected additional forms.
@@ -421,36 +406,16 @@ class AdditionalInputTabMixin:
             ):
                 return
 
-        # Re-select previously selected forms when they still exist.
-        for form in previous_selected_forms:
-            if form in self.report.available_forms:
-                self.report.add_selected_form(form)
-
-        # Re-select form items that are still available on their forms.
-        for form_name, items in previous_form_items.items():
-            if form_name not in self.report.selected_forms:
-                continue
-            cl_form = self.report.selected_forms[form_name]
-            available_items = set(cl_form.get_available_form_items())
-            for item in items:
-                if item in available_items:
-                    cl_form.set_form_item_state(item, selected=True)
-
-        # Re-select common items that are still common; always include Subject if present.
-        self.report.selected_common_items = []
-        self.report.available_common_items = list(self.report.static_available_common_items)
-        for common_item in previous_selected_common:
-            if common_item in self.report.static_available_common_items:
-                self.report.set_common_item_state(common_item, selected=True)
-        if "Subject" in getattr(self.report, "static_available_common_items", []):
-            self.report.set_common_item_state("Subject", selected=True)
+        # Restore the selections that survive in the rebuilt report.
+        self._restore_selection_state(selection_state)
 
         self.update_all_ui()
 
     @staticmethod
     def _strip_prefix(value):
-        """Remove leading 'UPCC' or '100-' (with optional separators) from a subject string."""
-        if isinstance(value, str):
-            cleaned = re.sub(r"^(?:UPCC[-\s]*|100-)", "", value, flags=re.IGNORECASE)
-            return cleaned.lstrip()
-        return value
+        """Remove leading 'UPCC' or '100-' (with optional separators) from a subject string.
+
+        Thin wrapper over
+        :func:`clinical_reporting.services.loaders.strip_subject_prefix`.
+        """
+        return strip_subject_prefix(value)

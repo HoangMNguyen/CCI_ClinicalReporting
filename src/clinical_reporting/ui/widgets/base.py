@@ -11,6 +11,7 @@ instead of duplicating low-level list management code.
 from __future__ import annotations
 
 import re
+import warnings
 from typing import Iterable, Optional
 
 from PySide6.QtCore import Qt
@@ -31,6 +32,10 @@ class WidgetBaseMixin:
         self.settings_directory = None
         self._last_loaded_setting_path: Optional[str] = None
         self._pending_saved_setting_reapply = False
+        # Path of the currently loaded input ZIP and the cut-off date that was
+        # applied when it was read, so the cut-off can be re-applied on change.
+        self._input_file_path: Optional[str] = None
+        self._applied_cut_off_date = None
 
         # Cache confirmation labels so they can be updated from individual tabs
         # without repeatedly resolving attribute names on the UI form.
@@ -85,6 +90,75 @@ class WidgetBaseMixin:
         self.update_static_filter_table()
         self.update_dynamic_filter_table()
         self.update_items_order_list()
+
+    # ------------------------------------------------------------------
+    # Selection state capture / restore
+    #
+    # Rebuilding the report's data (re-reading the input ZIP with a new
+    # cut-off date, or merging additional inputs) discards the CLForm objects
+    # that hold the user's selections. These helpers snapshot the selections
+    # beforehand and re-apply the ones that are still valid afterwards.
+
+    def _capture_selection_state(self) -> dict:
+        """Snapshot current form/item/common/join selections for later restore."""
+        selected_forms = getattr(self.report, "selected_forms", {})
+        return {
+            "forms": set(self.report.get_selected_forms_list()),
+            "common": set(getattr(self.report, "selected_common_items", [])),
+            "form_items": {
+                form: set(cl_form.get_selected_form_items())
+                for form, cl_form in selected_forms.items()
+            },
+            "join": {
+                form: {
+                    "items": list(cl_form.get_join_items()),
+                    "order": cl_form.get_join_order(),
+                    "how": cl_form.get_join_how(),
+                }
+                for form, cl_form in selected_forms.items()
+            },
+        }
+
+    def _restore_selection_state(self, state: dict) -> None:
+        """Re-apply a snapshot from :meth:`_capture_selection_state`.
+
+        Only selections that still exist in the freshly rebuilt report are
+        restored; anything missing is silently dropped.
+        """
+        # Re-select previously selected forms when they still exist.
+        for form in state.get("forms", set()):
+            if form in self.report.available_forms:
+                self.report.add_selected_form(form)
+
+        # Re-select form items that are still available on their forms.
+        for form_name, items in state.get("form_items", {}).items():
+            if form_name not in self.report.selected_forms:
+                continue
+            cl_form = self.report.selected_forms[form_name]
+            available_items = set(cl_form.get_available_form_items())
+            for item in items:
+                if item in available_items:
+                    cl_form.set_form_item_state(item, selected=True)
+
+        # Re-identify common items; always include Subject when present.
+        self.report.selected_common_items = []
+        self.report.available_common_items = list(self.report.static_available_common_items)
+        for common_item in state.get("common", set()):
+            if common_item in self.report.static_available_common_items:
+                self.report.set_common_item_state(common_item, selected=True)
+        if "Subject" in getattr(self.report, "static_available_common_items", []):
+            self.report.set_common_item_state("Subject", selected=True)
+
+        # Restore join configuration for forms that still exist, dropping any
+        # join items that are no longer valid selected common items.
+        valid_common = set(self.report.get_selected_common_items())
+        for form_name, join_config in state.get("join", {}).items():
+            if form_name not in self.report.selected_forms:
+                continue
+            items = [item for item in join_config["items"] if item in valid_common]
+            self.report.update_join_items(
+                form_name, items, join_config["order"], join_config["how"]
+            )
 
     def _apply_form_selection_action(self, action: str) -> bool:
         """Mutate report form selections based on the requested action."""
@@ -221,6 +295,31 @@ class WidgetBaseMixin:
             return re.compile(pattern_text, flags=re.IGNORECASE)
         except re.error:
             return None
+
+    @staticmethod
+    def _safe_disconnect(signal, slot=None) -> None:
+        """Disconnect a Qt signal without raising or warning when nothing is connected.
+
+        PySide6 emits a ``RuntimeWarning`` (and may raise ``RuntimeError``) when
+        ``disconnect`` is called on a signal that has no matching connection.
+        That warning is routed through Python's ``warnings`` machinery, so a
+        plain ``try/except`` cannot silence it. This helper swallows both the
+        warning and the exception, keeping table repopulation quiet.
+
+        Args:
+            signal: The bound Qt signal to disconnect (e.g. ``table.cellChanged``).
+            slot: Optional specific slot to disconnect; when omitted, all
+                connections on ``signal`` are removed.
+        """
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            try:
+                if slot is None:
+                    signal.disconnect()
+                else:
+                    signal.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
 
     # ------------------------------------------------------------------
     # Table configuration helpers

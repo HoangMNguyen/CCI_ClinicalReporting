@@ -3,9 +3,10 @@ import pandas as pd
 from clinical_reporting.core.report import CLReport
 from clinical_reporting.ui.tabs import additional_input as additional_input_module
 from clinical_reporting.ui.tabs.additional_input import AdditionalInputTabMixin
+from clinical_reporting.ui.widgets.base import WidgetBaseMixin
 
 
-class DummyWidget(AdditionalInputTabMixin):
+class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
     """Lightweight stand-in to exercise the mixin logic without Qt."""
 
     def __init__(self):
@@ -82,6 +83,66 @@ def test_apply_additional_inputs_preserves_available_selections_only():
     assert "FormB" in widget.report.available_forms
     # UI refresh was invoked.
     assert widget.update_all_ui_calls == 1
+
+
+def _build_two_form_widget():
+    """Widget with two selected forms (DM, AE) sharing a Subject common item."""
+    widget = DummyWidget()
+    widget.report.set_data(
+        {
+            "DM": pd.DataFrame({"Subject": ["001", "002"], "Age": [30, 40]}),
+            "AE": pd.DataFrame({"Subject": ["001", "002"], "Event": ["x", "y"]}),
+        }
+    )
+    widget.report.add_selected_form("DM")
+    widget.report.add_selected_form("AE")
+    widget.report.set_common_item_state("Subject", selected=True)
+    return widget
+
+
+def test_apply_additional_inputs_preserves_join_configuration():
+    widget = _build_two_form_widget()
+    # Configure a non-default join order/items/strategy on the existing forms.
+    widget.report.update_join_items("DM", [], 1, "Left join")
+    widget.report.update_join_items("AE", ["Subject"], 2, "Inner join")
+
+    # Add an additional form that still shares Subject (so it stays common).
+    add_path = "/tmp/lab.csv"
+    widget.additional_inputs[add_path] = pd.DataFrame(
+        {"Subject": ["001", "002"], "Result": [1.0, 2.0]}
+    )
+    widget.additional_form_names[add_path] = "LAB"
+
+    widget.click_apply_additional_forms()
+
+    # The previously configured join order/items/strategy survive the merge.
+    ae = widget.report.selected_forms["AE"]
+    assert ae.get_join_order() == 2
+    assert ae.get_join_items() == ["Subject"]
+    assert ae.get_join_how() == "Inner join"
+    assert widget.report.selected_forms["DM"].get_join_order() == 1
+    # The new form is merged into the data and available for selection.
+    assert "LAB" in widget.report.data
+    assert "LAB" in widget.report.available_forms
+
+
+def test_apply_additional_inputs_drops_stale_join_item():
+    widget = _build_two_form_widget()
+    widget.report.update_join_items("AE", ["Subject"], 2, "Inner join")
+
+    # This additional form shares no column, so Subject is no longer common.
+    add_path = "/tmp/other.csv"
+    widget.additional_inputs[add_path] = pd.DataFrame(
+        {"Key": ["a", "b"], "Result": [1.0, 2.0]}
+    )
+    widget.additional_form_names[add_path] = "OTHER"
+
+    widget.click_apply_additional_forms()
+
+    ae = widget.report.selected_forms["AE"]
+    # Order/strategy are retained, but the now-invalid join item is dropped.
+    assert ae.get_join_order() == 2
+    assert ae.get_join_items() == []
 
 
 def test_renaming_additional_form_replaces_old_entry():

@@ -1,5 +1,11 @@
-"""Supporting service functions used by the UI and reporting engine."""
+"""Supporting service functions used by the UI and reporting engine.
 
-from .util import *  # noqa: F401,F403 - re-export legacy util functions
+Import from the focused modules directly:
 
-__all__ = [name for name in globals() if not name.startswith("_")]
+* :mod:`~clinical_reporting.services.loaders` -- data loading / input shaping
+* :mod:`~clinical_reporting.services.exporter` -- xlsx / csv / bytes export
+* :mod:`~clinical_reporting.services.transforms` -- static/dynamic filters
+* :mod:`~clinical_reporting.services.tabular` -- low-level CSV/Excel readers
+* :mod:`~clinical_reporting.services.corelisting` -- Corelisting ZIP loader
+* :mod:`~clinical_reporting.services.excel` -- Excel styling + date rendering
+"""

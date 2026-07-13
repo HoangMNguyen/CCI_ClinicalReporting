@@ -66,7 +66,8 @@ class FormItemsTabMixin:
                         continue
                     available_entries.append((display_text, form_name, item))
 
-        for display_text, form_name, item in sorted(available_entries, key=lambda x: x[0]):
+        # Entries stay grouped by form with items in the input column order.
+        for display_text, form_name, item in available_entries:
             list_item = QListWidgetItem(display_text)
             list_item.setData(Qt.UserRole, (form_name, item))
             self.ui.listWidget_form_item_available.addItem(list_item)
