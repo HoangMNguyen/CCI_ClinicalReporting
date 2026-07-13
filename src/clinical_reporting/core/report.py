@@ -1,10 +1,17 @@
 from copy import deepcopy
 import json
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-import numpy as np
-
+from clinical_reporting.core._helpers import move_item
+from clinical_reporting.core.constants import SUBJECT_COLUMN, is_qualified, qualify, split_qualified
 from clinical_reporting.core.forms import CLForm
+
+if TYPE_CHECKING:
+    from clinical_reporting.core.config import ReportConfig
+    from clinical_reporting.core.validation import ReportValidationIssue
+
+logger = logging.getLogger(__name__)
 
 
 class CLReport:
@@ -25,54 +32,56 @@ class CLReport:
         self.static_filter_items = []  # Static filter items: Item Name, Operator, Value
         self.dynamic_filter_items = []  # Dynamic filter items: Item Name 1 , Operator, Item Name 2
         self.selected_items_order_list = []
+        # True once the user rearranged items on the reordering tab. Until
+        # then the order list is re-derived from the default layout (common
+        # items first, then form items grouped by join order).
+        self.order_list_customized = False
 
     @staticmethod
     def _move_between_lists(
         item: str,
         source: Optional[List[str]],
         target: Optional[List[str]],
+        order: Optional[List[str]] = None,
     ) -> bool:
-        """Move ``item`` between ``source`` and ``target`` while avoiding duplicates."""
+        """Move ``item`` between ``source`` and ``target`` while avoiding duplicates.
 
-        changed = False
-        if source is not None and item in source:
-            source.remove(item)
-            changed = True
+        When ``order`` is given the item is inserted at the position that keeps
+        ``target`` consistent with that reference ordering.
+        """
 
-        if target is not None and item not in target:
-            target.append(item)
-            changed = True
-
-        return changed
+        return move_item(item, source, target, order)
 
     def set_study_name(self, study_name: str):
         """Set the study name for the report."""
         self.study_name = study_name
+
+    @staticmethod
+    def _common_columns(data: dict) -> List[str]:
+        """Return the column names present in every form of ``data``.
+
+        The result keeps the input column order of the first form so common
+        items retain the original file order instead of an alphabetical one.
+        """
+        forms = list(data.values())
+        if not forms:
+            return []
+        common = set(forms[0].columns)
+        for form_df in forms[1:]:
+            common &= set(form_df.columns)
+        return [column for column in forms[0].columns if column in common]
 
     def identify_common_items(self):
         """Identify columns that exist in all forms of the data."""
         if not self.data:
             return
 
-        # Get all forms
-        forms = list(self.data.keys())
-        if not forms:
-            return
-
-        # Start with all columns from the first form
-        common_columns = set(self.data[forms[0]].columns)
-
-        # Find intersection with all other forms
-        for form in forms[1:]:
-            form_columns = set(self.data[form].columns)
-            common_columns = common_columns.intersection(form_columns)
-
         # Update static_available_common_items with the common columns
-        self.static_available_common_items = sorted(list(common_columns))
+        self.static_available_common_items = self._common_columns(self.data)
 
-        if "Subject" in self.static_available_common_items:
+        if SUBJECT_COLUMN in self.static_available_common_items:
             # Move "Subject" to the front of the list
-            self.set_common_item_state("Subject", selected=True)
+            self.set_common_item_state(SUBJECT_COLUMN, selected=True)
 
     def set_data(self, data: dict):
         """Set the data for the report."""
@@ -123,12 +132,15 @@ class CLReport:
         """Add the selected form to the selected forms dict."""
         # add the form from data to the selected forms dict
         if form in self.data:
-            self.selected_forms[form] = CLForm(form)
-            # add items from data to the selected form, excluding the items in static_available_common_items
-            for item in self.data[form].columns:
-                if item not in self.static_available_common_items:
-                    self.selected_forms[form].set_form_item_state(item, selected=False)
-                    # print(f"Adding item {item} to selected form {form}")
+            new_form = CLForm(form)
+            # Remember the input file order of the form's own (non-common)
+            # columns so the item lists keep that order from here on.
+            new_form.column_order = [
+                item for item in self.data[form].columns if item not in self.static_available_common_items
+            ]
+            for item in new_form.column_order:
+                new_form.set_form_item_state(item, selected=False)
+            self.selected_forms[form] = new_form
             if form in self.available_forms:
                 # remove the form from available forms
                 del self.available_forms[form]
@@ -151,6 +163,18 @@ class CLReport:
         """Get the list of selected forms."""
         return list(self.selected_forms.keys())
 
+    def get_forms_in_join_order(self) -> List[str]:
+        """Return selected form names in merge (join) order.
+
+        Forms without a configured join order are merged last; ties keep the
+        selection order. This mirrors the sequence the report engine uses when
+        joining forms.
+        """
+        return sorted(
+            self.selected_forms.keys(),
+            key=lambda name: self.selected_forms[name].get_join_order() or 999,
+        )
+
     def add_all_available_common_items(self):
         """Add all static available common items to the available common items list."""
         for item in self.static_available_common_items:
@@ -165,14 +189,19 @@ class CLReport:
         return self.available_common_items
 
     def set_common_item_state(self, item: str, *, selected: bool) -> bool:
-        """Ensure ``item`` only exists in one of the common item collections."""
+        """Ensure ``item`` only exists in one of the common item collections.
+
+        Both collections are kept in the original input column order
+        (``static_available_common_items``) regardless of the order in which
+        items are (de)selected.
+        """
 
         source, target = (
             (self.available_common_items, self.selected_common_items)
             if selected
             else (self.selected_common_items, self.available_common_items)
         )
-        return self._move_between_lists(item, source, target)
+        return self._move_between_lists(item, source, target, self.static_available_common_items)
 
     def get_selected_common_items(self):
         """Get the list of selected common items."""
@@ -218,34 +247,56 @@ class CLReport:
         return self.selected_items_order_list
 
     def set_selected_items_order_list(self, order_list: list):
-        """Set the ordered list of selected items."""
+        """Set the ordered list of selected items.
+
+        Called when the user rearranges items on the reordering tab, so the
+        arrangement is treated as manual from here on and no longer re-derived
+        from the default (join-order based) layout.
+        """
         self.selected_items_order_list = order_list
+        self.order_list_customized = True
 
     def update_selected_items_order_list(self):
-        """Update the selected items order list with all currently selected items."""
-        # Create a new list that will contain all selected items
-        all_selected_items = []
+        """Update the selected items order list with all currently selected items.
 
-        # Add all selected common items
-        all_selected_items.extend(self.selected_common_items)
-
-        # Add all selected form items with form name prefix
-        for form_name in self.selected_forms:
+        The default layout is: selected common items first (leftmost, in input
+        column order), followed by each form's selected items grouped by join
+        (merge) order. This default is re-derived on every call — changing a
+        form's join order re-groups the list — until the user rearranges items
+        on the reordering tab (``order_list_customized``). From then on the
+        manual arrangement is preserved and new selections are inserted at
+        their default position rather than appended.
+        """
+        # Canonical default order: common items, then form items per join order.
+        canonical_order = list(self.selected_common_items)
+        for form_name in self.get_forms_in_join_order():
             form = self.selected_forms[form_name]
-            for item in form.get_selected_form_items():
-                all_selected_items.append(f"{form_name}.{item}")
+            canonical_order.extend(qualify(form_name, item) for item in form.get_selected_form_items())
 
-        # Keep existing order for items that are still selected
-        new_order_list = []
+        canonical_set = set(canonical_order)
 
-        # First add items that are in both the current order list and the all_selected_items
-        for item in self.selected_items_order_list:
-            if item in all_selected_items:
-                new_order_list.append(item)
-                all_selected_items.remove(item)
+        new_order_list: List[str] = []
+        if self.order_list_customized:
+            # Keep the user's arrangement for items still selected; once none
+            # of it survives there is nothing manual left to preserve.
+            new_order_list = [item for item in self.selected_items_order_list if item in canonical_set]
+            if not new_order_list:
+                self.order_list_customized = False
 
-        # Then add any new items that weren't in the order list before
-        new_order_list.extend(all_selected_items)
+        if not self.order_list_customized:
+            self.selected_items_order_list = canonical_order
+            return self.selected_items_order_list
+
+        placed = set(new_order_list)
+
+        # Insert each new item right after its canonical predecessor so common
+        # items stay leftmost and form items stay grouped with their form.
+        for index, item in enumerate(canonical_order):
+            if item in placed:
+                continue
+            position = 0 if index == 0 else new_order_list.index(canonical_order[index - 1]) + 1
+            new_order_list.insert(position, item)
+            placed.add(item)
 
         # Update the order list
         self.selected_items_order_list = new_order_list
@@ -312,6 +363,7 @@ class CLReport:
             "static_filter_items": [list(item) for item in self.static_filter_items],
             "dynamic_filter_items": [list(item) for item in self.dynamic_filter_items],
             "selected_items_order_list": deepcopy(self.selected_items_order_list),
+            "order_list_customized": self.order_list_customized,
         }
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=4)
@@ -321,6 +373,17 @@ class CLReport:
 
         with open(file_path, "r", encoding="utf-8") as f:
             settings = json.load(f)
+
+        return self.load_setting_from_dict(settings)
+
+    def load_setting_from_dict(self, settings: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply an in-memory settings dictionary to this report.
+
+        This is the file-free counterpart of :meth:`load_setting_from_json`; it
+        performs no I/O so it can be driven directly from a
+        :class:`~clinical_reporting.core.config.ReportConfig` or any program
+        that constructs the settings schema itself.
+        """
 
         self.study_name = settings.get("study_name", self.study_name)
 
@@ -349,6 +412,11 @@ class CLReport:
             self.dynamic_filter_items = []
 
         selected_items_order_list = settings.get("selected_items_order_list")
+        # Settings saved before the flag existed carry a hand-tuned order, so a
+        # non-empty saved list defaults to "customized" and replays exactly.
+        self.order_list_customized = bool(
+            settings.get("order_list_customized", bool(selected_items_order_list))
+        )
         if selected_items_order_list is not None:
             self.selected_items_order_list = list(selected_items_order_list)
         else:
@@ -364,27 +432,21 @@ class CLReport:
 
         data_forms = set(self.data.keys())
 
-        # Determine the true common items from the loaded data.
-        actual_common_items: set[str] = set()
-        if self.data:
-            iter_forms = iter(self.data.values())
-            first_form = next(iter_forms, None)
-            if first_form is not None:
-                actual_common_items = set(first_form.columns)
-                for form_df in iter_forms:
-                    actual_common_items &= set(form_df.columns)
+        # Determine the true common items from the loaded data (input column order).
+        actual_common_items = self._common_columns(self.data)
+        common_lookup = set(actual_common_items)
 
-        self.static_available_common_items = sorted(actual_common_items)
+        self.static_available_common_items = list(actual_common_items)
 
-        self.available_common_items = sorted(actual_common_items)
         for item in list(self.selected_common_items):
-            if item not in self.available_common_items:
+            if item not in common_lookup:
                 self.selected_common_items.remove(item)
                 missing_items.add(item)
 
-        self.available_common_items = [
-            item for item in self.available_common_items if item not in self.selected_common_items
-        ]
+        # Keep both pools in the input column order.
+        selected_lookup = set(self.selected_common_items)
+        self.selected_common_items = [item for item in actual_common_items if item in selected_lookup]
+        self.available_common_items = [item for item in actual_common_items if item not in selected_lookup]
 
         valid_selected_forms: dict[str, CLForm] = {}
         for form_name, form in list(self.selected_forms.items()):
@@ -392,29 +454,33 @@ class CLReport:
                 missing_forms.add(form_name)
                 continue
 
-            form_columns = set(self.data[form_name].columns)
-
-            form.available_form_items = sorted(column for column in form_columns if column not in actual_common_items)
+            # The form's own columns, in input file order.
+            form.column_order = [
+                column for column in self.data[form_name].columns if column not in common_lookup
+            ]
 
             for item in list(form.get_selected_form_items()):
-                if item not in form.available_form_items:
+                if item not in form.column_order:
                     form.remove_form_item(item)
-                    missing_items.add(f"{form_name}.{item}")
+                    missing_items.add(qualify(form_name, item))
 
             selected_items = set(form.get_selected_form_items())
-            form.available_form_items = [column for column in form.available_form_items if column not in selected_items]
+            form.selected_form_items = [column for column in form.column_order if column in selected_items]
+            form.available_form_items = [column for column in form.column_order if column not in selected_items]
             valid_selected_forms[form_name] = form
 
         self.selected_forms = valid_selected_forms
 
         valid_selected_form_names = set(self.selected_forms.keys())
         self.available_forms = {}
-        for form_name in sorted(data_forms - valid_selected_form_names):
+        for form_name in self.data.keys():
+            if form_name in valid_selected_form_names:
+                continue
             new_form = CLForm(form_name)
-            form_columns = set(self.data[form_name].columns)
-            new_form.available_form_items = sorted(
-                column for column in form_columns if column not in actual_common_items
-            )
+            new_form.column_order = [
+                column for column in self.data[form_name].columns if column not in common_lookup
+            ]
+            new_form.available_form_items = list(new_form.column_order)
             self.available_forms[form_name] = new_form
 
         # Build a set of valid identifiers for filters and ordering.
@@ -422,7 +488,7 @@ class CLReport:
         for form_name, form in self.selected_forms.items():
             for item in form.get_selected_form_items():
                 valid_identifiers.add(item)
-                valid_identifiers.add(f"{form_name}.{item}")
+                valid_identifiers.add(qualify(form_name, item))
 
         self.order_list = [item for item in self.order_list if item in valid_identifiers]
         self.selected_items_order_list = [item for item in self.selected_items_order_list if item in valid_identifiers]
@@ -439,6 +505,31 @@ class CLReport:
             "forms": sorted(missing_forms),
             "items": sorted(missing_items),
         }
+
+    def apply_config(self, config: "ReportConfig") -> Dict[str, list]:
+        """Apply a :class:`ReportConfig` and reconcile it against the loaded data.
+
+        ``set_data`` must be called first so the configuration can be aligned
+        with the columns actually present. This bundles the
+        load-then-reconcile sequence the UI performs into a single call, which
+        is the natural entry point for headless/tool-chained runs.
+
+        Args:
+            config: A :class:`ReportConfig`, or any object exposing a ``raw``
+                settings dict. A plain settings ``dict`` is also accepted for
+                convenience.
+
+        Returns:
+            The reconciliation report (``{"forms": [...], "items": [...]}``)
+            listing anything dropped because the current data no longer
+            supports it -- the same information the UI surfaces as a warning.
+        """
+
+        raw = getattr(config, "raw", None)
+        if raw is None:
+            raw = dict(config)
+        self.load_setting_from_dict(raw)
+        return self.reconcile_with_current_data()
 
     def get_join_list(self):
         """Get the list of join items."""
@@ -474,6 +565,27 @@ class CLReport:
                 "how": form.get_join_how(),
             }
         return join_data
+
+    def get_join_order_conflicts(self) -> Dict[int, List[str]]:
+        """Return join orders shared by two or more selected forms.
+
+        The result maps each conflicting ``join_order`` value to the sorted list
+        of form names that were assigned that order.  Forms without a configured
+        order are ignored (they default to being joined last).  The mapping is
+        empty when every selected form has a unique join order, which the UI and
+        run guards treat as "safe to run".
+        """
+        order_to_forms: Dict[int, List[str]] = {}
+        for form_name, form in self.selected_forms.items():
+            order = form.get_join_order()
+            if order is None:
+                continue
+            order_to_forms.setdefault(order, []).append(form_name)
+        return {
+            order: sorted(forms)
+            for order, forms in order_to_forms.items()
+            if len(forms) > 1
+        }
 
     def add_join_item(self, form: str, item: str, order: int, how: str):
         """Add a join item to the form."""
@@ -513,9 +625,9 @@ class CLReport:
             # Item is a common item
             if (item, operator, value) not in self.static_filter_items:
                 self.static_filter_items.append((item, operator, value))
-        elif "." in item:
+        elif is_qualified(item):
             # Item is form-prefixed (e.g. "DM.Legal Sex (ig_DM1.SEX)")
-            form_name, item_name = item.split(".", 1)
+            form_name, item_name = split_qualified(item)
             if form_name in self.selected_forms:
                 if item_name in self.selected_forms[form_name].get_selected_form_items():
                     if (item, operator, value) not in self.static_filter_items:
@@ -528,8 +640,7 @@ class CLReport:
                         self.static_filter_items.append((item, operator, value))
                     break
 
-        # Add debug print
-        print(f"After adding filter: {self.static_filter_items}")
+        logger.debug("After adding static filter: %s", self.static_filter_items)
 
     def remove_static_filter_item(self, item: str, operator: str = None, value: str = None):
         """Remove a static filter item."""
@@ -559,7 +670,7 @@ class CLReport:
         if (item1, operator, item2) not in self.dynamic_filter_items:
             # Add the item to the dynamic filter items
             self.dynamic_filter_items.append((item1, operator, item2))
-            print(f"Added dynamic filter: {item1} {operator} {item2}")
+            logger.debug("Added dynamic filter: %s %s %s", item1, operator, item2)
 
     def remove_dynamic_filter_item(self, item1: str = None, operator: str = None, item2: str = None):
         """Remove a dynamic filter item.
@@ -598,287 +709,27 @@ class CLReport:
             self.dynamic_filter_items.append(new_item)
 
     def create_report(self):
-        """Create the report based on the stored info.
-        This method should be implemented to generate the report based on the selected forms,
-        common items, form items, join items, and filters, and rename.
-        For each form within the join list, sorted based on the join order:
-            Get the data from self.data dictionary for all selected columns(common items and selected
-            items of that form)
-            Filter the table with static filter items if items within the list is in the form
-            Join with the previously joined table (if applicable since the first table would not needed to join) based on join type
-        Once all tables are joined:
-            Filter the table using dynamic filter item list (filter based on other values within joined table)
-            Rename the items with the rename items list
+        """Create the report from the stored selections, filters, joins, and renames.
 
-        Return:
-        The joined table
+        Execution is delegated to
+        :class:`clinical_reporting.core.engine.ReportEngine`, which performs the
+        join -> dynamic-filter -> reorder -> rename -> date-format -> finalize
+        pipeline. See that class for the step-by-step details.
+
+        Returns:
+            The assembled report DataFrame, or ``None`` if nothing was produced.
+
+        Raises:
+            ReportValidationError: If the current selections, joins, filters,
+                ordering, or output names do not form an executable report.
         """
-        import pandas as pd
+        from clinical_reporting.core.engine import ReportEngine
 
-        from clinical_reporting.services.util import apply_dynamic_filter, apply_static_filter
+        return ReportEngine(self).run()
 
-        # Initialize result dataframe
-        result_df = None
+    def validate(self) -> List["ReportValidationIssue"]:
+        """Return structured issues that currently prevent report execution."""
 
-        # Get selected forms and sort by join order
-        selected_forms = self.get_selected_forms_list()
+        from clinical_reporting.core.validation import validate_report
 
-        # Create a list of forms with their join order for sorting
-        form_order_list = [(form, self.selected_forms[form].get_join_order() or 999) for form in selected_forms]
-
-        # Sort forms by join order
-        form_order_list.sort(key=lambda x: x[1])
-
-        # Process each form in order
-        for form_name, _ in form_order_list:
-            form = self.selected_forms[form_name]
-
-            # Get columns to select from this form
-            columns_to_select = []
-
-            # Add selected common items
-            for item in self.selected_common_items:
-                if item in self.data[form_name].columns:
-                    columns_to_select.append(item)
-
-            # Add join items if they exist in this form
-            for item in form.get_join_items():
-                if item and item in self.data[form_name].columns and item not in columns_to_select:
-                    columns_to_select.append(item)
-
-            # Add form-specific items
-            for item in form.get_selected_form_items():
-                if item in self.data[form_name].columns and item not in columns_to_select:
-                    columns_to_select.append(item)
-
-            # Get data for this form with selected columns
-            if columns_to_select:
-                form_df = self.data[form_name][columns_to_select].copy()
-            else:
-                # If no columns selected, continue to next form
-                continue
-
-            # Apply static filters to this form's data
-            for item, operator, value in self.static_filter_items:
-                # Check if the filter item is in this form (without form prefix)
-                if item in form_df.columns:
-                    form_df = apply_static_filter(form_df, item, operator, value)
-                # Check if the filter item is form-prefixed and matches this form
-                elif "." in item:
-                    prefix, col_name = item.split(".", 1)
-                    if prefix == form_name and col_name in form_df.columns:
-                        form_df = apply_static_filter(form_df, col_name, operator, value)
-
-            # If this is the first form, set it as the result and continue
-            if result_df is None:
-                # Add form prefix to non-common columns
-                rename_cols = {}
-                for col in form_df.columns:
-                    if col not in self.selected_common_items:
-                        rename_cols[col] = f"{form_name}.{col}"
-
-                if rename_cols:
-                    form_df = form_df.rename(columns=rename_cols)
-
-                result_df = form_df
-                continue
-
-            # For subsequent forms, prepare for join
-            # Add form prefix to non-common columns
-            rename_cols = {}
-            for col in form_df.columns:
-                if col not in self.selected_common_items and col not in form.get_join_items():
-                    rename_cols[col] = f"{form_name}.{col}"
-
-            if rename_cols:
-                form_df = form_df.rename(columns=rename_cols)
-
-            # Get join type
-            join_how = form.get_join_how() or "Left join"
-
-            # Convert join_how string to pandas merge method
-            if join_how == "Left join":
-                how = "left"
-            elif join_how == "Right join":
-                how = "right"
-            elif join_how == "Inner join":
-                how = "inner"
-            elif join_how == "Outer join":
-                how = "outer"
-            else:
-                how = "left"  # Default to left join
-
-            # Get join items
-            join_items = [item for item in form.get_join_items() if item]
-
-            # drop index
-            form_df = form_df.reset_index(drop=True)
-
-            # remove duplicate
-            form_df = form_df.drop_duplicates()
-            # If no join items, skip this form
-            if not join_items:
-                continue
-
-            # Align join column dtypes to prevent merge errors (e.g., object vs datetime)
-            for join_col in join_items:
-                if join_col in result_df.columns and join_col in form_df.columns:
-                    left_series = result_df[join_col]
-                    right_series = form_df[join_col]
-                    is_date_column = (
-                        "date" in join_col.lower()
-                        or pd.api.types.is_datetime64_any_dtype(left_series)
-                        or pd.api.types.is_datetime64_any_dtype(right_series)
-                    )
-                    if is_date_column:
-                        result_df[join_col] = pd.to_datetime(left_series, errors="coerce")
-                        form_df[join_col] = pd.to_datetime(right_series, errors="coerce")
-                    elif left_series.dtype != right_series.dtype:
-                        result_df[join_col] = left_series.astype(str)
-                        form_df[join_col] = right_series.astype(str)
-
-            # Perform the join
-            result_df = pd.merge(result_df, form_df, on=join_items, how=how)
-
-        # Apply dynamic filters after all joins
-        if result_df is not None:
-            # print(f"Applying dynamic filters: {self.dynamic_filter_items}")
-            # print(f"Available columns: {result_df.columns.tolist()}")
-
-            for item1, operator, item2 in self.dynamic_filter_items:
-                # Handle both with and without form prefix
-                item1_col = None
-                item2_col = None
-
-                # Check if items exist directly in columns
-                if item1 in result_df.columns:
-                    item1_col = item1
-                if item2 in result_df.columns:
-                    item2_col = item2
-
-                # If items have form prefixes, they should already be in the columns
-                # If not found, try checking if they're common items without form prefix
-                if item1_col is None and "." not in item1:
-                    # Check if any column ends with this item name (after form prefix)
-                    for col in result_df.columns:
-                        if "." in col and col.split(".", 1)[1] == item1:
-                            item1_col = col
-                            break
-
-                if item2_col is None and "." not in item2:
-                    # Check if any column ends with this item name (after form prefix)
-                    for col in result_df.columns:
-                        if "." in col and col.split(".", 1)[1] == item2:
-                            item2_col = col
-                            break
-
-                # Apply filter if both columns were found
-                if item1_col is not None and item2_col is not None:
-                    print(f"Applying filter: {item1_col} {operator} {item2_col}")
-                    result_df = apply_dynamic_filter(result_df, item1_col, operator, item2_col)
-                else:
-                    print(f"Could not find columns for filter: {item1} {operator} {item2}")
-                    print(f"item1_col: {item1_col}, item2_col: {item2_col}")
-
-        # Reorder columns according to order_list if it exists (before renaming)
-        if result_df is not None and self.order_list:
-            # Filter order_list to only include columns that exist in result_df
-            valid_order = [col for col in self.order_list if col in result_df.columns]
-
-            # Get columns that are in result_df but not in order_list
-            remaining_cols = [col for col in result_df.columns if col not in valid_order]
-
-            # Reorder columns
-            if valid_order:
-                result_df = result_df[valid_order + remaining_cols]
-
-        # Use the selected_items_order_list if it exists (priority over order_list)
-        elif result_df is not None and self.selected_items_order_list:
-            # Filter selected_items_order_list to only include columns that exist in result_df
-            valid_order = [col for col in self.selected_items_order_list if col in result_df.columns]
-
-            # Get columns that are in result_df but not in the order list
-            remaining_cols = [col for col in result_df.columns if col not in valid_order]
-
-            # Reorder columns
-            if valid_order:
-                result_df = result_df[valid_order + remaining_cols]
-
-        # Rename columns according to rename_dict (after reordering)
-        if result_df is not None and self.rename_dict:
-            # Create a mapping dict for renaming
-            rename_mapping = {}
-            for orig_name, new_name in self.rename_dict.items():
-                if orig_name in result_df.columns and new_name:
-                    rename_mapping[orig_name] = new_name
-
-            # Apply renaming
-            if rename_mapping:
-                result_df = result_df.rename(columns=rename_mapping)
-
-        # make sure all date columns are formatted to %m-%d-%Y
-        if result_df is not None:
-            # Use a more comprehensive approach to catch all date columns
-            date_cols = []
-
-            # Method 1: Using select_dtypes with all datetime types
-            date_cols.extend(result_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns)
-
-            # Method 2: Check column names containing 'Date'/'date'
-            for col in result_df.columns:
-                if "date" in col.lower() and col not in date_cols:
-                    try:
-                        # Attempt to convert to datetime to confirm it's a date column,
-                        # prefer using a mixed format to avoid inference warnings.
-                        inferred_datetime = False
-                        if pd.api.types.is_datetime64_dtype(result_df[col]):
-                            inferred_datetime = True
-                        else:
-                            try:
-                                parsed = pd.to_datetime(result_df[col], errors="coerce", format="mixed")
-                            except TypeError:
-                                # Older pandas may not support format="mixed"; fall back and suppress warning
-                                import warnings as _warnings
-
-                                with _warnings.catch_warnings():
-                                    _warnings.simplefilter("ignore", category=UserWarning)
-                                    parsed = pd.to_datetime(result_df[col], errors="coerce")
-                            inferred_datetime = parsed.notna().any()
-
-                        if inferred_datetime:
-                            date_cols.append(col)
-                    except Exception:
-                        pass
-
-            # Format each identified date column
-            for col in date_cols:
-                try:
-                    # Convert to datetime first (in case it's not already), avoiding format inference warnings
-                    try:
-                        parsed = pd.to_datetime(result_df[col], errors="coerce", format="mixed")
-                    except TypeError:
-                        import warnings as _warnings
-
-                        with _warnings.catch_warnings():
-                            _warnings.simplefilter("ignore", category=UserWarning)
-                            parsed = pd.to_datetime(result_df[col], errors="coerce")
-
-                    result_df[col] = parsed
-                    # Format without leading zeros
-                    result_df[col] = result_df[col].apply(
-                        lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
-                    )
-                except Exception:
-                    print(f"Could not format column {col} as date")
-
-        # * Remove possible duplicate within result_df
-        if result_df is not None:
-            result_df = result_df.reset_index(drop=True)
-            # Remove duplicate rows
-            result_df = result_df.drop_duplicates()
-
-        # * If Subject is in 1 of the column, sort by Subject
-        if result_df is not None and "Subject" in result_df.columns:
-            result_df = result_df.sort_values(by="Subject")
-
-        return result_df
+        return validate_report(self)

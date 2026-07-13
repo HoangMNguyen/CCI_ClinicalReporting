@@ -1,0 +1,273 @@
+"""Report execution engine.
+
+Separates report *execution* (joining forms, applying filters, ordering,
+renaming, date formatting) from the report *state* held by
+:class:`~clinical_reporting.core.report.CLReport`. ``CLReport.create_report``
+delegates here, so public behaviour is unchanged while the previously
+~285-line method is broken into small, individually testable steps.
+"""
+
+from __future__ import annotations
+
+import logging
+import warnings
+
+import numpy as np
+import pandas as pd
+
+from clinical_reporting.core.constants import (
+    SUBJECT_COLUMN,
+    JoinHow,
+    is_qualified,
+    qualify,
+    split_qualified,
+)
+from clinical_reporting.services.transforms import apply_dynamic_filter, apply_static_filter
+
+logger = logging.getLogger(__name__)
+
+
+class ReportEngine:
+    """Builds the final report DataFrame from a configured :class:`CLReport`."""
+
+    def __init__(self, report):
+        # ``report`` supplies the data dict and the selection/filter/join state.
+        self.report = report
+
+    def run(self):
+        """Execute the full pipeline and return the report DataFrame (or ``None``)."""
+        # Keep direct engine use as safe as ``CLReport.create_report``. Invalid
+        # mutable UI state must never be interpreted as permission to silently
+        # omit a form, filter, or join from the output.
+        from clinical_reporting.core.validation import raise_for_report
+
+        raise_for_report(self.report)
+        result_df = self._build_joined_table()
+        if result_df is None:
+            return None
+        result_df = self._apply_dynamic_filters(result_df)
+        result_df = self._reorder_columns(result_df)
+        result_df = self._apply_renames(result_df)
+        result_df = self._format_date_columns(result_df)
+        result_df = self._finalize(result_df)
+        return result_df
+
+    # ------------------------------------------------------------------
+    # Join phase
+
+    def _ordered_form_names(self):
+        """Return selected form names sorted by their configured join order."""
+        return self.report.get_forms_in_join_order()
+
+    def _select_filtered_columns(self, form_name, form):
+        """Select a form's contributing columns and apply its static filters.
+
+        Returns the trimmed/filtered DataFrame, or ``None`` when the form
+        contributes no columns.
+        """
+        report = self.report
+        source = report.data[form_name]
+
+        columns_to_select = []
+        # Selected common items present in this form.
+        for item in report.selected_common_items:
+            if item in source.columns:
+                columns_to_select.append(item)
+        # Join items present in this form.
+        for item in form.get_join_items():
+            if item and item in source.columns and item not in columns_to_select:
+                columns_to_select.append(item)
+        # Form-specific selected items.
+        for item in form.get_selected_form_items():
+            if item in source.columns and item not in columns_to_select:
+                columns_to_select.append(item)
+
+        if not columns_to_select:
+            return None
+
+        form_df = source[columns_to_select].copy()
+
+        # Apply static filters whose item belongs to this form.
+        for item, operator, value in report.static_filter_items:
+            if item in form_df.columns:
+                form_df = apply_static_filter(form_df, item, operator, value)
+            elif is_qualified(item):
+                prefix, col_name = split_qualified(item)
+                if prefix == form_name and col_name in form_df.columns:
+                    form_df = apply_static_filter(form_df, col_name, operator, value)
+
+        return form_df
+
+    def _prefix_first_form(self, form_df, form_name):
+        """Prefix non-common columns of the first form with ``form_name.``."""
+        report = self.report
+        rename_cols = {
+            col: qualify(form_name, col) for col in form_df.columns if col not in report.selected_common_items
+        }
+        if rename_cols:
+            form_df = form_df.rename(columns=rename_cols)
+        return form_df
+
+    def _merge_subsequent_form(self, result_df, form_df, form_name, form):
+        """Prefix, align join dtypes, and merge a non-first form into ``result_df``."""
+        report = self.report
+
+        # Prefix non-common, non-join columns.
+        rename_cols = {
+            col: qualify(form_name, col)
+            for col in form_df.columns
+            if col not in report.selected_common_items and col not in form.get_join_items()
+        }
+        if rename_cols:
+            form_df = form_df.rename(columns=rename_cols)
+
+        how = JoinHow.to_pandas(form.get_join_how())
+        join_items = [item for item in form.get_join_items() if item]
+
+        form_df = form_df.reset_index(drop=True)
+        form_df = form_df.drop_duplicates()
+
+        # Without join items there is nothing to merge on; keep the prior result.
+        if not join_items:
+            return result_df
+
+        # Align join column dtypes to prevent merge errors (e.g., object vs datetime).
+        for join_col in join_items:
+            if join_col in result_df.columns and join_col in form_df.columns:
+                left_series = result_df[join_col]
+                right_series = form_df[join_col]
+                is_date_column = (
+                    "date" in join_col.lower()
+                    or pd.api.types.is_datetime64_any_dtype(left_series)
+                    or pd.api.types.is_datetime64_any_dtype(right_series)
+                )
+                if is_date_column:
+                    result_df[join_col] = pd.to_datetime(left_series, errors="coerce")
+                    form_df[join_col] = pd.to_datetime(right_series, errors="coerce")
+                elif left_series.dtype != right_series.dtype:
+                    result_df[join_col] = left_series.astype(str)
+                    form_df[join_col] = right_series.astype(str)
+
+        return pd.merge(result_df, form_df, on=join_items, how=how)
+
+    def _build_joined_table(self):
+        """Join all selected forms in join order; return the merged DataFrame or ``None``."""
+        report = self.report
+        result_df = None
+        for form_name in self._ordered_form_names():
+            form = report.selected_forms[form_name]
+            form_df = self._select_filtered_columns(form_name, form)
+            if form_df is None:
+                continue
+            if result_df is None:
+                result_df = self._prefix_first_form(form_df, form_name)
+                continue
+            result_df = self._merge_subsequent_form(result_df, form_df, form_name, form)
+        return result_df
+
+    # ------------------------------------------------------------------
+    # Post-join phases
+
+    @staticmethod
+    def _resolve_filter_column(name, columns):
+        """Resolve a dynamic-filter operand to an actual column name, or ``None``.
+
+        Matches a column directly, or (for an unqualified operand) a column whose
+        item part equals ``name`` after stripping its form prefix.
+        """
+        if name in columns:
+            return name
+        if not is_qualified(name):
+            for col in columns:
+                if is_qualified(col) and split_qualified(col)[1] == name:
+                    return col
+        return None
+
+    def _apply_dynamic_filters(self, result_df):
+        for item1, operator, item2 in self.report.dynamic_filter_items:
+            item1_col = self._resolve_filter_column(item1, result_df.columns)
+            item2_col = self._resolve_filter_column(item2, result_df.columns)
+            if item1_col is not None and item2_col is not None:
+                logger.debug("Applying filter: %s %s %s", item1_col, operator, item2_col)
+                result_df = apply_dynamic_filter(result_df, item1_col, operator, item2_col)
+            else:
+                logger.warning(
+                    "Could not find columns for dynamic filter: %s %s %s (resolved item1=%s, item2=%s)",
+                    item1,
+                    operator,
+                    item2,
+                    item1_col,
+                    item2_col,
+                )
+        return result_df
+
+    def _reorder_columns(self, result_df):
+        """Reorder by ``order_list`` (preferred) or ``selected_items_order_list``."""
+        report = self.report
+        order = report.order_list or report.selected_items_order_list
+        if not order:
+            return result_df
+        valid_order = [col for col in order if col in result_df.columns]
+        if not valid_order:
+            return result_df
+        remaining_cols = [col for col in result_df.columns if col not in valid_order]
+        return result_df[valid_order + remaining_cols]
+
+    def _apply_renames(self, result_df):
+        report = self.report
+        if not report.rename_dict:
+            return result_df
+        rename_mapping = {
+            orig_name: new_name
+            for orig_name, new_name in report.rename_dict.items()
+            if orig_name in result_df.columns and new_name
+        }
+        if rename_mapping:
+            result_df = result_df.rename(columns=rename_mapping)
+        return result_df
+
+    @staticmethod
+    def _to_datetime_quiet(series):
+        """Parse to datetime preferring ``format="mixed"`` and suppressing warnings."""
+        try:
+            return pd.to_datetime(series, errors="coerce", format="mixed")
+        except TypeError:
+            # Older pandas may not support format="mixed"; fall back and suppress the warning.
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=UserWarning)
+                return pd.to_datetime(series, errors="coerce")
+
+    def _format_date_columns(self, result_df):
+        """Render date columns as ``m/d/yyyy`` strings (no leading zeros)."""
+        # Datetime-typed columns, plus any 'date'-named column that parses as dates.
+        date_cols = list(result_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns)
+
+        for col in result_df.columns:
+            if "date" in col.lower() and col not in date_cols:
+                try:
+                    if pd.api.types.is_datetime64_dtype(result_df[col]):
+                        inferred_datetime = True
+                    else:
+                        inferred_datetime = self._to_datetime_quiet(result_df[col]).notna().any()
+                    if inferred_datetime:
+                        date_cols.append(col)
+                except Exception:
+                    pass
+
+        for col in date_cols:
+            try:
+                result_df[col] = self._to_datetime_quiet(result_df[col])
+                result_df[col] = result_df[col].apply(
+                    lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
+                )
+            except Exception:
+                logger.debug("Could not format column %s as date", col)
+        return result_df
+
+    def _finalize(self, result_df):
+        """Drop duplicate rows and sort by subject when present."""
+        result_df = result_df.reset_index(drop=True)
+        result_df = result_df.drop_duplicates()
+        if SUBJECT_COLUMN in result_df.columns:
+            result_df = result_df.sort_values(by=SUBJECT_COLUMN)
+        return result_df

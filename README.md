@@ -8,6 +8,7 @@ Desktop application for assembling clinical report outputs through a guided PySi
 - Join, rename, comparison, and filter configuration tables tailored for clinical datasets.
 - Save/load settings plus quick run helpers for generating reports.
 - Form names cannot include `.` because it is reserved for the form/item separator. Additional inputs default to the file name and must be renamed to remove dots.
+- Headless reporting engine that can be driven programmatically without the UI, so the same logic can be reused in scripts, batch jobs, and tool chains. See [Programmatic / API usage](#programmatic--api-usage).
 
 ## Setup
 
@@ -26,6 +27,115 @@ PYTHONPATH=src python -m clinical_reporting.app
 Legacy compatibility entry point:
 ```bash
 python src/clinical_reporting/Clinical_Reporting.py
+```
+
+## Programmatic / API usage
+
+The reporting engine is decoupled from the PySide6 UI, so it can be driven
+directly from another Python program (scripts, batch jobs, tool chains, or a
+future service layer). The UI is just one client of the same core engine.
+
+The pipeline has four headless building blocks:
+
+| Step | Module | What it does |
+| --- | --- | --- |
+| Load data | `clinical_reporting.services.loaders` | Read a Corelisting zip / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
+| Configure | `clinical_reporting.core.config.ReportConfig` | A typed wrapper over the same settings JSON the UI saves/loads. |
+| Run | `clinical_reporting.core.report.CLReport` | Apply the config to the data and execute `create_report()`. |
+| Export | `clinical_reporting.services.exporter` | Write the result to xlsx/csv, or render it to bytes. |
+
+None of these import Qt, so they run anywhere Python + pandas are available.
+
+### Minimal end-to-end example
+
+```python
+from clinical_reporting.core import CLReport, ReportConfig
+from clinical_reporting.services.loaders import read_data_dict_zip_corelisting
+from clinical_reporting.services.exporter import write_xlsx
+
+# 1. Load the study data into {form_name: DataFrame}
+report = CLReport()
+report.set_data(read_data_dict_zip_corelisting("study_export.zip"))
+
+# 2. Apply a configuration saved from the UI (load + reconcile in one call)
+missing = report.apply_config(ReportConfig.from_settings_json("setting.json"))
+if missing["forms"] or missing["items"]:
+    print("Dropped (not present in current data):", missing)
+
+# 3. Run the engine, then 4. export
+df = report.create_report()
+write_xlsx(df, "report.xlsx")
+```
+
+`create_report()` validates the complete definition before execution and raises
+`ReportValidationError` instead of silently ignoring invalid joins, filters, or
+output names. Call `report.validate()` first when a program needs to present all
+issues at once; each issue exposes `code`, `message`, `field`, and `to_dict()`.
+
+`set_data()` must be called before `apply_config()` so the configuration can be
+reconciled against the columns actually present. `apply_config()` returns a
+`{"forms": [...], "items": [...]}` report of anything dropped because the
+current data no longer supports it — the same information the UI shows as a
+warning label.
+
+### Building a configuration in code
+
+Any `.json` saved from the UI is a valid config, but you can also build one in
+memory using the same schema:
+
+```python
+config = ReportConfig.from_dict({
+    "study_name": "STUDY01",
+    "selected_common_items": ["Subject"],
+    "selected_forms": {
+        "DM": {"name": "DM", "selected_form_items": ["Age"],
+               "join_items": [], "join_order": 1, "join_how": "Left join"},
+        "VS": {"name": "VS", "selected_form_items": ["Pulse"],
+               "join_items": ["Subject"], "join_order": 2, "join_how": "Left join"},
+    },
+    "rename_dict": {"DM.Age": "Age"},
+    "static_filter_items": [["DM.Age", ">", "18"]],
+    "dynamic_filter_items": [],
+})
+report.apply_config(config)
+```
+
+> Note: form-specific items only exist when more than one form is loaded. With a
+> single form every column is treated as a common item, so a column selected as
+> a form item is reconciled into the common pool.
+
+### Additional inputs and export options
+
+```python
+from clinical_reporting.services.loaders import (
+    load_additional_inputs, build_additional_data_map,
+)
+from clinical_reporting.services.exporter import dataframe_to_xlsx_bytes, write_csv
+
+# Combine a Corelisting zip with extra CSV/Excel files
+base = read_data_dict_zip_corelisting("study_export.zip")
+inputs = load_additional_inputs(["labs.csv"])          # {resolved_path: DataFrame}
+extra = build_additional_data_map(
+    inputs,
+    form_names={path: "LABS" for path in inputs},      # path -> form name
+    column_names={},                                   # (path, original_col) -> new name
+)
+report.set_data({**base, **extra})
+
+# Export options
+write_csv(df, "report.csv")                            # CSV on disk
+xlsx_bytes = dataframe_to_xlsx_bytes(df)               # in-memory bytes (e.g. stream over HTTP)
+```
+
+### Persisting a configuration
+
+A programmatically built configuration can be written back to the same JSON the
+UI reads, so headless runs and the UI stay interchangeable:
+
+```python
+report.save_setting_to_json("my_setting.json", setting_name="batch-run")
+# or, from a ReportConfig:
+config.to_settings_json("my_setting.json")
 ```
 
 ## Testing
@@ -69,10 +179,18 @@ src/clinical_reporting/
   app/
     __main__.py                # main runtime entry: python -m clinical_reporting.app
   core/
-    forms.py                   # CLForm and related form parsing/model logic
-    report.py                  # CLReport and report configuration/execution logic
+    forms.py                   # CLForm form/item selection model
+    report.py                  # CLReport: report state, persistence, reconciliation
+    engine.py                  # ReportEngine: builds the report DataFrame (create_report delegates here)
+    config.py                  # ReportConfig: declarative config wrapper over the settings JSON
+    constants.py               # JoinHow / Operator labels + qualified-name (form.item) helpers
   services/
-    util.py                    # shared helper functions used across layers
+    tabular.py                 # low-level CSV/Excel readers + NA handling
+    corelisting.py             # Corelisting ZIP loader (submitted/ILB/cut-off rules)
+    transforms.py              # static/dynamic DataFrame filters
+    excel.py                   # export date formatting + worksheet styling
+    loaders.py                 # data-loading / input-shaping facade (headless, no Qt)
+    exporter.py                # report export helpers: xlsx / csv / bytes (headless, no Qt)
   ui/
     main_widget.py             # primary PySide6 widget and app wiring
     tabs/                      # tab mixins (forms, items, filters, comparisons, settings)

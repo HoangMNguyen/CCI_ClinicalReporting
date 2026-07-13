@@ -13,6 +13,8 @@ from typing import List
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QComboBox, QTableWidgetItem
 
+from clinical_reporting.core.constants import JoinHow
+
 
 class ComparisonTabMixin:
     """Behavior for rename, join, and ordering controls."""
@@ -28,10 +30,7 @@ class ComparisonTabMixin:
 
     def update_rename_table(self) -> None:
         """Populate the rename table with selected items."""
-        try:
-            self.ui.tableWidget_rename.cellChanged.disconnect(self.on_rename_cell_changed)
-        except Exception:
-            pass
+        self._safe_disconnect(self.ui.tableWidget_rename.cellChanged, self.on_rename_cell_changed)
 
         self.ui.tableWidget_rename.setRowCount(0)
         rename_dict = self.report.get_rename_dict()
@@ -47,7 +46,9 @@ class ComparisonTabMixin:
             self.ui.tableWidget_rename.setItem(row, 1, new_item)
             row += 1
 
-        for form_name in self.report.get_selected_forms_list():
+        # List forms in join (merge) order so the rows mirror the default
+        # column order of the report.
+        for form_name in self.report.get_forms_in_join_order():
             form = self.report.selected_forms[form_name]
             for item in form.get_selected_form_items():
                 combined_name = f"{form_name}.{item}"
@@ -87,11 +88,9 @@ class ComparisonTabMixin:
 
     def update_selected_forms_table(self) -> None:
         """Populate the join configuration table."""
-        try:
-            self.ui.tableWidget_join.cellChanged.disconnect()
-        except Exception:
-            pass
-
+        # No handler is connected to ``tableWidget_join.cellChanged`` (join edits
+        # are captured via the per-cell combo boxes), so there is nothing to
+        # disconnect here before repopulating the table.
         self.ui.tableWidget_join.setRowCount(0)
         join_data = self.report.get_join_list_dict()
         # Max join order equals number of selected forms
@@ -125,14 +124,13 @@ class ComparisonTabMixin:
             # If we had to clamp the value, persist it immediately to the model
             if clamped_order != desired_order:
                 items = join_data.get(form_name, {}).get("items", [])
-                how = join_data.get(form_name, {}).get("how", "Left join")
+                how = join_data.get(form_name, {}).get("how", JoinHow.LEFT)
                 self.report.update_join_items(form_name, items, clamped_order, how)
 
             join_type_combo = QComboBox()
-            join_types = ["Left join", "Right join", "Inner join", "Outer join"]
-            for join_type in join_types:
+            for join_type in JoinHow.ALL:
                 join_type_combo.addItem(join_type)
-            default_join_type = "Left join"
+            default_join_type = JoinHow.LEFT
             if form_name in join_data and join_data[form_name]["how"]:
                 default_join_type = join_data[form_name]["how"]
             join_type_combo.setCurrentText(default_join_type)
@@ -142,6 +140,7 @@ class ComparisonTabMixin:
             if clamped_order == 1:
                 self.on_join_order_changed(row, "1")
 
+        self._highlight_duplicate_join_orders()
         self._adjust_column_widths(self.ui.tableWidget_join)
 
     def on_join_order_changed(self, row: int, value: str) -> None:
@@ -168,6 +167,41 @@ class ComparisonTabMixin:
         join_type_combo = self.ui.tableWidget_join.cellWidget(row, join_type_col)
         if join_type_combo:
             join_type_combo.setEnabled(enabled)
+
+        self._highlight_duplicate_join_orders()
+
+    def _highlight_duplicate_join_orders(self) -> None:
+        """Flag join orders shared by two or more forms.
+
+        When several forms are assigned the same join order the value is
+        ambiguous, so the number is shown in red and bold on every affected
+        row.  Rows with a unique order are reset to the default styling.
+        """
+        order_col = 4
+        table = self.ui.tableWidget_join
+
+        combos = []
+        order_counts: dict[str, int] = {}
+        for row in range(table.rowCount()):
+            combo = table.cellWidget(row, order_col)
+            if combo is None:
+                continue
+            value = combo.currentText()
+            combos.append((combo, value))
+            order_counts[value] = order_counts.get(value, 0) + 1
+
+        for combo, value in combos:
+            if order_counts.get(value, 0) > 1:
+                combo.setStyleSheet("QComboBox { color: red; font-weight: bold; }")
+            else:
+                combo.setStyleSheet("")
+
+        # Keep the Run button and its inline hint in sync with the conflict
+        # state.  Guarded because this mixin is exercised in isolation by tests
+        # that do not compose the run/save behaviour.
+        refresh_run = getattr(self, "_refresh_run_availability", None)
+        if callable(refresh_run):
+            refresh_run()
 
     def _add_item_dropdown(
         self,
@@ -237,13 +271,22 @@ class ComparisonTabMixin:
                     join_order = 1
 
             join_type_combo = self.ui.tableWidget_join.cellWidget(row, 5)
-            join_type = "Left join"
+            join_type = JoinHow.LEFT
             if join_type_combo:
                 join_type = join_type_combo.currentText()
 
             join_list.append([form_name, deduped_items, join_order, join_type])
 
         self.report.update_join_list(join_list)
+
+        # The default column order follows the join order, so re-derive the
+        # ordering list (and rename rows) after join changes. Guarded because
+        # this mixin is exercised in isolation by tests that build only the
+        # join table.
+        if hasattr(self.ui, "listWidget_items_order"):
+            self.update_items_order_list()
+        if hasattr(self.ui, "tableWidget_rename"):
+            self.update_rename_table()
 
     @staticmethod
     def _dedupe_join_items(join_items: List[str]) -> tuple[List[str], List[str]]:
