@@ -1,4 +1,4 @@
-from clinical_reporting.core.forms import CLForm
+from clinical_reporting.models import CLForm
 
 
 def test_get_and_set_name():

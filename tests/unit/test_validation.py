@@ -3,10 +3,10 @@
 import pandas as pd
 import pytest
 
-from clinical_reporting.core.constants import JoinHow
-from clinical_reporting.core.engine import ReportEngine
-from clinical_reporting.core.report import CLReport
-from clinical_reporting.core.validation import ReportValidationError
+from clinical_reporting.models import JoinHow
+from clinical_reporting.pipeline import ReportEngine
+from clinical_reporting.report import CLReport
+from clinical_reporting.validation import ReportValidationError
 
 
 def _valid_two_form_report() -> CLReport:

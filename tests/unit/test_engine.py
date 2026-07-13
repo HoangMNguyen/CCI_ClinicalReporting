@@ -1,4 +1,4 @@
-"""Tests for core.engine.ReportEngine and its decomposed helpers.
+"""Tests for pipeline.ReportEngine and its decomposed helpers.
 
 The end-to-end report output is also covered by the integration suite; these
 focus on the individual steps the ~285-line ``create_report`` was broken into,
@@ -8,8 +8,8 @@ and confirm ``CLReport.create_report`` still delegates to the engine.
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from clinical_reporting.core.engine import ReportEngine
-from clinical_reporting.core.report import CLReport
+from clinical_reporting.pipeline import ReportEngine
+from clinical_reporting.report import CLReport
 
 
 def _two_form_report():

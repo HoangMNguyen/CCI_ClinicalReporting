@@ -21,12 +21,7 @@ python -m pip install pytest  # test runner
 ### 2. Run the application
 Primary entry point:
 ```bash
-PYTHONPATH=src python -m clinical_reporting.app
-```
-
-Legacy compatibility entry point:
-```bash
-python src/clinical_reporting/Clinical_Reporting.py
+PYTHONPATH=src python -m clinical_reporting
 ```
 
 ## Programmatic / API usage
@@ -39,19 +34,19 @@ The pipeline has four headless building blocks:
 
 | Step | Module | What it does |
 | --- | --- | --- |
-| Load data | `clinical_reporting.services.loaders` | Read a Corelisting zip / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
-| Configure | `clinical_reporting.core.config.ReportConfig` | A typed wrapper over the same settings JSON the UI saves/loads. |
-| Run | `clinical_reporting.core.report.CLReport` | Apply the config to the data and execute `create_report()`. |
-| Export | `clinical_reporting.services.exporter` | Write the result to xlsx/csv, or render it to bytes. |
+| Load data | `clinical_reporting.data` | Read a Corelisting zip / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
+| Configure | `clinical_reporting.models.ReportConfig` | A typed wrapper over the same settings JSON the UI saves/loads. |
+| Run | `clinical_reporting.report.CLReport` | Apply the config to the data and execute `create_report()`. |
+| Export | `clinical_reporting.export` | Write the result to xlsx/csv, or render it to bytes. |
 
 None of these import Qt, so they run anywhere Python + pandas are available.
 
 ### Minimal end-to-end example
 
 ```python
-from clinical_reporting.core import CLReport, ReportConfig
-from clinical_reporting.services.loaders import read_data_dict_zip_corelisting
-from clinical_reporting.services.exporter import write_xlsx
+from clinical_reporting import CLReport, ReportConfig
+from clinical_reporting.data import read_data_dict_zip_corelisting
+from clinical_reporting.export import write_xlsx
 
 # 1. Load the study data into {form_name: DataFrame}
 report = CLReport()
@@ -107,10 +102,10 @@ report.apply_config(config)
 ### Additional inputs and export options
 
 ```python
-from clinical_reporting.services.loaders import (
+from clinical_reporting.data import (
     load_additional_inputs, build_additional_data_map,
 )
-from clinical_reporting.services.exporter import dataframe_to_xlsx_bytes, write_csv
+from clinical_reporting.export import dataframe_to_xlsx_bytes, write_csv
 
 # Combine a Corelisting zip with extra CSV/Excel files
 base = read_data_dict_zip_corelisting("study_export.zip")
@@ -176,28 +171,20 @@ Testing notes:
 
 ```text
 src/clinical_reporting/
-  app/
-    __main__.py                # main runtime entry: python -m clinical_reporting.app
-  core/
-    forms.py                   # CLForm form/item selection model
-    report.py                  # CLReport: report state, persistence, reconciliation
-    engine.py                  # ReportEngine: builds the report DataFrame (create_report delegates here)
-    config.py                  # ReportConfig: declarative config wrapper over the settings JSON
-    constants.py               # JoinHow / Operator labels + qualified-name (form.item) helpers
-  services/
-    tabular.py                 # low-level CSV/Excel readers + NA handling
-    corelisting.py             # Corelisting ZIP loader (submitted/ILB/cut-off rules)
-    transforms.py              # static/dynamic DataFrame filters
-    excel.py                   # export date formatting + worksheet styling
-    loaders.py                 # data-loading / input-shaping facade (headless, no Qt)
-    exporter.py                # report export helpers: xlsx / csv / bytes (headless, no Qt)
+  __main__.py                  # runtime entry: python -m clinical_reporting
+  models.py                    # form/config models, labels, identifiers
+  report.py                    # report state, persistence, reconciliation
+  pipeline.py                  # joins, filters, ordering, renames, formatting
+  validation.py                # executable-report validation
+  data.py                      # Corelisting ZIP, CSV, Excel, extra inputs
+  export.py                    # xlsx/csv/bytes rendering
   ui/
-    main_widget.py             # primary PySide6 widget and app wiring
-    tabs/                      # tab mixins (forms, items, filters, comparisons, settings)
-    widgets/                   # base/navigation/run-save widget glue
-    form.ui                    # Qt Designer source layout
-    ui_form.py                 # generated UI binding module
-  Clinical_Reporting.py        # legacy launcher shim (backward compatibility)
+    window.py                  # main window, shared behavior, navigation
+    workspace.py               # inputs, cutoff, and saved settings
+    selection.py               # forms, common items, and form items
+    rules.py                   # joins, filters, renames, output order
+    output.py                  # preview, run, and save
+    _generated/ui_form.py      # generated UI binding; do not edit
 
 resource/                      # Designer assets and generated UI resources
 tests/
@@ -215,7 +202,7 @@ python -m pip install pyinstaller
 
 Then build:
 ```bash
-pyinstaller --onefile --strip --name "CCI Clinical Reporting V1.00" --windowed "src/clinical_reporting/Clinical_Reporting.py" --exclude PyQt5 --exclude matplotlib
+pyinstaller --onefile --strip --name "CCI Clinical Reporting V1.00" --windowed --paths src "src/clinical_reporting/__main__.py" --exclude PyQt5 --exclude matplotlib
 ```
 
 ## Notes

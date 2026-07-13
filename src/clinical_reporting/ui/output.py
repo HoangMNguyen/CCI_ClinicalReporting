@@ -1,3 +1,7 @@
+"""Output UI feature behaviors."""
+
+from __future__ import annotations
+
 """Run, preview, and persistence mixin for the Clinical Reporting widget.
 
 This module handles everything on the final "Preview and Save" tab,
@@ -5,8 +9,6 @@ including preview generation, report export, and saved-setting
 persistence.  It also defines the :class:`ReportPreviewModel` used to
 bind pandas DataFrames to Qt views.
 """
-
-from __future__ import annotations
 
 import logging
 import os
@@ -18,11 +20,10 @@ import pandas as pd
 from PySide6.QtCore import Qt, QAbstractTableModel
 from PySide6.QtWidgets import QFileDialog
 
-from clinical_reporting.core.validation import ReportValidationError
-from clinical_reporting.services.exporter import write_xlsx
+from clinical_reporting.validation import ReportValidationError
+from clinical_reporting.export import write_xlsx
 
 logger = logging.getLogger(__name__)
-
 
 class ReportPreviewModel(QAbstractTableModel):
     """Qt model that exposes a pandas DataFrame to a :class:`QTableView`."""
@@ -60,7 +61,6 @@ class ReportPreviewModel(QAbstractTableModel):
         if orientation == Qt.Vertical:
             return str(section + 1)
         return None
-
 
 class RunAndSaveMixin:
     """Behavior for previewing reports and persisting settings/results."""

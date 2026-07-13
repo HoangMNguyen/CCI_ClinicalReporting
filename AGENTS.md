@@ -1,19 +1,19 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Core models reside in `src/clinical_reporting/core/` (`forms.py`, `report.py`, with shared collection helpers in `_helpers.py`); reusable data services (loading, filtering, export) live in `src/clinical_reporting/services/`.
-- The PySide6 UI lives in `src/clinical_reporting/ui/`; tab mixins are in `ui/tabs/` and widget glue (base, navigation, run/save) in `ui/widgets/`.
-- Runtime entry points are `src/clinical_reporting/app/__main__.py` (for `python -m clinical_reporting.app`) and the legacy shim `src/clinical_reporting/Clinical_Reporting.py`. Designer assets stay in `resource/`.
+- Headless report modules are flat under `src/clinical_reporting/`: `models.py`, `report.py`, `pipeline.py`, `validation.py`, `data.py`, and `export.py`.
+- The PySide6 UI lives in `src/clinical_reporting/ui/` and is grouped by feature: workspace, selection, rules, output, and the main window. Generated bindings live under `ui/_generated/`.
+- The runtime entry point is `src/clinical_reporting/__main__.py` for `python -m clinical_reporting`. Designer assets stay in `resource/`.
 
 ## Build, Test, and Development Commands
 - `python3 -m pip install -r requirements.txt` installs PySide6; tack on `pandas pytest` for analytics + tests.
-- `PYTHONPATH=src python3 -m clinical_reporting.app` (or `python3 src/clinical_reporting/Clinical_Reporting.py`) launches the UI.
+- `PYTHONPATH=src python3 -m clinical_reporting` launches the UI.
 - `python3 -m pytest -q` executes the unit/integration suites under `tests/`; `tests/conftest.py` inserts `src/` on `sys.path`.
 
 ## Coding Style & Naming Conventions
 - Use 4-space indentation, descriptive snake_case for variables/functions, and UpperCamelCase for classes (`CLReport`, `FormItemsTab`).
-- Prefer explicit type hints/docstrings for public methods; follow the patterns in `core/forms.py` and `core/report.py`.
-- Keep UI signal/slot wiring near widget definitions and add short comments where flow jumps between mixins.
+- Prefer explicit type hints/docstrings for public methods; follow the patterns in `models.py` and `report.py`.
+- Keep UI signal/slot wiring in its feature module and add short comments where flow crosses feature controllers.
 
 ## Testing Guidelines
 - Pytest drives coverage; place fast logic tests in `tests/unit/` and workflow-style checks in `tests/integration/` with names mirroring the module (`test_clreport_reporting.py`).
