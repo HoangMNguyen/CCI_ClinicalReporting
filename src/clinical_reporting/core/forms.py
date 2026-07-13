@@ -1,6 +1,8 @@
 from copy import deepcopy
 from typing import List, Optional
 
+from clinical_reporting.core._helpers import move_item
+
 
 class CLForm:
     """A class to represent a form that contains multiple columns and can be joined with others."""
@@ -9,6 +11,10 @@ class CLForm:
         self.name = name  # Fixed: Initialize with the given name instead of None
         self.available_form_items: List[str] = []
         self.selected_form_items: List[str] = []
+        # Original (input file) order of this form's non-common columns; used to
+        # keep the available/selected lists in file order rather than
+        # selection or alphabetical order.
+        self.column_order: List[str] = []
         self.join_items: List[str] = []
         self.join_order = None  # order of form to join
         self.join_how = None
@@ -18,27 +24,20 @@ class CLForm:
         source: Optional[List[str]],
         target: Optional[List[str]],
         item: str,
+        order: Optional[List[str]] = None,
     ) -> bool:
         """Move ``item`` between collections while keeping them mutually exclusive.
 
         The helper removes ``item`` from ``source`` (if provided) and adds it to ``target``
         (if provided) only when it is not already present there. This centralises the
         transfer-and-deduplicate behaviour for form and join items so callers do not
-        need to manually juggle both lists.
+        need to manually juggle both lists. When ``order`` is given the item is
+        inserted at the position that keeps ``target`` consistent with it.
 
         Returns ``True`` when any collection changed.
         """
 
-        changed = False
-        if source is not None and item in source:
-            source.remove(item)
-            changed = True
-
-        if target is not None and item not in target:
-            target.append(item)
-            changed = True
-
-        return changed
+        return move_item(item, source, target, order)
 
     def get_name(self):
         """Get the name of the form."""
@@ -53,14 +52,18 @@ class CLForm:
         return self.selected_form_items
 
     def set_form_item_state(self, item: str, *, selected: bool) -> bool:
-        """Ensure ``item`` appears only in the selected or available form items list."""
+        """Ensure ``item`` appears only in the selected or available form items list.
+
+        Both lists are kept in the form's original column order so the input
+        file order is preserved regardless of the order items are (de)selected.
+        """
 
         source, target = (
             (self.available_form_items, self.selected_form_items)
             if selected
             else (self.selected_form_items, self.available_form_items)
         )
-        return self._move_item(source, target, item)
+        return self._move_item(source, target, item, order=self.column_order)
 
     def get_available_form_items(self):
         """Get the list of available form items."""

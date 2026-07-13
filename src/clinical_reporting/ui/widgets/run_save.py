@@ -8,6 +8,7 @@ bind pandas DataFrames to Qt views.
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime
 from typing import Optional
@@ -16,6 +17,11 @@ import numpy as np
 import pandas as pd
 from PySide6.QtCore import Qt, QAbstractTableModel
 from PySide6.QtWidgets import QFileDialog
+
+from clinical_reporting.core.validation import ReportValidationError
+from clinical_reporting.services.exporter import write_xlsx
+
+logger = logging.getLogger(__name__)
 
 
 class ReportPreviewModel(QAbstractTableModel):
@@ -156,10 +162,74 @@ class RunAndSaveMixin:
         return None
 
     # ------------------------------------------------------------------
+    # Join-order conflict guarding
+
+    #: Prefix used for the inline join-order conflict message so the button
+    #: refresh can recognise (and clear) its own stale hint without clobbering
+    #: unrelated run/preview status text.
+    _JOIN_CONFLICT_PREFIX = "Cannot run:"
+
+    def _join_order_conflict_message(self) -> Optional[str]:
+        """Return an inline warning when selected forms share a join order.
+
+        Returns ``None`` when every form has a unique join order.
+        """
+        report = getattr(self, "report", None)
+        if report is None:
+            return None
+        conflicts = report.get_join_order_conflicts()
+        if not conflicts:
+            return None
+        parts = [
+            f"order {order} ({', '.join(forms)})"
+            for order, forms in sorted(conflicts.items())
+        ]
+        return (
+            f"{self._JOIN_CONFLICT_PREFIX} forms share the same join order — "
+            f"{'; '.join(parts)}. Give each form a unique join order."
+        )
+
+    def _refresh_run_availability(self) -> None:
+        """Enable/disable the Run button and surface any join-order conflict.
+
+        Called whenever the join configuration changes so the disabled state and
+        the inline hint stay in sync with the current selections.
+        """
+        message = self._join_order_conflict_message()
+        run_button = getattr(self.ui, "pushButton_run", None)
+        if run_button is not None:
+            run_button.setEnabled(message is None)
+        if message is not None:
+            self._set_label_text(self.label_run_confirmation, message)
+        elif (
+            self.label_run_confirmation is not None
+            and self.label_run_confirmation.text().startswith(self._JOIN_CONFLICT_PREFIX)
+        ):
+            # Conflict resolved: clear only our own stale hint.
+            self._set_label_text(self.label_run_confirmation, "")
+
+    # ------------------------------------------------------------------
     # Report preview and export
+
+    def _report_validation_message(self) -> Optional[str]:
+        """Return actionable validation feedback for the current report."""
+
+        report = getattr(self, "report", None)
+        if report is None:
+            return f"{self._JOIN_CONFLICT_PREFIX} no report is loaded."
+        issues = report.validate()
+        if not issues:
+            return None
+        details = "\n".join(f"- {issue.message}" for issue in issues)
+        return f"{self._JOIN_CONFLICT_PREFIX}\n{details}"
 
     def preview_report(self) -> None:
         """Generate and display a preview of the report."""
+        validation_message = self._report_validation_message()
+        if validation_message is not None:
+            self._set_label_text(self.label_run_confirmation, validation_message)
+            self.ui.tableView_preview.setModel(None)
+            return
         try:
             self._set_label_text(self.label_run_confirmation, "Generating preview...")
             result_df = self.report.create_report()
@@ -179,11 +249,15 @@ class RunAndSaveMixin:
                     "No data found. Please check your form selections, filters, and join settings.",
                 )
                 self.ui.tableView_preview.setModel(None)
+        except ReportValidationError as exc:
+            self._set_label_text(
+                self.label_run_confirmation,
+                f"{self._JOIN_CONFLICT_PREFIX}\n"
+                + "\n".join(f"- {issue.message}" for issue in exc.issues),
+            )
+            self.ui.tableView_preview.setModel(None)
         except Exception as exc:  # pylint: disable=broad-except
-            import traceback
-
-            error_details = traceback.format_exc()
-            print(f"Error generating preview: {error_details}")
+            logger.exception("Error generating preview")
             self._set_label_text(
                 self.label_run_confirmation,
                 f"Error generating preview: {exc}",
@@ -192,6 +266,10 @@ class RunAndSaveMixin:
 
     def click_run(self) -> None:
         """Run the report and export it to an Excel file."""
+        validation_message = self._report_validation_message()
+        if validation_message is not None:
+            self._set_label_text(self.label_run_confirmation, validation_message)
+            return
         try:
             result_df = self.report.create_report()
             if result_df is None or result_df.empty:
@@ -215,19 +293,22 @@ class RunAndSaveMixin:
                 file_name += ".xlsx"
 
             file_path = os.path.join(self.output_folder_name, file_name)
-            export_df = result_df.copy()
-            for col in export_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns:
-                export_df[col] = export_df[col].apply(lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else "")
-
-            export_df.to_excel(file_path, index=False, sheet_name="Report")
+            # Write the report with the standard styling and short-date
+            # formatting. The export logic lives in the exporter service so the
+            # same output can be produced headlessly (scripts, tool chains, API).
+            write_xlsx(result_df, file_path)
             self._set_label_text(
                 self.label_run_confirmation,
                 f"Report saved successfully to {file_path}",
             )
+        except ReportValidationError as exc:
+            self._set_label_text(
+                self.label_run_confirmation,
+                f"{self._JOIN_CONFLICT_PREFIX}\n"
+                + "\n".join(f"- {issue.message}" for issue in exc.issues),
+            )
         except Exception as exc:  # pylint: disable=broad-except
-            import traceback
-
-            print(f"Error details: {traceback.format_exc()}")
+            logger.exception("Error saving report")
             self._set_label_text(
                 self.label_run_confirmation,
                 f"Error saving report: {exc}",

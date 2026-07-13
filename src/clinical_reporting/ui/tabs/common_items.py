@@ -51,7 +51,8 @@ class CommonItemsTabMixin:
         pattern = self._compile_search_pattern(
             self.ui.lineEdit_common_item_search.text()
         )
-        for item in sorted(self.report.get_available_common_items()):
+        # Items are kept in the input column order by the report model.
+        for item in self.report.get_available_common_items():
             if pattern is not None and not pattern.search(item):
                 continue
             self.ui.listWidget_common_item_available.addItem(item)

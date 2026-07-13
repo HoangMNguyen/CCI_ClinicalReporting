@@ -51,9 +51,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>100</y>
+       <y>60</y>
        <width>121</width>
-       <height>21</height>
+       <height>31</height>
       </rect>
      </property>
      <property name="text">
@@ -63,46 +63,11 @@
       <iconset theme="QIcon::ThemeIcon::EditFind"/>
      </property>
     </widget>
-    <widget class="QFrame" name="frame">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>911</width>
-       <height>71</height>
-      </rect>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-     <widget class="QLabel" name="label">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>891</width>
-        <height>51</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Instruction:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </widget>
     <widget class="QComboBox" name="comboBox_saved_setting">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>230</y>
+       <y>180</y>
        <width>471</width>
        <height>24</height>
       </rect>
@@ -112,9 +77,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>190</y>
+       <y>140</y>
        <width>271</width>
-       <height>22</height>
+       <height>31</height>
       </rect>
      </property>
      <property name="text">
@@ -125,9 +90,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>260</y>
+       <y>230</y>
        <width>471</width>
-       <height>51</height>
+       <height>111</height>
       </rect>
      </property>
      <property name="wordWrap">
@@ -138,7 +103,7 @@
      <property name="geometry">
       <rect>
        <x>140</x>
-       <y>100</y>
+       <y>60</y>
        <width>781</width>
        <height>71</height>
       </rect>
@@ -173,13 +138,46 @@
      <property name="geometry">
       <rect>
        <x>340</x>
-       <y>190</y>
+       <y>140</y>
        <width>131</width>
-       <height>24</height>
+       <height>31</height>
       </rect>
      </property>
      <property name="text">
       <string>Settings location</string>
+     </property>
+    </widget>
+    <widget class="QDateEdit" name="cutoff_dateEdit">
+     <property name="geometry">
+      <rect>
+       <x>340</x>
+       <y>10</y>
+       <width>131</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="dateTime">
+      <datetime>
+       <hour>5</hour>
+       <minute>0</minute>
+       <second>0</second>
+       <year>2024</year>
+       <month>1</month>
+       <day>1</day>
+      </datetime>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="cutoff_checkBox">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>141</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Using cut off date?</string>
      </property>
     </widget>
    </widget>
@@ -284,7 +282,7 @@
     <widget class="QPushButton" name="pushButton_additional_file_add_2">
      <property name="geometry">
       <rect>
-       <x>780</x>
+       <x>720</x>
        <y>60</y>
        <width>131</width>
        <height>51</height>
@@ -710,48 +708,13 @@
     <attribute name="title">
      <string>Filter</string>
     </attribute>
-    <widget class="QFrame" name="frame_23">
+    <widget class="QTableWidget" name="tableWidget_static_filter">
      <property name="geometry">
       <rect>
        <x>10</x>
        <y>10</y>
        <width>911</width>
-       <height>81</height>
-      </rect>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-     <widget class="QLabel" name="label_36">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>891</width>
-        <height>61</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Instruction:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QTableWidget" name="tableWidget_static_filter">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>100</y>
-       <width>911</width>
-       <height>421</height>
+       <height>511</height>
       </rect>
      </property>
      <attribute name="horizontalHeaderDefaultSectionSize">
@@ -814,9 +777,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>100</y>
+       <y>10</y>
        <width>911</width>
-       <height>461</height>
+       <height>551</height>
       </rect>
      </property>
      <attribute name="horizontalHeaderMinimumSectionSize">
@@ -859,41 +822,6 @@
       </property>
      </column>
     </widget>
-    <widget class="QFrame" name="frame_24">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>911</width>
-       <height>81</height>
-      </rect>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-     <widget class="QLabel" name="label_37">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>891</width>
-        <height>61</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Instruction:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </widget>
    </widget>
    <widget class="QWidget" name="tab_dynamic_filter">
     <attribute name="title">
@@ -903,9 +831,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>100</y>
+       <y>10</y>
        <width>911</width>
-       <height>421</height>
+       <height>511</height>
       </rect>
      </property>
      <attribute name="horizontalHeaderDefaultSectionSize">
@@ -926,41 +854,6 @@
        <string>Item 2</string>
       </property>
      </column>
-    </widget>
-    <widget class="QFrame" name="frame_25">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>911</width>
-       <height>81</height>
-      </rect>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-     <widget class="QLabel" name="label_38">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>891</width>
-        <height>61</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Instruction:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
     </widget>
     <widget class="QPushButton" name="pushButton_dynamic_filter_add">
      <property name="geometry">
@@ -1003,9 +896,9 @@
      <property name="geometry">
       <rect>
        <x>360</x>
-       <y>120</y>
+       <y>30</y>
        <width>561</width>
-       <height>441</height>
+       <height>531</height>
       </rect>
      </property>
      <attribute name="horizontalHeaderDefaultSectionSize">
@@ -1022,48 +915,13 @@
       </property>
      </column>
     </widget>
-    <widget class="QFrame" name="frame_26">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>911</width>
-       <height>81</height>
-      </rect>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::Shape::Box</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-     <widget class="QLabel" name="label_39">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>891</width>
-        <height>61</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Instruction:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </widget>
     <widget class="QListWidget" name="listWidget_items_order">
      <property name="geometry">
       <rect>
        <x>80</x>
-       <y>120</y>
+       <y>30</y>
        <width>261</width>
-       <height>441</height>
+       <height>531</height>
       </rect>
      </property>
     </widget>
@@ -1071,9 +929,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>210</y>
+       <y>120</y>
        <width>51</width>
-       <height>24</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="text">
@@ -1084,9 +942,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>390</y>
+       <y>363</y>
        <width>51</width>
-       <height>24</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="text">
@@ -1097,7 +955,7 @@
      <property name="geometry">
       <rect>
        <x>80</x>
-       <y>89</y>
+       <y>0</y>
        <width>261</width>
        <height>31</height>
       </rect>
@@ -1112,8 +970,8 @@
     <widget class="QLabel" name="label_4">
      <property name="geometry">
       <rect>
-       <x>358</x>
-       <y>89</y>
+       <x>360</x>
+       <y>0</y>
        <width>561</width>
        <height>31</height>
       </rect>

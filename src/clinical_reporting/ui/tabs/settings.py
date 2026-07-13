@@ -9,14 +9,18 @@ settings tab controls from :class:`ui.main_widget.Widget`.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Optional
 
+from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QFileDialog
 
 from clinical_reporting.core.report import CLReport
-from clinical_reporting.services.util import read_data_dict_zip_corelisting
+from clinical_reporting.services.loaders import parse_study_name, read_data_dict_zip_corelisting
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsTabMixin:
@@ -31,6 +35,14 @@ class SettingsTabMixin:
         self.ui.comboBox_saved_setting.clear()
         self.ui.comboBox_saved_setting.currentIndexChanged.connect(self.on_saved_setting_changed)
         self.ui.pushButton_setting_location.clicked.connect(self.click_setting_location)
+
+        # Cut-off date is disabled until the user opts in via the checkbox, and
+        # defaults to today's date.
+        self.ui.cutoff_checkBox.setChecked(False)
+        self.ui.cutoff_dateEdit.setEnabled(False)
+        self.ui.cutoff_dateEdit.setDate(QDate.currentDate())
+        self.ui.cutoff_checkBox.stateChanged.connect(self.click_cutoff_checkBox)
+        self.ui.cutoff_dateEdit.editingFinished.connect(self._reload_with_current_cut_off)
 
     # ------------------------------------------------------------------
     # Slots bound to settings tab buttons
@@ -51,14 +63,13 @@ class SettingsTabMixin:
         self.report = CLReport()
         self._last_loaded_setting_path = None
         self._pending_saved_setting_reapply = False
-        file_name = os.path.basename(file_path)
-        file_parts = file_name.split("_")
-        if len(file_parts) > 2:
-            self.study_name = file_parts[2]
-        else:
-            self.study_name = os.path.splitext(file_name)[0]
+        self.study_name = parse_study_name(file_path)
         self.report.set_study_name(self.study_name)
-        self.report.set_data(read_data_dict_zip_corelisting(file_path))
+        cut_off_date = self._get_cut_off_date()
+        self.report.set_data(read_data_dict_zip_corelisting(file_path, cut_off_date=cut_off_date))
+        # Remember the source so the cut-off can be re-applied without re-picking.
+        self._input_file_path = file_path
+        self._applied_cut_off_date = cut_off_date
 
         # Ensure "Subject" is selected by default and refresh all UI tabs.
         self.report.set_common_item_state("Subject", selected=True)
@@ -83,6 +94,57 @@ class SettingsTabMixin:
             self.output_folder_name = folder
             if self.label_output_folder is not None:
                 self.label_output_folder.setText(f"Output folder: {folder}")
+
+    def click_cutoff_checkBox(self, state: int) -> None:
+        """Enable the date editor and re-apply the cut-off when toggled."""
+        self.ui.cutoff_dateEdit.setEnabled(bool(state))
+        self._reload_with_current_cut_off()
+
+    def _get_cut_off_date(self):
+        """Return the selected cut-off date, or ``None`` when disabled.
+
+        The cut-off date is only applied when :attr:`cutoff_checkBox` is
+        checked; otherwise all data is loaded regardless of event date.
+        """
+        if not self.ui.cutoff_checkBox.isChecked():
+            return None
+        return self.ui.cutoff_dateEdit.date().toPython()
+
+    def _reload_with_current_cut_off(self) -> None:
+        """Re-read the input ZIP with the current cut-off date.
+
+        The cut-off filters rows while the ZIP is read, so changing it (or
+        toggling the checkbox) after a file is loaded requires re-reading the
+        data. Existing form/item/common selections and any loaded additional
+        inputs are preserved where they remain valid. This is a no-op when no
+        input file is loaded yet or the effective cut-off has not changed.
+        """
+        input_path = self._input_file_path
+        if not input_path:
+            return
+
+        cut_off_date = self._get_cut_off_date()
+        if cut_off_date == self._applied_cut_off_date:
+            return
+
+        selection_state = self._capture_selection_state()
+
+        base_data = read_data_dict_zip_corelisting(input_path, cut_off_date=cut_off_date)
+
+        # Preserve any additional-input forms currently merged into the report.
+        additional_keys = getattr(self, "_additional_form_keys", set())
+        preserved_additional = {
+            key: value
+            for key, value in (getattr(self.report, "data", {}) or {}).items()
+            if key in additional_keys
+        }
+
+        self.report.set_data({**base_data, **preserved_additional})
+        self._restore_selection_state(selection_state)
+        self._applied_cut_off_date = cut_off_date
+
+        self.update_all_ui()
+        self.update_items_dependent_ui()
 
     def click_checkBox_saved_setting(self, state: int) -> None:
         """Enable or disable saved setting controls based on the checkbox."""
@@ -148,7 +210,7 @@ class SettingsTabMixin:
                 with settings_file.open("r", encoding="utf-8") as handle:
                     data = json.load(handle)
             except (OSError, json.JSONDecodeError) as exc:
-                print(f"Skipping invalid settings file {settings_file}: {exc}")
+                logger.warning("Skipping invalid settings file %s: %s", settings_file, exc)
                 continue
 
             if study_name and data.get("study_name") != study_name:
@@ -210,7 +272,7 @@ class SettingsTabMixin:
         try:
             settings_data = self.report.load_setting_from_json(file_path)
         except Exception as exc:  # pylint: disable=broad-except
-            print(f"Failed to load settings from {file_path}: {exc}")
+            logger.exception("Failed to load settings from %s", file_path)
             self._set_label_text(
                 self.label_save_confirmation,
                 f"Failed to load settings: {exc}",

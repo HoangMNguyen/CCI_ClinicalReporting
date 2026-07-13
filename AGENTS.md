@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Core models now reside in `src/clinical_reporting/core/` (`forms.py`, `report.py`) with shared helpers under `src/clinical_reporting/services/util.py`.
+- Core models reside in `src/clinical_reporting/core/` (`forms.py`, `report.py`, with shared collection helpers in `_helpers.py`); reusable data services (loading, filtering, export) live in `src/clinical_reporting/services/`.
 - The PySide6 UI lives in `src/clinical_reporting/ui/`; tab mixins are in `ui/tabs/` and widget glue (base, navigation, run/save) in `ui/widgets/`.
 - Runtime entry points are `src/clinical_reporting/app/__main__.py` (for `python -m clinical_reporting.app`) and the legacy shim `src/clinical_reporting/Clinical_Reporting.py`. Designer assets stay in `resource/`.
 

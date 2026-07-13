@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 14.0.1, 2026-01-06T13:43:37. -->
+<!-- Written by QtCreator 18.0.2, 2026-07-02T09:31:34. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
-  <value type="QByteArray">{7e8e7409-f3de-4bbc-8b5b-988708ccb187}</value>
+  <value type="QByteArray">{8a3512fb-92f1-42cb-a03f-b26ac84853db}</value>
  </data>
  <data>
   <variable>ProjectExplorer.Project.ActiveTarget</variable>
@@ -13,8 +13,8 @@
  <data>
   <variable>ProjectExplorer.Project.EditorSettings</variable>
   <valuemap type="QVariantMap">
+   <value type="bool" key="EditorConfiguration.AutoDetect">true</value>
    <value type="bool" key="EditorConfiguration.AutoIndent">true</value>
-   <value type="bool" key="EditorConfiguration.AutoSpacesForTabs">false</value>
    <value type="bool" key="EditorConfiguration.CamelCaseNavigation">true</value>
    <valuemap type="QVariantMap" key="EditorConfiguration.CodeStyle.0">
     <value type="QString" key="language">Cpp</value>
@@ -33,6 +33,7 @@
    <value type="bool" key="EditorConfiguration.ConstrainTooltips">false</value>
    <value type="int" key="EditorConfiguration.IndentSize">4</value>
    <value type="bool" key="EditorConfiguration.KeyboardTooltips">false</value>
+   <value type="int" key="EditorConfiguration.LineEndingBehavior">0</value>
    <value type="int" key="EditorConfiguration.MarginColumn">80</value>
    <value type="bool" key="EditorConfiguration.MouseHiding">true</value>
    <value type="bool" key="EditorConfiguration.MouseNavigation">true</value>
@@ -78,33 +79,35 @@
     <value type="bool" key="ClangTools.AnalyzeOpenFiles">true</value>
     <value type="bool" key="ClangTools.BuildBeforeAnalysis">true</value>
     <value type="QString" key="ClangTools.DiagnosticConfig">Builtin.DefaultTidyAndClazy</value>
-    <value type="int" key="ClangTools.ParallelJobs">6</value>
+    <value type="int" key="ClangTools.ParallelJobs">11</value>
     <value type="bool" key="ClangTools.PreferConfigFile">true</value>
     <valuelist type="QVariantList" key="ClangTools.SelectedDirs"/>
     <valuelist type="QVariantList" key="ClangTools.SelectedFiles"/>
     <valuelist type="QVariantList" key="ClangTools.SuppressedDiagnostics"/>
     <value type="bool" key="ClangTools.UseGlobalSettings">true</value>
    </valuemap>
+   <value type="int" key="RcSync">0</value>
   </valuemap>
  </data>
  <data>
   <variable>ProjectExplorer.Project.Target.0</variable>
   <valuemap type="QVariantMap">
    <value type="QString" key="DeviceType">Desktop</value>
-   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Python 3.11.0</value>
-   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Python 3.11.0</value>
-   <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{cef09077-3214-4fe5-bca2-dfeca2745527}</value>
+   <value type="bool" key="HasPerBcDcs">true</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Python 3.14.3</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Python 3.14.3</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{3a8d80b9-9128-40cd-b030-ede8067ef8f3}</value>
    <value type="qlonglong" key="ProjectExplorer.Target.ActiveBuildConfiguration">0</value>
    <value type="qlonglong" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
-   <value type="qlonglong" key="ProjectExplorer.Target.ActiveRunConfiguration">13</value>
+   <value type="qlonglong" key="ProjectExplorer.Target.ActiveRunConfiguration">0</value>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
-    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">C:\Users\hmn39\Dropbox\Current Work\ClinicalReporting</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Python.PysideBuildStep</value>
-      <value type="QString" key="Python.PySideProjectTool">C:\Users\hmn39\AppData\Local\Programs\Python\Python311\Scripts\pyside6-project.exe</value>
-      <value type="QString" key="Python.PySideUic">C:\Users\hmn39\AppData\Local\Programs\Python\Python311\Scripts\pyside6-uic.exe</value>
+      <value type="QString" key="Python.PySideProjectTool">C:\Users\hmn39\AppData\Local\Python\pythoncore-3.14-64\Scripts\pyside6-project.exe</value>
+      <value type="QString" key="Python.PySideUic">C:\Users\hmn39\AppData\Local\Python\pythoncore-3.14-64\Scripts\pyside6-uic.exe</value>
      </valuemap>
      <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Build</value>
@@ -122,9 +125,721 @@
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Python 3.11.0</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Python 3.14.3</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Python.PySideBuildConfiguration</value>
-    <value type="QString" key="python">C:/Users/hmn39/AppData/Local/Programs/Python/Python311/python.exe</value>
+    <value type="qlonglong" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
+    <value type="qlonglong" key="ProjectExplorer.Target.ActiveRunConfiguration">0</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.DeployConfiguration.0">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+      <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">0</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Deploy</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Deploy</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Deploy</value>
+     </valuemap>
+     <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">1</value>
+     <valuemap type="QVariantMap" key="ProjectExplorer.DeployConfiguration.CustomData"/>
+     <value type="bool" key="ProjectExplorer.DeployConfiguration.CustomDataEnabled">false</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.DefaultDeployConfiguration</value>
+    </valuemap>
+    <value type="qlonglong" key="ProjectExplorer.Target.DeployConfigurationCount">1</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.0">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Clinical_Reporting.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/Clinical_Reporting.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\Clinical_Reporting.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.1">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">__init__.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/__init__.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\__init__.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.10">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\report.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/report.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\report.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.11">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\__init__.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/__init__.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\__init__.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.12">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\corelisting.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/corelisting.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\corelisting.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.13">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\excel.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/excel.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\excel.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.14">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\exporter.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/exporter.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\exporter.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.15">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\loaders.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/loaders.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\loaders.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.16">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\tabular.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/tabular.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\tabular.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.17">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\transforms.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/transforms.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\transforms.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.18">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\util.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/util.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.19">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\__init__.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/__init__.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\__init__.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.2">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">app\__init__.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app/__init__.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\app\__init__.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.20">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\main_widget.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/main_widget.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\main_widget.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.21">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\ui_form.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/ui_form.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\ui_form.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.22">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\__init__.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/__init__.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\__init__.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.23">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\additional_input.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/additional_input.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\additional_input.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.24">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\common_items.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/common_items.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\common_items.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.25">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\comparison.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/comparison.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\comparison.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.26">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\filters.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/filters.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\filters.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.27">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\form_items.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/form_items.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\form_items.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.28">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\forms.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/forms.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\forms.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.29">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\settings.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/settings.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\settings.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.3">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">app\__main__.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app/__main__.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\app\__main__.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.30">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\widgets\__init__.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets/__init__.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\widgets\__init__.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.31">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\widgets\base.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets/base.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\widgets\base.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.32">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\widgets\navigation.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets/navigation.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\widgets\navigation.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.33">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\widgets\run_save.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets/run_save.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\widgets\run_save.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.34">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\_helpers.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/_helpers.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\_helpers.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.4">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\__init__.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/__init__.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\__init__.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.5">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\_collections.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/_collections.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.6">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\config.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/config.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\config.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.7">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\constants.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/constants.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\constants.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.8">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\engine.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/engine.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\engine.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.9">
+     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+     <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+     <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+     <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+     <valuelist type="QVariantList" key="CustomOutputParsers"/>
+     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\forms.py</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/forms.py</value>
+     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+     <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+     <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\forms.py</value>
+     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    </valuemap>
+    <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">35</value>
+    <value type="QString" key="python">C:/Users/hmn39/AppData/Local/Python/bin/python.exe</value>
    </valuemap>
    <value type="qlonglong" key="ProjectExplorer.Target.BuildConfigurationCount">1</value>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.DeployConfiguration.0">
@@ -150,12 +865,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">widget.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/widget.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/widget.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Clinical_Reporting.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/Clinical_Reporting.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\Clinical_Reporting.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.1">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -167,12 +885,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">CLForm.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/CLForm.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/CLForm.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">__init__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/__init__.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\__init__.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.10">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -184,12 +905,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">widget.py2</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/widget.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/widget.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\report.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/report.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\report.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.11">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -201,12 +925,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">widget.py3</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/widget.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/widget.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\__init__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/__init__.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\__init__.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.12">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -218,14 +945,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Clinical_Reporting.py2</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/Clinical_Reporting.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/Clinical_Reporting.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\Clinical_Reporting.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\corelisting.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/corelisting.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\corelisting.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.13">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -237,14 +965,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">app\__main__.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app/__main__.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app/__main__.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\app\__main__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\excel.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/excel.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\excel.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.14">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -256,14 +985,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\forms.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/forms.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/forms.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\forms.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\exporter.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/exporter.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\exporter.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.15">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -275,14 +1005,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\report.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/report.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/report.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\report.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\loaders.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/loaders.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\loaders.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.16">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -294,11 +1025,12 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\util.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/util.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/util.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\util.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\tabular.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/tabular.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\tabular.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
@@ -313,11 +1045,50 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\ui_form.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/ui_form.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/ui_form.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\transforms.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/transforms.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\services\transforms.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.18">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">services\util.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/services/util.py</value>
     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\ui_form.py</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.19">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\__init__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/__init__.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\__init__.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
     <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui</value>
@@ -332,12 +1103,215 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">CLItem.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/CLItem.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/CLItem.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">app\__init__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app/__init__.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\app\__init__.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.20">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\main_widget.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/main_widget.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\main_widget.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.21">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\ui_form.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/ui_form.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\ui_form.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.22">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\__init__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/__init__.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\__init__.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.23">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\additional_input.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/additional_input.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\additional_input.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.24">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\common_items.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/common_items.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\common_items.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.25">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\comparison.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/comparison.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\comparison.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.26">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\filters.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/filters.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\filters.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.27">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\form_items.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/form_items.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\form_items.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.28">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\forms.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/forms.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\forms.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.29">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\tabs\settings.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs/settings.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\tabs\settings.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/tabs</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.3">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -349,12 +1323,115 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">CLReport.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/CLReport.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/CLReport.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">app\__main__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app/__main__.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\app\__main__.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/app</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.30">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\widgets\__init__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets/__init__.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\widgets\__init__.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.31">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\widgets\base.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets/base.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\widgets\base.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.32">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\widgets\navigation.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets/navigation.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\widgets\navigation.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.33">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui\widgets\run_save.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets/run_save.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\ui\widgets\run_save.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/ui/widgets</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.34">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\_helpers.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/_helpers.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\_helpers.py</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.4">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -366,12 +1443,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui_form.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/ui_form.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/ui_form.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\__init__.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/__init__.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\__init__.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.5">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -383,10 +1463,11 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">util.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/util.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/ClinicalReporting/util.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\_collections.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/_collections.py</value>
     <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
    </valuemap>
@@ -400,12 +1481,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">CLForm.py2</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/CLForm.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/CLForm.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\config.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/config.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\config.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.7">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -417,12 +1501,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">CLReport.py2</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/CLReport.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/CLReport.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\constants.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/constants.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\constants.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.8">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -434,12 +1521,15 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">ui_form.py2</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/ui_form.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/ui_form.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\engine.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/engine.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\engine.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.9">
     <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
@@ -451,23 +1541,22 @@
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
     <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">util.py2</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/util.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/util.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">core\forms.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration.</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core/forms.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.UniqueId"></value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">C:\Users\hmn39\Dropbox\Current Work\CCI_ClinicalReporting\src\clinical_reporting\core\forms.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Users/hmn39/Dropbox/Current Work/CCI_ClinicalReporting/src/clinical_reporting/core</value>
    </valuemap>
-   <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">18</value>
+   <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">35</value>
   </valuemap>
  </data>
  <data>
   <variable>ProjectExplorer.Project.TargetCount</variable>
   <value type="qlonglong">1</value>
- </data>
- <data>
-  <variable>ProjectExplorer.Project.Updater.FileVersion</variable>
-  <value type="int">22</value>
  </data>
  <data>
   <variable>Version</variable>
