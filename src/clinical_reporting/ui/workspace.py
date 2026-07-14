@@ -30,6 +30,8 @@ class SettingsTabMixin:
     def _init_settings_tab(self) -> None:
         """Wire up controls on the settings tab."""
         self.ui.pushButton_input_file.clicked.connect(self.click_input_file)
+        self.ui.pushButton_remove_input.clicked.connect(self.click_remove_input)
+        self.ui.pushButton_remove_input.setEnabled(bool(self._input_file_path))
         self.ui.pushButton_output_folder.clicked.connect(self.click_output_file)
         self.ui.checkBox_saved_setting.stateChanged.connect(self.click_checkBox_saved_setting)
         self.ui.comboBox_saved_setting.setEnabled(False)
@@ -71,6 +73,7 @@ class SettingsTabMixin:
         # Remember the source so the cut-off can be re-applied without re-picking.
         self._input_file_path = file_path
         self._applied_cut_off_date = cut_off_date
+        self.ui.pushButton_remove_input.setEnabled(True)
 
         # Ensure "Subject" is selected by default and refresh all UI tabs.
         self.report.set_common_item_state("Subject", selected=True)
@@ -82,6 +85,48 @@ class SettingsTabMixin:
             if self.settings_directory is None:
                 self.settings_directory = self._get_default_settings_directory()
             self._refresh_saved_settings()
+
+    def click_remove_input(self) -> None:
+        """Remove the selected Corelisting ZIP and its forms from the report.
+
+        Additional inputs are independent of the Corelisting ZIP, so forms
+        already applied from the additional-input tab remain available.
+        """
+        if not self._input_file_path:
+            return
+
+        selection_state = self._capture_selection_state()
+        additional_keys = getattr(self, "_additional_form_keys", set())
+        additional_data = {
+            key: value
+            for key, value in (getattr(self.report, "data", {}) or {}).items()
+            if key in additional_keys
+        }
+
+        # Start with a clean report so filters, ordering, renames, and other
+        # configuration tied to the removed Corelisting forms cannot linger.
+        self.report = CLReport()
+        if additional_data:
+            self.report.set_data(additional_data)
+            self._restore_selection_state(selection_state)
+
+        self.study_name = None
+        self._input_file_path = None
+        self._applied_cut_off_date = None
+        self._last_loaded_setting_path = None
+        self._pending_saved_setting_reapply = False
+
+        self.ui.label_input_file.setText("")
+        self.ui.pushButton_remove_input.setEnabled(False)
+        self._set_label_text(self.label_setting, "")
+
+        # Saved settings are study-specific; repopulate them after another ZIP
+        # establishes the study name.
+        self.ui.comboBox_saved_setting.clear()
+        self.ui.comboBox_saved_setting.setEnabled(False)
+
+        self.update_all_ui()
+        self.update_items_dependent_ui()
 
     def click_output_file(self) -> None:
         """Allow the user to choose the output directory for reports."""
