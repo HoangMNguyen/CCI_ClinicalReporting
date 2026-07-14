@@ -7,6 +7,7 @@ from PySide6.QtCore import QItemSelectionModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -91,6 +92,10 @@ def test_order_table_supports_extended_row_selection(qapp):
 
     assert table.selectionMode() == QAbstractItemView.ExtendedSelection
     assert table.selectionBehavior() == QAbstractItemView.SelectRows
+    assert (
+        table.horizontalHeader().sectionResizeMode(0)
+        == QHeaderView.ResizeMode.Stretch
+    )
 
 
 def test_search_counts_original_name_matches_and_selects_first(qapp):
@@ -125,6 +130,35 @@ def test_search_is_reapplied_when_order_table_refreshes(qapp):
 
     assert widget.ui.label_search_result.text() == "Matches: 2"
     assert _selected_text(widget) == ["DM.Age"]
+
+
+@pytest.mark.parametrize(
+    ("action", "items", "expected"),
+    [
+        (
+            "click_order_up",
+            ["DM.Weight", "DM.Age", "VS.Age", "VS.Pulse"],
+            ["DM.Age", "VS.Age", "DM.Weight", "VS.Pulse"],
+        ),
+        (
+            "click_order_down",
+            ["DM.Age", "VS.Age", "DM.Weight", "VS.Pulse"],
+            ["DM.Weight", "DM.Age", "VS.Age", "VS.Pulse"],
+        ),
+    ],
+)
+def test_reordering_search_matches_preserves_multi_row_selection(
+    qapp, action, items, expected
+):
+    widget = DummyOrderWidget(items)
+    widget.ui.lineEdit_order_search.setText("age")
+    widget.ui.pushButton_select_all.click()
+
+    getattr(widget, action)()
+
+    assert _table_text(widget) == expected
+    assert _selected_text(widget) == ["DM.Age", "VS.Age"]
+    assert widget.ui.label_search_result.text() == "Matches: 2"
 
 
 def test_select_next_cycles_through_matches_and_wraps(qapp):
