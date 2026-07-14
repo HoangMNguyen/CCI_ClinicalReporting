@@ -13,7 +13,12 @@ are consolidated here to keep the main widget concise.
 from typing import List, Literal
 
 from PySide6.QtCore import QItemSelectionModel, Qt
-from PySide6.QtWidgets import QAbstractItemView, QComboBox, QTableWidgetItem
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QComboBox,
+    QHeaderView,
+    QTableWidgetItem,
+)
 
 from clinical_reporting.models import JoinHow
 
@@ -25,6 +30,7 @@ class ComparisonTabMixin:
         table = self.ui.tableWidget_rename
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         table.cellChanged.connect(self.on_rename_cell_changed)
         table.itemSelectionChanged.connect(self._update_order_button_states)
         search_edit = getattr(self.ui, "lineEdit_order_search", None)
@@ -97,13 +103,12 @@ class ComparisonTabMixin:
             adjust_columns(table)
 
         search_edit = getattr(self.ui, "lineEdit_order_search", None)
-        if search_edit is not None and search_edit.text().strip():
-            self.search_order_items(search_edit.text())
-        else:
-            search_result = getattr(self.ui, "label_search_result", None)
-            if search_result is not None:
-                search_result.setText("")
-            self._update_order_button_states()
+        if search_edit is not None:
+            # Reordering rebuilds this table. Refresh the search status without
+            # running the active-search selection behavior, which would replace
+            # the rows whose selection was just restored above.
+            self._refresh_order_search_status(search_edit.text())
+        self._update_order_button_states()
 
     def update_rename_table(self) -> None:
         """Compatibility wrapper for the former rename-only refresh."""
@@ -116,21 +121,27 @@ class ComparisonTabMixin:
     def search_order_items(self, search_text: str) -> None:
         """Select the first original-name match and display the match count."""
         query = search_text.strip().casefold()
-        search_result = getattr(self.ui, "label_search_result", None)
         if not query:
-            if search_result is not None:
-                search_result.setText("")
-            self._update_order_search_button_states(0)
+            self._refresh_order_search_status(search_text)
             return
 
-        matching_rows = self._matching_order_rows(query)
-
-        if search_result is not None:
-            search_result.setText(f"Matches: {len(matching_rows)}")
-        self._update_order_search_button_states(len(matching_rows))
+        matching_rows = self._refresh_order_search_status(search_text)
 
         self._select_order_search_rows(matching_rows[:1])
         self._update_order_button_states()
+
+    def _refresh_order_search_status(self, search_text: str) -> List[int]:
+        """Refresh search metadata without changing the table selection."""
+        query = search_text.strip().casefold()
+        search_result = getattr(self.ui, "label_search_result", None)
+        matching_rows = self._matching_order_rows(query) if query else []
+
+        if search_result is not None:
+            search_result.setText(
+                f"Matches: {len(matching_rows)}" if query else ""
+            )
+        self._update_order_search_button_states(len(matching_rows))
+        return matching_rows
 
     def click_select_next_order_match(self) -> None:
         """Select the next matching original name, wrapping at the end."""

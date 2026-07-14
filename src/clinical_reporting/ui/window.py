@@ -17,7 +17,7 @@ import warnings
 from typing import Iterable, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QAbstractItemView
+from PySide6.QtWidgets import QAbstractItemView, QHeaderView
 
 from clinical_reporting.report import CLReport
 
@@ -349,6 +349,16 @@ class WidgetBaseMixin:
     def _adjust_column_widths(self, table) -> None:
         """Adjust table columns to evenly fill the available width."""
         if table.columnCount() == 0:
+            return
+
+        header = table.horizontalHeader()
+        if all(
+            header.sectionResizeMode(column) == QHeaderView.ResizeMode.Stretch
+            for column in range(table.columnCount())
+        ):
+            # Qt owns section sizing for stretch-managed tables. In particular,
+            # it can account for scrollbars correctly when a hidden tab becomes
+            # visible, without relying on stale child-widget measurements.
             return
 
         available_width = table.width()

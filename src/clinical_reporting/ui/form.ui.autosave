@@ -1,0 +1,1264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Widget</class>
+ <widget class="QWidget" name="Widget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>950</width>
+    <height>618</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>Widget</string>
+  </property>
+  <widget class="QTabWidget" name="tabWidget">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>931</width>
+     <height>601</height>
+    </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="tabPosition">
+    <enum>QTabWidget::TabPosition::North</enum>
+   </property>
+   <property name="tabShape">
+    <enum>QTabWidget::TabShape::Rounded</enum>
+   </property>
+   <property name="currentIndex">
+    <number>8</number>
+   </property>
+   <widget class="QWidget" name="tab_input">
+    <attribute name="title">
+     <string>Settings</string>
+    </attribute>
+    <widget class="QPushButton" name="pushButton_input_file">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>60</y>
+       <width>121</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Input File</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::EditFind"/>
+     </property>
+    </widget>
+    <widget class="QComboBox" name="comboBox_saved_setting">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>180</y>
+       <width>471</width>
+       <height>24</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_saved_setting">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>140</y>
+       <width>271</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Using previously saved report setting?</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_setting">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>230</y>
+       <width>471</width>
+       <height>111</height>
+      </rect>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QFrame" name="frame_2">
+     <property name="geometry">
+      <rect>
+       <x>140</x>
+       <y>60</y>
+       <width>781</width>
+       <height>71</height>
+      </rect>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::Box</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <widget class="QLabel" name="label_input_file">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>0</y>
+        <width>761</width>
+        <height>71</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QPushButton" name="pushButton_setting_location">
+     <property name="geometry">
+      <rect>
+       <x>340</x>
+       <y>140</y>
+       <width>131</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Settings location</string>
+     </property>
+    </widget>
+    <widget class="QDateEdit" name="cutoff_dateEdit">
+     <property name="geometry">
+      <rect>
+       <x>340</x>
+       <y>10</y>
+       <width>131</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="dateTime">
+      <datetime>
+       <hour>15</hour>
+       <minute>0</minute>
+       <second>0</second>
+       <year>2024</year>
+       <month>1</month>
+       <day>1</day>
+      </datetime>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="cutoff_checkBox">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>321</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Using cut off date (only for core listing zip file)?</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_remove_input">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>100</y>
+       <width>121</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove Input</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_additional_input">
+    <attribute name="title">
+     <string>Additional input (optional)</string>
+    </attribute>
+    <widget class="QPushButton" name="pushButton_additional_file_add">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>121</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Input Files</string>
+     </property>
+    </widget>
+    <widget class="QTableWidget" name="tableWidget_update_column_name">
+     <property name="geometry">
+      <rect>
+       <x>480</x>
+       <y>190</y>
+       <width>441</width>
+       <height>371</height>
+      </rect>
+     </property>
+     <attribute name="horizontalHeaderCascadingSectionResizes">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>200</number>
+     </attribute>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>New Column</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Updated Column Name</string>
+      </property>
+     </column>
+    </widget>
+    <widget class="QTableWidget" name="tableWidget_update_form_name">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>190</y>
+       <width>441</width>
+       <height>371</height>
+      </rect>
+     </property>
+     <attribute name="horizontalHeaderCascadingSectionResizes">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>200</number>
+     </attribute>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>File Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Updated Form Name</string>
+      </property>
+     </column>
+    </widget>
+    <widget class="QListWidget" name="listWidget_additional_file">
+     <property name="geometry">
+      <rect>
+       <x>140</x>
+       <y>10</y>
+       <width>501</width>
+       <height>171</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_additional_file_remove">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>60</y>
+       <width>121</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove Input Files</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_additional_file_add_2">
+     <property name="geometry">
+      <rect>
+       <x>720</x>
+       <y>60</y>
+       <width>131</width>
+       <height>51</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Add Forms</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_forms">
+    <attribute name="title">
+     <string>Form</string>
+    </attribute>
+    <widget class="QListWidget" name="listWidget_form_available">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>60</y>
+       <width>300</width>
+       <height>501</height>
+      </rect>
+     </property>
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
+     </property>
+    </widget>
+    <widget class="QListWidget" name="listWidget_form_selected">
+     <property name="geometry">
+      <rect>
+       <x>620</x>
+       <y>60</y>
+       <width>300</width>
+       <height>501</height>
+      </rect>
+     </property>
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_select_form">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>190</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Select Form</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListAdd"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_remove_form">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>270</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove Form</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListRemove"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_select_all_form">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>350</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Select All</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::MediaSeekForward"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_remove_all_form">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>430</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove All</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::MediaSeekBackward"/>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_10">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>0</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Available Forms for selection</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_11">
+     <property name="geometry">
+      <rect>
+       <x>620</x>
+       <y>0</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Selected Forms</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_form_search">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>301</width>
+       <height>24</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_common_items">
+    <attribute name="title">
+     <string>Common Items</string>
+    </attribute>
+    <widget class="QListWidget" name="listWidget_common_item_available">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>60</y>
+       <width>300</width>
+       <height>501</height>
+      </rect>
+     </property>
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
+     </property>
+    </widget>
+    <widget class="QListWidget" name="listWidget_common_item_selected">
+     <property name="geometry">
+      <rect>
+       <x>620</x>
+       <y>60</y>
+       <width>300</width>
+       <height>501</height>
+      </rect>
+     </property>
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_31">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>0</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Available Items for selection</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_34">
+     <property name="geometry">
+      <rect>
+       <x>620</x>
+       <y>0</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Selected Items</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_select_common_item">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>190</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Select Item</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListAdd"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_select_all_common_item">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>350</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Select All</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::MediaSeekForward"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_remove_all_common_item">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>430</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove All</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::MediaSeekBackward"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_remove_common_item">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>270</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove Item</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListRemove"/>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_common_item_search">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>301</width>
+       <height>24</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_form_items">
+    <attribute name="title">
+     <string>Form Items</string>
+    </attribute>
+    <widget class="QListWidget" name="listWidget_form_item_available">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>60</y>
+       <width>300</width>
+       <height>501</height>
+      </rect>
+     </property>
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
+     </property>
+    </widget>
+    <widget class="QListWidget" name="listWidget_form_item_selected">
+     <property name="geometry">
+      <rect>
+       <x>620</x>
+       <y>60</y>
+       <width>300</width>
+       <height>501</height>
+      </rect>
+     </property>
+     <property name="verticalScrollBarPolicy">
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOn</enum>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_12">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>0</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Available Items for selection</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_13">
+     <property name="geometry">
+      <rect>
+       <x>620</x>
+       <y>0</y>
+       <width>301</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Selected Items</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_select_form_item">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>190</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Select Item</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListAdd"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_remove_form_item">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>270</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove Item</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListRemove"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_select_all_form_item">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>350</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Select All</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::MediaSeekForward"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_remove_all_form_item">
+     <property name="geometry">
+      <rect>
+       <x>400</x>
+       <y>430</y>
+       <width>131</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove All</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::MediaSeekBackward"/>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_form_item_search">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>301</width>
+       <height>24</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_static_filter">
+    <attribute name="title">
+     <string>Filter</string>
+    </attribute>
+    <widget class="QTableWidget" name="tableWidget_static_filter">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>911</width>
+       <height>511</height>
+      </rect>
+     </property>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>295</number>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Item Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Operator</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Value</string>
+      </property>
+     </column>
+    </widget>
+    <widget class="QPushButton" name="pushButton_static_filter_remove">
+     <property name="geometry">
+      <rect>
+       <x>790</x>
+       <y>530</y>
+       <width>131</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove Item</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListRemove"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_static_filter_add">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>530</y>
+       <width>131</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Add New Item</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListAdd"/>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_join">
+    <attribute name="title">
+     <string>Join Forms</string>
+    </attribute>
+    <widget class="QTableWidget" name="tableWidget_join">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>911</width>
+       <height>551</height>
+      </rect>
+     </property>
+     <attribute name="horizontalHeaderMinimumSectionSize">
+      <number>36</number>
+     </attribute>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>145</number>
+     </attribute>
+     <attribute name="verticalHeaderDefaultSectionSize">
+      <number>30</number>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Form Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Item 1</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Item 2</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Item 3</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Join Order</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Join type</string>
+      </property>
+     </column>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_dynamic_filter">
+    <attribute name="title">
+     <string>Comparison</string>
+    </attribute>
+    <widget class="QTableWidget" name="tableWidget_dynamic_filter">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>911</width>
+       <height>511</height>
+      </rect>
+     </property>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>290</number>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Item 1</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Operator</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Item 2</string>
+      </property>
+     </column>
+    </widget>
+    <widget class="QPushButton" name="pushButton_dynamic_filter_add">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>530</y>
+       <width>131</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Add New Item</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListAdd"/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_dynamic_filter_remove">
+     <property name="geometry">
+      <rect>
+       <x>790</x>
+       <y>530</y>
+       <width>131</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Remove Item</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::ListRemove"/>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_rename_order">
+    <attribute name="title">
+     <string>Order and Rename</string>
+    </attribute>
+    <widget class="QTableWidget" name="tableWidget_rename">
+     <property name="geometry">
+      <rect>
+       <x>90</x>
+       <y>70</y>
+       <width>831</width>
+       <height>491</height>
+      </rect>
+     </property>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>415</number>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Original Item Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>New Item Name</string>
+      </property>
+     </column>
+    </widget>
+    <widget class="QPushButton" name="pushButton_order_top">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>110</y>
+       <width>71</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Top</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_order_up">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>160</y>
+       <width>71</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Up</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_order_down">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>360</y>
+       <width>71</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Down</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_order_bottom">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>420</y>
+       <width>71</width>
+       <height>41</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Bottom</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_3">
+     <property name="geometry">
+      <rect>
+       <x>80</x>
+       <y>0</y>
+       <width>841</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Column Order and Rename</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_order_search">
+     <property name="geometry">
+      <rect>
+       <x>90</x>
+       <y>40</y>
+       <width>411</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="placeholderText">
+      <string>Original item name</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_search">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>41</y>
+       <width>71</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Search</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_search_result">
+     <property name="geometry">
+      <rect>
+       <x>510</x>
+       <y>40</y>
+       <width>211</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_select_all">
+     <property name="geometry">
+      <rect>
+       <x>819</x>
+       <y>40</y>
+       <width>101</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Select All Match</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_select_next">
+     <property name="geometry">
+      <rect>
+       <x>730</x>
+       <y>40</y>
+       <width>80</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Next Match</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_preview_run">
+    <attribute name="title">
+     <string>Preview and Save</string>
+    </attribute>
+    <widget class="QPushButton" name="pushButton_save_setting">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>510</y>
+       <width>131</width>
+       <height>51</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Save Setting</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::DocumentSend"/>
+     </property>
+    </widget>
+    <widget class="QCheckBox" name="checkBox_save_current_setting">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>490</y>
+       <width>211</width>
+       <height>22</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Save the current setting?</string>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_setting_name">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>540</y>
+       <width>431</width>
+       <height>24</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_14">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>520</y>
+       <width>101</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Setting name</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_save_confirmation">
+     <property name="geometry">
+      <rect>
+       <x>640</x>
+       <y>500</y>
+       <width>281</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Confirmation:</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QTableView" name="tableView_preview">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>911</width>
+       <height>371</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_output_folder">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>390</y>
+       <width>121</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Output Folder</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::DocumentSave"/>
+     </property>
+    </widget>
+    <widget class="QLineEdit" name="lineEdit_file_name">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>440</y>
+       <width>431</width>
+       <height>24</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="placeholderText">
+      <string extracomment="Enter file name here"/>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_2">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>420</y>
+       <width>191</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Output file name:</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_output_setting">
+     <property name="geometry">
+      <rect>
+       <x>220</x>
+       <y>490</y>
+       <width>121</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Setting Folder</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::DocumentSave"/>
+     </property>
+     <property name="default">
+      <bool>false</bool>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="pushButton_run">
+     <property name="geometry">
+      <rect>
+       <x>500</x>
+       <y>410</y>
+       <width>131</width>
+       <height>51</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Save Output</string>
+     </property>
+     <property name="icon">
+      <iconset theme="QIcon::ThemeIcon::DocumentSend"/>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_run_confirmation">
+     <property name="geometry">
+      <rect>
+       <x>640</x>
+       <y>400</y>
+       <width>281</width>
+       <height>61</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Confirmation:</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="Line" name="line_2">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>465</y>
+       <width>911</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+    </widget>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
