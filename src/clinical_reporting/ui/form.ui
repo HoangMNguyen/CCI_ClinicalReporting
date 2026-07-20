@@ -158,7 +158,7 @@
      </property>
      <property name="dateTime">
       <datetime>
-       <hour>15</hour>
+       <hour>20</hour>
        <minute>0</minute>
        <second>0</second>
        <year>2024</year>
@@ -177,7 +177,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Using cut off date (only for core listing zip file)?</string>
+      <string>Using cut off date (only for Corelisting zip file)?</string>
      </property>
     </widget>
     <widget class="QPushButton" name="pushButton_remove_input">
@@ -214,17 +214,17 @@
     <widget class="QTableWidget" name="tableWidget_update_column_name">
      <property name="geometry">
       <rect>
-       <x>480</x>
-       <y>190</y>
-       <width>441</width>
-       <height>371</height>
+       <x>10</x>
+       <y>220</y>
+       <width>911</width>
+       <height>341</height>
       </rect>
      </property>
      <attribute name="horizontalHeaderCascadingSectionResizes">
       <bool>false</bool>
      </attribute>
      <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>200</number>
+      <number>400</number>
      </attribute>
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
@@ -244,16 +244,16 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>190</y>
-       <width>441</width>
-       <height>371</height>
+       <y>120</y>
+       <width>911</width>
+       <height>91</height>
       </rect>
      </property>
      <attribute name="horizontalHeaderCascadingSectionResizes">
       <bool>false</bool>
      </attribute>
      <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>200</number>
+      <number>400</number>
      </attribute>
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
@@ -274,8 +274,8 @@
       <rect>
        <x>140</x>
        <y>10</y>
-       <width>501</width>
-       <height>171</height>
+       <width>601</width>
+       <height>101</height>
       </rect>
      </property>
     </widget>
@@ -283,7 +283,7 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>60</y>
+       <y>80</y>
        <width>121</width>
        <height>31</height>
       </rect>
@@ -295,8 +295,8 @@
     <widget class="QPushButton" name="pushButton_additional_file_add_2">
      <property name="geometry">
       <rect>
-       <x>720</x>
-       <y>60</y>
+       <x>760</x>
+       <y>30</y>
        <width>131</width>
        <height>51</height>
       </rect>
@@ -831,7 +831,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Join type</string>
+       <string>Join Type</string>
       </property>
      </column>
     </widget>

@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QFileDialog
 
 from clinical_reporting.validation import ReportValidationError
 from clinical_reporting.export import write_xlsx
+from clinical_reporting.telemetry import record_successful_export
 
 logger = logging.getLogger(__name__)
 
@@ -297,6 +298,12 @@ class RunAndSaveMixin:
             # formatting. The export logic lives in the exporter service so the
             # same output can be produced headlessly (scripts, tool chains, API).
             write_xlsx(result_df, file_path)
+            try:
+                # Usage counting is best-effort and must never change the
+                # user's successful save outcome or produce UI feedback.
+                record_successful_export()
+            except Exception:  # Defensive isolation from telemetry regressions.
+                pass
             self._set_label_text(
                 self.label_run_confirmation,
                 f"Report saved successfully to {file_path}",

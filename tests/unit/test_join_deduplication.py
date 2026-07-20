@@ -1,6 +1,7 @@
 import types
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QComboBox, QTableWidget, QTableWidgetItem
 
 from clinical_reporting.models import CLForm
@@ -111,3 +112,42 @@ def test_join_order_highlight_clears_when_unique(qapp):
 
     assert table.cellWidget(0, 4).styleSheet() == ""
     assert table.cellWidget(1, 4).styleSheet() == ""
+
+
+def test_form_name_is_red_when_non_first_form_has_no_join_item(qapp):
+    report = CLReport()
+    report.selected_forms = {"DM": CLForm("DM")}
+    table = _build_join_table()
+    widget = DummyJoinWidget(report, table)
+    for col in range(1, 4):
+        table.cellWidget(0, col).setCurrentText("")
+
+    widget.update_join_list()
+
+    assert table.item(0, 0).foreground().color() == Qt.red
+
+
+def test_missing_join_item_highlight_clears_when_item_is_selected(qapp):
+    table = _build_join_table()
+    widget = DummyJoinWidget(CLReport(), table)
+    for col in range(1, 4):
+        table.cellWidget(0, col).setCurrentText("")
+    widget._highlight_missing_join_items()
+    assert table.item(0, 0).foreground().color() == Qt.red
+
+    table.cellWidget(0, 1).setCurrentText("Subject")
+    widget._highlight_missing_join_items()
+
+    assert table.item(0, 0).foreground().style() == Qt.NoBrush
+
+
+def test_first_form_without_join_items_is_not_highlighted(qapp):
+    table = _build_join_table()
+    widget = DummyJoinWidget(CLReport(), table)
+    for col in range(1, 4):
+        table.cellWidget(0, col).setCurrentText("")
+    table.cellWidget(0, 4).setCurrentText("1")
+
+    widget._highlight_missing_join_items()
+
+    assert table.item(0, 0).foreground().style() == Qt.NoBrush
