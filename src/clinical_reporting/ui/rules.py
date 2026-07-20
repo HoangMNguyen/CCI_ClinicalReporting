@@ -13,6 +13,7 @@ are consolidated here to keep the main widget concise.
 from typing import List, Literal
 
 from PySide6.QtCore import QItemSelectionModel, Qt
+from PySide6.QtGui import QBrush
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -298,6 +299,7 @@ class ComparisonTabMixin:
                 self.on_join_order_changed(row, "1")
 
         self._highlight_duplicate_join_orders()
+        self._highlight_missing_join_items()
         self._adjust_column_widths(self.ui.tableWidget_join)
 
     def on_join_order_changed(self, row: int, value: str) -> None:
@@ -359,6 +361,23 @@ class ComparisonTabMixin:
         refresh_run = getattr(self, "_refresh_run_availability", None)
         if callable(refresh_run):
             refresh_run()
+
+    def _highlight_missing_join_items(self) -> None:
+        """Show non-first forms without a join item in red."""
+        table = self.ui.tableWidget_join
+        for row in range(table.rowCount()):
+            form_item = table.item(row, 0)
+            order_combo = table.cellWidget(row, 4)
+            if form_item is None or order_combo is None:
+                continue
+
+            has_join_item = any(
+                (combo := table.cellWidget(row, col)) is not None
+                and bool(combo.currentText())
+                for col in range(1, 4)
+            )
+            is_missing = order_combo.currentText() != "1" and not has_join_item
+            form_item.setForeground(QBrush(Qt.red) if is_missing else QBrush())
 
     def _add_item_dropdown(
         self,
@@ -435,6 +454,7 @@ class ComparisonTabMixin:
             join_list.append([form_name, deduped_items, join_order, join_type])
 
         self.report.update_join_list(join_list)
+        self._highlight_missing_join_items()
 
         # The default column order follows the join order, so re-derive the
         # combined order/rename table after join changes. Guarded because this
