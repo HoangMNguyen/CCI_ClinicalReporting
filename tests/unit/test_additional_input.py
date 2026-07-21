@@ -1,4 +1,14 @@
+import types
+
 import pandas as pd
+import pytest
+from PySide6.QtCore import QItemSelectionModel
+from PySide6.QtWidgets import (
+    QApplication,
+    QListWidget,
+    QPushButton,
+    QTableWidget,
+)
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import workspace as additional_input_module
@@ -20,6 +30,63 @@ class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
 
     def update_all_ui(self):
         self.update_all_ui_calls += 1
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app
+
+
+class DummyAdditionalInputUiWidget(AdditionalInputTabMixin):
+    """Qt-backed stand-in for additional-input table interactions."""
+
+    def __init__(self):
+        self.report = CLReport()
+        column_table = QTableWidget()
+        column_table.setColumnCount(2)
+        form_table = QTableWidget()
+        form_table.setColumnCount(2)
+        self.ui = types.SimpleNamespace(
+            pushButton_additional_file_add=QPushButton(),
+            pushButton_additional_file_remove=QPushButton(),
+            pushButton_additional_file_add_2=QPushButton(),
+            listWidget_additional_file=QListWidget(),
+            tableWidget_update_form_name=form_table,
+            tableWidget_update_column_name=column_table,
+        )
+        self._init_additional_input_tab()
+
+
+def test_context_action_copies_selected_new_columns_to_updated_names(qapp):
+    widget = DummyAdditionalInputUiWidget()
+    file_path = "C:/tmp/lab.csv"
+    widget.additional_inputs[file_path] = pd.DataFrame(
+        {"Subject": ["001"], "Result": [1.0], "Unit": ["mg"]}
+    )
+    widget._refresh_additional_files_ui()
+    widget._refresh_additional_tables()
+    table = widget.ui.tableWidget_update_column_name
+
+    selection_model = table.selectionModel()
+    for row in (0, 2):
+        selection_model.select(
+            table.model().index(row, 0),
+            QItemSelectionModel.SelectionFlag.Select
+            | QItemSelectionModel.SelectionFlag.Rows,
+        )
+
+    widget.copy_new_column_name_action.trigger()
+
+    assert table.item(0, 1).text() == "Subject"
+    assert table.item(1, 1).text() == ""
+    assert table.item(2, 1).text() == "Unit"
+    assert widget.additional_column_names == {
+        (file_path, "Subject"): "Subject",
+        (file_path, "Unit"): "Unit",
+    }
 
 
 def test_strip_prefix():
