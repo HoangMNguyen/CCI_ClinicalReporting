@@ -13,7 +13,7 @@ are consolidated here to keep the main widget concise.
 from typing import List, Literal
 
 from PySide6.QtCore import QItemSelectionModel, Qt
-from PySide6.QtGui import QBrush
+from PySide6.QtGui import QAction, QBrush
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -32,6 +32,18 @@ class ComparisonTabMixin:
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.copy_original_name_action = QAction(
+            "Copy Original Name to New Item Name",
+            table,
+        )
+        self.copy_original_name_action.setToolTip(
+            "Copy the original name for each selected row into its new-name cell"
+        )
+        self.copy_original_name_action.triggered.connect(
+            self.copy_selected_original_names_to_rename
+        )
+        table.addAction(self.copy_original_name_action)
+        table.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
         table.cellChanged.connect(self.on_rename_cell_changed)
         table.itemSelectionChanged.connect(self._update_order_button_states)
         search_edit = getattr(self.ui, "lineEdit_order_search", None)
@@ -236,6 +248,27 @@ class ComparisonTabMixin:
             self.report.set_rename_item(original_name, new_name)
         else:
             self.report.remove_rename_item(original_name)
+
+    def copy_selected_original_names_to_rename(self) -> None:
+        """Copy each selected row's original name into its editable name cell."""
+        table = self.ui.tableWidget_rename
+        selection_model = table.selectionModel()
+        if selection_model is None:
+            return
+
+        signals_were_blocked = table.blockSignals(True)
+        try:
+            for index in selection_model.selectedRows(0):
+                original_item = table.item(index.row(), 0)
+                new_name_item = table.item(index.row(), 1)
+                if original_item is None or new_name_item is None:
+                    continue
+
+                original_name = original_item.data(Qt.UserRole) or original_item.text()
+                new_name_item.setText(original_item.text())
+                self.report.set_rename_item(original_name, original_item.text())
+        finally:
+            table.blockSignals(signals_were_blocked)
 
     # ------------------------------------------------------------------
     # Join configuration

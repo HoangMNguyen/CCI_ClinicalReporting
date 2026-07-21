@@ -381,6 +381,7 @@ from typing import Dict, Tuple, Set
 
 import pandas as pd
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QFileDialog,
     QListWidgetItem,
@@ -444,6 +445,22 @@ class AdditionalInputTabMixin:
             form_table.itemChanged.connect(self._on_form_name_changed)
             form_table.itemSelectionChanged.connect(self._on_form_table_selection_changed)
         if column_table is not None:
+            column_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+            column_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+            self.copy_new_column_name_action = QAction(
+                "Copy New Column to Updated Column Name",
+                column_table,
+            )
+            self.copy_new_column_name_action.setToolTip(
+                "Copy the new-column value for each selected row into its updated-name cell"
+            )
+            self.copy_new_column_name_action.triggered.connect(
+                self.copy_selected_new_column_names_to_updated
+            )
+            column_table.addAction(self.copy_new_column_name_action)
+            column_table.setContextMenuPolicy(
+                Qt.ContextMenuPolicy.ActionsContextMenu
+            )
             column_table.itemChanged.connect(self._on_column_name_changed)
 
         self._refresh_additional_files_ui()
@@ -659,6 +676,28 @@ class AdditionalInputTabMixin:
             self.additional_column_names[key] = new_name
         else:
             self.additional_column_names.pop(key, None)
+
+    def copy_selected_new_column_names_to_updated(self) -> None:
+        """Copy selected new-column values into their updated-name cells."""
+        table = getattr(self.ui, "tableWidget_update_column_name", None)
+        if table is None or table.selectionModel() is None:
+            return
+
+        signals_were_blocked = table.blockSignals(True)
+        try:
+            for index in table.selectionModel().selectedRows(0):
+                new_column_item = table.item(index.row(), 0)
+                updated_name_item = table.item(index.row(), 1)
+                if new_column_item is None or updated_name_item is None:
+                    continue
+
+                key = updated_name_item.data(Qt.UserRole)
+                updated_name = new_column_item.text()
+                updated_name_item.setText(updated_name)
+                if key:
+                    self.additional_column_names[key] = updated_name
+        finally:
+            table.blockSignals(signals_were_blocked)
 
     def click_apply_additional_forms(self) -> None:
         """Apply the additional inputs to the report when requested."""
