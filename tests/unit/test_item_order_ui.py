@@ -312,6 +312,25 @@ def test_reordering_preserves_renames_and_editing_targets_original_item(qapp):
     }
 
 
+def test_context_action_copies_selected_original_names_to_rename(qapp):
+    widget = DummyOrderWidget(
+        ["Subject", "DM.Age", "VS.Pulse"],
+        {"DM.Age": "Age"},
+    )
+    _select_rows(widget, [0, 2])
+
+    widget.copy_original_name_action.trigger()
+
+    assert _rename_text(widget) == {
+        "Subject": "Subject",
+        "DM.Age": "Age",
+        "VS.Pulse": "VS.Pulse",
+    }
+    # Identity values are intentionally omitted from the report mapping until
+    # the user edits the copied text into an actual rename.
+    assert widget.report.get_rename_dict() == {"DM.Age": "Age"}
+
+
 def test_refresh_uses_custom_order_and_removes_blank_rename(qapp):
     widget = DummyOrderWidget(["A", "B", "C"], {"B": "Bee"})
     widget.report.set_selected_items_order_list(["C", "B", "A"])
