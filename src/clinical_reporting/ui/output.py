@@ -22,7 +22,10 @@ from PySide6.QtWidgets import QFileDialog
 
 from clinical_reporting.validation import ReportValidationError
 from clinical_reporting.export import write_xlsx
-from clinical_reporting.telemetry import record_successful_export
+from clinical_reporting.telemetry import (
+    record_successful_export,
+    record_successful_setting_save,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,11 +97,11 @@ class RunAndSaveMixin:
             )
             return
 
-        default_dir = self._get_default_settings_directory()
+        initial_dir = self.settings_directory or self._get_default_settings_directory()
         settings_dir = QFileDialog.getExistingDirectory(
             self,
             "Select Settings Folder",
-            default_dir,
+            initial_dir,
         )
         if settings_dir:
             self.settings_directory = settings_dir
@@ -136,6 +139,13 @@ class RunAndSaveMixin:
         if error:
             self._set_label_text(self.label_save_confirmation, error)
             return
+
+        try:
+            # Like report counting, setting-save telemetry is best-effort and
+            # must never alter the user's successful save result.
+            record_successful_setting_save(settings_name)
+        except Exception:  # Defensive isolation from telemetry regressions.
+            pass
 
         self._set_label_text(
             self.label_save_confirmation,
@@ -301,7 +311,7 @@ class RunAndSaveMixin:
             try:
                 # Usage counting is best-effort and must never change the
                 # user's successful save outcome or produce UI feedback.
-                record_successful_export()
+                record_successful_export(file_name)
             except Exception:  # Defensive isolation from telemetry regressions.
                 pass
             self._set_label_text(

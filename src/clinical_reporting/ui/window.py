@@ -30,6 +30,7 @@ class WidgetBaseMixin:
         self.study_name = None
         self.report = CLReport()
         self.output_folder_name = None
+        self._additional_input_directory: Optional[str] = None
         self.settings_directory = None
         self._last_loaded_setting_path: Optional[str] = None
         self._pending_saved_setting_reapply = False

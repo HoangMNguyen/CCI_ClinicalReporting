@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import uuid
 from pathlib import Path
 
@@ -21,10 +22,26 @@ def lambda_app(monkeypatch):
     return module
 
 
-def _event(event_id: str, token: str = "test-token-that-is-long-enough"):
+def _event(
+    event_id: str,
+    token: str = "test-token-that-is-long-enough",
+    event_type: str = "report_saved",
+    username: str = "hmn39",
+    saved_name: str | None = None,
+):
+    if saved_name is None:
+        saved_name = "monthly report.xlsx" if event_type == "report_saved" else "baseline"
+    name_field = "report_name" if event_type == "report_saved" else "setting_name"
     return {
         "headers": {"authorization": f"Bearer {token}"},
-        "body": f'{{"event_id": "{event_id}"}}',
+        "body": json.dumps(
+            {
+                "event_id": event_id,
+                "event_type": event_type,
+                "username": username,
+                name_field: saved_name,
+            }
+        ),
     }
 
 
@@ -36,7 +53,7 @@ class FakeDynamoDB:
         self.transactions.append(kwargs)
 
 
-def test_valid_event_increments_daily_and_total_counts(lambda_app):
+def test_valid_event_stores_identity_and_increments_event_counters(lambda_app):
     client = FakeDynamoDB()
     lambda_app._dynamodb_client = client
     event_id = str(uuid.uuid4())
@@ -45,9 +62,44 @@ def test_valid_event_increments_daily_and_total_counts(lambda_app):
 
     assert response["statusCode"] == 204
     writes = client.transactions[0]["TransactItems"]
-    assert writes[0]["Put"]["Item"]["sk"] == {"S": event_id}
+    event_item = writes[0]["Put"]["Item"]
+    assert event_item["sk"] == {"S": event_id}
+    assert event_item["event_type"] == {"S": "report_saved"}
+    assert event_item["username"] == {"S": "hmn39"}
+    assert event_item["report_name"] == {"S": "monthly report.xlsx"}
+    assert writes[1]["Update"]["Key"]["pk"] == {"S": "COUNTER#REPORT_SAVED"}
     assert writes[1]["Update"]["Key"]["sk"]["S"].startswith("DAILY#")
     assert writes[2]["Update"]["Key"]["sk"] == {"S": "TOTAL"}
+    assert writes[3]["Update"]["Key"]["sk"] == {"S": "USER#hmn39"}
+
+
+def test_setting_event_uses_separate_counter_partition(lambda_app):
+    client = FakeDynamoDB()
+    lambda_app._dynamodb_client = client
+
+    response = lambda_app.lambda_handler(
+        _event(str(uuid.uuid4()), event_type="setting_saved"),
+        None,
+    )
+
+    assert response["statusCode"] == 204
+    writes = client.transactions[0]["TransactItems"]
+    assert writes[0]["Put"]["Item"]["setting_name"] == {"S": "baseline"}
+    assert writes[1]["Update"]["Key"]["pk"] == {"S": "COUNTER#SETTING_SAVED"}
+
+
+def test_legacy_event_without_a_saved_name_remains_accepted(lambda_app):
+    client = FakeDynamoDB()
+    lambda_app._dynamodb_client = client
+    event = _event(str(uuid.uuid4()))
+    body = json.loads(event["body"])
+    del body["report_name"]
+    event["body"] = json.dumps(body)
+
+    response = lambda_app.lambda_handler(event, None)
+
+    assert response["statusCode"] == 204
+    assert "report_name" not in client.transactions[0]["TransactItems"][0]["Put"]["Item"]
 
 
 def test_invalid_auth_and_payload_are_rejected_without_dynamodb(lambda_app):
@@ -56,6 +108,27 @@ def test_invalid_auth_and_payload_are_rejected_without_dynamodb(lambda_app):
 
     assert lambda_app.lambda_handler(_event(str(uuid.uuid4()), "wrong"), None)["statusCode"] == 401
     assert lambda_app.lambda_handler(_event("not-a-uuid"), None)["statusCode"] == 400
+    assert (
+        lambda_app.lambda_handler(
+            _event(str(uuid.uuid4()), event_type="unsupported"),
+            None,
+        )["statusCode"]
+        == 400
+    )
+    assert (
+        lambda_app.lambda_handler(
+            _event(str(uuid.uuid4()), username="invalid user"),
+            None,
+        )["statusCode"]
+        == 400
+    )
+    assert (
+        lambda_app.lambda_handler(
+            _event(str(uuid.uuid4()), saved_name="line one\nline two"),
+            None,
+        )["statusCode"]
+        == 400
+    )
     assert client.transactions == []
 
 

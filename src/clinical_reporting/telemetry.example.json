@@ -1,0 +1,4 @@
+{
+  "url": "https://YOUR-API-ID.execute-api.us-east-1.amazonaws.com/run",
+  "token": "YOUR-DEPLOYMENT-TOKEN"
+}
