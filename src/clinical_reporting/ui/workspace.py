@@ -24,6 +24,7 @@ from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelis
 
 logger = logging.getLogger(__name__)
 
+
 class SettingsTabMixin:
     """Behavior for the settings tab and saved-setting management."""
 
@@ -98,9 +99,7 @@ class SettingsTabMixin:
         selection_state = self._capture_selection_state()
         additional_keys = getattr(self, "_additional_form_keys", set())
         additional_data = {
-            key: value
-            for key, value in (getattr(self.report, "data", {}) or {}).items()
-            if key in additional_keys
+            key: value for key, value in (getattr(self.report, "data", {}) or {}).items() if key in additional_keys
         }
 
         # Start with a clean report so filters, ordering, renames, and other
@@ -130,11 +129,14 @@ class SettingsTabMixin:
 
     def click_output_file(self) -> None:
         """Allow the user to choose the output directory for reports."""
-        default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+        initial_dir = self.output_folder_name or os.path.join(
+            os.path.expanduser("~"),
+            "Downloads",
+        )
         folder = QFileDialog.getExistingDirectory(
             self,
             "Select Output Folder",
-            default_dir,
+            initial_dir,
         )
         if folder:
             self.output_folder_name = folder
@@ -180,9 +182,7 @@ class SettingsTabMixin:
         # Preserve any additional-input forms currently merged into the report.
         additional_keys = getattr(self, "_additional_form_keys", set())
         preserved_additional = {
-            key: value
-            for key, value in (getattr(self.report, "data", {}) or {}).items()
-            if key in additional_keys
+            key: value for key, value in (getattr(self.report, "data", {}) or {}).items() if key in additional_keys
         }
 
         self.report.set_data({**base_data, **preserved_additional})
@@ -216,11 +216,11 @@ class SettingsTabMixin:
 
     def click_setting_location(self) -> None:
         """Let the user choose the directory that stores saved settings."""
-        default_dir = self._get_default_settings_directory()
+        initial_dir = self.settings_directory or self._get_default_settings_directory()
         settings_dir = QFileDialog.getExistingDirectory(
             self,
             "Select Settings Folder",
-            default_dir,
+            initial_dir,
         )
 
         if settings_dir:
@@ -302,13 +302,9 @@ class SettingsTabMixin:
                         common_items.append(item_str)
 
                 if common_items:
-                    message_parts.append(
-                        "Missing common items: " + ", ".join(sorted(common_items))
-                    )
+                    message_parts.append("Missing common items: " + ", ".join(sorted(common_items)))
                 for form_name in sorted(form_items):
-                    message_parts.append(
-                        f"Missing items in {form_name}: " + ", ".join(sorted(form_items[form_name]))
-                    )
+                    message_parts.append(f"Missing items in {form_name}: " + ", ".join(sorted(form_items[form_name])))
             self._set_label_text(self.label_setting, "\n".join(message_parts))
         else:
             self._set_label_text(self.label_setting, "")
@@ -399,6 +395,7 @@ from clinical_reporting.data import (
 
 logger = logging.getLogger(__name__)
 
+
 class AdditionalInputTabMixin:
     """Behavior for the additional input tab."""
 
@@ -433,9 +430,7 @@ class AdditionalInputTabMixin:
             apply_button.clicked.connect(self.click_apply_additional_forms)
 
         if hasattr(self.ui, "listWidget_additional_file"):
-            self.ui.listWidget_additional_file.itemSelectionChanged.connect(
-                self._update_additional_buttons_state
-            )
+            self.ui.listWidget_additional_file.itemSelectionChanged.connect(self._update_additional_buttons_state)
 
         form_table = getattr(self.ui, "tableWidget_update_form_name", None)
         column_table = getattr(self.ui, "tableWidget_update_column_name", None)
@@ -454,13 +449,9 @@ class AdditionalInputTabMixin:
             self.copy_new_column_name_action.setToolTip(
                 "Copy the new-column value for each selected row into its updated-name cell"
             )
-            self.copy_new_column_name_action.triggered.connect(
-                self.copy_selected_new_column_names_to_updated
-            )
+            self.copy_new_column_name_action.triggered.connect(self.copy_selected_new_column_names_to_updated)
             column_table.addAction(self.copy_new_column_name_action)
-            column_table.setContextMenuPolicy(
-                Qt.ContextMenuPolicy.ActionsContextMenu
-            )
+            column_table.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
             column_table.itemChanged.connect(self._on_column_name_changed)
 
         self._refresh_additional_files_ui()
@@ -472,15 +463,22 @@ class AdditionalInputTabMixin:
 
     def click_add_additional_files(self) -> None:
         """Open a dialog and load user-selected additional input files."""
-        default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+        initial_dir = (
+            getattr(self, "_additional_input_directory", None)
+            or os.path.join(os.path.expanduser("~"), "Downloads")
+        )
         file_paths, _ = QFileDialog.getOpenFileNames(
             self,
             "Select Additional Input Files",
-            default_dir,
+            initial_dir,
             "Data Files (*.csv *.xls *.xlsx);;All Files (*)",
         )
         if not file_paths:
             return
+
+        self._additional_input_directory = str(
+            Path(file_paths[0]).expanduser().resolve().parent
+        )
 
         for file_path in file_paths:
             resolved_path = str(Path(file_path).expanduser().resolve())

@@ -202,8 +202,14 @@ python -m pip install pyinstaller
 
 Then build:
 ```bash
-pyinstaller --onefile --strip --name "CCI Clinical Reporting V1.00" --windowed --paths src "src/clinical_reporting/__main__.py" --exclude PyQt5 --exclude matplotlib
+pyinstaller --onefile --strip --name "CCI Clinical Reporting V1.00" --windowed --paths src --add-data "src/clinical_reporting/telemetry.json;clinical_reporting" "src/clinical_reporting/__main__.py" --exclude PyQt5 --exclude matplotlib
 ```
+
+The build command embeds the local `src/clinical_reporting/telemetry.json` in
+the executable so users do not need to configure environment variables. The
+real file contains a shared credential and is ignored by Git; use
+`telemetry.example.json` as the schema when creating or rotating it. Environment
+variables remain optional overrides for development and testing.
 
 ## Notes
 - The UI resizes dynamically.

@@ -18,8 +18,19 @@ class _Report:
 
 
 class _LineEdit:
+    def __init__(self, value="report"):
+        self.value = value
+
     def text(self):
-        return "report"
+        return self.value
+
+
+class _CheckBox:
+    def __init__(self, checked):
+        self.checked = checked
+
+    def isChecked(self):  # noqa: N802 (Qt naming convention)
+        return self.checked
 
 
 class _Label:
@@ -31,8 +42,15 @@ class _RunWidget(output.RunAndSaveMixin):
     def __init__(self, output_folder):
         self.report = _Report()
         self.output_folder_name = str(output_folder)
+        self.settings_directory = str(output_folder)
         self.label_run_confirmation = _Label()
-        self.ui = types.SimpleNamespace(lineEdit_file_name=_LineEdit())
+        self.label_save_confirmation = _Label()
+        self.ui = types.SimpleNamespace(
+            lineEdit_file_name=_LineEdit(),
+            lineEdit_setting_name=_LineEdit("baseline"),
+            checkBox_save_current_setting=_CheckBox(True),
+            checkBox_saved_setting=_CheckBox(False),
+        )
 
     @staticmethod
     def _set_label_text(label, text):
@@ -45,20 +63,23 @@ def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
     monkeypatch.setattr(
         output,
         "record_successful_export",
-        lambda: operations.append("count"),
+        lambda report_name: operations.append(("count", report_name)),
     )
     widget = _RunWidget(tmp_path)
 
     widget.click_run()
 
-    assert operations == ["write", "count"]
+    assert operations[0] == "write"
+    assert operations[1][0] == "count"
+    assert operations[1][1].startswith("report ")
+    assert operations[1][1].endswith(".xlsx")
     assert widget.label_run_confirmation.value.startswith("Report saved successfully")
 
 
 def test_telemetry_failure_does_not_change_successful_save(monkeypatch, tmp_path):
     monkeypatch.setattr(output, "write_xlsx", lambda *_args: None)
 
-    def fail_to_count():
+    def fail_to_count(_report_name):
         raise RuntimeError("telemetry unavailable")
 
     monkeypatch.setattr(output, "record_successful_export", fail_to_count)
@@ -76,10 +97,66 @@ def test_failed_export_is_not_counted(monkeypatch, tmp_path):
         raise OSError("disk full")
 
     monkeypatch.setattr(output, "write_xlsx", fail_to_write)
-    monkeypatch.setattr(output, "record_successful_export", lambda: counted.append(True))
+    monkeypatch.setattr(
+        output,
+        "record_successful_export",
+        lambda _report_name: counted.append(True),
+    )
     widget = _RunWidget(tmp_path)
 
     widget.click_run()
 
     assert counted == []
     assert widget.label_run_confirmation.value.startswith("Error saving report")
+
+
+def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path):
+    operations = []
+    widget = _RunWidget(tmp_path)
+    widget.report.save_setting_to_json = (
+        lambda *_args, **_kwargs: operations.append("write_setting")
+    )
+    monkeypatch.setattr(
+        output,
+        "record_successful_setting_save",
+        lambda setting_name: operations.append(("count_setting", setting_name)),
+    )
+
+    widget.click_save_setting()
+
+    assert operations == ["write_setting", ("count_setting", "baseline")]
+    assert widget.label_save_confirmation.value.startswith("Settings saved to")
+
+
+def test_setting_telemetry_failure_does_not_change_successful_save(monkeypatch, tmp_path):
+    widget = _RunWidget(tmp_path)
+    widget.report.save_setting_to_json = lambda *_args, **_kwargs: None
+
+    def fail_to_count(_setting_name):
+        raise RuntimeError("telemetry unavailable")
+
+    monkeypatch.setattr(output, "record_successful_setting_save", fail_to_count)
+
+    widget.click_save_setting()
+
+    assert widget.label_save_confirmation.value.startswith("Settings saved to")
+
+
+def test_failed_setting_save_is_not_counted(monkeypatch, tmp_path):
+    widget = _RunWidget(tmp_path)
+
+    def fail_to_write(*_args, **_kwargs):
+        raise OSError("disk full")
+
+    widget.report.save_setting_to_json = fail_to_write
+    counted = []
+    monkeypatch.setattr(
+        output,
+        "record_successful_setting_save",
+        lambda _setting_name: counted.append(True),
+    )
+
+    widget.click_save_setting()
+
+    assert counted == []
+    assert widget.label_save_confirmation.value.startswith("Failed to save settings")
