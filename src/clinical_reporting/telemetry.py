@@ -10,9 +10,9 @@ from __future__ import annotations
 import getpass
 import json
 import os
-from pathlib import Path
 import threading
 import uuid
+from pathlib import Path
 from urllib.request import Request, urlopen
 
 RUN_COUNTER_URL_ENV = "CLINICAL_REPORTING_RUN_COUNTER_URL"

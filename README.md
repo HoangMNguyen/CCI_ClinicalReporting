@@ -13,9 +13,18 @@ Desktop application for assembling clinical report outputs through a guided PySi
 ## Setup
 
 ### 1. Install dependencies
+
+Install the runtime dependencies:
+
 ```bash
 python -m pip install -r requirements.txt
-python -m pip install pytest  # test runner
+```
+
+For development, testing, and linting, install the development requirements
+instead (they include `requirements.txt`):
+
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 ### 2. Run the application
@@ -161,6 +170,30 @@ Useful local debugging options:
 ```bash
 python -m pytest -x -vv
 ```
+
+### Linting and formatting
+
+Ruff is configured in `pyproject.toml`. Apply all configured safe lint fixes
+in one batch with:
+
+```bash
+python -m ruff check src tests --fix
+```
+
+Verify the result without changing files with:
+
+```bash
+python -m ruff check src tests
+```
+
+When a repository-wide formatting pass is intentional, run:
+
+```bash
+python -m ruff format src tests
+```
+
+VS Code will recommend the Ruff extension and apply the same fixes whenever a
+Python file is saved. Unsafe Ruff fixes remain disabled by default.
 
 Testing notes:
 - `tests/conftest.py` inserts both project root and `src/` into `sys.path`.

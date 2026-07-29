@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 from clinical_reporting.models import (
     FORM_ITEM_SEPARATOR,
@@ -33,13 +33,20 @@ class ReportValidationIssue:
         return {"code": self.code, "message": self.message, "field": self.field}
 
 
+def format_issue_messages(issues: Iterable[ReportValidationIssue]) -> str:
+    """Render issues as the standard one-per-line ``- message`` bullet list."""
+
+    return "\n".join(f"- {issue.message}" for issue in issues)
+
+
 class ReportValidationError(ValueError):
     """Raised when report execution is requested with invalid configuration."""
 
     def __init__(self, issues: Iterable[ReportValidationIssue]):
         self.issues = tuple(issues)
-        details = "\n".join(f"- {issue.message}" for issue in self.issues)
-        super().__init__(f"Report configuration is invalid:\n{details}")
+        super().__init__(
+            f"Report configuration is invalid:\n{format_issue_messages(self.issues)}"
+        )
 
 
 def _add_issue(
@@ -58,6 +65,26 @@ def _is_positive_integer(value: Any) -> bool:
 def _columns_for(data: dict, form_name: str) -> set[str]:
     source = data.get(form_name)
     return set(getattr(source, "columns", ()))
+
+
+def duplicate_join_orders(form_orders: Mapping[str, Any]) -> dict[Any, list[str]]:
+    """Return join orders assigned to two or more forms.
+
+    Maps each conflicting join order to the sorted list of form names that
+    share it. Forms whose order is ``None`` are ignored (they default to
+    being joined last). An empty result means every order is unique.
+    """
+
+    order_to_forms: dict[Any, list[str]] = {}
+    for form_name, order in form_orders.items():
+        if order is None:
+            continue
+        order_to_forms.setdefault(order, []).append(form_name)
+    return {
+        order: sorted(forms)
+        for order, forms in order_to_forms.items()
+        if len(forms) > 1
+    }
 
 
 def _validate_filter_identifier(
@@ -124,7 +151,7 @@ def validate_report(report) -> list[ReportValidationIssue]:
             )
 
     valid_orders = True
-    order_to_forms: dict[int, list[str]] = {}
+    form_orders: dict[str, int] = {}
     qualified_items: set[str] = set()
     item_forms: dict[str, set[str]] = {}
     logical_output: list[str] = list(selected_common)
@@ -157,7 +184,7 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 f"selected_forms.{form_name}.join_order",
             )
         else:
-            order_to_forms.setdefault(order, []).append(form_name)
+            form_orders[form_name] = order
 
         selected_items = list(form.get_selected_form_items())
         for item in sorted(item for item, count in Counter(selected_items).items() if count > 1):
@@ -217,15 +244,14 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 f"selected_forms.{form_name}",
             )
 
-    for order, forms in sorted(order_to_forms.items()):
-        if len(forms) > 1:
-            valid_orders = False
-            _add_issue(
-                issues,
-                "duplicate_join_order",
-                f"Join order {order} is assigned to multiple forms: {', '.join(sorted(forms))}.",
-                "selected_forms.join_order",
-            )
+    for order, forms in sorted(duplicate_join_orders(form_orders).items()):
+        valid_orders = False
+        _add_issue(
+            issues,
+            "duplicate_join_order",
+            f"Join order {order} is assigned to multiple forms: {', '.join(forms)}.",
+            "selected_forms.join_order",
+        )
 
     if selected_forms and valid_orders:
         ordered_forms = sorted(

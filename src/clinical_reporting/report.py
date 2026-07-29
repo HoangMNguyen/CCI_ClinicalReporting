@@ -1,7 +1,7 @@
-from copy import deepcopy
 import json
 import logging
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from copy import deepcopy
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
@@ -574,23 +574,15 @@ class CLReport:
     def get_join_order_conflicts(self) -> Dict[int, List[str]]:
         """Return join orders shared by two or more selected forms.
 
-        The result maps each conflicting ``join_order`` value to the sorted list
-        of form names that were assigned that order.  Forms without a configured
-        order are ignored (they default to being joined last).  The mapping is
-        empty when every selected form has a unique join order, which the UI and
-        run guards treat as "safe to run".
+        Thin wrapper over
+        :func:`clinical_reporting.validation.duplicate_join_orders`, which is
+        the single source of truth for duplicate join-order detection.
         """
-        order_to_forms: Dict[int, List[str]] = {}
-        for form_name, form in self.selected_forms.items():
-            order = form.get_join_order()
-            if order is None:
-                continue
-            order_to_forms.setdefault(order, []).append(form_name)
-        return {
-            order: sorted(forms)
-            for order, forms in order_to_forms.items()
-            if len(forms) > 1
-        }
+        from clinical_reporting.validation import duplicate_join_orders
+
+        return duplicate_join_orders(
+            {name: form.get_join_order() for name, form in self.selected_forms.items()}
+        )
 
     def add_join_item(self, form: str, item: str, order: int, how: str):
         """Add a join item to the form."""

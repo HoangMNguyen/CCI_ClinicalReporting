@@ -11,9 +11,9 @@ from PySide6.QtWidgets import (
 )
 
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui import workspace as additional_input_module
-from clinical_reporting.ui.window import WidgetBaseMixin
-from clinical_reporting.ui.workspace import AdditionalInputTabMixin
+from clinical_reporting.ui import additional_input_tab as additional_input_module
+from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
+from clinical_reporting.ui.base import WidgetBaseMixin
 
 
 class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
