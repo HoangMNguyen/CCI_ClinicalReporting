@@ -231,12 +231,12 @@
      </attribute>
      <column>
       <property name="text">
-       <string>New Column</string>
+       <string>Original Item Name</string>
       </property>
      </column>
      <column>
       <property name="text">
-       <string>Updated Column Name</string>
+       <string>New Item Name</string>
       </property>
      </column>
     </widget>
