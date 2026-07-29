@@ -2,9 +2,10 @@
 
 import pandas as pd
 
-from clinical_reporting.ui import output, workspace
-from clinical_reporting.ui.output import RunAndSaveMixin
-from clinical_reporting.ui.workspace import AdditionalInputTabMixin, SettingsTabMixin
+from clinical_reporting.ui import additional_input_tab, dialogs, settings_tab
+from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
+from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
+from clinical_reporting.ui.settings_tab import SettingsTabMixin
 
 
 class _CheckBox:
@@ -91,7 +92,7 @@ def test_saved_settings_folder_dialog_remembers_last_selection(monkeypatch):
 
     _assert_dialog_remembers_selection(
         monkeypatch,
-        workspace,
+        dialogs,
         widget,
         SettingsTabMixin.click_setting_location,
     )
@@ -100,9 +101,11 @@ def test_saved_settings_folder_dialog_remembers_last_selection(monkeypatch):
 def test_output_settings_folder_dialog_remembers_last_selection(monkeypatch):
     widget = _OutputWidget()
 
+    # Both buttons share dialogs.choose_settings_directory, so the dialog
+    # is patched on the dialogs module for the output tab too.
     _assert_dialog_remembers_selection(
         monkeypatch,
-        output,
+        dialogs,
         widget,
         RunAndSaveMixin.click_output_setting_folder,
     )
@@ -123,7 +126,7 @@ def test_settings_folder_selection_is_shared_between_first_and_last_tabs(monkeyp
         return next(selections)
 
     monkeypatch.setattr(
-        workspace.QFileDialog,
+        dialogs.QFileDialog,
         "getExistingDirectory",
         choose_directory,
     )
@@ -148,7 +151,7 @@ def test_output_folder_dialog_remembers_last_selection(monkeypatch):
         return next(selections)
 
     monkeypatch.setattr(
-        workspace.QFileDialog,
+        settings_tab.QFileDialog,
         "getExistingDirectory",
         choose_directory,
     )
@@ -173,8 +176,8 @@ def test_additional_input_dialog_remembers_last_file_directory(monkeypatch, tmp_
         initial_directories.append(initial_directory)
         return next(selections), ""
 
-    monkeypatch.setattr(workspace.QFileDialog, "getOpenFileNames", choose_files)
-    monkeypatch.setattr(workspace, "load_tabular_file", lambda _path: pd.DataFrame())
+    monkeypatch.setattr(additional_input_tab.QFileDialog, "getOpenFileNames", choose_files)
+    monkeypatch.setattr(additional_input_tab, "load_tabular_file", lambda _path: pd.DataFrame())
 
     widget.click_add_additional_files()
     widget.click_add_additional_files()

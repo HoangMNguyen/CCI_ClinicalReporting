@@ -1,16 +1,17 @@
-"""Selection UI feature behaviors."""
+"""Form, common-item, and per-form-item selection tabs.
+
+The three mixins here are the same dual-list picker pattern applied to
+three collections: whole forms, common items shared across forms, and the
+items within each selected form.  They provide the slots that move entries
+between the available and selected lists and expose the refresh helpers
+used by :class:`ui.base.WidgetBaseMixin`.
+"""
 
 from __future__ import annotations
 
-"""Form selection tab mixin for the Clinical Reporting widget.
-
-This module encapsulates the UI logic for choosing which forms
-participate in a report.  It provides the slots that move forms between
-the available and selected lists and exposes helpers used by the base
-mixin to refresh the two list widgets.
-"""
-
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QListWidgetItem
+
 
 class FormsTabMixin:
     """Behavior for the form selection tab."""
@@ -71,22 +72,22 @@ class FormsTabMixin:
     def click_select_form(self) -> None:
         """Select highlighted forms from the available list."""
         if self._apply_form_selection_action("select"):
-            self._after_form_selection_change()
+            self.update_all_ui()
 
     def click_remove_form(self) -> None:
         """Remove highlighted forms from the selection list."""
         if self._apply_form_selection_action("remove"):
-            self._after_form_selection_change()
+            self.update_all_ui()
 
     def click_select_all_form(self) -> None:
         """Move every available form into the selection list."""
         if self._apply_form_selection_action("select_all"):
-            self._after_form_selection_change()
+            self.update_all_ui()
 
     def click_remove_all_form(self) -> None:
         """Return every selected form back to the available list."""
         if self._apply_form_selection_action("remove_all"):
-            self._after_form_selection_change()
+            self.update_all_ui()
 
     def on_form_available_double_clicked(self, item: QListWidgetItem) -> None:
         """Double-click shortcut to move a form to the selected list."""
@@ -98,16 +99,6 @@ class FormsTabMixin:
         self.ui.listWidget_form_selected.setCurrentItem(item)
         self.click_remove_form()
 
-
-
-"""Common items tab mixin for the Clinical Reporting widget.
-
-This module isolates the logic that manages the shared item list used
-across all selected forms.  The mixin mirrors the behavior of the form
-selection tab but operates on the report's common item collection.
-"""
-
-from PySide6.QtWidgets import QListWidgetItem
 
 class CommonItemsTabMixin:
     """Behavior for the common items tab."""
@@ -141,8 +132,6 @@ class CommonItemsTabMixin:
         """Refresh both available and selected common item lists."""
         self.add_listWidget_common_item_available()
         self.add_listWidget_common_item_selected()
-        self.update_items_dependent_ui()
-        self.update_join_table_ui()
 
     def add_listWidget_common_item_available(self) -> None:
         """Populate the available common item list widget."""
@@ -165,22 +154,22 @@ class CommonItemsTabMixin:
     def click_select_common_item(self) -> None:
         """Move highlighted items from available to selected."""
         if self._apply_common_item_action("select"):
-            self.update_common_items_ui()
+            self.update_all_ui()
 
     def click_remove_common_item(self) -> None:
         """Return highlighted items to the available list."""
         if self._apply_common_item_action("remove"):
-            self.update_common_items_ui()
+            self.update_all_ui()
 
     def click_select_all_common_item(self) -> None:
         """Move every available common item to the selected list."""
         self._apply_common_item_action("select_all")
-        self.update_common_items_ui()
+        self.update_all_ui()
 
     def click_remove_all_common_item(self) -> None:
         """Return every selected common item to the available list."""
         self._apply_common_item_action("remove_all")
-        self.update_common_items_ui()
+        self.update_all_ui()
 
     def on_common_item_available_double_clicked(self, item: QListWidgetItem) -> None:
         """Double-click shortcut to select a common item."""
@@ -193,20 +182,12 @@ class CommonItemsTabMixin:
         self.click_remove_common_item()
 
 
-
-"""Per-form item selection mixin for the Clinical Reporting widget.
-
-The routines in this module manage the granular selections of items
-within each chosen form.  They mirror the common-item behavior but keep
-the form name prefix to disambiguate items originating from different
-forms.
-"""
-
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QListWidgetItem
-
 class FormItemsTabMixin:
-    """Behavior for the per-form items tab."""
+    """Behavior for the per-form items tab.
+
+    Mirrors the common-item behavior but keeps the form name prefix to
+    disambiguate items originating from different forms.
+    """
 
     def _init_form_items_tab(self) -> None:
         """Connect signals for selecting items that belong to specific forms."""
@@ -234,10 +215,9 @@ class FormItemsTabMixin:
         )
 
     def update_form_items_ui(self) -> None:
-        """Refresh the form-item widgets and any dependent UI elements."""
+        """Refresh the available and selected per-form item lists."""
         self.add_listWidget_form_item_available()
         self.add_listWidget_form_item_selected()
-        self.update_items_dependent_ui()
 
     def add_listWidget_form_item_available(self) -> None:
         """Populate the per-form available item list with all selected forms."""
@@ -288,21 +268,25 @@ class FormItemsTabMixin:
         """Move highlighted per-form items into the selected list."""
         if self._apply_form_item_action("select"):
             self.update_form_items_ui()
+            self.update_items_dependent_ui()
 
     def click_remove_form_item(self) -> None:
         """Return highlighted per-form items to the available list."""
         if self._apply_form_item_action("remove"):
             self.update_form_items_ui()
+            self.update_items_dependent_ui()
 
     def click_select_all_form_item(self) -> None:
         """Select every available per-form item."""
         self._apply_form_item_action("select_all")
         self.update_form_items_ui()
+        self.update_items_dependent_ui()
 
     def click_remove_all_form_item(self) -> None:
         """Return every selected per-form item to the available list."""
         self._apply_form_item_action("remove_all")
         self.update_form_items_ui()
+        self.update_items_dependent_ui()
 
     def on_form_item_available_double_clicked(self, item: QListWidgetItem) -> None:
         """Double-click shortcut to select a per-form item."""
@@ -313,5 +297,3 @@ class FormItemsTabMixin:
         """Double-click shortcut to remove a per-form item."""
         self.ui.listWidget_form_item_selected.setCurrentItem(item)
         self.click_remove_form_item()
-
-

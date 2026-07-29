@@ -11,7 +11,7 @@ loop / display.
 
 import warnings
 
-from clinical_reporting.ui.window import WidgetBaseMixin
+from clinical_reporting.ui.base import WidgetBaseMixin
 
 
 class _FakeSignal:

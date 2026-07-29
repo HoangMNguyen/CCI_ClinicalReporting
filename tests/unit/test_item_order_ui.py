@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui.rules import ComparisonTabMixin
+from clinical_reporting.ui.ordering_tab import OrderRenameTabMixin
 
 
 @pytest.fixture(scope="module")
@@ -26,7 +26,7 @@ def qapp():
     return app
 
 
-class DummyOrderWidget(ComparisonTabMixin):
+class DummyOrderWidget(OrderRenameTabMixin):
     """Minimal order/rename-tab host used to exercise the mixin."""
 
     def __init__(self, items, renames=None):

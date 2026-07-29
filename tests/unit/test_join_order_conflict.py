@@ -6,8 +6,8 @@ import pandas as pd
 
 from clinical_reporting.models import CLForm, JoinHow
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui.output import RunAndSaveMixin
-from clinical_reporting.ui.window import WidgetBaseMixin
+from clinical_reporting.ui.base import WidgetBaseMixin
+from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
 
 
 def _report_with_orders(orders: dict) -> CLReport:
@@ -76,14 +76,16 @@ class DummyRunWidget(RunAndSaveMixin, WidgetBaseMixin):
         self.ui = types.SimpleNamespace(pushButton_run=self.button)
 
 
-def test_conflict_message_none_when_unique():
-    widget = DummyRunWidget(_report_with_orders({"DM": 1, "VS": 2}))
-    assert widget._join_order_conflict_message() is None
+def test_join_configuration_message_none_when_valid():
+    report = _report_with_orders({"DM": 1, "VS": 2})
+    report.selected_forms["VS"].set_join_items(["Subject"])
+    widget = DummyRunWidget(report)
+    assert widget._join_configuration_error_message() is None
 
 
-def test_conflict_message_describes_shared_order():
+def test_join_configuration_message_describes_shared_order():
     widget = DummyRunWidget(_report_with_orders({"DM": 2, "VS": 2}))
-    message = widget._join_order_conflict_message()
+    message = widget._join_configuration_error_message()
     assert message is not None
     assert message.startswith("Cannot run:")
     assert "order 2" in message
@@ -97,6 +99,29 @@ def test_refresh_disables_run_and_shows_hint_on_conflict():
     assert widget.label_run_confirmation.text().startswith("Cannot run:")
 
 
+def test_refresh_disables_run_and_shows_hint_when_join_item_is_missing():
+    widget = DummyRunWidget(_report_with_orders({"DM": 1, "VS": 2}))
+
+    widget._refresh_run_availability()
+
+    assert widget.button.enabled is False
+    assert "VS" in widget.label_run_confirmation.text()
+    assert "at least one join item" in widget.label_run_confirmation.text()
+
+
+def test_refresh_enables_run_when_missing_join_item_is_selected():
+    report = _report_with_orders({"DM": 1, "VS": 2})
+    widget = DummyRunWidget(report)
+    widget._refresh_run_availability()
+    assert widget.button.enabled is False
+
+    report.selected_forms["VS"].set_join_items(["Subject"])
+    widget._refresh_run_availability()
+
+    assert widget.button.enabled is True
+    assert widget.label_run_confirmation.text() == ""
+
+
 def test_refresh_enables_and_clears_own_hint_when_resolved():
     widget = DummyRunWidget(_report_with_orders({"DM": 2, "VS": 2}))
     widget._refresh_run_availability()
@@ -104,13 +129,16 @@ def test_refresh_enables_and_clears_own_hint_when_resolved():
 
     # Resolve the conflict and refresh: button re-enabled, stale hint cleared.
     widget.report.selected_forms["VS"].set_join_order(1)
+    widget.report.selected_forms["DM"].set_join_items(["Subject"])
     widget._refresh_run_availability()
     assert widget.button.enabled is True
     assert widget.label_run_confirmation.text() == ""
 
 
 def test_refresh_preserves_unrelated_status_message():
-    widget = DummyRunWidget(_report_with_orders({"DM": 1, "VS": 2}))
+    report = _report_with_orders({"DM": 1, "VS": 2})
+    report.selected_forms["VS"].set_join_items(["Subject"])
+    widget = DummyRunWidget(report)
     widget.label_run_confirmation.setText("Preview generated successfully.")
     widget._refresh_run_availability()
     assert widget.button.enabled is True

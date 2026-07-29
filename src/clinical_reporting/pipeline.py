@@ -22,6 +22,7 @@ from clinical_reporting.models import (
     qualify,
     split_qualified,
 )
+
 logger = logging.getLogger(__name__)
 
 

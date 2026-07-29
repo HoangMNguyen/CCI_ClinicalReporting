@@ -11,9 +11,9 @@ import datetime
 import pandas as pd
 
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui import workspace as settings_module
-from clinical_reporting.ui.window import WidgetBaseMixin
-from clinical_reporting.ui.workspace import SettingsTabMixin
+from clinical_reporting.ui import settings_tab as settings_module
+from clinical_reporting.ui.base import WidgetBaseMixin
+from clinical_reporting.ui.settings_tab import SettingsTabMixin
 
 
 class _FakeCheckBox:
@@ -99,7 +99,9 @@ def test_reload_applies_cutoff_and_preserves_selection(monkeypatch):
     # Selection survives the reload.
     assert "FormA" in widget.report.selected_forms
     assert widget.update_all_ui_calls == 1
-    assert widget.update_items_dependent_ui_calls == 1
+    # update_all_ui now refreshes the item-dependent tables itself, so the
+    # reload path must not stack a second refresh on top of it.
+    assert widget.update_items_dependent_ui_calls == 0
 
 
 def test_reload_is_noop_without_input_file(monkeypatch):

@@ -6,7 +6,7 @@ import types
 
 import pandas as pd
 
-from clinical_reporting.ui import output
+from clinical_reporting.ui import run_save_tab
 
 
 class _Report:
@@ -38,7 +38,7 @@ class _Label:
         self.value = ""
 
 
-class _RunWidget(output.RunAndSaveMixin):
+class _RunWidget(run_save_tab.RunAndSaveMixin):
     def __init__(self, output_folder):
         self.report = _Report()
         self.output_folder_name = str(output_folder)
@@ -59,9 +59,9 @@ class _RunWidget(output.RunAndSaveMixin):
 
 def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
     operations = []
-    monkeypatch.setattr(output, "write_xlsx", lambda *_args: operations.append("write"))
+    monkeypatch.setattr(run_save_tab, "write_xlsx", lambda *_args: operations.append("write"))
     monkeypatch.setattr(
-        output,
+        run_save_tab,
         "record_successful_export",
         lambda report_name: operations.append(("count", report_name)),
     )
@@ -77,12 +77,12 @@ def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
 
 
 def test_telemetry_failure_does_not_change_successful_save(monkeypatch, tmp_path):
-    monkeypatch.setattr(output, "write_xlsx", lambda *_args: None)
+    monkeypatch.setattr(run_save_tab, "write_xlsx", lambda *_args: None)
 
     def fail_to_count(_report_name):
         raise RuntimeError("telemetry unavailable")
 
-    monkeypatch.setattr(output, "record_successful_export", fail_to_count)
+    monkeypatch.setattr(run_save_tab, "record_successful_export", fail_to_count)
     widget = _RunWidget(tmp_path)
 
     widget.click_run()
@@ -96,9 +96,9 @@ def test_failed_export_is_not_counted(monkeypatch, tmp_path):
     def fail_to_write(*_args):
         raise OSError("disk full")
 
-    monkeypatch.setattr(output, "write_xlsx", fail_to_write)
+    monkeypatch.setattr(run_save_tab, "write_xlsx", fail_to_write)
     monkeypatch.setattr(
-        output,
+        run_save_tab,
         "record_successful_export",
         lambda _report_name: counted.append(True),
     )
@@ -117,7 +117,7 @@ def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path)
         lambda *_args, **_kwargs: operations.append("write_setting")
     )
     monkeypatch.setattr(
-        output,
+        run_save_tab,
         "record_successful_setting_save",
         lambda setting_name: operations.append(("count_setting", setting_name)),
     )
@@ -135,7 +135,7 @@ def test_setting_telemetry_failure_does_not_change_successful_save(monkeypatch, 
     def fail_to_count(_setting_name):
         raise RuntimeError("telemetry unavailable")
 
-    monkeypatch.setattr(output, "record_successful_setting_save", fail_to_count)
+    monkeypatch.setattr(run_save_tab, "record_successful_setting_save", fail_to_count)
 
     widget.click_save_setting()
 
@@ -151,7 +151,7 @@ def test_failed_setting_save_is_not_counted(monkeypatch, tmp_path):
     widget.report.save_setting_to_json = fail_to_write
     counted = []
     monkeypatch.setattr(
-        output,
+        run_save_tab,
         "record_successful_setting_save",
         lambda _setting_name: counted.append(True),
     )

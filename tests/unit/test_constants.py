@@ -6,11 +6,10 @@ from clinical_reporting.models import (
     JoinHow,
     Operator,
     is_qualified,
+    move_item,
     qualify,
     split_qualified,
-    move_item,
 )
-
 
 # ---------------------------------------------------------------------------
 # JoinHow
