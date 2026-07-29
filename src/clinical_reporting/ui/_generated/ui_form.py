@@ -426,9 +426,9 @@ class Ui_Widget(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_input), QCoreApplication.translate("Widget", u"Settings", None))
         self.pushButton_additional_file_add.setText(QCoreApplication.translate("Widget", u"Input Files", None))
         ___qtablewidgetitem = self.tableWidget_update_column_name.horizontalHeaderItem(0)
-        ___qtablewidgetitem.setText(QCoreApplication.translate("Widget", u"New Column", None));
+        ___qtablewidgetitem.setText(QCoreApplication.translate("Widget", u"Original Item Name", None));
         ___qtablewidgetitem1 = self.tableWidget_update_column_name.horizontalHeaderItem(1)
-        ___qtablewidgetitem1.setText(QCoreApplication.translate("Widget", u"Updated Column Name", None));
+        ___qtablewidgetitem1.setText(QCoreApplication.translate("Widget", u"New Item Name", None));
         ___qtablewidgetitem2 = self.tableWidget_update_form_name.horizontalHeaderItem(0)
         ___qtablewidgetitem2.setText(QCoreApplication.translate("Widget", u"File Name", None));
         ___qtablewidgetitem3 = self.tableWidget_update_form_name.horizontalHeaderItem(1)
