@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pandas as pd
 
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui.window import WidgetBaseMixin
-from clinical_reporting.ui.workspace import SettingsTabMixin
+from clinical_reporting.ui.base import WidgetBaseMixin
+from clinical_reporting.ui.settings_tab import SettingsTabMixin
 
 
 class _TextWidget:
@@ -103,7 +103,9 @@ def test_remove_input_clears_core_data_and_preserves_additional_forms():
     assert widget.ui.comboBox_saved_setting.cleared is True
     assert widget.ui.comboBox_saved_setting.enabled is False
     assert widget.update_all_ui_calls == 1
-    assert widget.update_items_dependent_ui_calls == 1
+    # update_all_ui now refreshes the item-dependent tables itself, so the
+    # removal path must not stack a second refresh on top of it.
+    assert widget.update_items_dependent_ui_calls == 0
 
 
 def test_remove_input_with_no_additional_forms_leaves_empty_report():

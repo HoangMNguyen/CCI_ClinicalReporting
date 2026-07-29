@@ -4,13 +4,6 @@ Importing :mod:`clinical_reporting` intentionally does not import PySide6.  The
 desktop application is loaded only by :mod:`clinical_reporting.__main__`.
 """
 
-from .models import CLForm, ReportConfig
-from .report import CLReport
-from .validation import (
-    ReportValidationError,
-    ReportValidationIssue,
-    validate_report,
-)
 from .data import (
     build_additional_data_map,
     load_additional_inputs,
@@ -18,6 +11,13 @@ from .data import (
     read_data_dict_zip_corelisting,
 )
 from .export import dataframe_to_xlsx_bytes, write_csv, write_xlsx
+from .models import CLForm, ReportConfig
+from .report import CLReport
+from .validation import (
+    ReportValidationError,
+    ReportValidationIssue,
+    validate_report,
+)
 
 # ``Report`` is the preferred public name. ``CLReport`` remains available for
 # settings/scripts written against earlier releases.

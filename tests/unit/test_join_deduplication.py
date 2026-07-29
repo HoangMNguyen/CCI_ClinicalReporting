@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QApplication, QComboBox, QTableWidget, QTableWidge
 
 from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui.rules import ComparisonTabMixin
+from clinical_reporting.ui.join_config import JoinConfigMixin
 
 
 @pytest.fixture(scope="module")
@@ -17,7 +17,7 @@ def qapp():
     return app
 
 
-class DummyJoinWidget(ComparisonTabMixin):
+class DummyJoinWidget(JoinConfigMixin):
     def __init__(self, report: CLReport, table: QTableWidget):
         self.report = report
         self.ui = types.SimpleNamespace(tableWidget_join=table)
@@ -139,6 +139,17 @@ def test_missing_join_item_highlight_clears_when_item_is_selected(qapp):
     widget._highlight_missing_join_items()
 
     assert table.item(0, 0).foreground().style() == Qt.NoBrush
+
+
+def test_missing_join_item_highlight_refreshes_run_availability(qapp):
+    table = _build_join_table()
+    widget = DummyJoinWidget(CLReport(), table)
+    refresh_calls = []
+    widget._refresh_run_availability = lambda: refresh_calls.append(True)
+
+    widget._highlight_missing_join_items()
+
+    assert refresh_calls == [True]
 
 
 def test_first_form_without_join_items_is_not_highlighted(qapp):

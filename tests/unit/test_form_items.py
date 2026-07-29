@@ -1,13 +1,11 @@
 import types
 
 import pytest
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QListWidget
 
-from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui.selection import FormItemsTabMixin
-from clinical_reporting.ui.window import WidgetBaseMixin
+from clinical_reporting.ui.base import WidgetBaseMixin
+from clinical_reporting.ui.selection_tabs import FormItemsTabMixin
 
 
 @pytest.fixture(scope="module")

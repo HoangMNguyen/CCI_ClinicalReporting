@@ -1,70 +1,28 @@
-"""Output UI feature behaviors."""
-
-from __future__ import annotations
-
 """Run, preview, and persistence mixin for the Clinical Reporting widget.
 
 This module handles everything on the final "Preview and Save" tab,
 including preview generation, report export, and saved-setting
-persistence.  It also defines the :class:`ReportPreviewModel` used to
-bind pandas DataFrames to Qt views.
+persistence.
 """
+
+from __future__ import annotations
 
 import logging
 import os
 from datetime import datetime
 from typing import Optional
 
-import numpy as np
-import pandas as pd
-from PySide6.QtCore import Qt, QAbstractTableModel
-from PySide6.QtWidgets import QFileDialog
-
-from clinical_reporting.validation import ReportValidationError
 from clinical_reporting.export import write_xlsx
 from clinical_reporting.telemetry import (
     record_successful_export,
     record_successful_setting_save,
 )
+from clinical_reporting.ui.dialogs import choose_settings_directory
+from clinical_reporting.ui.preview_model import ReportPreviewModel
+from clinical_reporting.validation import ReportValidationError, format_issue_messages
 
 logger = logging.getLogger(__name__)
 
-class ReportPreviewModel(QAbstractTableModel):
-    """Qt model that exposes a pandas DataFrame to a :class:`QTableView`."""
-
-    def __init__(self, data: pd.DataFrame):
-        super().__init__()
-        self._data = data
-
-    def rowCount(self, parent=None):  # noqa: N802 (Qt naming convention)
-        return len(self._data)
-
-    def columnCount(self, parent=None):  # noqa: N802
-        return len(self._data.columns)
-
-    def data(self, index, role=Qt.DisplayRole):  # noqa: N802
-        if not index.isValid():
-            return None
-        if role == Qt.DisplayRole:
-            value = self._data.iloc[index.row(), index.column()]
-            if pd.isna(value):
-                return ""
-            if isinstance(value, (pd.Timestamp, datetime, np.datetime64)):
-                date = pd.Timestamp(value)
-                return f"{date.month}/{date.day}/{date.year}"
-            if isinstance(value, (float, np.floating)) and value == int(value):
-                return str(int(value))
-            return str(value)
-        return None
-
-    def headerData(self, section, orientation, role=Qt.DisplayRole):  # noqa: N802
-        if role != Qt.DisplayRole:
-            return None
-        if orientation == Qt.Horizontal:
-            return str(self._data.columns[section])
-        if orientation == Qt.Vertical:
-            return str(section + 1)
-        return None
 
 class RunAndSaveMixin:
     """Behavior for previewing reports and persisting settings/results."""
@@ -97,20 +55,7 @@ class RunAndSaveMixin:
             )
             return
 
-        initial_dir = self.settings_directory or self._get_default_settings_directory()
-        settings_dir = QFileDialog.getExistingDirectory(
-            self,
-            "Select Settings Folder",
-            initial_dir,
-        )
-        if settings_dir:
-            self.settings_directory = settings_dir
-            self._set_label_text(
-                self.label_save_confirmation,
-                f"Settings folder set to {settings_dir}",
-            )
-            if self.ui.checkBox_saved_setting.isChecked():
-                self._refresh_saved_settings()
+        choose_settings_directory(self)
 
     def click_save_setting(self) -> None:
         """Persist the current report configuration to disk."""
@@ -173,40 +118,48 @@ class RunAndSaveMixin:
         return None
 
     # ------------------------------------------------------------------
-    # Join-order conflict guarding
+    # Join-configuration guarding
 
     #: Prefix used for the inline join-order conflict message so the button
     #: refresh can recognise (and clear) its own stale hint without clobbering
     #: unrelated run/preview status text.
     _JOIN_CONFLICT_PREFIX = "Cannot run:"
+    _JOIN_BLOCKING_ISSUE_CODES = frozenset(
+        {"duplicate_join_order", "missing_join_items"}
+    )
 
-    def _join_order_conflict_message(self) -> Optional[str]:
-        """Return an inline warning when selected forms share a join order.
+    def _issues_message(self, issues) -> str:
+        """Render validation issues as the shared "Cannot run:" bullet list."""
+        return f"{self._JOIN_CONFLICT_PREFIX}\n{format_issue_messages(issues)}"
 
-        Returns ``None`` when every form has a unique join order.
+    def _validation_message(self, issue_codes=None) -> Optional[str]:
+        """Return "Cannot run:" feedback for the current validation issues.
+
+        ``issue_codes`` restricts the check to those codes (the run guard
+        reacts only to join-blocking problems); ``None`` reports every issue.
+        Returns ``None`` when nothing blocks the report.
         """
         report = getattr(self, "report", None)
         if report is None:
             return None
-        conflicts = report.get_join_order_conflicts()
-        if not conflicts:
+        issues = report.validate()
+        if issue_codes is not None:
+            issues = [issue for issue in issues if issue.code in issue_codes]
+        if not issues:
             return None
-        parts = [
-            f"order {order} ({', '.join(forms)})"
-            for order, forms in sorted(conflicts.items())
-        ]
-        return (
-            f"{self._JOIN_CONFLICT_PREFIX} forms share the same join order — "
-            f"{'; '.join(parts)}. Give each form a unique join order."
-        )
+        return self._issues_message(issues)
+
+    def _join_configuration_error_message(self) -> Optional[str]:
+        """Return validation feedback for join errors that block output."""
+        return self._validation_message(self._JOIN_BLOCKING_ISSUE_CODES)
 
     def _refresh_run_availability(self) -> None:
-        """Enable/disable the Run button and surface any join-order conflict.
+        """Enable/disable Save Output and surface join-configuration errors.
 
         Called whenever the join configuration changes so the disabled state and
         the inline hint stay in sync with the current selections.
         """
-        message = self._join_order_conflict_message()
+        message = self._join_configuration_error_message()
         run_button = getattr(self.ui, "pushButton_run", None)
         if run_button is not None:
             run_button.setEnabled(message is None)
@@ -225,14 +178,9 @@ class RunAndSaveMixin:
     def _report_validation_message(self) -> Optional[str]:
         """Return actionable validation feedback for the current report."""
 
-        report = getattr(self, "report", None)
-        if report is None:
+        if getattr(self, "report", None) is None:
             return f"{self._JOIN_CONFLICT_PREFIX} no report is loaded."
-        issues = report.validate()
-        if not issues:
-            return None
-        details = "\n".join(f"- {issue.message}" for issue in issues)
-        return f"{self._JOIN_CONFLICT_PREFIX}\n{details}"
+        return self._validation_message()
 
     def preview_report(self) -> None:
         """Generate and display a preview of the report."""
@@ -262,9 +210,7 @@ class RunAndSaveMixin:
                 self.ui.tableView_preview.setModel(None)
         except ReportValidationError as exc:
             self._set_label_text(
-                self.label_run_confirmation,
-                f"{self._JOIN_CONFLICT_PREFIX}\n"
-                + "\n".join(f"- {issue.message}" for issue in exc.issues),
+                self.label_run_confirmation, self._issues_message(exc.issues)
             )
             self.ui.tableView_preview.setModel(None)
         except Exception as exc:  # pylint: disable=broad-except
@@ -320,9 +266,7 @@ class RunAndSaveMixin:
             )
         except ReportValidationError as exc:
             self._set_label_text(
-                self.label_run_confirmation,
-                f"{self._JOIN_CONFLICT_PREFIX}\n"
-                + "\n".join(f"- {issue.message}" for issue in exc.issues),
+                self.label_run_confirmation, self._issues_message(exc.issues)
             )
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Error saving report")

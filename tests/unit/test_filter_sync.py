@@ -9,7 +9,7 @@ fakes, so no Qt event loop / display is required.
 import pandas as pd
 
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui.rules import FiltersTabMixin
+from clinical_reporting.ui.filters_tab import FiltersTabMixin
 
 
 class _Combo:

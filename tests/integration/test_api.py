@@ -23,6 +23,11 @@ from pandas.testing import assert_frame_equal
 
 import clinical_reporting as api
 from clinical_reporting import data
+from clinical_reporting.data import (
+    build_additional_data_map,
+    parse_study_name,
+    strip_subject_prefix,
+)
 from clinical_reporting.export import (
     dataframe_to_xlsx_bytes,
     prepare_export_dataframe,
@@ -31,12 +36,6 @@ from clinical_reporting.export import (
 )
 from clinical_reporting.models import ReportConfig
 from clinical_reporting.report import CLReport
-from clinical_reporting.data import (
-    build_additional_data_map,
-    parse_study_name,
-    strip_subject_prefix,
-)
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures / helpers
