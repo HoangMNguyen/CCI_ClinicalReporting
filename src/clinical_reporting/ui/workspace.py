@@ -443,11 +443,11 @@ class AdditionalInputTabMixin:
             column_table.setSelectionBehavior(QAbstractItemView.SelectRows)
             column_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
             self.copy_new_column_name_action = QAction(
-                "Copy New Column to Updated Column Name",
+                "Copy Original Item Name to New Item Name",
                 column_table,
             )
             self.copy_new_column_name_action.setToolTip(
-                "Copy the new-column value for each selected row into its updated-name cell"
+                "Copy the original item name for each selected row into its new item name cell"
             )
             self.copy_new_column_name_action.triggered.connect(self.copy_selected_new_column_names_to_updated)
             column_table.addAction(self.copy_new_column_name_action)
