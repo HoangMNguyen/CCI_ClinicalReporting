@@ -19,6 +19,11 @@ from .validation import (
     validate_report,
 )
 
+# Single source of truth for the release version. ``build_support.py`` reads
+# this string when building the executable, so bumping a release means editing
+# it here and nowhere else.
+__version__ = "2.00"
+
 # ``Report`` is the preferred public name. ``CLReport`` remains available for
 # settings/scripts written against earlier releases.
 Report = CLReport

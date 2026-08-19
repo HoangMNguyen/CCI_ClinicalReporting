@@ -3,3 +3,5 @@ numpy
 pandas
 requests
 python-dateutil
+xlsxwriter
+openpyxl

@@ -1,14 +1,20 @@
-# Clinical Reporting Tool
+# CCI Clinical Reporting & Automation Suite
 
-Desktop application for assembling clinical report outputs through a guided PySide6 UI. Users can pick source forms, choose common or per-form items, set joins/filters, comparisons, and export configured report settings.
+A suite of four PySide6 desktop applications for clinical trial reporting,
+built on a single shared headless backend (`clinical_reporting`). The Clinical
+Reporting Tool is the flagship configurable report builder; the three
+automation apps cover department-specific workflows (enrollment logs, DSMB
+reports, safety listings, and SDS peer review). Each app runs from source with
+`python -m <package>` and ships as its own standalone executable.
 
-## Features
-- Use Core Listing and other sources from both Excel and CSV files.
-- Form, common, and per-form item pickers with regex-based case-insensitive search filters.
-- Join, rename, comparison, and filter configuration tables tailored for clinical datasets.
-- Save/load settings plus quick run helpers for generating reports.
-- Form names cannot include `.` because it is reserved for the form/item separator. Additional inputs default to the file name and must be renamed to remove dots.
-- Headless reporting engine that can be driven programmatically without the UI, so the same logic can be reused in scripts, batch jobs, and tool chains. See [Programmatic / API usage](#programmatic--api-usage).
+## Applications at a glance
+
+| Application | What it produces | Run from source | Spec file |
+| --- | --- | --- | --- |
+| Clinical Reporting Tool | Configurable clinical report exports from Corelisting/CSV/Excel data | `python -m clinical_reporting` | `CCI Clinical Reporting.spec` |
+| CCI Automation | Enrollment Logs, DSMB Reports, Clockify dashboards, formatting fixes | `python -m cci_automation` | `CCI Automation.spec` |
+| Safety Automation | Corelisting AE & DLT listing workbook | `python -m safety_automation` | `Safety Automation.spec` |
+| Peer Review Automation | Medidata SDS peer-review error report | `python -m peer_review_automation` | `Peer Review Automation.spec` |
 
 ## Setup
 
@@ -27,11 +33,119 @@ instead (they include `requirements.txt`):
 python -m pip install -r requirements-dev.txt
 ```
 
-### 2. Run the application
-Primary entry point:
+### 2. Put `src/` on the Python path and run an app
+
+The packages are not pip-installed; every app imports from `src/` directly.
+
+PowerShell:
+
+```powershell
+$env:PYTHONPATH = "src"     # once per terminal session
+python -m clinical_reporting
+python -m cci_automation
+python -m safety_automation
+python -m peer_review_automation
+```
+
+Bash:
+
 ```bash
 PYTHONPATH=src python -m clinical_reporting
 ```
+
+## Clinical Reporting Tool
+
+Desktop application for assembling clinical report outputs through a guided
+UI. Users pick source forms, choose common or per-form items, set
+joins/filters, comparisons, and export configured report settings.
+
+- Use Core Listing and other sources from both Excel and CSV files.
+- Form, common, and per-form item pickers with regex-based case-insensitive search filters.
+- Join, rename, comparison, and filter configuration tables tailored for clinical datasets.
+- Save/load settings plus quick run helpers for generating reports.
+- Form names cannot include `.` because it is reserved for the form/item separator. Additional inputs default to the file name and must be renamed to remove dots.
+- Headless reporting engine that can be driven programmatically without the UI, so the same logic can be reused in scripts, batch jobs, and tool chains. See [Programmatic / API usage](#programmatic--api-usage).
+
+## CCI Automation
+
+One window, five workflows, selected from a dropdown. Reports are written as
+styled `.xlsx` files to a chosen output folder.
+
+| Workflow | Input | Notes |
+| --- | --- | --- |
+| Enrollment Log | Corelisting ZIP | Studies 03325, 03821, 10325, 11823, 12423, 15122, 15420, 16321, 30425, 50425. Optional cut-off date. |
+| DSMB Report | Corelisting ZIP | Studies 03325, 03821, 10325, 11823, 12423, 15122, 15420, 16321. Optional cut-off date. |
+| Clockify Dashboard | Clockify detailed-report CSV, or live API when no file is selected | Produces a per-project dashboard with task/milestone/role hour breakdowns and validation tabs. |
+| Add templated tasks | — | Creates the standard task template in a selected Clockify project. |
+| Format for lab range issue and no leading 0 date | CSV or XLSX | Fixes scientific-notation lab ranges and strips leading zeros from dates. |
+
+Enrollment Log and DSMB builders are per-study modules under
+`src/cci_automation/enrollment_log/` and `src/cci_automation/dsmb/`; adding a
+study means adding a module there and listing it in the dispatcher and the
+combo box in `src/cci_automation/app.py`.
+
+### Clockify configuration
+
+Only the two Clockify workflows need credentials. Configure them either as
+environment variables:
+
+```powershell
+$env:CCI_CLOCKIFY_API_KEY = "<api key>"
+$env:CCI_CLOCKIFY_WORKSPACE_ID = "<workspace id>"
+```
+
+or as a git-ignored `src/cci_automation/clockify.json` next to `util.py`:
+
+```json
+{"api_key": "<api key>", "workspace_id": "<workspace id>"}
+```
+
+Environment variables take precedence over the file. When neither is set, the
+app shows a clear error dialog instead of crashing. Never hardcode these
+values in source.
+
+## Safety Automation
+
+Single workflow: **Corelisting AE & DLT report**. Select a Corelisting ZIP —
+the study number is detected from the file name — and the app produces the
+standardized Adverse Event / Dose-Limiting Toxicity listing workbook for the
+Safety Department.
+
+Supported studies are driven by `STUDY_KEY_MAP` in
+`src/safety_automation/ae_corelisting/AECoreListing.py` (currently 03325,
+10325, 12423, 15420, 16321), which maps each study to its form-name keys.
+Adding a study is usually just a new map entry describing which Corelisting
+forms hold the AE, dose-level, infusion, and end-of-study data.
+
+## Peer Review Automation
+
+Validates a Medidata **SDS (Study Design Spec)** workbook — the
+`Form Definitions` and `Codelists` sheets — and writes every finding to
+`<study> Peer Review Automation Output.xlsx`.
+
+Checks include:
+
+- Item names longer than 32 characters.
+- Fields not marked Required (excluding Label/Boolean types).
+- Date fields missing the "No Future Date" flag.
+- Item/Item Group names not matching their External ID.
+- Codelist display types (picklist vs. other) inconsistent with the number of visible options.
+- Shared vs. non-shared naming conventions (`_YS_`/`_NS_`), and codelist/unit attachments matching item names.
+- Optional naming-convention checks (`CL_`/`DT_`/`NM_`/`TX_`/... prefixes, help-text `YH`/`NH` markers) via the checkbox.
+- Optional cross-check against an exported validation CSV, with a built-in ignore list for known-acceptable error names; results land on a separate "Validation Review" sheet.
+
+The review logic is headless (`src/peer_review_automation/sds.py`) and usable
+without the GUI: `SDSData(name_check, sds_path, validation_csv_path).output(out_dir)`.
+
+## Shared backend
+
+All three automation apps use `clinical_reporting` as their backend rather
+than carrying their own copies: Corelisting ZIP loading and cleaning comes
+from `clinical_reporting.data.read_data_dict_zip_corelisting`, study-name
+parsing from `clinical_reporting.data.parse_study_name`, and shared Excel cell
+styles from `clinical_reporting.export.get_named_excel_formats`. Their report
+builders are Qt-free, so they can be scripted the same way as the reporting
+engine below.
 
 ## Programmatic / API usage
 
@@ -88,19 +202,31 @@ Any `.json` saved from the UI is a valid config, but you can also build one in
 memory using the same schema:
 
 ```python
-config = ReportConfig.from_dict({
-    "study_name": "STUDY01",
-    "selected_common_items": ["Subject"],
-    "selected_forms": {
-        "DM": {"name": "DM", "selected_form_items": ["Age"],
-               "join_items": [], "join_order": 1, "join_how": "Left join"},
-        "VS": {"name": "VS", "selected_form_items": ["Pulse"],
-               "join_items": ["Subject"], "join_order": 2, "join_how": "Left join"},
-    },
-    "rename_dict": {"DM.Age": "Age"},
-    "static_filter_items": [["DM.Age", ">", "18"]],
-    "dynamic_filter_items": [],
-})
+config = ReportConfig.from_dict(
+    {
+        "study_name": "STUDY01",
+        "selected_common_items": ["Subject"],
+        "selected_forms": {
+            "DM": {
+                "name": "DM",
+                "selected_form_items": ["Age"],
+                "join_items": [],
+                "join_order": 1,
+                "join_how": "Left join",
+            },
+            "VS": {
+                "name": "VS",
+                "selected_form_items": ["Pulse"],
+                "join_items": ["Subject"],
+                "join_order": 2,
+                "join_how": "Left join",
+            },
+        },
+        "rename_dict": {"DM.Age": "Age"},
+        "static_filter_items": [["DM.Age", ">", "18"]],
+        "dynamic_filter_items": [],
+    }
+)
 report.apply_config(config)
 ```
 
@@ -112,23 +238,24 @@ report.apply_config(config)
 
 ```python
 from clinical_reporting.data import (
-    load_additional_inputs, build_additional_data_map,
+    load_additional_inputs,
+    build_additional_data_map,
 )
 from clinical_reporting.export import dataframe_to_xlsx_bytes, write_csv
 
 # Combine a Corelisting zip with extra CSV/Excel files
 base = read_data_dict_zip_corelisting("study_export.zip")
-inputs = load_additional_inputs(["labs.csv"])          # {resolved_path: DataFrame}
+inputs = load_additional_inputs(["labs.csv"])  # {resolved_path: DataFrame}
 extra = build_additional_data_map(
     inputs,
-    form_names={path: "LABS" for path in inputs},      # path -> form name
-    column_names={},                                   # (path, original_col) -> new name
+    form_names={path: "LABS" for path in inputs},  # path -> form name
+    column_names={},  # (path, original_col) -> new name
 )
 report.set_data({**base, **extra})
 
 # Export options
-write_csv(df, "report.csv")                            # CSV on disk
-xlsx_bytes = dataframe_to_xlsx_bytes(df)               # in-memory bytes (e.g. stream over HTTP)
+write_csv(df, "report.csv")  # CSV on disk
+xlsx_bytes = dataframe_to_xlsx_bytes(df)  # in-memory bytes (e.g. stream over HTTP)
 ```
 
 ### Persisting a configuration
@@ -212,12 +339,27 @@ src/clinical_reporting/
   data.py                      # Corelisting ZIP, CSV, Excel, extra inputs
   export.py                    # xlsx/csv/bytes rendering
   ui/
-    window.py                  # main window, shared behavior, navigation
-    workspace.py               # inputs, cutoff, and saved settings
-    selection.py               # forms, common items, and form items
-    rules.py                   # joins, filters, renames, output order
-    output.py                  # preview, run, and save
+    window.py                  # main window composed from feature mixins
+    settings_tab.py            # inputs, cutoff, and saved settings
+    selection_tabs.py          # forms, common items, and form items
+    filters_tab.py             # static and dynamic filters
+    join_config.py             # join order, type, and items
+    ordering_tab.py            # output order and renames
+    run_save_tab.py            # preview, run, and save
     _generated/ui_form.py      # generated UI binding; do not edit
+
+src/cci_automation/            # Enrollment Log, DSMB, Clockify tools
+  __main__.py                  # runtime entry: python -m cci_automation
+  util.py                      # Clockify API and shared stats helpers
+  enrollment_log/  dsmb/  clockify/  format_tools/
+
+src/safety_automation/         # Corelisting AE & DLT report
+  __main__.py                  # runtime entry: python -m safety_automation
+  ae_corelisting/
+
+src/peer_review_automation/    # Medidata SDS peer review
+  __main__.py                  # runtime entry: python -m peer_review_automation
+  sds.py                       # headless SDS review logic
 
 resource/                      # Designer assets and generated UI resources
 tests/
@@ -226,23 +368,75 @@ tests/
   data/                        # sample test inputs
 ```
 
-## Building the Executable
+## Building the Executables
 
-If you need a standalone executable, install PyInstaller first:
+Each application has a PyInstaller spec file at the repository root. Install
+PyInstaller first:
+
 ```bash
 python -m pip install pyinstaller
 ```
 
-Then build:
+Then build the app(s) you need:
+
 ```bash
-pyinstaller --onefile --strip --name "CCI Clinical Reporting V1.00" --windowed --paths src --add-data "src/clinical_reporting/telemetry.json;clinical_reporting" "src/clinical_reporting/__main__.py" --exclude PyQt5 --exclude matplotlib
+python -m PyInstaller "CCI Clinical Reporting.spec"
+python -m PyInstaller "CCI Automation.spec"
+python -m PyInstaller "Safety Automation.spec"
+python -m PyInstaller "Peer Review Automation.spec"
 ```
 
-The build command embeds the local `src/clinical_reporting/telemetry.json` in
-the executable so users do not need to configure environment variables. The
-real file contains a shared credential and is ignored by Git; use
-`telemetry.example.json` as the schema when creating or rotating it. Environment
-variables remain optional overrides for development and testing.
+Executables land in `dist/`. All four builds are one-file, windowed, and
+exclude PyQt5/matplotlib.
+
+### Versioning a release
+
+There is **one spec per application, not one per version**. The spec file
+names are permanent; the version lives in exactly one place per app:
+
+| Application | Version constant |
+| --- | --- |
+| Clinical Reporting Tool | `src/clinical_reporting/__init__.py` |
+| CCI Automation | `src/cci_automation/__init__.py` |
+| Safety Automation | `src/safety_automation/__init__.py` |
+| Peer Review Automation | `src/peer_review_automation/__init__.py` |
+
+To cut a release, bump that one string and rebuild:
+
+```python
+__version__ = "2.01"
+```
+
+`build_support.py` reads it and stamps it into both the executable's file
+name (`CCI Automation V1.22.exe`) and its Windows VERSIONINFO resource, so
+the version shown in Explorer under **Properties -> Details** can never drift
+from the version in the file name. The running app can also report its own
+version via `<package>.__version__`.
+
+For a one-off build without editing the source, override with an environment
+variable:
+
+```powershell
+$env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Automation.spec"
+```
+
+```bash
+APP_VERSION=2.01 python -m PyInstaller "CCI Automation.spec"
+```
+
+Credential files bundled at build time (both are ignored by Git and must exist
+locally before building):
+
+- **CCI Clinical Reporting** embeds `src/clinical_reporting/telemetry.json` so
+  users do not need to configure environment variables; use
+  `telemetry.example.json` as the schema when creating or rotating it.
+- **CCI Automation** embeds `src/cci_automation/clockify.json` (see
+  [Clockify configuration](#clockify-configuration)).
+- Safety Automation and Peer Review Automation need no bundled data files.
+
+Note: the `.spec` files and `build_support.py` are tracked in Git like any
+other source file — `.gitignore` no longer ignores `*.spec`. A spec diff now
+always means a real change to the build recipe, never a version bump.
 
 ## Notes
 - The UI resizes dynamically.
