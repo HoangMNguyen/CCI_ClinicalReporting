@@ -96,9 +96,7 @@ def move_item(
     return changed
 
 
-def _insert_in_order(
-    target: List[T], item: T, order: Optional[Sequence[T]]
-) -> None:
+def _insert_in_order(target: List[T], item: T, order: Optional[Sequence[T]]) -> None:
     rank = None
     if order:
         try:
