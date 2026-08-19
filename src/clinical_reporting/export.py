@@ -45,6 +45,33 @@ def get_excel_formats(workbook, worksheet, dataframe):
     worksheet.autofit()
 
 
+def get_named_excel_formats(workbook):
+    """Return the shared dictionary of named cell formats for manual writes.
+
+    Used by the automation tools that compose multi-table worksheets cell by
+    cell, unlike :func:`get_excel_formats`, which styles a whole sheet.
+    """
+    base_format = {
+        "bg_color": "#FFFFFF",
+        "valign": "vcenter",
+        "align": "center",
+        "font_name": "Calibri",
+        "border": 1,
+    }
+    variants = {
+        "bold_11_format": {"bold": True, "text_wrap": True, "font_size": 11},
+        "bold_12_format": {"bold": True, "text_wrap": False, "font_size": 12},
+        "bold_12_wrap_format": {"bold": True, "text_wrap": True, "font_size": 12},
+        "bold_11_wrap_format": {"bold": True, "text_wrap": True, "font_size": 11},
+        "normal_data_format": {"bold": False, "text_wrap": False, "font_size": 11},
+        "normal_data_wrap_format": {"bold": False, "text_wrap": True, "font_size": 11},
+    }
+    return {
+        name: workbook.add_format({**base_format, **overrides})
+        for name, overrides in variants.items()
+    }
+
+
 def prepare_export_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """Copy a dataframe and render datetime-like cells as short dates."""
     export_df = df.copy()
@@ -88,6 +115,7 @@ __all__ = [
     "DEFAULT_SHEET_NAME",
     "dataframe_to_xlsx_bytes",
     "get_excel_formats",
+    "get_named_excel_formats",
     "prepare_export_dataframe",
     "to_short_date_string",
     "write_csv",

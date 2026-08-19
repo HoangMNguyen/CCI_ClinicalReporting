@@ -28,10 +28,10 @@ share/python-wheels/
 MANIFEST
 
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+#  The root-level *.spec files are hand-maintained build recipes (one per app,
+#  version-independent) and ARE tracked in Git, so they are not ignored here.
+#  Only generated manifests are.
 *.manifest
-*.spec
 
 # Installer logs
 pip-log.txt
@@ -170,6 +170,9 @@ samconfig.toml
 
 # Local desktop telemetry credentials (bundled into release executables)
 /src/clinical_reporting/telemetry.json
+
+# Local Clockify credentials for CCI Automation (never commit)
+/src/cci_automation/clockify.json
 
 # Server-side infrastructure
 /infra/
