@@ -287,7 +287,7 @@ class DSMB10325:
         ### TODO: Demo Stats Table
        # !Update this filter options to each treatment arm
         filter_options = [
-            enrollment_df["Apheresis Consent Date"].notna(),
+            enrollment_df["Apheresis Consent Date"].notna() | enrollment_df["Main Consent Date"].notna(),
             enrollment_df["Assigned Treatment Arm"] == "Treatment Arm C",
             enrollment_df["Assigned Treatment Arm"] == "Treatment Arm A",
             enrollment_df["Assigned Treatment Arm"] == "Treatment Arm B",
@@ -302,7 +302,7 @@ class DSMB10325:
             # Apply the filter to the dataframe
             filtered_df = enrollment_df[filter_option].copy()
             filtered_df = filtered_df[
-                (filtered_df["Apheresis Consent Date"].notna())
+                (filtered_df["Apheresis Consent Date"].notna()) | (filtered_df["Main Consent Date"].notna())
             ]
             # Calculate the stats
             ## Total Consented
