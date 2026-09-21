@@ -18,40 +18,67 @@ reports, safety listings, and SDS peer review). Each app runs from source with
 
 ## Setup
 
-### 1. Install dependencies
+Python 3.10+ is required. The `python -m ...` commands are identical on every
+platform; only venv activation and environment variables are shell-specific.
 
-Install the runtime dependencies:
+### 1. Create the environment (once per machine)
 
-```bash
-python -m pip install -r requirements.txt
-```
-
-For development, testing, and linting, install the development requirements
-instead (they include `requirements.txt`):
+Linux / macOS (bash):
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 ```
 
-### 2. Put `src/` on the Python path and run an app
-
-The packages are not pip-installed; every app imports from `src/` directly.
-
-PowerShell:
+Windows (PowerShell):
 
 ```powershell
-$env:PYTHONPATH = "src"     # once per terminal session
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
+```
+
+Windows (cmd.exe): activate with `.venv\Scripts\activate.bat` instead.
+
+`requirements-dev.txt` includes the runtime dependencies plus `pytest` and
+`ruff`; install only `requirements.txt` if you just need to run the apps.
+If PowerShell blocks `Activate.ps1`, run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once. If `python` is not
+on PATH on Windows, use the `py` launcher (`py -m venv .venv`, etc.).
+
+### 2. Run from the environment (each terminal session)
+
+The packages are not pip-installed; every app imports from `src/` directly,
+so activate the venv and put `src/` on the Python path:
+
+Linux / macOS (bash):
+
+```bash
+source .venv/bin/activate
+export PYTHONPATH=src
+```
+
+Windows (PowerShell):
+
+```powershell
+.venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "src"
+```
+
+Windows (cmd.exe): `set PYTHONPATH=src` after activating.
+
+Then run any app the same way on every platform:
+
+```bash
 python -m clinical_reporting
 python -m cci_automation
 python -m safety_automation
 python -m peer_review_automation
 ```
 
-Bash:
-
-```bash
-PYTHONPATH=src python -m clinical_reporting
-```
+One-off alternative on bash without exporting:
+`PYTHONPATH=src python -m clinical_reporting`.
 
 ## Clinical Reporting Tool
 

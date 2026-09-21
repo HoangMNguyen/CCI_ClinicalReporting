@@ -68,6 +68,7 @@ class AECoreListing:
         if study_name == "03325":
             cohort_value_dict = {
                 "Cohort A": "A",
+                "Cohort B": "B",
                 "Not Assigned": "Not Assigned",
             }
         elif study_name == "16321":
