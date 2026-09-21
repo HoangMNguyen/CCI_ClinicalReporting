@@ -124,6 +124,11 @@ celerybeat.pid
 # Environments
 .env
 .venv
+
+# Local env shortcut scripts (machine-specific, see README "Environment setup")
+/dev.sh
+/dev.ps1
+/dev.bat
 env/
 venv/
 ENV/
@@ -176,3 +181,6 @@ samconfig.toml
 
 # Server-side infrastructure
 /infra/
+
+# Copied AWS CLI login session (never commit)
+/.aws/
