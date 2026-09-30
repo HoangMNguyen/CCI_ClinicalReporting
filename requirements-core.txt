@@ -1,0 +1,8 @@
+# Qt-free core: the processing engine shared by all four tools.
+# Nothing here may depend on Qt, so the same code can run headless or on a server.
+numpy>=2.4,<3
+pandas>=3.0,<4
+requests>=2.32,<3
+python-dateutil>=2.9,<3
+XlsxWriter>=3.2,<4
+openpyxl>=3.1,<4

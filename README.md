@@ -41,8 +41,17 @@ python -m pip install -r requirements-dev.txt
 
 Windows (cmd.exe): activate with `.venv\Scripts\activate.bat` instead.
 
-`requirements-dev.txt` includes the runtime dependencies plus `pytest` and
-`ruff`; install only `requirements.txt` if you just need to run the apps.
+The requirements files build on each other:
+
+| File | Contents | Install it to |
+|---|---|---|
+| `requirements-core.txt` | The Qt-free processing engine (pandas, numpy, xlsxwriter, openpyxl, requests, python-dateutil) | Run reports headless or on a server |
+| `requirements.txt` | Core + PySide6 | Run the desktop apps |
+| `requirements-dev.txt` | Desktop + `pytest` and `ruff` | Develop and test |
+| `requirements-build.txt` | Desktop + PyInstaller | Build the executables |
+
+Each dependency is pinned to its current major version so DSMB and safety
+outputs stay reproducible; raise a bound deliberately after testing.
 If PowerShell blocks `Activate.ps1`, run
 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once. If `python` is not
 on PATH on Windows, use the `py` launcher (`py -m venv .venv`, etc.).
@@ -398,10 +407,10 @@ tests/
 ## Building the Executables
 
 Each application has a PyInstaller spec file at the repository root. Install
-PyInstaller first:
+the build requirements first:
 
 ```bash
-python -m pip install pyinstaller
+python -m pip install -r requirements-build.txt
 ```
 
 Then build the app(s) you need:
