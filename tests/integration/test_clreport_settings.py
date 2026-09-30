@@ -28,7 +28,7 @@ def test_save_and_load_settings_roundtrip(tmp_path):
 
     dm_form = _make_form(
         "DM",
-        selected_items=["Age"],
+        selected_items=["Age", "Weight"],
         join_items=["Subject"],
         join_order=1,
         join_how="Left join",
@@ -42,7 +42,7 @@ def test_save_and_load_settings_roundtrip(tmp_path):
         payload = json.load(f)
 
     assert "available_forms" not in payload
-    assert payload["selected_forms"]["DM"]["selected_form_items"] == ["Age"]
+    assert payload["selected_forms"]["DM"]["selected_form_items"] == ["Age", "Weight"]
     assert payload["selected_forms"]["DM"]["join_items"] == ["Subject"]
     assert payload["selected_common_items"] == ["Subject"]
     assert payload["static_filter_items"] == [["Age", ">", "30"]]
@@ -52,7 +52,7 @@ def test_save_and_load_settings_roundtrip(tmp_path):
     loaded_report.load_setting_from_json(str(output_file))
 
     loaded_form = loaded_report.selected_forms["DM"]
-    assert loaded_form.get_selected_form_items() == ["Age"]
+    assert loaded_form.get_selected_form_items() == ["Age", "Weight"]
     assert loaded_form.get_join_items() == ["Subject"]
     assert loaded_form.get_join_order() == 1
     assert loaded_form.get_join_how() == "Left join"

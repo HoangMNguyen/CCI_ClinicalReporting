@@ -96,6 +96,9 @@ class WidgetBaseMixin:
 
     def update_items_dependent_ui(self) -> None:
         """Refresh features that depend on item selections."""
+        # Park renames/filters for deselected items (and restore re-selected
+        # ones) before the tables are rebuilt from the report.
+        self.report.sync_with_selection()
         self.update_order_rename_table()
         self.update_static_filter_table()
         self.update_dynamic_filter_table()
