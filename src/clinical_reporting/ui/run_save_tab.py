@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
 from typing import Optional
 
 from clinical_reporting.export import write_xlsx
+from clinical_reporting.filenames import output_file_name
 from clinical_reporting.telemetry import (
     record_successful_export,
     record_successful_setting_save,
@@ -74,15 +74,17 @@ class RunAndSaveMixin:
             )
             return
 
-        settings_dir, error = self._prepare_settings_directory()
-        if error:
-            self._set_label_text(self.label_save_confirmation, error)
-            return
-
-        settings_path = os.path.join(settings_dir, f"{settings_name}.json")
-        error = self._save_settings_to_path(settings_path, settings_name)
-        if error:
-            self._set_label_text(self.label_save_confirmation, error)
+        # Remember the folder so both settings-folder buttons open there next.
+        self.settings_directory = (
+            self.settings_directory or self._get_default_settings_directory()
+        )
+        try:
+            settings = self.report.settings_to_dict(settings_name)
+            settings_path = self._settings_store().save(settings_name, settings)
+        except Exception as exc:  # pylint: disable=broad-except
+            self._set_label_text(
+                self.label_save_confirmation, f"Failed to save settings: {exc}"
+            )
             return
 
         try:
@@ -98,24 +100,6 @@ class RunAndSaveMixin:
         )
         if self.ui.checkBox_saved_setting.isChecked():
             self._refresh_saved_settings()
-
-    def _prepare_settings_directory(self) -> tuple[str, Optional[str]]:
-        """Ensure the settings directory exists before saving."""
-        settings_dir = self.settings_directory or self._get_default_settings_directory()
-        self.settings_directory = settings_dir
-        try:
-            os.makedirs(settings_dir, exist_ok=True)
-        except OSError as exc:
-            return settings_dir, f"Failed to prepare settings folder: {exc}"
-        return settings_dir, None
-
-    def _save_settings_to_path(self, path: str, settings_name: str) -> Optional[str]:
-        """Serialize the current report settings to *path*."""
-        try:
-            self.report.save_setting_to_json(path, setting_name=settings_name)
-        except Exception as exc:  # pylint: disable=broad-except
-            return f"Failed to save settings: {exc}"
-        return None
 
     # ------------------------------------------------------------------
     # Join-configuration guarding
@@ -243,12 +227,7 @@ class RunAndSaveMixin:
                 )
                 return
 
-            file_name = self.ui.lineEdit_file_name.text()
-            timestamp = datetime.now().strftime(" %y%m%d_%H%M%S")
-            file_name += timestamp
-            if not file_name.endswith(".xlsx"):
-                file_name += ".xlsx"
-
+            file_name = output_file_name(self.ui.lineEdit_file_name.text())
             file_path = os.path.join(self.output_folder_name, file_name)
             # Write the report with the standard styling and short-date
             # formatting. The export logic lives in the exporter service so the

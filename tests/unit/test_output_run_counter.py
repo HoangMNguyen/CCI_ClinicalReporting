@@ -7,6 +7,7 @@ import types
 import pandas as pd
 
 from clinical_reporting.ui import run_save_tab
+from clinical_reporting.ui.base import WidgetBaseMixin
 
 
 class _Report:
@@ -15,6 +16,23 @@ class _Report:
 
     def create_report(self):
         return pd.DataFrame({"Subject": ["001"]})
+
+    def settings_to_dict(self, setting_name):
+        return {"setting_name": setting_name}
+
+
+class _Store:
+    """Settings store that records writes, or fails with *error*."""
+
+    def __init__(self, operations=None, error=None):
+        self.operations = operations if operations is not None else []
+        self.error = error
+
+    def save(self, name, settings):
+        if self.error is not None:
+            raise self.error
+        self.operations.append("write_setting")
+        return f"settings/{name}.json"
 
 
 class _LineEdit:
@@ -38,7 +56,7 @@ class _Label:
         self.value = ""
 
 
-class _RunWidget(run_save_tab.RunAndSaveMixin):
+class _RunWidget(WidgetBaseMixin, run_save_tab.RunAndSaveMixin):
     def __init__(self, output_folder):
         self.report = _Report()
         self.output_folder_name = str(output_folder)
@@ -59,7 +77,9 @@ class _RunWidget(run_save_tab.RunAndSaveMixin):
 
 def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
     operations = []
-    monkeypatch.setattr(run_save_tab, "write_xlsx", lambda *_args: operations.append("write"))
+    monkeypatch.setattr(
+        run_save_tab, "write_xlsx", lambda *_args: operations.append("write")
+    )
     monkeypatch.setattr(
         run_save_tab,
         "record_successful_export",
@@ -113,9 +133,7 @@ def test_failed_export_is_not_counted(monkeypatch, tmp_path):
 def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path):
     operations = []
     widget = _RunWidget(tmp_path)
-    widget.report.save_setting_to_json = (
-        lambda *_args, **_kwargs: operations.append("write_setting")
-    )
+    widget._settings_store = lambda: _Store(operations)
     monkeypatch.setattr(
         run_save_tab,
         "record_successful_setting_save",
@@ -128,9 +146,10 @@ def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path)
     assert widget.label_save_confirmation.value.startswith("Settings saved to")
 
 
-def test_setting_telemetry_failure_does_not_change_successful_save(monkeypatch, tmp_path):
+def test_setting_telemetry_failure_does_not_change_successful_save(
+    monkeypatch, tmp_path
+):
     widget = _RunWidget(tmp_path)
-    widget.report.save_setting_to_json = lambda *_args, **_kwargs: None
 
     def fail_to_count(_setting_name):
         raise RuntimeError("telemetry unavailable")
@@ -144,11 +163,7 @@ def test_setting_telemetry_failure_does_not_change_successful_save(monkeypatch, 
 
 def test_failed_setting_save_is_not_counted(monkeypatch, tmp_path):
     widget = _RunWidget(tmp_path)
-
-    def fail_to_write(*_args, **_kwargs):
-        raise OSError("disk full")
-
-    widget.report.save_setting_to_json = fail_to_write
+    widget._settings_store = lambda: _Store(error=OSError("disk full"))
     counted = []
     monkeypatch.setattr(
         run_save_tab,

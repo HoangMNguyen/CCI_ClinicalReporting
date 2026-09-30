@@ -305,6 +305,16 @@ report.save_setting_to_json("my_setting.json", setting_name="batch-run")
 config.to_settings_json("my_setting.json")
 ```
 
+To store settings somewhere other than a JSON file, take the dictionary and
+hand it to a settings store (the desktop app uses the local-folder store):
+
+```python
+from clinical_reporting.settings_store import LocalFolderStore
+
+settings = report.settings_to_dict("batch-run")
+LocalFolderStore("C:/Reports/settings").save("batch-run", settings)
+```
+
 ## Testing
 
 `pytest` is used for both unit and integration tests.
@@ -365,16 +375,28 @@ Testing notes:
 
 ## Project Structure
 
+The processing modules are the Qt-free core: the `clinical_reporting` modules
+below (everything except `__main__.py` and `ui/`) and the sibling tools'
+processing packages never import PySide6, and
+`tests/unit/test_headless_imports.py` enforces this. The core can therefore run
+headless or behind a future web front end. Front ends (`ui/`, the sibling
+`app.py` files) only collect input and show results; decisions about how the
+report changes belong in the core.
+
 ```text
 src/clinical_reporting/
   __main__.py                  # runtime entry: python -m clinical_reporting
   models.py                    # form/config models, labels, identifiers
   report.py                    # report state, persistence, reconciliation
+  session.py                   # what happens to a report when the user acts
+  settings_store.py            # where saved settings live (local folder today)
+  feedback.py                  # status messages tagged info/success/warning/error
+  filenames.py                 # safe file names for exports and saved settings
   pipeline.py                  # joins, filters, ordering, renames, formatting
   validation.py                # executable-report validation
-  data.py                      # Corelisting ZIP, CSV, Excel, extra inputs
+  data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
   export.py                    # xlsx/csv/bytes rendering
-  ui/
+  ui/                          # PySide6 desktop front end
     window.py                  # main window composed from feature mixins
     settings_tab.py            # inputs, cutoff, and saved settings
     selection_tabs.py          # forms, common items, and form items

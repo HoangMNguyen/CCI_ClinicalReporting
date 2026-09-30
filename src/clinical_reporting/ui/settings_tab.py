@@ -8,10 +8,8 @@ settings tab controls from :class:`ui.window.Widget`.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import QDate
@@ -205,12 +203,6 @@ class SettingsTabMixin:
             self._last_loaded_setting_path = None
             self._pending_saved_setting_reapply = False
 
-    def _get_default_settings_directory(self) -> str:
-        """Return the default folder used to store saved settings."""
-        home = Path.home()
-        default_dir = home / "Documents"
-        return str(default_dir)
-
     def click_setting_location(self) -> None:
         """Let the user choose the directory that stores saved settings."""
         choose_settings_directory(self)
@@ -224,32 +216,11 @@ class SettingsTabMixin:
         combo.blockSignals(True)
         combo.clear()
 
-        settings_dir = self.settings_directory or self._get_default_settings_directory()
-        settings_path = Path(settings_dir)
-        if not settings_path.exists():
-            combo.addItem("No saved settings found for this study", None)
-            combo.blockSignals(False)
-            combo.setEnabled(False)
-            return
+        saved_settings = self._settings_store().list(self.study_name)
+        for saved in saved_settings:
+            combo.addItem(saved.name, saved.key)
 
-        saved_any = False
-        study_name = self.study_name
-        for settings_file in settings_path.glob("*.json"):
-            try:
-                with settings_file.open("r", encoding="utf-8") as handle:
-                    data = json.load(handle)
-            except (OSError, json.JSONDecodeError) as exc:
-                logger.warning("Skipping invalid settings file %s: %s", settings_file, exc)
-                continue
-
-            if study_name and data.get("study_name") != study_name:
-                continue
-
-            display_name = data.get("setting_name") or settings_file.stem
-            combo.addItem(display_name, str(settings_file))
-            saved_any = True
-
-        if saved_any:
+        if saved_settings:
             combo.insertItem(0, "Select a saved setting", None)
             combo.setEnabled(True)
         else:
@@ -293,9 +264,10 @@ class SettingsTabMixin:
             self._set_label_text(self.label_setting, "")
 
     def _apply_saved_setting_from_path(self, file_path: str, *, update_confirmation: bool = True) -> bool:
-        """Load saved settings from ``file_path`` and reconcile with current data."""
+        """Load the saved setting at ``file_path`` and reconcile it with the data."""
         try:
-            settings_data = self.report.load_setting_from_json(file_path)
+            stored = self._settings_store().load(file_path)
+            settings_data = self.report.load_setting_from_dict(stored)
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Failed to load settings from %s", file_path)
             self._set_label_text(

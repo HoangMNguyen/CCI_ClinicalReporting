@@ -340,11 +340,23 @@ class CLReport:
         return form
 
     def save_setting_to_json(self, file_path: str, setting_name: Optional[str] = None):
-        """Save the report settings to a JSON file.
+        """Save the report settings to a JSON file (see :meth:`settings_to_dict`)."""
 
-        Only persist selected forms/items and user-configured settings. Do not
-        persist available items or unselected forms since those are derived from
-        the current input data and can be reconstructed when loading.
+        settings = self.settings_to_dict(setting_name)
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=4)
+
+    def settings_to_dict(self, setting_name: Optional[str] = None) -> Dict[str, Any]:
+        """Return the saved-settings dictionary for this report, without file I/O.
+
+        Only selected forms/items and user-configured settings are included.
+        Available items and unselected forms are left out because they are
+        derived from the input data and rebuilt when the settings are loaded.
+        The result holds no local file paths, so it can be stored anywhere.
+
+        This first calls :meth:`sync_with_selection`, which changes the report:
+        renames and filters for deselected items are set aside and the order
+        lists are trimmed, exactly as when the user deselects them.
         """
 
         # Never persist renames or filters for deselected forms/items.
@@ -379,8 +391,7 @@ class CLReport:
             "selected_items_order_list": deepcopy(self.selected_items_order_list),
             "order_list_customized": self.order_list_customized,
         }
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=4)
+        return settings
 
     def load_setting_from_json(self, file_path: str) -> Dict[str, Any]:
         """Load the report settings from a JSON file."""

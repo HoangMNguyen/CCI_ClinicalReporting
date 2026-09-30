@@ -17,6 +17,12 @@ from typing import Iterable, Optional
 from PySide6.QtWidgets import QAbstractItemView, QHeaderView
 
 from clinical_reporting.report import CLReport
+from clinical_reporting.session import capture_selection, restore_selection
+from clinical_reporting.settings_store import (
+    LocalFolderStore,
+    SettingsStore,
+    default_settings_folder,
+)
 
 
 class WidgetBaseMixin:
@@ -108,69 +114,29 @@ class WidgetBaseMixin:
     #
     # Rebuilding the report's data (re-reading the input ZIP with a new
     # cut-off date, or merging additional inputs) discards the CLForm objects
-    # that hold the user's selections. These helpers snapshot the selections
-    # beforehand and re-apply the ones that are still valid afterwards.
+    # that hold the user's selections. The Qt-free logic lives in
+    # :mod:`clinical_reporting.session`; these wrappers bind it to this
+    # window's report.
 
     def _capture_selection_state(self) -> dict:
         """Snapshot current form/item/common/join selections for later restore."""
-        selected_forms = getattr(self.report, "selected_forms", {})
-        return {
-            "forms": set(self.report.get_selected_forms_list()),
-            "common": set(getattr(self.report, "selected_common_items", [])),
-            "form_items": {
-                form: set(cl_form.get_selected_form_items())
-                for form, cl_form in selected_forms.items()
-            },
-            "join": {
-                form: {
-                    "items": list(cl_form.get_join_items()),
-                    "order": cl_form.get_join_order(),
-                    "how": cl_form.get_join_how(),
-                }
-                for form, cl_form in selected_forms.items()
-            },
-        }
+        return capture_selection(self.report)
 
     def _restore_selection_state(self, state: dict) -> None:
-        """Re-apply a snapshot from :meth:`_capture_selection_state`.
+        """Re-apply a snapshot from :meth:`_capture_selection_state`."""
+        restore_selection(self.report, state)
 
-        Only selections that still exist in the freshly rebuilt report are
-        restored; anything missing is silently dropped.
-        """
-        # Re-select previously selected forms when they still exist.
-        for form in state.get("forms", set()):
-            if form in self.report.available_forms:
-                self.report.add_selected_form(form)
+    # ------------------------------------------------------------------
+    # Saved-settings storage (shared by the settings and output tabs)
 
-        # Re-select form items that are still available on their forms.
-        for form_name, items in state.get("form_items", {}).items():
-            if form_name not in self.report.selected_forms:
-                continue
-            cl_form = self.report.selected_forms[form_name]
-            available_items = set(cl_form.get_available_form_items())
-            for item in items:
-                if item in available_items:
-                    cl_form.set_form_item_state(item, selected=True)
+    def _get_default_settings_directory(self) -> str:
+        """Return the default folder used to store saved settings."""
+        return str(default_settings_folder())
 
-        # Re-identify common items; always include Subject when present.
-        self.report.selected_common_items = []
-        self.report.available_common_items = list(self.report.static_available_common_items)
-        for common_item in state.get("common", set()):
-            if common_item in self.report.static_available_common_items:
-                self.report.set_common_item_state(common_item, selected=True)
-        if "Subject" in getattr(self.report, "static_available_common_items", []):
-            self.report.set_common_item_state("Subject", selected=True)
-
-        # Restore join configuration for forms that still exist, dropping any
-        # join items that are no longer valid selected common items.
-        valid_common = set(self.report.get_selected_common_items())
-        for form_name, join_config in state.get("join", {}).items():
-            if form_name not in self.report.selected_forms:
-                continue
-            items = [item for item in join_config["items"] if item in valid_common]
-            self.report.update_join_items(
-                form_name, items, join_config["order"], join_config["how"]
-            )
+    def _settings_store(self) -> SettingsStore:
+        """The store for the currently chosen settings folder."""
+        folder = self.settings_directory or self._get_default_settings_directory()
+        return LocalFolderStore(folder)
 
     def _apply_form_selection_action(self, action: str) -> bool:
         """Mutate report form selections based on the requested action."""
