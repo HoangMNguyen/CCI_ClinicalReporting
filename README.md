@@ -422,6 +422,15 @@ src/cci_ui/                    # shared design system for all four tools
   theme/fonts.py               # loads the bundled Inter font
   theme/glyphs.py              # renders icons; writes the stylesheet's arrow/tick images
   theme/manager.py             # System/Light/Dark and density, shared by all tools
+  widgets/buttons.py           # make_button/icon_button: primary, secondary, plain…
+  widgets/labels.py            # type-scale labels; ElidedLabel shortens long paths
+  widgets/section.py           # Section: titled card of label/field rows
+  widgets/page.py              # Page: title, body, footer; form/workspace/split kinds
+  widgets/responsive.py        # breakpoints; panel beside or below the main area
+  widgets/path_picker.py       # PathPicker: path + Choose… + Remove
+  widgets/toggle.py            # ToggleSwitch (a QCheckBox drawn as a switch)
+  widgets/segmented.py         # SegmentedControl
+  widgets/display.py           # Display button + popover (appearance, density)
   assets/fonts/                # Inter 4.1 (SIL Open Font License)
   assets/icons/                # Lucide 1.49.0 line icons used by the apps (ISC)
 

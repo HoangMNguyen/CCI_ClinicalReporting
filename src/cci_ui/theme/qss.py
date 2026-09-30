@@ -407,6 +407,8 @@ def _values(colors: ColorTokens, metrics: Metrics) -> Dict[str, object]:
     values.update({f.name: getattr(metrics, f.name) for f in fields(metrics)})
     # Qt's min-height excludes the 1px top and bottom border.
     values["control_inner"] = metrics.control_h - 2
+    # Segments sit inside a 2px track, so they are 4px shorter than controls.
+    values["segment_h"] = metrics.control_h - 4
     values["accent_disabled"] = colors.accent.with_alpha(0.45).qss
     return values
 

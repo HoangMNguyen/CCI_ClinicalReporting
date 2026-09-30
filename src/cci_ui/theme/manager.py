@@ -3,9 +3,9 @@
 :class:`ThemeManager` owns the appearance mode (System, Light, Dark) and the
 density (Comfortable, Compact). Both are shared by all CCI tools through
 :func:`shared_settings`, so switching one tool to Dark switches the others
-the next time they start. Custom-painted widgets read the active colors and
-sizes with :func:`current` at paint time and repaint on ``themeChanged`` or
-``densityChanged``.
+the next time they start. Custom widgets read the active colors and sizes
+with :func:`current` at paint time and refresh when
+``theme_events().changed`` fires.
 """
 
 from __future__ import annotations
@@ -67,6 +67,24 @@ _current = Theme(Scheme.LIGHT, Density.COMFORTABLE, LIGHT, COMFORTABLE)
 def current() -> Theme:
     """The theme currently applied (light and comfortable before any is applied)."""
     return _current
+
+
+class ThemeEvents(QObject):
+    """Tells custom widgets that colors or sizes changed, without a manager handle."""
+
+    #: Emitted after the palette and stylesheet for a new scheme or density apply.
+    changed = Signal()
+
+
+_events: Optional[ThemeEvents] = None
+
+
+def theme_events() -> ThemeEvents:
+    """The process-wide :class:`ThemeEvents`; connect widgets' refresh to ``changed``."""
+    global _events
+    if _events is None:
+        _events = ThemeEvents()
+    return _events
 
 
 def shared_settings() -> QSettings:
@@ -174,10 +192,14 @@ class ThemeManager(QObject):
         finally:
             self._applying = False
 
-        if previous is None or previous.scheme is not theme.scheme:
+        scheme_changed = previous is None or previous.scheme is not theme.scheme
+        density_changed = previous is None or previous.density is not theme.density
+        if scheme_changed:
             self.themeChanged.emit(theme.scheme.value)
-        if previous is None or previous.density is not theme.density:
+        if density_changed:
             self.densityChanged.emit(theme.density.value)
+        if scheme_changed or density_changed:
+            theme_events().changed.emit()
 
     def _sync_native_scheme(self) -> None:
         """Tell Qt the chosen scheme so native parts (the title bar) match."""
@@ -251,10 +273,12 @@ __all__ = [
     "SETTINGS_APPLICATION",
     "SETTINGS_ORGANIZATION",
     "Theme",
+    "ThemeEvents",
     "ThemeManager",
     "ThemeMode",
     "current",
     "default_density",
     "repolish",
     "shared_settings",
+    "theme_events",
 ]

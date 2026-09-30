@@ -63,6 +63,8 @@ def test_self_test_runs_a_real_app_and_quits(tmp_path):
 
     assert result.returncode == 0, result.stderr
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    # A fresh process, so component styles can only come from create_app itself.
+    assert report["components_styled"] is True
     assert report["style"] == "fusion"
     assert report["font_family"] == "Inter"
     assert report["assets_found"] is True

@@ -19,6 +19,7 @@ from PySide6.QtCore import QSettings, Qt, QThread, QTimer
 from PySide6.QtGui import QFontInfo, QGuiApplication
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+import cci_ui.widgets  # noqa: F401  (registers component styles before apply())
 from cci_ui.assets import assets_root
 from cci_ui.theme.fonts import load_bundled, ui_font
 from cci_ui.theme.manager import SETTINGS_ORGANIZATION, ThemeManager
@@ -162,6 +163,8 @@ def _self_test_report(app: QApplication, theme: ThemeManager, style_name: str) -
         "scheme": theme.scheme.value,
         "density": theme.density.value,
         "platform": QGuiApplication.platformName(),
+        # Component stylesheet rules made it into the applied stylesheet.
+        "components_styled": 'QFrame[cciRole="segmented"]' in app.styleSheet(),
     }
 
 
