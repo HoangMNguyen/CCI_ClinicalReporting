@@ -10,13 +10,21 @@ modules to the import list below.
 """
 
 from cci_ui.widgets import (  # noqa: F401  (imported for their stylesheet rules)
+    busy,
     buttons,
     display,
+    dual_list,
     labels,
     page,
     path_picker,
     responsive,
+    search,
     section,
     segmented,
+    shell,
+    sidebar,
+    status,
+    tables,
     toggle,
+    views,
 )

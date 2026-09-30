@@ -42,6 +42,7 @@ class IconName:
     FORMAT_TOOLS = "wrench"
     # Window chrome and display settings
     SIDEBAR = "panel-left"
+    BREADCRUMB = "chevron-right"
     DISPLAY = "contrast"
     APPEARANCE_SYSTEM = "monitor"
     APPEARANCE_LIGHT = "sun"

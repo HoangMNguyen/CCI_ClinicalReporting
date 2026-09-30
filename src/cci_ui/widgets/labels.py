@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import QEvent, QSize, Qt
+from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QLabel, QSizePolicy, QWidget
 
+from cci_ui.icons import icon
 from cci_ui.theme.manager import repolish
 from cci_ui.theme.tokens import TYPE_SCALE
 
@@ -121,4 +123,29 @@ class ElidedLabel(QLabel):
         self.updateGeometry()
 
 
-__all__ = ["ElidedLabel", "text_label"]
+class IconLabel(QWidget):
+    """A theme-aware icon on its own, e.g. the symbol in a status banner."""
+
+    def __init__(
+        self,
+        icon_name: str,
+        role: str = "secondary",
+        size: int = 16,
+        parent: Optional[QWidget] = None,
+    ) -> None:
+        super().__init__(parent)
+        self._size = size
+        self.set_icon(icon_name, role)
+        self.setFixedSize(size, size)
+
+    def set_icon(self, icon_name: str, role: str = "secondary") -> None:
+        self._icon = icon(icon_name, role)
+        self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802 (Qt override)
+        painter = QPainter(self)
+        self._icon.paint(painter, self.rect())
+        painter.end()
+
+
+__all__ = ["ElidedLabel", "IconLabel", "text_label"]

@@ -172,6 +172,10 @@ QListView::item {
     padding: 0 8px;
     border-radius: 6px;
 }
+/* Cell text lines up with the header text; cell widgets (combos) sit 8px in. */
+QTableView::item {
+    padding: 0 8px;
+}
 QAbstractItemView::item:hover {
     background: ${bg_hover};
 }

@@ -431,6 +431,15 @@ src/cci_ui/                    # shared design system for all four tools
   widgets/toggle.py            # ToggleSwitch (a QCheckBox drawn as a switch)
   widgets/segmented.py         # SegmentedControl
   widgets/display.py           # Display button + popover (appearance, density)
+  widgets/search.py            # SearchField
+  widgets/views.py             # lists/tables with placeholder text; EmptyState
+  widgets/status.py            # StatusBanner, show_toast, show_error
+  widgets/busy.py              # BusyOverlay (blocks input; spinner after 150 ms)
+  widgets/tables.py            # column rules, density rows, table_card, TableToolbar
+  widgets/dual_list.py         # DualListPicker (available ⇄ selected lists)
+  widgets/sidebar.py           # Sidebar with status badges; collapses to icons
+  widgets/shell.py             # AppShell: sidebar, header, pages, busy overlay
+  window_state.py              # remembered window size/position per tool
   assets/fonts/                # Inter 4.1 (SIL Open Font License)
   assets/icons/                # Lucide 1.49.0 line icons used by the apps (ISC)
 
