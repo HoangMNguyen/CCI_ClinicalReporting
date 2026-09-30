@@ -383,6 +383,13 @@ Testing notes:
   can run; a `QTest.qWait` loop holds Python's GIL and slows the worker down
   many times over. Test stand-ins without a `task_runner` run the work
   directly (`cci_ui.tasks.run_task`).
+- Messages shown in the app's status labels are tagged with how serious they
+  are: pass `feedback.info/success/warning/error(...)` (from
+  `clinical_reporting.feedback`) to `_set_label_text`, adding the traceback as
+  `details` for errors. `tests/unit/test_message_kinds.py` fails on text built
+  inside those calls (literals, f-strings, joins), and the window tests in
+  `tests/ui/test_clinical_reporting_tasks.py` fail on any untagged message
+  shown during those tests.
 - `tests/ui/test_theme_tokens.py` checks that the design tokens still match the
   approved mockup in `docs/design/clinical-reporting-mockup.html`; change both
   together.

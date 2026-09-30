@@ -4,7 +4,8 @@ These drive the real window with synthetic data: the ZIP reader is replaced
 by one that waits for the test's go-ahead, so the tests can check what the
 window does while the work is still running. The window is shown and
 active, so focus changes (which make the cut-off date field commit and
-start a reload) happen as they do for a user.
+start a reload) happen as they do for a user. Every status message the
+window shows is recorded, and each must carry a ``feedback`` kind.
 """
 
 import datetime
@@ -16,7 +17,8 @@ from PySide6.QtCore import QDate, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
-from clinical_reporting.ui import settings_tab
+from clinical_reporting import feedback
+from clinical_reporting.ui import run_save_tab, settings_tab
 from clinical_reporting.ui.window import Widget
 
 ZIP_NAME = "Core_Listings_DEMO01_260930.zip"
@@ -73,6 +75,16 @@ def window(qapp, monkeypatch, tmp_path):
         lambda *_args: (zip_path, "Zip files (*.zip)"),
     )
     widget = Widget()
+    widget.shown_messages = []
+    show_message = widget._set_label_text
+
+    def record(label, message):
+        widget.shown_messages.append(message)
+        show_message(label, message)
+
+    # Recorded rather than asserted here: a failure inside a Qt callback
+    # would only reach sys.excepthook.
+    widget._set_label_text = record
     widget.show()
     widget.activateWindow()
     QApplication.processEvents()
@@ -80,6 +92,12 @@ def window(qapp, monkeypatch, tmp_path):
     widget.close()
     widget.task_runner.wait(5000)
     widget.deleteLater()
+    untagged = [
+        message
+        for message in widget.shown_messages
+        if message and not isinstance(message, feedback.Message)
+    ]
+    assert untagged == []
 
 
 @pytest.fixture
@@ -251,3 +269,20 @@ def test_closing_during_a_reload_ignores_it_and_starts_nothing(opened, reader):
     assert len(reader.calls) == reads_before + 1  # Only the Enter's reload.
     assert opened._applied_cut_off_date == applied
     assert not opened.task_runner.busy
+
+
+def test_a_preview_that_fails_shows_the_error_with_its_traceback(
+    opened, monkeypatch, settle
+):
+    def broken_build(_report):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(run_save_tab, "build_report", broken_build)
+    _select_dm_age(opened)
+
+    opened.preview_report()
+    settle(opened.task_runner)
+
+    shown = opened.shown_messages[-1]
+    assert shown == "Error generating preview: boom"
+    assert shown.kind == "error" and "RuntimeError: boom" in shown.details

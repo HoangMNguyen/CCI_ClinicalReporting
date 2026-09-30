@@ -4,10 +4,12 @@ import types
 
 import pandas as pd
 
+from clinical_reporting import feedback
 from clinical_reporting.models import CLForm, JoinHow
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
+from clinical_reporting.validation import ReportValidationError, ReportValidationIssue
 
 
 def _report_with_orders(orders: dict) -> CLReport:
@@ -88,6 +90,7 @@ def test_join_configuration_message_describes_shared_order():
     message = widget._join_configuration_error_message()
     assert message is not None
     assert message.startswith("Cannot run:")
+    assert feedback.kind_of(message) == "warning"
     assert "order 2" in message
     assert "DM" in message and "VS" in message
 
@@ -97,6 +100,7 @@ def test_refresh_disables_run_and_shows_hint_on_conflict():
     widget._refresh_run_availability()
     assert widget.button.enabled is False
     assert widget.label_run_confirmation.text().startswith("Cannot run:")
+    assert feedback.kind_of(widget.label_run_confirmation.text()) == "warning"
 
 
 def test_refresh_disables_run_and_shows_hint_when_join_item_is_missing():
@@ -165,5 +169,29 @@ def test_report_validation_message_lists_actionable_core_issues():
 
     assert message is not None
     assert message.startswith("Cannot run:")
+    assert feedback.kind_of(message) == "warning"
     assert "VS" in message
     assert "at least one join item" in message
+
+
+def test_report_errors_are_warnings_when_invalid_and_errors_otherwise():
+    widget = DummyRunWidget(CLReport())
+    invalid = ReportValidationError(
+        [ReportValidationIssue("no_forms", "Select at least one form before running.")]
+    )
+
+    widget._show_report_error("Error saving report", invalid, "traceback")
+    shown = widget.label_run_confirmation.text()
+    assert shown.startswith("Cannot run:") and feedback.kind_of(shown) == "warning"
+
+    widget._show_report_error("Error saving report", OSError("disk full"), "tb")
+    shown = widget.label_run_confirmation.text()
+    assert shown == "Error saving report: disk full"
+    assert feedback.kind_of(shown) == "error" and shown.details == "tb"
+
+
+def test_running_without_a_report_is_a_warning():
+    message = DummyRunWidget(None)._report_validation_message()
+
+    assert message == "Cannot run: no report is loaded."
+    assert feedback.kind_of(message) == "warning"

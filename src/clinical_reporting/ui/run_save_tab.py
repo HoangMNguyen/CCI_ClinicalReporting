@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import logging
 import os
+import traceback
 from typing import Optional
 
 import pandas as pd
 
 from cci_ui.tasks import defer_if_busy, run_task
+from clinical_reporting import feedback
 from clinical_reporting.filenames import output_file_name
 from clinical_reporting.session import build_report, export_report
 from clinical_reporting.telemetry import (
@@ -35,8 +37,12 @@ class RunAndSaveMixin:
         """Connect run, save, and persistence-related buttons."""
         self.ui.pushButton_run.clicked.connect(self.click_run)
         self.ui.pushButton_save_setting.clicked.connect(self.click_save_setting)
-        self.ui.pushButton_output_setting.clicked.connect(self.click_output_setting_folder)
-        self.ui.checkBox_save_current_setting.stateChanged.connect(self.on_save_current_setting_state_changed)
+        self.ui.pushButton_output_setting.clicked.connect(
+            self.click_output_setting_folder
+        )
+        self.ui.checkBox_save_current_setting.stateChanged.connect(
+            self.on_save_current_setting_state_changed
+        )
         self.on_save_current_setting_state_changed()
 
     def on_save_current_setting_state_changed(self) -> None:
@@ -55,7 +61,10 @@ class RunAndSaveMixin:
         if not self.ui.checkBox_save_current_setting.isChecked():
             self._set_label_text(
                 self.label_save_confirmation,
-                "Enable 'Save the current setting?' before selecting a settings folder.",
+                feedback.warning(
+                    "Enable 'Save the current setting?' before selecting a "
+                    "settings folder."
+                ),
             )
             return
 
@@ -66,7 +75,7 @@ class RunAndSaveMixin:
         if not self.ui.checkBox_save_current_setting.isChecked():
             self._set_label_text(
                 self.label_save_confirmation,
-                "Enable 'Save the current setting?' before saving.",
+                feedback.warning("Enable 'Save the current setting?' before saving."),
             )
             return
 
@@ -74,7 +83,7 @@ class RunAndSaveMixin:
         if not settings_name:
             self._set_label_text(
                 self.label_save_confirmation,
-                "Please enter a setting name before saving.",
+                feedback.warning("Please enter a setting name before saving."),
             )
             return
 
@@ -87,7 +96,10 @@ class RunAndSaveMixin:
             settings_path = self._settings_store().save(settings_name, settings)
         except Exception as exc:  # pylint: disable=broad-except
             self._set_label_text(
-                self.label_save_confirmation, f"Failed to save settings: {exc}"
+                self.label_save_confirmation,
+                feedback.error(
+                    f"Failed to save settings: {exc}", traceback.format_exc()
+                ),
             )
             return
 
@@ -100,7 +112,7 @@ class RunAndSaveMixin:
 
         self._set_label_text(
             self.label_save_confirmation,
-            f"Settings saved to {settings_path}",
+            feedback.success(f"Settings saved to {settings_path}"),
         )
         if self.ui.checkBox_saved_setting.isChecked():
             self._refresh_saved_settings()
@@ -116,11 +128,13 @@ class RunAndSaveMixin:
         {"duplicate_join_order", "missing_join_items"}
     )
 
-    def _issues_message(self, issues) -> str:
+    def _issues_message(self, issues) -> feedback.Message:
         """Render validation issues as the shared "Cannot run:" bullet list."""
-        return f"{self._JOIN_CONFLICT_PREFIX}\n{format_issue_messages(issues)}"
+        return feedback.warning(
+            f"{self._JOIN_CONFLICT_PREFIX}\n{format_issue_messages(issues)}"
+        )
 
-    def _validation_message(self, issue_codes=None) -> Optional[str]:
+    def _validation_message(self, issue_codes=None) -> Optional[feedback.Message]:
         """Return "Cannot run:" feedback for the current validation issues.
 
         ``issue_codes`` restricts the check to those codes (the run guard
@@ -137,7 +151,7 @@ class RunAndSaveMixin:
             return None
         return self._issues_message(issues)
 
-    def _join_configuration_error_message(self) -> Optional[str]:
+    def _join_configuration_error_message(self) -> Optional[feedback.Message]:
         """Return validation feedback for join errors that block output."""
         return self._validation_message(self._JOIN_BLOCKING_ISSUE_CODES)
 
@@ -155,7 +169,9 @@ class RunAndSaveMixin:
             self._set_label_text(self.label_run_confirmation, message)
         elif (
             self.label_run_confirmation is not None
-            and self.label_run_confirmation.text().startswith(self._JOIN_CONFLICT_PREFIX)
+            and self.label_run_confirmation.text().startswith(
+                self._JOIN_CONFLICT_PREFIX
+            )
         ):
             # Conflict resolved: clear only our own stale hint.
             self._set_label_text(self.label_run_confirmation, "")
@@ -163,11 +179,13 @@ class RunAndSaveMixin:
     # ------------------------------------------------------------------
     # Report preview and export
 
-    def _report_validation_message(self) -> Optional[str]:
+    def _report_validation_message(self) -> Optional[feedback.Message]:
         """Return actionable validation feedback for the current report."""
 
         if getattr(self, "report", None) is None:
-            return f"{self._JOIN_CONFLICT_PREFIX} no report is loaded."
+            return feedback.warning(
+                f"{self._JOIN_CONFLICT_PREFIX} no report is loaded."
+            )
         return self._validation_message()
 
     def preview_report(self) -> None:
@@ -179,7 +197,9 @@ class RunAndSaveMixin:
             self._set_label_text(self.label_run_confirmation, validation_message)
             self.ui.tableView_preview.setModel(None)
             return
-        self._set_label_text(self.label_run_confirmation, "Generating preview...")
+        self._set_label_text(
+            self.label_run_confirmation, feedback.info("Generating preview...")
+        )
         run_task(
             self,
             build_report,
@@ -194,7 +214,10 @@ class RunAndSaveMixin:
         if result_df is None:
             self._set_label_text(
                 self.label_run_confirmation,
-                "No data found. Please check your form selections, filters, and join settings.",
+                feedback.warning(
+                    "No data found. Please check your form selections, filters, "
+                    "and join settings."
+                ),
             )
             self.ui.tableView_preview.setModel(None)
             return
@@ -203,15 +226,20 @@ class RunAndSaveMixin:
         self.ui.tableView_preview.resizeColumnsToContents()
         self._set_label_text(
             self.label_run_confirmation,
-            f"Preview generated successfully. Found {len(result_df)} rows with {len(result_df.columns)} columns.",
+            feedback.success(
+                f"Preview generated successfully. Found {len(result_df)} rows "
+                f"with {len(result_df.columns)} columns."
+            ),
         )
 
     def _show_preview_error(self, exc: BaseException, details: str) -> None:
         """Clear the preview and say why it couldn't be built."""
         self.ui.tableView_preview.setModel(None)
-        self._show_report_error("Error generating preview", exc)
+        self._show_report_error("Error generating preview", exc, details)
 
-    def _show_report_error(self, what_failed: str, exc: BaseException) -> None:
+    def _show_report_error(
+        self, what_failed: str, exc: BaseException, details: str
+    ) -> None:
         """Explain why building the report failed (preview or export)."""
         if isinstance(exc, ReportValidationError):
             self._set_label_text(
@@ -219,7 +247,10 @@ class RunAndSaveMixin:
             )
             return
         logger.error(what_failed, exc_info=exc)
-        self._set_label_text(self.label_run_confirmation, f"{what_failed}: {exc}")
+        self._set_label_text(
+            self.label_run_confirmation,
+            feedback.error(f"{what_failed}: {exc}", details),
+        )
 
     def click_run(self) -> None:
         """Run the report and export it to an Excel file."""
@@ -233,7 +264,7 @@ class RunAndSaveMixin:
         if not self.output_folder_name:
             self._set_label_text(
                 self.label_run_confirmation,
-                "Please select an output folder first.",
+                feedback.warning("Please select an output folder first."),
             )
             return
 
@@ -253,7 +284,9 @@ class RunAndSaveMixin:
         if file_path is None:
             self._set_label_text(
                 self.label_run_confirmation,
-                "No data to save. Please check your selections and filters.",
+                feedback.warning(
+                    "No data to save. Please check your selections and filters."
+                ),
             )
             return
         try:
@@ -264,9 +297,9 @@ class RunAndSaveMixin:
             pass
         self._set_label_text(
             self.label_run_confirmation,
-            f"Report saved successfully to {file_path}",
+            feedback.success(f"Report saved successfully to {file_path}"),
         )
 
     def _show_export_error(self, exc: BaseException, details: str) -> None:
         """Say why the report couldn't be exported."""
-        self._show_report_error("Error saving report", exc)
+        self._show_report_error("Error saving report", exc, details)

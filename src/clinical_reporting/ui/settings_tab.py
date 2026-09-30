@@ -15,6 +15,7 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import traceback
 from functools import partial
 from typing import Dict, Optional
 
@@ -23,6 +24,7 @@ from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from cci_ui.tasks import defer_if_busy, run_task, when_idle
+from clinical_reporting import feedback
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
 from clinical_reporting.session import new_report, replace_base_data, without_base_data
 from clinical_reporting.ui.dialogs import choose_settings_directory
@@ -265,7 +267,9 @@ class SettingsTabMixin:
         another tab.
         """
         logger.error("Could not read %s", file_path, exc_info=exc)
-        problem = f"Could not read {os.path.basename(file_path)}: {exc}"
+        problem = feedback.error(
+            f"Could not read {os.path.basename(file_path)}: {exc}", details
+        )
         self._show_input_file(problem)
         when_idle(
             self,
@@ -277,14 +281,21 @@ class SettingsTabMixin:
             ),
         )
 
-    def _show_input_file(self, problem: str = "") -> None:
+    def _show_input_file(self, problem: Optional[feedback.Message] = None) -> None:
         """Show the loaded ZIP's path on the settings tab, and *problem* if any."""
         lines = []
         if self._input_file_path:
             lines.append("Input path: " + self._input_file_path)
         if problem:
             lines.append(problem)
-        self.ui.label_input_file.setText("\n".join(lines))
+        self._set_label_text(
+            self.ui.label_input_file,
+            feedback.Message(
+                "\n".join(lines),
+                feedback.kind_of(problem) if problem else "info",
+                problem.details if problem else None,
+            ),
+        )
 
     def click_checkBox_saved_setting(self, state: int) -> None:
         """Enable or disable saved setting controls based on the checkbox."""
@@ -358,7 +369,9 @@ class SettingsTabMixin:
                     message_parts.append("Missing common items: " + ", ".join(sorted(common_items)))
                 for form_name in sorted(form_items):
                     message_parts.append(f"Missing items in {form_name}: " + ", ".join(sorted(form_items[form_name])))
-            self._set_label_text(self.label_setting, "\n".join(message_parts))
+            self._set_label_text(
+                self.label_setting, feedback.warning("\n".join(message_parts))
+            )
         else:
             self._set_label_text(self.label_setting, "")
 
@@ -371,7 +384,9 @@ class SettingsTabMixin:
             logger.exception("Failed to load settings from %s", file_path)
             self._set_label_text(
                 self.label_save_confirmation,
-                f"Failed to load settings: {exc}",
+                feedback.error(
+                    f"Failed to load settings: {exc}", traceback.format_exc()
+                ),
             )
             self._set_label_text(self.label_setting, "")
             self._pending_saved_setting_reapply = False
@@ -389,7 +404,9 @@ class SettingsTabMixin:
         if update_confirmation:
             self._set_label_text(
                 self.label_save_confirmation,
-                f"Loaded settings from {os.path.basename(file_path)}",
+                feedback.success(
+                    f"Loaded settings from {os.path.basename(file_path)}"
+                ),
             )
         return True
 

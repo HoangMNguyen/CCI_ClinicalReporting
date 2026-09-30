@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QFileDialog
 
+from clinical_reporting import feedback
+
 
 def choose_settings_directory(widget) -> None:
     """Run the shared settings-folder selection workflow on *widget*.
@@ -30,7 +32,7 @@ def choose_settings_directory(widget) -> None:
     widget.settings_directory = settings_dir
     widget._set_label_text(
         widget.label_save_confirmation,
-        f"Settings folder set to {settings_dir}",
+        feedback.info(f"Settings folder set to {settings_dir}"),
     )
     if widget.ui.checkBox_saved_setting.isChecked():
         widget._refresh_saved_settings()

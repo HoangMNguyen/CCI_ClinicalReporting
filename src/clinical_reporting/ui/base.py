@@ -263,7 +263,13 @@ class WidgetBaseMixin:
         raise ValueError(f"Unknown form item action: {action}")
 
     def _set_label_text(self, label, message: Optional[str]) -> None:
-        """Safely update a ``QLabel`` if it exists."""
+        """Show *message* in a status label, if the label exists.
+
+        Pass a :mod:`clinical_reporting.feedback` message (``feedback.error(…)``
+        and so on) so the label can show how serious it is; ``""`` or ``None``
+        clears it.
+        Status banners read the kind and details from the message itself.
+        """
         if label is not None:
             label.setText(message or "")
 

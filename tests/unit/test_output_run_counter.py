@@ -6,7 +6,7 @@ import types
 
 import pandas as pd
 
-from clinical_reporting import session
+from clinical_reporting import feedback, session
 from clinical_reporting.ui import run_save_tab
 from clinical_reporting.ui.base import WidgetBaseMixin
 
@@ -99,6 +99,7 @@ def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
     assert operations[1][1].startswith("report ")
     assert operations[1][1].endswith(".xlsx")
     assert widget.label_run_confirmation.value.startswith("Report saved successfully")
+    assert feedback.kind_of(widget.label_run_confirmation.value) == "success"
 
 
 def test_telemetry_failure_does_not_change_successful_save(monkeypatch, tmp_path):
@@ -133,6 +134,8 @@ def test_failed_export_is_not_counted(monkeypatch, tmp_path):
 
     assert counted == []
     assert widget.label_run_confirmation.value.startswith("Error saving report")
+    assert feedback.kind_of(widget.label_run_confirmation.value) == "error"
+    assert "disk full" in widget.label_run_confirmation.value.details
 
 
 def test_export_without_an_output_folder_builds_nothing(monkeypatch, tmp_path):
@@ -147,6 +150,7 @@ def test_export_without_an_output_folder_builds_nothing(monkeypatch, tmp_path):
     assert (
         widget.label_run_confirmation.value == "Please select an output folder first."
     )
+    assert feedback.kind_of(widget.label_run_confirmation.value) == "warning"
 
 
 def test_export_with_no_matching_rows_writes_nothing(monkeypatch, tmp_path):
@@ -159,6 +163,7 @@ def test_export_with_no_matching_rows_writes_nothing(monkeypatch, tmp_path):
 
     assert written == []
     assert widget.label_run_confirmation.value.startswith("No data to save")
+    assert feedback.kind_of(widget.label_run_confirmation.value) == "warning"
 
 
 def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path):
@@ -175,6 +180,7 @@ def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path)
 
     assert operations == ["write_setting", ("count_setting", "baseline")]
     assert widget.label_save_confirmation.value.startswith("Settings saved to")
+    assert feedback.kind_of(widget.label_save_confirmation.value) == "success"
 
 
 def test_setting_telemetry_failure_does_not_change_successful_save(
@@ -206,3 +212,5 @@ def test_failed_setting_save_is_not_counted(monkeypatch, tmp_path):
 
     assert counted == []
     assert widget.label_save_confirmation.value.startswith("Failed to save settings")
+    assert feedback.kind_of(widget.label_save_confirmation.value) == "error"
+    assert "OSError: disk full" in widget.label_save_confirmation.value.details

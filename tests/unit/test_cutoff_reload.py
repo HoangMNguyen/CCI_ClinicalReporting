@@ -10,6 +10,7 @@ import datetime
 
 import pandas as pd
 
+from clinical_reporting import feedback
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import settings_tab as settings_module
 from clinical_reporting.ui.base import WidgetBaseMixin
@@ -209,6 +210,8 @@ def test_failed_reload_keeps_the_data_says_why_and_is_not_repeated(monkeypatch):
     assert widget.ui.label_input_file.value == (
         "Input path: study.zip\nCould not read study.zip: File is not a zip file"
     )
+    assert feedback.kind_of(widget.ui.label_input_file.value) == "error"
+    assert "OSError" in widget.ui.label_input_file.value.details
     assert warnings == ["Could not read the Corelisting ZIP"]
     assert widget.update_all_ui_calls == 0
     assert reads == [datetime.date(2024, 6, 1)]
@@ -230,6 +233,9 @@ def test_going_back_to_the_applied_cut_off_clears_the_reload_error(monkeypatch):
 
     assert widget._failed_cut_off_reload is None
     assert widget.ui.label_input_file.value == "Input path: study.zip"
+    assert isinstance(widget.ui.label_input_file.value, feedback.Message)
+    assert widget.ui.label_input_file.value.kind == "info"
+    assert widget.ui.label_input_file.value.details is None
 
 
 def test_reloaded_data_for_a_removed_input_is_ignored():
