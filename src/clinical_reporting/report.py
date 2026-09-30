@@ -41,6 +41,12 @@ class CLReport:
         # then the order list is re-derived from the default layout (common
         # items first, then form items grouped by join order).
         self.order_list_customized = False
+        # Renames and filters whose items are currently deselected. They are
+        # kept out of validation, execution, and saved settings, and restored
+        # by ``sync_with_selection`` once their items are selected again.
+        self._inactive_rename_dict = {}
+        self._inactive_static_filters = []
+        self._inactive_dynamic_filters = []
 
     @staticmethod
     def _move_between_lists(
@@ -341,6 +347,9 @@ class CLReport:
         the current input data and can be reconstructed when loading.
         """
 
+        # Never persist renames or filters for deselected forms/items.
+        self.sync_with_selection()
+
         # Serialize only selected forms with their selected items and join config
         selected_forms_payload = {}
         for name, form in self.selected_forms.items():
@@ -403,6 +412,10 @@ class CLReport:
         self.new_items = list(settings.get("new_items", []))
         self.order_list = list(settings.get("order_list", []))
         self.rename_dict = dict(settings.get("rename_dict", {}))
+        # A newly loaded setting replaces anything parked from the previous one.
+        self._inactive_rename_dict = {}
+        self._inactive_static_filters = []
+        self._inactive_dynamic_filters = []
 
         static_filters = settings.get("static_filter_items")
         if static_filters is not None:
@@ -489,11 +502,7 @@ class CLReport:
             self.available_forms[form_name] = new_form
 
         # Build a set of valid identifiers for filters and ordering.
-        valid_identifiers: set[str] = set(self.selected_common_items)
-        for form_name, form in self.selected_forms.items():
-            for item in form.get_selected_form_items():
-                valid_identifiers.add(item)
-                valid_identifiers.add(qualify(form_name, item))
+        valid_identifiers = self._active_identifiers(include_unqualified=True)
 
         self.order_list = [item for item in self.order_list if item in valid_identifiers]
         self.selected_items_order_list = [item for item in self.selected_items_order_list if item in valid_identifiers]
@@ -510,6 +519,67 @@ class CLReport:
             "forms": sorted(missing_forms),
             "items": sorted(missing_items),
         }
+
+    def _active_identifiers(self, *, include_unqualified: bool) -> set[str]:
+        """Return identifiers of the currently selected common and form items.
+
+        Form items are always included as qualified ``form.item`` names. With
+        ``include_unqualified`` their bare item names are added too, since
+        filters may reference a form item without its form prefix.
+        """
+        identifiers: set[str] = set(self.selected_common_items)
+        for form_name, form in self.selected_forms.items():
+            for item in form.get_selected_form_items():
+                identifiers.add(qualify(form_name, item))
+                if include_unqualified:
+                    identifiers.add(item)
+        return identifiers
+
+    @staticmethod
+    def _partition_filters(active: list, parked: list, identifiers: set[str], operand_indexes: tuple):
+        """Split ``active`` + ``parked`` filters by whether all operands are selected.
+
+        Parked filters that duplicate an active one are dropped. Malformed
+        entries are left active so validation still reports them.
+        """
+        active_keys = {tuple(item) for item in active if isinstance(item, (list, tuple))}
+        merged = list(active) + [item for item in parked if tuple(item) not in active_keys]
+
+        still_active, inactive = [], []
+        for item in merged:
+            well_formed = isinstance(item, (list, tuple)) and len(item) == 3
+            if well_formed and not all(item[index] in identifiers for index in operand_indexes):
+                inactive.append(item)
+            else:
+                still_active.append(item)
+        return still_active, inactive
+
+    def sync_with_selection(self) -> None:
+        """Align renames, filters, and ordering with the current selection.
+
+        Renames and filters that reference a deselected form, form item, or
+        common item are parked: they are excluded from validation, report
+        execution, and saved settings, but restored here once their items are
+        selected again. An active rename always wins over a parked one for the
+        same item. Order lists are simply pruned, since re-selected items are
+        re-inserted at their default position. Safe to call repeatedly.
+        """
+        selected = self._active_identifiers(include_unqualified=False)
+        filterable = self._active_identifiers(include_unqualified=True)
+
+        renames = {**self._inactive_rename_dict, **self.rename_dict}
+        self.rename_dict = {key: value for key, value in renames.items() if key in selected}
+        self._inactive_rename_dict = {key: value for key, value in renames.items() if key not in selected}
+
+        self.static_filter_items, self._inactive_static_filters = self._partition_filters(
+            self.static_filter_items, self._inactive_static_filters, filterable, (0,)
+        )
+        self.dynamic_filter_items, self._inactive_dynamic_filters = self._partition_filters(
+            self.dynamic_filter_items, self._inactive_dynamic_filters, filterable, (0, 2)
+        )
+
+        self.order_list = [item for item in self.order_list if item in selected]
+        self.selected_items_order_list = [item for item in self.selected_items_order_list if item in selected]
 
     def apply_config(self, config: "ReportConfig") -> Dict[str, list]:
         """Apply a :class:`ReportConfig` and reconcile it against the loaded data.
