@@ -21,9 +21,10 @@ from typing import Dict, Optional
 
 import pandas as pd
 from PySide6.QtCore import QDate
-from PySide6.QtWidgets import QFileDialog, QMessageBox
+from PySide6.QtWidgets import QFileDialog
 
 from cci_ui.tasks import defer_if_busy, run_task, when_idle
+from cci_ui.widgets.status import show_error
 from clinical_reporting import feedback
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
 from clinical_reporting.session import new_report, replace_base_data, without_base_data
@@ -41,10 +42,14 @@ class SettingsTabMixin:
         self.ui.pushButton_remove_input.clicked.connect(self.click_remove_input)
         self.ui.pushButton_remove_input.setEnabled(bool(self._input_file_path))
         self.ui.pushButton_output_folder.clicked.connect(self.click_output_file)
-        self.ui.checkBox_saved_setting.stateChanged.connect(self.click_checkBox_saved_setting)
+        self.ui.checkBox_saved_setting.stateChanged.connect(
+            self.click_checkBox_saved_setting
+        )
         self.ui.comboBox_saved_setting.setEnabled(False)
         self.ui.comboBox_saved_setting.clear()
-        self.ui.comboBox_saved_setting.currentIndexChanged.connect(self.on_saved_setting_changed)
+        self.ui.comboBox_saved_setting.currentIndexChanged.connect(
+            self.on_saved_setting_changed
+        )
         self.ui.pushButton_setting_location.clicked.connect(self.click_setting_location)
 
         # Cut-off date is disabled until the user opts in via the checkbox, and
@@ -53,7 +58,14 @@ class SettingsTabMixin:
         self.ui.cutoff_dateEdit.setEnabled(False)
         self.ui.cutoff_dateEdit.setDate(QDate.currentDate())
         self.ui.cutoff_checkBox.stateChanged.connect(self.click_cutoff_checkBox)
-        self.ui.cutoff_dateEdit.editingFinished.connect(self._reload_with_current_cut_off)
+        self.ui.cutoff_dateEdit.editingFinished.connect(
+            self._reload_with_current_cut_off
+        )
+        # A date picked in the calendar popup commits nothing by itself.
+        calendar = self.ui.cutoff_dateEdit.calendarWidget()
+        if calendar is not None:
+            calendar.clicked.connect(self._reload_with_current_cut_off)
+            calendar.activated.connect(self._reload_with_current_cut_off)
 
     # ------------------------------------------------------------------
     # Slots bound to settings tab buttons
@@ -78,7 +90,7 @@ class SettingsTabMixin:
             read_data_dict_zip_corelisting,
             file_path,
             cut_off_date=cut_off_date,
-            on_success=partial(self._open_input_file, file_path, cut_off_date),
+            on_success=partial(self.open_input_data, file_path, cut_off_date),
             on_error=partial(
                 self._show_input_file_error,
                 file_path,
@@ -87,13 +99,17 @@ class SettingsTabMixin:
             message="Reading Corelisting ZIP…",
         )
 
-    def _open_input_file(
+    def open_input_data(
         self,
         file_path: str,
         cut_off_date: Optional[datetime.date],
         data: Dict[str, pd.DataFrame],
     ) -> None:
-        """Start a new report from the ZIP data read by :meth:`click_input_file`."""
+        """Start a new report from Corelisting *data* read from *file_path*.
+
+        Called with what :meth:`click_input_file` read; previews call it with
+        sample data. Changing the cut-off date later re-reads *file_path*.
+        """
         # A new report, so nothing from a previous load lingers.
         self.study_name = parse_study_name(file_path)
         self.report = new_report(self.study_name, data)
@@ -159,8 +175,7 @@ class SettingsTabMixin:
         )
         if folder:
             self.output_folder_name = folder
-            if self.label_output_folder is not None:
-                self.label_output_folder.setText(f"Output folder: {folder}")
+            self.ui.pathPicker_output_folder.set_path(folder)
 
     def click_cutoff_checkBox(self, state: int) -> None:
         """Enable the date editor and re-apply the cut-off when toggled."""
@@ -214,9 +229,7 @@ class SettingsTabMixin:
             input_path,
             cut_off_date=cut_off_date,
             on_success=partial(self._apply_cut_off_data, input_path, cut_off_date),
-            on_error=partial(
-                self._show_cut_off_reload_error, input_path, cut_off_date
-            ),
+            on_error=partial(self._show_cut_off_reload_error, input_path, cut_off_date),
             message="Applying the cut-off date…",
         )
 
@@ -262,9 +275,8 @@ class SettingsTabMixin:
     ) -> None:
         """Say the ZIP couldn't be read, and what that means (*outcome*).
 
-        The problem stays on the settings tab under the input path; a dialog
-        also shows it once the window is free, since the user may be on
-        another tab.
+        The problem stays on the Source data page; a dialog also shows it
+        once the window is free, since the user may be on another page.
         """
         logger.error("Could not read %s", file_path, exc_info=exc)
         problem = feedback.error(
@@ -274,28 +286,18 @@ class SettingsTabMixin:
         when_idle(
             self,
             partial(
-                QMessageBox.warning,
+                show_error,
                 self,
                 "Could not read the Corelisting ZIP",
                 f"{problem}\n\n{outcome}",
+                problem.details or "",
             ),
         )
 
     def _show_input_file(self, problem: Optional[feedback.Message] = None) -> None:
-        """Show the loaded ZIP's path on the settings tab, and *problem* if any."""
-        lines = []
-        if self._input_file_path:
-            lines.append("Input path: " + self._input_file_path)
-        if problem:
-            lines.append(problem)
-        self._set_label_text(
-            self.ui.label_input_file,
-            feedback.Message(
-                "\n".join(lines),
-                feedback.kind_of(problem) if problem else "info",
-                problem.details if problem else None,
-            ),
-        )
+        """Show the loaded ZIP on the Source data page, and *problem* if any."""
+        self.ui.pathPicker_input_file.set_path(self._input_file_path)
+        self._set_label_text(self.ui.banner_input_file, problem or "")
 
     def click_checkBox_saved_setting(self, state: int) -> None:
         """Enable or disable saved setting controls based on the checkbox."""
@@ -366,16 +368,23 @@ class SettingsTabMixin:
                         common_items.append(item_str)
 
                 if common_items:
-                    message_parts.append("Missing common items: " + ", ".join(sorted(common_items)))
+                    message_parts.append(
+                        "Missing common items: " + ", ".join(sorted(common_items))
+                    )
                 for form_name in sorted(form_items):
-                    message_parts.append(f"Missing items in {form_name}: " + ", ".join(sorted(form_items[form_name])))
+                    message_parts.append(
+                        f"Missing items in {form_name}: "
+                        + ", ".join(sorted(form_items[form_name]))
+                    )
             self._set_label_text(
                 self.label_setting, feedback.warning("\n".join(message_parts))
             )
         else:
             self._set_label_text(self.label_setting, "")
 
-    def _apply_saved_setting_from_path(self, file_path: str, *, update_confirmation: bool = True) -> bool:
+    def _apply_saved_setting_from_path(
+        self, file_path: str, *, update_confirmation: bool = True
+    ) -> bool:
         """Load the saved setting at ``file_path`` and reconcile it with the data."""
         try:
             stored = self._settings_store().load(file_path)
@@ -392,7 +401,9 @@ class SettingsTabMixin:
             self._pending_saved_setting_reapply = False
             return False
 
-        loaded_study_name = settings_data.get("study_name") if isinstance(settings_data, dict) else None
+        loaded_study_name = (
+            settings_data.get("study_name") if isinstance(settings_data, dict) else None
+        )
         if loaded_study_name:
             self.study_name = loaded_study_name
         self.report.set_study_name(self.study_name)
@@ -404,9 +415,7 @@ class SettingsTabMixin:
         if update_confirmation:
             self._set_label_text(
                 self.label_save_confirmation,
-                feedback.success(
-                    f"Loaded settings from {os.path.basename(file_path)}"
-                ),
+                feedback.success(f"Loaded settings from {os.path.basename(file_path)}"),
             )
         return True
 

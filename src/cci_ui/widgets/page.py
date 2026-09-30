@@ -31,7 +31,7 @@ from cci_ui.theme.manager import current, theme_events
 from cci_ui.theme.qss import register_qss
 from cci_ui.theme.tokens import LAYOUT
 from cci_ui.widgets.buttons import make_button
-from cci_ui.widgets.labels import text_label
+from cci_ui.widgets.labels import escape_ampersands, text_label
 
 register_qss(
     """
@@ -169,8 +169,13 @@ class Page(QWidget):
             self.footer.setContentsMargins(0, 0, 0, 0)
         else:
             self._header_margins.setContentsMargins(margin, margin, margin, _HEADER_GAP)
-            self._body_margins.setContentsMargins(margin, 0, margin, 0)
+            # The footer spaces the body from the bottom edge when there is one.
+            bottom = 0 if self._footer_widget.isVisibleTo(self) else margin
+            self._body_margins.setContentsMargins(margin, 0, margin, bottom)
             self.footer.setContentsMargins(margin, 10, margin, 12)
+
+    def title(self) -> str:
+        return self.title_label.text()
 
     # ------------------------------------------------------------------
     # Header actions and footer
@@ -182,10 +187,13 @@ class Page(QWidget):
     def add_footer_widget(self, widget: QWidget) -> None:
         self.footer.addWidget(widget)
         self._footer_widget.setVisible(True)
+        self._apply_metrics()
 
     def set_next(self, text: str, on_click: Callable[[], None]) -> QPushButton:
         """Add a "Next: <step> →" link button to the footer."""
-        button = make_button(f"Next: {text}", variant="plain", icon_name=IconName.NEXT)
+        button = make_button(
+            escape_ampersands(f"Next: {text}"), variant="plain", icon_name=IconName.NEXT
+        )
         # Right-to-left puts the arrow after the text.
         button.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)

@@ -1,4 +1,4 @@
-"""Join configuration table for the "Comparison and Order" tab.
+"""Join configuration table on the Joins page.
 
 This mixin owns the join table: per-form join item dropdowns, join order,
 join type, and the inline conflict highlighting.  The order/rename table
@@ -70,7 +70,9 @@ class JoinConfigMixin:
             clamped_order = min(max(1, desired_order), max_order)
             join_order_combo.setCurrentText(str(clamped_order))
             join_order_combo.currentTextChanged.connect(self.update_join_list)
-            join_order_combo.currentTextChanged.connect(lambda value, r=row: self.on_join_order_changed(r, value))
+            join_order_combo.currentTextChanged.connect(
+                lambda value, r=row: self.on_join_order_changed(r, value)
+            )
             self.ui.tableWidget_join.setCellWidget(row, 4, join_order_combo)
 
             # If we had to clamp the value, persist it immediately to the model
@@ -94,7 +96,6 @@ class JoinConfigMixin:
 
         self._highlight_duplicate_join_orders()
         self._highlight_missing_join_items()
-        self._adjust_column_widths(self.ui.tableWidget_join)
 
     def on_join_order_changed(self, row: int, value: str) -> None:
         """Enable or disable join columns depending on the order selection."""
@@ -155,11 +156,11 @@ class JoinConfigMixin:
             refresh_run()
 
     def _highlight_missing_join_items(self) -> None:
-        """Flag non-first forms without a join item and update Save Output."""
+        """Flag non-first forms without a join item and update Export to Excel."""
         self._paint_missing_join_items()
 
         # Join-item dropdown changes can resolve or introduce this error without
-        # changing the join order, so refresh Save Output from this path too.
+        # changing the join order, so refresh Export to Excel from here too.
         refresh_run = getattr(self, "_refresh_run_availability", None)
         if callable(refresh_run):
             refresh_run()
@@ -175,7 +176,9 @@ class JoinConfigMixin:
                 continue
 
             has_join_item = any(
-                (combo := table.cellWidget(row, col)) is not None and bool(combo.currentText()) for col in range(1, 4)
+                (combo := table.cellWidget(row, col)) is not None
+                and bool(combo.currentText())
+                for col in range(1, 4)
             )
             is_missing = order_combo.currentText() != "1" and not has_join_item
             form_item.setForeground(missing if is_missing else QBrush())

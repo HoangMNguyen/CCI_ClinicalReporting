@@ -49,17 +49,7 @@ class AdditionalInputTabMixin:
 
         add_button = getattr(self.ui, "pushButton_additional_file_add", None)
         remove_button = getattr(self.ui, "pushButton_additional_file_remove", None)
-        if remove_button is None:
-            remove_button = getattr(self.ui, "pushButton_additional_file_2", None)
-            if remove_button is not None:
-                self.ui.pushButton_additional_file_remove = remove_button
-        apply_button = getattr(self.ui, "pushButton_additional_file_add_2", None)
-
-        # Alias the generated table names to clearer attributes if needed.
-        if not hasattr(self.ui, "tableWidget_update_form_name"):
-            self.ui.tableWidget_update_form_name = getattr(self.ui, "tableWidget_2", None)
-        if not hasattr(self.ui, "tableWidget_update_column_name"):
-            self.ui.tableWidget_update_column_name = getattr(self.ui, "tableWidget_", None)
+        apply_button = getattr(self.ui, "pushButton_apply_additional_files", None)
 
         if add_button is not None:
             add_button.clicked.connect(self.click_add_additional_files)
@@ -69,7 +59,9 @@ class AdditionalInputTabMixin:
             apply_button.clicked.connect(self.click_apply_additional_forms)
 
         if hasattr(self.ui, "listWidget_additional_file"):
-            self.ui.listWidget_additional_file.itemSelectionChanged.connect(self._update_additional_buttons_state)
+            self.ui.listWidget_additional_file.itemSelectionChanged.connect(
+                self._update_additional_buttons_state
+            )
 
         form_table = getattr(self.ui, "tableWidget_update_form_name", None)
         column_table = getattr(self.ui, "tableWidget_update_column_name", None)
@@ -77,7 +69,9 @@ class AdditionalInputTabMixin:
             form_table.setSelectionBehavior(QAbstractItemView.SelectRows)
             form_table.setSelectionMode(QAbstractItemView.SingleSelection)
             form_table.itemChanged.connect(self._on_form_name_changed)
-            form_table.itemSelectionChanged.connect(self._on_form_table_selection_changed)
+            form_table.itemSelectionChanged.connect(
+                self._on_form_table_selection_changed
+            )
         if column_table is not None:
             column_table.setSelectionBehavior(QAbstractItemView.SelectRows)
             column_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -97,10 +91,9 @@ class AdditionalInputTabMixin:
         """Open a dialog and load user-selected additional input files."""
         if defer_if_busy(self, self.click_add_additional_files):
             return
-        initial_dir = (
-            getattr(self, "_additional_input_directory", None)
-            or os.path.join(os.path.expanduser("~"), "Downloads")
-        )
+        initial_dir = getattr(
+            self, "_additional_input_directory", None
+        ) or os.path.join(os.path.expanduser("~"), "Downloads")
         file_paths, _ = QFileDialog.getOpenFileNames(
             self,
             "Select Additional Input Files",
@@ -177,7 +170,9 @@ class AdditionalInputTabMixin:
         if removed_paths:
             # Drop any column rename entries tied to removed files.
             self.additional_column_names = {
-                key: val for key, val in self.additional_column_names.items() if key[0] not in removed_paths
+                key: val
+                for key, val in self.additional_column_names.items()
+                if key[0] not in removed_paths
             }
 
         self._refresh_additional_tables()
@@ -258,7 +253,9 @@ class AdditionalInputTabMixin:
             item_new_column.setData(Qt.UserRole, (file_path, column_name))
             table.setItem(row_index, 0, item_new_column)
 
-            updated_column_name = self.additional_column_names.get((file_path, column_name), "")
+            updated_column_name = self.additional_column_names.get(
+                (file_path, column_name), ""
+            )
             item_updated = QTableWidgetItem(updated_column_name)
             item_updated.setData(Qt.UserRole, (file_path, column_name))
             table.setItem(row_index, 1, item_updated)
@@ -370,7 +367,9 @@ class AdditionalInputTabMixin:
         )
 
     @staticmethod
-    def _build_additional_input_signature(data_map: Dict[str, pd.DataFrame]) -> Dict[str, Tuple[str, ...]]:
+    def _build_additional_input_signature(
+        data_map: Dict[str, pd.DataFrame],
+    ) -> Dict[str, Tuple[str, ...]]:
         """Summarize additional inputs by form name and column names."""
         signature: Dict[str, Tuple[str, ...]] = {}
         for form_name, df in data_map.items():
@@ -381,7 +380,9 @@ class AdditionalInputTabMixin:
         """Return a mapping of file path -> form name for additional inputs."""
         form_names = {}
         for file_path in self.additional_inputs:
-            form_name = self.additional_form_names.get(file_path) or Path(file_path).name
+            form_name = (
+                self.additional_form_names.get(file_path) or Path(file_path).name
+            )
             form_names[file_path] = form_name
         return form_names
 
@@ -396,25 +397,39 @@ class AdditionalInputTabMixin:
         for file_path, form_name in name_map.items():
             name_to_paths.setdefault(form_name, []).append(file_path)
 
-        duplicates = {form_name: paths for form_name, paths in name_to_paths.items() if len(paths) > 1}
-        conflicts = {form_name: paths for form_name, paths in name_to_paths.items() if form_name in existing_forms}
+        duplicates = {
+            form_name: paths
+            for form_name, paths in name_to_paths.items()
+            if len(paths) > 1
+        }
+        conflicts = {
+            form_name: paths
+            for form_name, paths in name_to_paths.items()
+            if form_name in existing_forms
+        }
 
         if not dotted_names and not duplicates and not conflicts:
             return False
 
-        message_parts = ["Cannot add forms because some form names are invalid or conflict with existing data."]
+        message_parts = [
+            "Cannot add forms because some form names are invalid or conflict with existing data."
+        ]
         if dotted_names:
             message_parts.append("Form names cannot include '.':")
             message_parts.append("  - " + ", ".join(dotted_names))
         if duplicates:
             message_parts.append("Duplicate names in additional forms:")
             for form_name in sorted(duplicates):
-                file_list = ", ".join(sorted(Path(path).name for path in duplicates[form_name]))
+                file_list = ", ".join(
+                    sorted(Path(path).name for path in duplicates[form_name])
+                )
                 message_parts.append(f"  - {form_name}: {file_list}")
         if conflicts:
             message_parts.append("Conflicts with existing report forms:")
             for form_name in sorted(conflicts):
-                file_list = ", ".join(sorted(Path(path).name for path in conflicts[form_name]))
+                file_list = ", ".join(
+                    sorted(Path(path).name for path in conflicts[form_name])
+                )
                 message_parts.append(f"  - {form_name}: {file_list}")
         message_parts.append("Rename the forms in the table and try again.")
 

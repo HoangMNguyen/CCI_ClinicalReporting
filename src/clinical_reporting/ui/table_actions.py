@@ -1,7 +1,7 @@
 """Shared behaviors for two-column original-name/new-name table widgets.
 
-The order/rename table on the comparison tab and the column-rename table on
-the additional-input tab offer the same context action: copy each selected
+The table on the Order & rename page and the column-name table on the
+Additional input page offer the same context action: copy each selected
 row's original item name (column 0) into its editable new-name cell
 (column 1). This module keeps the action text and the copy loop in one
 place; callers supply only the persistence step for their backing model.

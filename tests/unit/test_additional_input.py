@@ -53,7 +53,7 @@ class DummyAdditionalInputUiWidget(AdditionalInputTabMixin):
         self.ui = types.SimpleNamespace(
             pushButton_additional_file_add=QPushButton(),
             pushButton_additional_file_remove=QPushButton(),
-            pushButton_additional_file_add_2=QPushButton(),
+            pushButton_apply_additional_files=QPushButton(),
             listWidget_additional_file=QListWidget(),
             tableWidget_update_form_name=form_table,
             tableWidget_update_column_name=column_table,

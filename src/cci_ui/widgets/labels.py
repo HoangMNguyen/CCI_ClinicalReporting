@@ -40,6 +40,18 @@ def text_label(
     return label
 
 
+def section_label(text: str) -> QLabel:
+    """The small label above a group of widgets, as over a Section's card."""
+    label = text_label(text, style="subheadline")
+    label.setContentsMargins(4, 0, 0, 0)
+    return label
+
+
+def escape_ampersands(text: str) -> str:
+    """*text* for a button or tab, where a lone "&" marks a keyboard shortcut."""
+    return text.replace("&", "&&")
+
+
 class ElidedLabel(QLabel):
     """Shows text that doesn't fit shortened in the middle, e.g. ``C:\\Users\\…\\data.zip``.
 
@@ -148,4 +160,10 @@ class IconLabel(QWidget):
         painter.end()
 
 
-__all__ = ["ElidedLabel", "IconLabel", "text_label"]
+__all__ = [
+    "ElidedLabel",
+    "IconLabel",
+    "escape_ampersands",
+    "section_label",
+    "text_label",
+]

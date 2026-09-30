@@ -28,25 +28,13 @@ from PySide6.QtWidgets import (
 from cci_ui.icons import IconName
 from cci_ui.theme.manager import current, repolish, theme_events
 from cci_ui.theme.qss import register_qss
-from cci_ui.widgets.buttons import icon_button
+from cci_ui.widgets.buttons import button_group, icon_button
 from cci_ui.widgets.labels import text_label
 
 register_qss(
     """
 QTableView[rowLines="true"]::item {
     border-bottom: 1px solid ${separator};
-}
-QWidget[cciRole="buttonGroup"] QToolButton {
-    border-radius: 0;
-}
-QWidget[cciRole="buttonGroup"] QToolButton[groupPosition="first"] {
-    border-top-left-radius: ${radius_control}px;
-    border-bottom-left-radius: ${radius_control}px;
-}
-QWidget[cciRole="buttonGroup"] QToolButton[groupPosition="last"] {
-    border-left-width: 0;
-    border-top-right-radius: ${radius_control}px;
-    border-bottom-right-radius: ${radius_control}px;
 }
 """
 )
@@ -155,8 +143,8 @@ def style_table(
     _styled_tables.add(view)
 
 
-def table_card(view: QTableView) -> QFrame:
-    """Put *view* in a rounded card (views can't round their own corners)."""
+def table_card(view: QAbstractItemView) -> QFrame:
+    """Put *view* (a table or list) in a rounded card; views can't round corners."""
     card = QFrame()
     card.setProperty("cciRole", "card")
     view.setProperty("cciRole", "embedded")
@@ -184,24 +172,15 @@ class TableToolbar(QWidget):
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
-        group = QWidget()
-        group.setProperty("cciRole", "buttonGroup")
-        group_layout = QHBoxLayout(group)
-        group_layout.setContentsMargins(0, 0, 0, 0)
-        group_layout.setSpacing(0)
         self.add_button = icon_button(IconName.ADD, add_tooltip, variant="secondary")
-        self.add_button.setProperty("groupPosition", "first")
         self.remove_button = icon_button(
             IconName.REMOVE, remove_tooltip, variant="secondary"
         )
-        self.remove_button.setProperty("groupPosition", "last")
-        group_layout.addWidget(self.add_button)
-        group_layout.addWidget(self.remove_button)
 
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(10)
-        self._layout.addWidget(group)
+        self._layout.addWidget(button_group(self.add_button, self.remove_button))
         self.caption_label = text_label(caption, style="caption")
         self.caption_label.setVisible(bool(caption))
         self._layout.addWidget(self.caption_label)

@@ -9,6 +9,7 @@ few UI widgets it touches and monkeypatching the loader.
 import datetime
 
 import pandas as pd
+from tests.unit.fakes import FakePathPicker
 
 from clinical_reporting import feedback
 from clinical_reporting.report import CLReport
@@ -53,7 +54,8 @@ class _FakeUi:
     def __init__(self, checked, date_value):
         self.cutoff_checkBox = _FakeCheckBox(checked)
         self.cutoff_dateEdit = _FakeDateEdit(date_value)
-        self.label_input_file = _FakeLabel()
+        self.pathPicker_input_file = FakePathPicker()
+        self.banner_input_file = _FakeLabel()
 
 
 class _BusyRunner:
@@ -187,11 +189,11 @@ def test_failed_reload_keeps_the_data_says_why_and_is_not_repeated(monkeypatch):
         reads.append(cut_off_date)
         raise OSError("File is not a zip file")
 
-    warnings = []
+    errors = []
     monkeypatch.setattr(
-        settings_module.QMessageBox,
-        "warning",
-        lambda _parent, title, text: warnings.append(title),
+        settings_module,
+        "show_error",
+        lambda _parent, title, message, details: errors.append((title, details)),
     )
     widget = DummySettingsWidget(checked=True, date_value=datetime.date(2024, 6, 1))
     widget._input_file_path = "study.zip"
@@ -207,12 +209,12 @@ def test_failed_reload_keeps_the_data_says_why_and_is_not_repeated(monkeypatch):
     assert len(widget.report.data["FormA"]) == 2
     assert "FormA" in widget.report.selected_forms
     assert widget._applied_cut_off_date is None
-    assert widget.ui.label_input_file.value == (
-        "Input path: study.zip\nCould not read study.zip: File is not a zip file"
-    )
-    assert feedback.kind_of(widget.ui.label_input_file.value) == "error"
-    assert "OSError" in widget.ui.label_input_file.value.details
-    assert warnings == ["Could not read the Corelisting ZIP"]
+    assert widget.ui.pathPicker_input_file.path() == "study.zip"
+    problem = widget.ui.banner_input_file.value
+    assert problem == "Could not read study.zip: File is not a zip file"
+    assert feedback.kind_of(problem) == "error" and "OSError" in problem.details
+    ((title, details),) = errors
+    assert title == "Could not read the Corelisting ZIP" and "OSError" in details
     assert widget.update_all_ui_calls == 0
     assert reads == [datetime.date(2024, 6, 1)]
 
@@ -226,16 +228,14 @@ def test_going_back_to_the_applied_cut_off_clears_the_reload_error(monkeypatch):
     widget = DummySettingsWidget(checked=True, date_value=datetime.date(2024, 6, 1))
     widget._input_file_path = "study.zip"
     widget._failed_cut_off_reload = ("study.zip", datetime.date(2024, 6, 1))
-    widget.ui.label_input_file.value = "Input path: study.zip\nCould not read …"
+    widget.ui.banner_input_file.value = feedback.error("Could not read …")
 
     widget.ui.cutoff_checkBox._checked = False  # Back to no cut-off, as applied.
     widget._reload_with_current_cut_off()
 
     assert widget._failed_cut_off_reload is None
-    assert widget.ui.label_input_file.value == "Input path: study.zip"
-    assert isinstance(widget.ui.label_input_file.value, feedback.Message)
-    assert widget.ui.label_input_file.value.kind == "info"
-    assert widget.ui.label_input_file.value.details is None
+    assert widget.ui.pathPicker_input_file.path() == "study.zip"
+    assert widget.ui.banner_input_file.value == ""
 
 
 def test_reloaded_data_for_a_removed_input_is_ignored():

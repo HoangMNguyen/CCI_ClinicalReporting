@@ -12,6 +12,16 @@ from PySide6.QtWidgets import QFileDialog
 from clinical_reporting import feedback
 
 
+def show_settings_folder(widget, folder: str) -> None:
+    """Show *folder* as the settings folder on both pages that choose it."""
+    for picker in (
+        getattr(widget.ui, "pathPicker_settings_folder", None),
+        getattr(widget.ui, "pathPicker_output_setting_folder", None),
+    ):
+        if picker is not None:
+            picker.set_path(folder)
+
+
 def choose_settings_directory(widget) -> None:
     """Run the shared settings-folder selection workflow on *widget*.
 
@@ -30,6 +40,7 @@ def choose_settings_directory(widget) -> None:
         return
 
     widget.settings_directory = settings_dir
+    show_settings_folder(widget, settings_dir)
     widget._set_label_text(
         widget.label_save_confirmation,
         feedback.info(f"Settings folder set to {settings_dir}"),

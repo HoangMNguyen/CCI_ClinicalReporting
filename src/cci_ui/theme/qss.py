@@ -327,6 +327,12 @@ QFrame[cciRole="separator"] {
     min-height: 1px;
     max-height: 1px;
 }
+QFrame[cciRole="separatorVertical"] {
+    background: ${separator};
+    border: none;
+    min-width: 1px;
+    max-width: 1px;
+}
 QAbstractItemView[cciRole="embedded"] {
     border: none;
 }

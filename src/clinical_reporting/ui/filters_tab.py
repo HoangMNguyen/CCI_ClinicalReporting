@@ -25,9 +25,13 @@ class FiltersTabMixin:
     def _init_filters_tab(self) -> None:
         """Attach filter-related button handlers."""
         self.ui.pushButton_static_filter_add.clicked.connect(self.static_filter_add)
-        self.ui.pushButton_static_filter_remove.clicked.connect(self.static_filter_remove)
+        self.ui.pushButton_static_filter_remove.clicked.connect(
+            self.static_filter_remove
+        )
         self.ui.pushButton_dynamic_filter_add.clicked.connect(self.dynamic_filter_add)
-        self.ui.pushButton_dynamic_filter_remove.clicked.connect(self.dynamic_filter_remove)
+        self.ui.pushButton_dynamic_filter_remove.clicked.connect(
+            self.dynamic_filter_remove
+        )
 
     # ------------------------------------------------------------------
     # Static filters
@@ -46,7 +50,6 @@ class FiltersTabMixin:
             self.ui.tableWidget_static_filter.setItem(row, 2, value_item)
 
         self.ui.tableWidget_static_filter.itemChanged.connect(self._on_filter_changed)
-        self._adjust_column_widths(self.ui.tableWidget_static_filter)
 
     def synchronize_static_filters(self) -> None:
         """Synchronise the report's filter list with the table contents."""
@@ -65,7 +68,9 @@ class FiltersTabMixin:
         self.report.set_static_filter_items([])
         for item, operator, value in new_filters:
             self.report.add_static_filter_item(item, operator, value)
-        logger.debug("Synchronized static filters: %s", self.report.get_static_filter_items())
+        logger.debug(
+            "Synchronized static filters: %s", self.report.get_static_filter_items()
+        )
 
     def _selected_filter_items(self) -> list[str]:
         """Return the sorted list of selectable filter items.
@@ -82,7 +87,9 @@ class FiltersTabMixin:
         items.sort()
         return items
 
-    def _populate_searchable_item_combo(self, combo: QComboBox, selected_value: Optional[str]) -> None:
+    def _populate_searchable_item_combo(
+        self, combo: QComboBox, selected_value: Optional[str]
+    ) -> None:
         """Turn ``combo`` into an editable, substring-searchable item picker.
 
         Lists every currently selected item; typing filters the dropdown popup
@@ -124,7 +131,9 @@ class FiltersTabMixin:
         elif dropdown_type == "operator":
             for op in Operator.STATIC:
                 combo.addItem(op)
-            combo.currentTextChanged.connect(lambda text, r=row: self._on_operator_changed(r, text))
+            combo.currentTextChanged.connect(
+                lambda text, r=row: self._on_operator_changed(r, text)
+            )
             if selected_value:
                 combo.setCurrentText(selected_value)
 
@@ -147,7 +156,9 @@ class FiltersTabMixin:
             if value_item is None:
                 value_item = QTableWidgetItem("")
                 self.ui.tableWidget_static_filter.setItem(row, 2, value_item)
-            value_item.setFlags(value_item.flags() | Qt.ItemIsEnabled | Qt.ItemIsEditable)
+            value_item.setFlags(
+                value_item.flags() | Qt.ItemIsEnabled | Qt.ItemIsEditable
+            )
 
     def static_filter_add(self) -> None:
         """Add a fresh, empty static filter row.
@@ -229,7 +240,6 @@ class FiltersTabMixin:
             self._add_dynamic_dropdown(row, 0, "item", item1)
             self._add_dynamic_dropdown(row, 1, "operator", operator)
             self._add_dynamic_dropdown(row, 2, "item", item2)
-        self._adjust_column_widths(self.ui.tableWidget_dynamic_filter)
 
     def _add_dynamic_dropdown(
         self,
@@ -301,7 +311,9 @@ class FiltersTabMixin:
                     new_filters.append((item1, operator, item2))
 
         self.report.set_dynamic_filter_items(new_filters)
-        logger.debug("Synchronized dynamic filters: %s", self.report.get_dynamic_filter_items())
+        logger.debug(
+            "Synchronized dynamic filters: %s", self.report.get_dynamic_filter_items()
+        )
 
     def _on_dynamic_filter_changed(self, *args) -> None:
         """Rebuild the report's dynamic filters from the current table state."""

@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from cci_ui.theme.manager import current, theme_events
 from cci_ui.theme.palette import qcolor
-from cci_ui.widgets.labels import text_label
+from cci_ui.widgets.labels import section_label, text_label
 
 #: Width of the label column in a row; ``None`` lets the label take the space.
 LABEL_WIDTH = 132
@@ -103,8 +103,7 @@ class Section(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        self.title_label = text_label(title, style="subheadline")
-        self.title_label.setContentsMargins(4, 0, 0, 0)
+        self.title_label = section_label(title)
         self.title_label.setVisible(bool(title))
         layout.addWidget(self.title_label)
 

@@ -11,7 +11,6 @@ class NavigationMixin:
         self.ui.tabWidget.currentChanged.connect(self.on_tab_changed)
 
     def on_tab_changed(self, index: int) -> None:
-        """Trigger updates when specific tabs become active."""
-        tab_text = self.ui.tabWidget.tabText(index)
-        if tab_text == "Preview and Save":
+        """Trigger updates when specific pages become active."""
+        if self.ui.tabWidget.widget(index) is self.ui.page_preview:
             self.preview_report()

@@ -15,7 +15,7 @@ from pathlib import Path
 UI_DIR = Path(__file__).resolve().parents[2] / "src" / "clinical_reporting" / "ui"
 #: The window's status labels, which may also be set directly with setText.
 STATUS_LABELS = {
-    "label_input_file",
+    "banner_input_file",
     "label_run_confirmation",
     "label_save_confirmation",
     "label_setting",
@@ -68,11 +68,7 @@ def _label_messages(tree: ast.AST):
 
 
 def _ui_modules():
-    return [
-        path
-        for path in sorted(UI_DIR.rglob("*.py"))
-        if "_generated" not in path.relative_to(UI_DIR).parts
-    ]
+    return sorted(UI_DIR.rglob("*.py"))  # pages/ included
 
 
 def test_status_label_messages_are_tagged_with_a_kind():
@@ -105,7 +101,7 @@ def test_the_check_spots_untagged_text():
         'self._set_label_text(label, feedback.success(f"Saved {name}"))',
         'self._set_label_text(label, feedback.info("a") if ok else "")',
         "self._set_label_text(label, message)",
-        'self.label_output_folder.setText(f"Output folder: {folder}")',
+        'self.label_search_result.setText(f"Matches: {count}")',
     ]
 
     def flagged(source):

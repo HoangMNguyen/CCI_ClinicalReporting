@@ -14,8 +14,6 @@ import re
 import warnings
 from typing import Iterable, Optional
 
-from PySide6.QtWidgets import QAbstractItemView, QHeaderView
-
 from clinical_reporting.report import CLReport
 from clinical_reporting.session import capture_selection, restore_selection
 from clinical_reporting.settings_store import (
@@ -23,6 +21,7 @@ from clinical_reporting.settings_store import (
     SettingsStore,
     default_settings_folder,
 )
+from clinical_reporting.ui.dialogs import show_settings_folder
 
 
 class WidgetBaseMixin:
@@ -53,21 +52,11 @@ class WidgetBaseMixin:
         # without repeatedly resolving attribute names on the UI form.
         self.label_run_confirmation = getattr(self.ui, "label_run_confirmation", None)
         self.label_save_confirmation = getattr(self.ui, "label_save_confirmation", None)
-        self.label_output_folder = getattr(self.ui, "label_output_folder", None)
         self.label_setting = getattr(self.ui, "label_setting", None)
-        if self.label_save_confirmation is None and hasattr(self.ui, "label_confirmation"):
-            self.label_save_confirmation = self.ui.label_confirmation
-        if self.label_run_confirmation is not None:
-            self.label_run_confirmation.setText("")
-        if self.label_save_confirmation is not None:
-            self.label_save_confirmation.setText("")
-        if self.label_setting is not None:
-            self.label_setting.setText("")
-        if self.label_save_confirmation is not None and not hasattr(self.ui, "label_save_confirmation"):
-            self.ui.label_save_confirmation = self.label_save_confirmation
 
         # Disable settings directory selector until persistence is enabled.
         self.ui.pushButton_setting_location.setEnabled(False)
+        show_settings_folder(self, self._get_default_settings_directory())
 
     # ------------------------------------------------------------------
     # Shared helpers used by multiple tabs
@@ -189,10 +178,14 @@ class WidgetBaseMixin:
     def _apply_common_item_action(self, action: str) -> bool:
         """Mutate common item selections using a shared implementation."""
         if action == "select":
-            return self._toggle_common_item_selection(self.ui.listWidget_common_item_available, selected=True)
+            return self._toggle_common_item_selection(
+                self.ui.listWidget_common_item_available, selected=True
+            )
 
         if action == "remove":
-            return self._toggle_common_item_selection(self.ui.listWidget_common_item_selected, selected=False)
+            return self._toggle_common_item_selection(
+                self.ui.listWidget_common_item_selected, selected=False
+            )
 
         if action == "select_all":
             available_items = list(self.report.get_available_common_items())
@@ -224,27 +217,37 @@ class WidgetBaseMixin:
         changed = False
         for form_name, item_name in self._iter_form_item_pairs(widget):
             if form_name in self.report.selected_forms:
-                self.report.selected_forms[form_name].set_form_item_state(item_name, selected=selected)
+                self.report.selected_forms[form_name].set_form_item_state(
+                    item_name, selected=selected
+                )
                 changed = True
         return changed
 
     def _apply_form_item_action(self, action: str) -> bool:
         """Mutate form item selections using a shared implementation."""
         if action == "select":
-            return self._toggle_form_item_selection(self.ui.listWidget_form_item_available, selected=True)
+            return self._toggle_form_item_selection(
+                self.ui.listWidget_form_item_available, selected=True
+            )
 
         if action == "remove":
-            return self._toggle_form_item_selection(self.ui.listWidget_form_item_selected, selected=False)
+            return self._toggle_form_item_selection(
+                self.ui.listWidget_form_item_selected, selected=False
+            )
 
         if action == "select_all":
             changed = False
             for form_name in self.report.get_selected_forms_list():
                 if form_name in self.report.selected_forms:
-                    available_items = self.report.selected_forms[form_name].get_available_form_items()
+                    available_items = self.report.selected_forms[
+                        form_name
+                    ].get_available_form_items()
                     if not available_items:
                         continue
                     for item in available_items[:]:
-                        self.report.selected_forms[form_name].set_form_item_state(item, selected=True)
+                        self.report.selected_forms[form_name].set_form_item_state(
+                            item, selected=True
+                        )
                     changed = True
             return changed
 
@@ -252,11 +255,15 @@ class WidgetBaseMixin:
             changed = False
             for form_name in self.report.get_selected_forms_list():
                 if form_name in self.report.selected_forms:
-                    selected_items = self.report.selected_forms[form_name].get_selected_form_items()
+                    selected_items = self.report.selected_forms[
+                        form_name
+                    ].get_selected_form_items()
                     if not selected_items:
                         continue
                     for item in selected_items[:]:
-                        self.report.selected_forms[form_name].set_form_item_state(item, selected=False)
+                        self.report.selected_forms[form_name].set_form_item_state(
+                            item, selected=False
+                        )
                     changed = True
             return changed
 
@@ -307,56 +314,3 @@ class WidgetBaseMixin:
                     signal.disconnect(slot)
             except (RuntimeError, TypeError):
                 pass
-
-    # ------------------------------------------------------------------
-    # Table configuration helpers
-
-    def _setup_tables(self) -> None:
-        """Set up table widgets with consistent column sizing."""
-        tables = [
-            self.ui.tableWidget_join,
-            self.ui.tableWidget_static_filter,
-            self.ui.tableWidget_dynamic_filter,
-            self.ui.tableWidget_rename,
-        ]
-
-        for table in tables:
-            table.setSelectionBehavior(QAbstractItemView.SelectRows)
-            selection_mode = (
-                QAbstractItemView.ExtendedSelection
-                if table is self.ui.tableWidget_rename
-                else QAbstractItemView.SingleSelection
-            )
-            table.setSelectionMode(selection_mode)
-            self._adjust_column_widths(table)
-            table.horizontalHeader().sectionResized.connect(
-                lambda index, old_size, new_size, t=table: self._adjust_column_widths(t)
-            )
-
-    def _adjust_column_widths(self, table) -> None:
-        """Adjust table columns to evenly fill the available width."""
-        if table.columnCount() == 0:
-            return
-
-        header = table.horizontalHeader()
-        if all(
-            header.sectionResizeMode(column) == QHeaderView.ResizeMode.Stretch
-            for column in range(table.columnCount())
-        ):
-            # Qt owns section sizing for stretch-managed tables. In particular,
-            # it can account for scrollbars correctly when a hidden tab becomes
-            # visible, without relying on stale child-widget measurements.
-            return
-
-        available_width = table.width()
-        if not table.verticalHeader().isHidden():
-            available_width -= table.verticalHeader().width()
-        available_width -= 20
-        if table.verticalScrollBar().isVisible():
-            available_width -= table.verticalScrollBar().width()
-        if table.showGrid():
-            available_width -= table.columnCount() * 2
-
-        column_width = max(50, available_width // table.columnCount())
-        for col in range(table.columnCount()):
-            table.setColumnWidth(col, column_width)

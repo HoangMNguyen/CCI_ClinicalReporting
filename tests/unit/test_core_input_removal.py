@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 
 import pandas as pd
+from tests.unit.fakes import FakePathPicker
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
@@ -35,7 +36,8 @@ class _ComboBox:
 
 class _Ui:
     def __init__(self):
-        self.label_input_file = _TextWidget()
+        self.pathPicker_input_file = FakePathPicker("corelisting.zip")
+        self.banner_input_file = _TextWidget()
         self.pushButton_remove_input = _TextWidget()
         self.comboBox_saved_setting = _ComboBox()
 
@@ -98,7 +100,8 @@ def test_remove_input_clears_core_data_and_preserves_additional_forms():
     assert widget._applied_cut_off_date is None
     assert widget._last_loaded_setting_path is None
     assert widget._pending_saved_setting_reapply is False
-    assert widget.ui.label_input_file.text == ""
+    assert widget.ui.pathPicker_input_file.path() == ""
+    assert widget.ui.banner_input_file.text == ""
     assert widget.ui.pushButton_remove_input.enabled is False
     assert widget.ui.comboBox_saved_setting.cleared is True
     assert widget.ui.comboBox_saved_setting.enabled is False

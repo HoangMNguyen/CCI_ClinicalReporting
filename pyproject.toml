@@ -5,7 +5,6 @@ src = ["src", "tests"]
 extend-exclude = [
     "build",
     "dist",
-    "src/clinical_reporting/ui/_generated",
     "src/cci_automation/ui_form.py",
     "src/safety_automation/ui_form.py",
     "src/peer_review_automation/PRAwindow_ui.py",

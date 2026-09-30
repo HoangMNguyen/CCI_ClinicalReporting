@@ -1,6 +1,7 @@
 """Tests for retaining the selected settings directory in folder dialogs."""
 
 import pandas as pd
+from tests.unit.fakes import FakePathPicker
 
 from clinical_reporting import data
 from clinical_reporting.ui import additional_input_tab, dialogs, settings_tab
@@ -21,9 +22,16 @@ class _WorkspaceWidget(SettingsTabMixin):
     def __init__(self):
         self.settings_directory = None
         self.output_folder_name = None
-        self.label_output_folder = None
         self.label_save_confirmation = None
-        self.ui = type("Ui", (), {"checkBox_saved_setting": _CheckBox(False)})()
+        self.ui = type(
+            "Ui",
+            (),
+            {
+                "checkBox_saved_setting": _CheckBox(False),
+                "pathPicker_output_folder": FakePathPicker(),
+                "pathPicker_settings_folder": FakePathPicker(),
+            },
+        )()
 
     def _get_default_settings_directory(self):
         return "C:/Users/test/Documents"
@@ -162,6 +170,7 @@ def test_output_folder_dialog_remembers_last_selection(monkeypatch):
 
     assert initial_directories[1] == "D:/Study/Reports"
     assert widget.output_folder_name == "E:/Other/Reports"
+    assert widget.ui.pathPicker_output_folder.path() == "E:/Other/Reports"
 
 
 def test_additional_input_dialog_remembers_last_file_directory(monkeypatch, tmp_path):

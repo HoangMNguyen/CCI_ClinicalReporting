@@ -57,12 +57,12 @@ def reader(monkeypatch):
 
 @pytest.fixture
 def warnings(monkeypatch):
-    """Warning dialogs shown, as (title, text), instead of opening them."""
+    """Error dialogs shown, as (title, message), instead of opening them."""
     shown = []
     monkeypatch.setattr(
-        settings_tab.QMessageBox,
-        "warning",
-        lambda _parent, title, text: shown.append((title, text)),
+        settings_tab,
+        "show_error",
+        lambda _parent, title, message, _details="": shown.append((title, message)),
     )
     return shown
 
@@ -141,7 +141,7 @@ def test_reading_the_zip_blocks_the_window_until_it_is_done(window, reader, sett
 
     assert set(window.report.available_forms) == {"DM", "AE"}
     assert window.report.study_name == "DEMO01"
-    assert window.ui.label_input_file.text().startswith("Input path: ")
+    assert window.ui.pathPicker_input_file.path().endswith(ZIP_NAME)
     assert window.ui.listWidget_form_available.count() == 2
 
 
@@ -154,7 +154,8 @@ def test_an_unreadable_zip_keeps_the_loaded_report(opened, reader, warnings, set
 
     problem = f"Could not read {ZIP_NAME}: File is not a zip file"
     assert opened.report is loaded
-    assert opened.ui.label_input_file.text().endswith(problem)
+    assert opened.ui.banner_input_file.text() == problem
+    assert opened.ui.pathPicker_input_file.path().endswith(ZIP_NAME)
     assert warnings == [
         (
             "Could not read the Corelisting ZIP",
@@ -289,3 +290,13 @@ def test_a_preview_that_fails_shows_the_error_with_its_traceback(
     shown = opened.shown_messages[-1]
     assert shown == "Error generating preview: boom"
     assert shown.kind == "error" and "RuntimeError: boom" in shown.details
+
+
+def test_a_date_picked_in_the_calendar_applies_the_cut_off(opened, reader, settle):
+    calendar = opened.ui.cutoff_dateEdit.calendarWidget()
+
+    calendar.clicked.emit(QDate(2020, 5, 5))  # As a click on a day in the popup.
+    settle(opened.task_runner)
+
+    assert reader.calls[-1][1] == datetime.date(2020, 5, 5)
+    assert opened._applied_cut_off_date == datetime.date(2020, 5, 5)

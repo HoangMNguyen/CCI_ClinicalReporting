@@ -7,7 +7,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QFileDialog, QLabel, QLineEdit, QWidget
 
 from cci_ui.theme import manager as theme_manager
-from cci_ui.theme.manager import Theme, ThemeMode
+from cci_ui.theme.manager import Theme, ThemeMode, current
 from cci_ui.theme.tokens import COMPACT, LAYOUT, LIGHT, Density, Scheme
 from cci_ui.widgets.buttons import icon_button, make_button, set_variant
 from cci_ui.widgets.display import DisplayPopover
@@ -137,6 +137,22 @@ def test_workspace_pages_fill_the_width_and_have_a_next_link(qapp):
     assert page.scroll_area is None
     assert button.text() == "Next: Comparisons"
     assert clicked == [True]
+
+
+def test_a_next_link_shows_an_ampersand_as_written(qapp):
+    page = Page("Order & rename")
+    button = page.set_next("Preview & export", lambda: None)
+
+    assert button.text() == "Next: Preview && export"  # "&&" draws one "&".
+
+
+def test_pages_without_a_footer_keep_a_bottom_margin(qapp):
+    page = Page("Preview & export", kind=PageKind.SPLIT)
+    margin = current().metrics.page_margin
+
+    assert page._body_margins.contentsMargins().bottom() == margin
+    page.set_next("Done", lambda: None)
+    assert page._body_margins.contentsMargins().bottom() == 0  # The footer spaces it.
 
 
 # ---------------------------------------------------------------------------

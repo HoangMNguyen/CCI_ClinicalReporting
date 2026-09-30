@@ -10,7 +10,13 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtWidgets import QAbstractButton, QPushButton, QToolButton, QWidget
+from PySide6.QtWidgets import (
+    QAbstractButton,
+    QHBoxLayout,
+    QPushButton,
+    QToolButton,
+    QWidget,
+)
 
 from cci_ui.icons import icon
 from cci_ui.theme.manager import repolish
@@ -23,6 +29,21 @@ register_qss(
 QToolButton[iconOnly="true"] {
     padding: 0;
     min-width: ${control_inner}px;
+}
+QWidget[cciRole="buttonGroup"] QToolButton {
+    border-radius: 0;
+}
+QWidget[cciRole="buttonGroup"] QToolButton[groupPosition="first"] {
+    border-top-left-radius: ${radius_control}px;
+    border-bottom-left-radius: ${radius_control}px;
+}
+QWidget[cciRole="buttonGroup"] QToolButton[groupPosition="middle"] {
+    border-left-width: 0;
+}
+QWidget[cciRole="buttonGroup"] QToolButton[groupPosition="last"] {
+    border-left-width: 0;
+    border-top-right-radius: ${radius_control}px;
+    border-bottom-right-radius: ${radius_control}px;
 }
 """
 )
@@ -76,4 +97,21 @@ def icon_button(
     return button
 
 
-__all__ = ["VARIANTS", "icon_button", "make_button", "set_variant"]
+def button_group(*buttons: QAbstractButton) -> QWidget:
+    """Join two or more icon *buttons* side by side into one group (e.g. + and −)."""
+    if len(buttons) < 2:
+        raise ValueError("A button group needs at least two buttons")
+    group = QWidget()
+    group.setProperty("cciRole", "buttonGroup")
+    layout = QHBoxLayout(group)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(0)
+    last = len(buttons) - 1
+    for index, button in enumerate(buttons):
+        position = "first" if index == 0 else "last" if index == last else "middle"
+        button.setProperty("groupPosition", position)
+        layout.addWidget(button)
+    return group
+
+
+__all__ = ["VARIANTS", "button_group", "icon_button", "make_button", "set_variant"]

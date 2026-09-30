@@ -412,6 +412,39 @@ scheme (only the `--page` given, if any), which makes it easy to review a
 change to `cci_ui/theme/tokens.py` or a component. The gallery never changes
 the appearance saved for the real tools.
 
+### Changing the Clinical Reporting pages
+
+The Clinical Reporting window's pages are built in Python code, one module
+per step in `src/clinical_reporting/ui/pages/`; `ui/main_ui.py` lists them in
+step order (`PAGE_CLASSES`). The preview tool opens the real window on
+made-up DEMO01 data (never a real study), with forms, items, joins, a
+filter, and a comparison already chosen:
+
+```bash
+python -m clinical_reporting.ui.preview                          # open it
+python -m clinical_reporting.ui.preview joins --theme dark --size 1920x1001
+python -m clinical_reporting.ui.preview all --screenshot shots --size 1000x620,1920x1001
+python -m clinical_reporting.ui.preview --help                   # page names, options
+```
+
+`--empty` starts without data. Like the gallery, it never changes the saved
+appearance. (The sample isn't a real ZIP, so turning the cut-off date on
+shows a read error.)
+
+- **Change a page:** edit its module in `ui/pages/`, then check it with the
+  preview tool.
+- **Give the behavior mixins a new widget:** they reach widgets as
+  `self.ui.<name>`, so add the widget to its page and its name to that page's
+  `EXPORTS`.
+- **Add or reorder a step:** add a page class (with `KEY`, `SECTION`, `ICON`,
+  and `EXPORTS`) to `PAGE_CLASSES`.
+
+Then run `python -m pytest -q tests/ui`. Among those tests,
+`test_ui_contract.py` checks that the mixins and the pages agree on widget
+names, `test_resize_behavior.py` that no control stretches at the target
+window sizes, and `test_preview_tool.py` pins the step order (update it when
+you reorder steps).
+
 ## Project Structure
 
 The processing modules are the Qt-free core: the `clinical_reporting` modules
@@ -437,6 +470,11 @@ src/clinical_reporting/
   export.py                    # xlsx/csv/bytes rendering
   ui/                          # PySide6 desktop front end
     window.py                  # main window composed from feature mixins
+    main_ui.py                 # builds the pages into the window
+    contract.py                # widget names the mixins may use
+    pages/                     # one module per step, built in code
+    preview.py                 # python -m clinical_reporting.ui.preview
+    sample_data.py             # made-up DEMO01 data for previews
     settings_tab.py            # inputs, cutoff, and saved settings
     additional_input_tab.py    # extra CSV/Excel inputs, form and column renames
     selection_tabs.py          # forms, common items, and form items
@@ -444,7 +482,6 @@ src/clinical_reporting/
     join_config.py             # join order, type, and items
     ordering_tab.py            # output order and renames
     run_save_tab.py            # preview, run, and save
-    _generated/ui_form.py      # generated UI binding; do not edit
 
 src/cci_ui/                    # shared design system for all four tools
   app.py                       # create_app(): style, font, theme, error dialog
@@ -492,7 +529,6 @@ src/peer_review_automation/    # Medidata SDS peer review
   __main__.py                  # runtime entry: python -m peer_review_automation
   sds.py                       # headless SDS review logic
 
-resource/                      # Designer assets and generated UI resources
 tests/
   unit/                        # fast logic-focused tests
   integration/                 # workflow/reporting behavior tests

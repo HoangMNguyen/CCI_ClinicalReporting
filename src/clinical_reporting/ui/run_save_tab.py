@@ -1,6 +1,6 @@
 """Run, preview, and persistence mixin for the Clinical Reporting widget.
 
-This module handles everything on the final "Preview and Save" tab,
+This module handles everything on the final "Preview & export" page,
 including preview generation, report export, and saved-setting
 persistence. Building the preview and the export runs in the background
 (:func:`cci_ui.tasks.run_task`).
@@ -36,6 +36,7 @@ class RunAndSaveMixin:
     def _init_run_and_save_controls(self) -> None:
         """Connect run, save, and persistence-related buttons."""
         self.ui.pushButton_run.clicked.connect(self.click_run)
+        self.ui.pushButton_refresh_preview.clicked.connect(self.preview_report)
         self.ui.pushButton_save_setting.clicked.connect(self.click_save_setting)
         self.ui.pushButton_output_setting.clicked.connect(
             self.click_output_setting_folder
@@ -62,7 +63,7 @@ class RunAndSaveMixin:
             self._set_label_text(
                 self.label_save_confirmation,
                 feedback.warning(
-                    "Enable 'Save the current setting?' before selecting a "
+                    "Turn on 'Save these settings for reuse' before choosing a "
                     "settings folder."
                 ),
             )
@@ -75,7 +76,9 @@ class RunAndSaveMixin:
         if not self.ui.checkBox_save_current_setting.isChecked():
             self._set_label_text(
                 self.label_save_confirmation,
-                feedback.warning("Enable 'Save the current setting?' before saving."),
+                feedback.warning(
+                    "Turn on 'Save these settings for reuse' before saving."
+                ),
             )
             return
 
@@ -156,7 +159,7 @@ class RunAndSaveMixin:
         return self._validation_message(self._JOIN_BLOCKING_ISSUE_CODES)
 
     def _refresh_run_availability(self) -> None:
-        """Enable/disable Save Output and surface join-configuration errors.
+        """Enable/disable Export to Excel and surface join-configuration errors.
 
         Called whenever the join configuration changes so the disabled state and
         the inline hint stay in sync with the current selections.
