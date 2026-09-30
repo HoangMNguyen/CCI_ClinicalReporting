@@ -282,6 +282,8 @@ from clinical_reporting.export import dataframe_to_xlsx_bytes, write_csv
 # Combine a Corelisting zip with extra CSV/Excel files
 base = read_data_dict_zip_corelisting("study_export.zip")
 inputs = load_additional_inputs(["labs.csv"])  # {resolved_path: DataFrame}
+# try_load_tabular_files(paths) skips unreadable files instead of raising and
+# returns (loaded, failures), both keyed by the paths as given
 extra = build_additional_data_map(
     inputs,
     form_names={path: "LABS" for path in inputs},  # path -> form name
@@ -373,8 +375,14 @@ Testing notes:
   Qt offscreen (no windows appear), and provides one shared `qapp` fixture.
 - Larger sample artifacts are stored in `tests/data/`.
 - Keep logic tests in `tests/unit/`, workflow-level checks in
-  `tests/integration/`, and tests of the shared design system (`cci_ui`) in
-  `tests/ui/`.
+  `tests/integration/`, and tests of the shared design system (`cci_ui`) and
+  of whole windows in `tests/ui/`.
+- Slow work (reading the ZIP and additional files, preview, export) runs on a
+  background thread. Tests that wait for it use the `settle` fixture in
+  `tests/ui/conftest.py`, which blocks in `TaskRunner.wait()` so the worker
+  can run; a `QTest.qWait` loop holds Python's GIL and slows the worker down
+  many times over. Test stand-ins without a `task_runner` run the work
+  directly (`cci_ui.tasks.run_task`).
 - `tests/ui/test_theme_tokens.py` checks that the design tokens still match the
   approved mockup in `docs/design/clinical-reporting-mockup.html`; change both
   together.
@@ -412,7 +420,7 @@ src/clinical_reporting/
   __main__.py                  # runtime entry: python -m clinical_reporting
   models.py                    # form/config models, labels, identifiers
   report.py                    # report state, persistence, reconciliation
-  session.py                   # what happens to a report when the user acts
+  session.py                   # what happens to a report when the user acts; build/export
   settings_store.py            # where saved settings live (local folder today)
   feedback.py                  # status messages tagged info/success/warning/error
   filenames.py                 # safe file names for exports and saved settings
@@ -423,6 +431,7 @@ src/clinical_reporting/
   ui/                          # PySide6 desktop front end
     window.py                  # main window composed from feature mixins
     settings_tab.py            # inputs, cutoff, and saved settings
+    additional_input_tab.py    # extra CSV/Excel inputs, form and column renames
     selection_tabs.py          # forms, common items, and form items
     filters_tab.py             # static and dynamic filters
     join_config.py             # join order, type, and items
@@ -458,7 +467,7 @@ src/cci_ui/                    # shared design system for all four tools
   widgets/sidebar.py           # Sidebar with status badges; collapses to icons
   widgets/shell.py             # AppShell: sidebar, header, pages, busy overlay
   window_state.py              # remembered window size/position per tool
-  tasks.py                     # TaskRunner: slow work off the GUI thread
+  tasks.py                     # run_task/TaskRunner: slow work off the GUI thread
   gallery.py                   # python -m cci_ui.gallery (every component)
   assets/fonts/                # Inter 4.1 (SIL Open Font License)
   assets/icons/                # Lucide 1.49.0 line icons used by the apps (ISC)

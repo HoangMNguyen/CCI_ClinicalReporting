@@ -2,7 +2,8 @@
 
 This module handles everything on the final "Preview and Save" tab,
 including preview generation, report export, and saved-setting
-persistence.
+persistence. Building the preview and the export runs in the background
+(:func:`cci_ui.tasks.run_task`).
 """
 
 from __future__ import annotations
@@ -11,8 +12,11 @@ import logging
 import os
 from typing import Optional
 
-from clinical_reporting.export import write_xlsx
+import pandas as pd
+
+from cci_ui.tasks import defer_if_busy, run_task
 from clinical_reporting.filenames import output_file_name
+from clinical_reporting.session import build_report, export_report
 from clinical_reporting.telemetry import (
     record_successful_export,
     record_successful_setting_save,
@@ -168,88 +172,101 @@ class RunAndSaveMixin:
 
     def preview_report(self) -> None:
         """Generate and display a preview of the report."""
+        if defer_if_busy(self, self.preview_report):
+            return
         validation_message = self._report_validation_message()
         if validation_message is not None:
             self._set_label_text(self.label_run_confirmation, validation_message)
             self.ui.tableView_preview.setModel(None)
             return
-        try:
-            self._set_label_text(self.label_run_confirmation, "Generating preview...")
-            result_df = self.report.create_report()
-            if result_df is not None and not result_df.empty:
-                result_df = result_df.reset_index(drop=True)
-                model = ReportPreviewModel(result_df)
-                self.ui.tableView_preview.setModel(model)
-                self.ui.tableView_preview.verticalHeader().setVisible(True)
-                self.ui.tableView_preview.resizeColumnsToContents()
-                self._set_label_text(
-                    self.label_run_confirmation,
-                    f"Preview generated successfully. Found {len(result_df)} rows with {len(result_df.columns)} columns.",
-                )
-            else:
-                self._set_label_text(
-                    self.label_run_confirmation,
-                    "No data found. Please check your form selections, filters, and join settings.",
-                )
-                self.ui.tableView_preview.setModel(None)
-        except ReportValidationError as exc:
+        self._set_label_text(self.label_run_confirmation, "Generating preview...")
+        run_task(
+            self,
+            build_report,
+            self.report,
+            on_success=self._show_preview,
+            on_error=self._show_preview_error,
+            message="Building the preview…",
+        )
+
+    def _show_preview(self, result_df: Optional[pd.DataFrame]) -> None:
+        """Show the rows built by :meth:`preview_report`."""
+        if result_df is None:
+            self._set_label_text(
+                self.label_run_confirmation,
+                "No data found. Please check your form selections, filters, and join settings.",
+            )
+            self.ui.tableView_preview.setModel(None)
+            return
+        self.ui.tableView_preview.setModel(ReportPreviewModel(result_df))
+        self.ui.tableView_preview.verticalHeader().setVisible(True)
+        self.ui.tableView_preview.resizeColumnsToContents()
+        self._set_label_text(
+            self.label_run_confirmation,
+            f"Preview generated successfully. Found {len(result_df)} rows with {len(result_df.columns)} columns.",
+        )
+
+    def _show_preview_error(self, exc: BaseException, details: str) -> None:
+        """Clear the preview and say why it couldn't be built."""
+        self.ui.tableView_preview.setModel(None)
+        self._show_report_error("Error generating preview", exc)
+
+    def _show_report_error(self, what_failed: str, exc: BaseException) -> None:
+        """Explain why building the report failed (preview or export)."""
+        if isinstance(exc, ReportValidationError):
             self._set_label_text(
                 self.label_run_confirmation, self._issues_message(exc.issues)
             )
-            self.ui.tableView_preview.setModel(None)
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Error generating preview")
-            self._set_label_text(
-                self.label_run_confirmation,
-                f"Error generating preview: {exc}",
-            )
-            self.ui.tableView_preview.setModel(None)
+            return
+        logger.error(what_failed, exc_info=exc)
+        self._set_label_text(self.label_run_confirmation, f"{what_failed}: {exc}")
 
     def click_run(self) -> None:
         """Run the report and export it to an Excel file."""
+        if defer_if_busy(self, self.click_run):
+            return
         validation_message = self._report_validation_message()
         if validation_message is not None:
             self._set_label_text(self.label_run_confirmation, validation_message)
             return
+        # Checked first, so a missing folder doesn't cost a full report build.
+        if not self.output_folder_name:
+            self._set_label_text(
+                self.label_run_confirmation,
+                "Please select an output folder first.",
+            )
+            return
+
+        file_name = output_file_name(self.ui.lineEdit_file_name.text())
+        run_task(
+            self,
+            export_report,
+            self.report,
+            os.path.join(self.output_folder_name, file_name),
+            on_success=self._show_export_result,
+            on_error=self._show_export_error,
+            message="Exporting the report…",
+        )
+
+    def _show_export_result(self, file_path: Optional[str]) -> None:
+        """Confirm the file written by :meth:`click_run` (None: no rows)."""
+        if file_path is None:
+            self._set_label_text(
+                self.label_run_confirmation,
+                "No data to save. Please check your selections and filters.",
+            )
+            return
         try:
-            result_df = self.report.create_report()
-            if result_df is None or result_df.empty:
-                self._set_label_text(
-                    self.label_run_confirmation,
-                    "No data to save. Please check your selections and filters.",
-                )
-                return
+            # Usage counting is best-effort and must never change the
+            # user's successful save outcome or produce UI feedback.
+            record_successful_export(os.path.basename(file_path))
+        except Exception:  # Defensive isolation from telemetry regressions.
+            pass
+        self._set_label_text(
+            self.label_run_confirmation,
+            f"Report saved successfully to {file_path}",
+        )
 
-            if not self.output_folder_name:
-                self._set_label_text(
-                    self.label_run_confirmation,
-                    "Please select an output folder first.",
-                )
-                return
-
-            file_name = output_file_name(self.ui.lineEdit_file_name.text())
-            file_path = os.path.join(self.output_folder_name, file_name)
-            # Write the report with the standard styling and short-date
-            # formatting. The export logic lives in the exporter service so the
-            # same output can be produced headlessly (scripts, tool chains, API).
-            write_xlsx(result_df, file_path)
-            try:
-                # Usage counting is best-effort and must never change the
-                # user's successful save outcome or produce UI feedback.
-                record_successful_export(file_name)
-            except Exception:  # Defensive isolation from telemetry regressions.
-                pass
-            self._set_label_text(
-                self.label_run_confirmation,
-                f"Report saved successfully to {file_path}",
-            )
-        except ReportValidationError as exc:
-            self._set_label_text(
-                self.label_run_confirmation, self._issues_message(exc.issues)
-            )
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Error saving report")
-            self._set_label_text(
-                self.label_run_confirmation,
-                f"Error saving report: {exc}",
-            )
+    def _show_export_error(self, exc: BaseException, details: str) -> None:
+        """Say why the report couldn't be exported."""
+        self._show_report_error("Error saving report", exc)

@@ -1,7 +1,8 @@
-"""Fixtures for tests of the shared design system (cci_ui)."""
+"""Fixtures for tests of the shared design system (cci_ui) and whole windows."""
 
 import pytest
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QElapsedTimer, QSettings
+from PySide6.QtWidgets import QApplication
 
 from cci_ui.theme import manager as theme_manager
 
@@ -50,3 +51,23 @@ def make_manager(themed_app, ini_settings):
     for manager in created:
         manager.setParent(None)
         manager.deleteLater()
+
+
+@pytest.fixture
+def settle(qapp):
+    """Wait until a TaskRunner is idle: its jobs, their callbacks, and queued work.
+
+    Waits in ``TaskRunner.wait``, which releases Python's GIL so the worker
+    can run; a ``QTest.qWait`` loop keeps it and slows the worker down many
+    times over.
+    """
+
+    def wait_until_idle(runner, timeout_ms=5000):
+        timer = QElapsedTimer()
+        timer.start()
+        while runner.busy and timer.elapsed() < timeout_ms:
+            runner.wait(max(1, timeout_ms - timer.elapsed()))
+            QApplication.processEvents()
+        assert not runner.busy, "the task runner is still busy"
+
+    return wait_until_idle

@@ -42,6 +42,9 @@ class WidgetBaseMixin:
         # applied when it was read, so the cut-off can be re-applied on change.
         self._input_file_path: Optional[str] = None
         self._applied_cut_off_date = None
+        # (path, cut-off) of a reload that failed, so it isn't retried on
+        # every focus change of the date field.
+        self._failed_cut_off_reload = None
         # True while update_all_ui coordinates a full refresh; narrower
         # helpers use it to skip refreshes the coordinator already covers.
         self._in_coordinated_refresh = False
@@ -112,10 +115,10 @@ class WidgetBaseMixin:
     # ------------------------------------------------------------------
     # Selection state capture / restore
     #
-    # Rebuilding the report's data (re-reading the input ZIP with a new
-    # cut-off date, or merging additional inputs) discards the CLForm objects
-    # that hold the user's selections. The Qt-free logic lives in
-    # :mod:`clinical_reporting.session`; these wrappers bind it to this
+    # Rebuilding the report's data (here: merging additional inputs) discards
+    # the CLForm objects that hold the user's selections. The Qt-free logic
+    # lives in :mod:`clinical_reporting.session`, which also uses it for the
+    # cut-off reload and removing the input; these wrappers bind it to this
     # window's report.
 
     def _capture_selection_state(self) -> dict:

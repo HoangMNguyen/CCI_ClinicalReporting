@@ -18,6 +18,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cci_ui.tasks import TaskRunner
+from cci_ui.widgets.busy import BusyOverlay
+
 from ._generated.ui_form import Ui_Widget
 from .additional_input_tab import AdditionalInputTabMixin
 from .base import WidgetBaseMixin
@@ -81,6 +84,15 @@ class Widget(QWidget):
         self._controllers["shared"].call("_init_tab_navigation")
         self._controllers["shared"].call("_initialize_list_views")
         self._capture_initial_layout_metrics()
+        # Created after the layout snapshot so the proportional resize below
+        # leaves the overlay alone; it keeps itself sized to the window.
+        self.task_runner = TaskRunner(self, overlay=BusyOverlay(self))
+
+    def closeEvent(self, event):  # noqa: N802 - Qt override
+        """Ignore any job still running, and start no more, once closing."""
+        super().closeEvent(event)
+        if event.isAccepted():
+            self.task_runner.shutdown()
 
     # ------------------------------------------------------------------
     # Dynamic resizing support

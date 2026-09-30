@@ -320,6 +320,7 @@ def test_package_reexports_are_the_canonical_readers():
     assert api.load_tabular_file is data.load_tabular_file
     assert api.load_additional_inputs is data.load_additional_inputs
     assert api.read_data_dict_zip_corelisting is data.read_data_dict_zip_corelisting
+    assert api.try_load_tabular_files is data.try_load_tabular_files
 
 
 def test_load_additional_inputs_via_loaders(tmp_path):

@@ -9,6 +9,7 @@ from .data import (
     load_additional_inputs,
     load_tabular_file,
     read_data_dict_zip_corelisting,
+    try_load_tabular_files,
 )
 from .export import dataframe_to_xlsx_bytes, write_csv, write_xlsx
 from .models import CLForm, ReportConfig
@@ -40,6 +41,7 @@ __all__ = [
     "load_additional_inputs",
     "load_tabular_file",
     "read_data_dict_zip_corelisting",
+    "try_load_tabular_files",
     "validate_report",
     "write_csv",
     "write_xlsx",

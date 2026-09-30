@@ -8,6 +8,7 @@ import pandas as pd
 from clinical_reporting.data import (
     load_tabular_file,
     read_data_dict_zip_corelisting,
+    try_load_tabular_files,
 )
 from clinical_reporting.export import get_excel_formats, to_short_date_string
 
@@ -74,7 +75,7 @@ def test_object_dtype_dates_export_as_text_not_datetimes(tmp_path):
         }
     )
 
-    # Mirror the export conversion performed in RunAndSaveMixin.click_run.
+    # Mirror the export conversion in export.prepare_export_dataframe.
     for col in df.columns:
         series = df[col]
         if pd.api.types.is_datetime64_any_dtype(series) or series.dtype == object:
@@ -131,3 +132,16 @@ def test_get_excel_formats_styles_worksheet(tmp_path):
     # autofit set explicit (non-default) widths on every column.
     assert worksheet.column_dimensions["A"].width is not None
     assert worksheet.column_dimensions["B"].width is not None
+
+
+def test_one_unreadable_additional_file_does_not_stop_the_others(tmp_path):
+    good = tmp_path / "labs.csv"
+    good.write_text("Subject,Hb\n001,12\n", encoding="utf-8")
+    bad = tmp_path / "notes.txt"
+    bad.write_text("not a table", encoding="utf-8")
+
+    loaded, failures = try_load_tabular_files([str(good), str(bad)])
+
+    assert list(loaded) == [str(good)]
+    assert list(loaded[str(good)].columns) == ["Subject", "Hb"]
+    assert list(failures) == [str(bad)] and failures[str(bad)]

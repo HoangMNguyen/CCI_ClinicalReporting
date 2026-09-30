@@ -4,19 +4,27 @@ This module collects all of the logic that interacts with filesystem
 resources (input ZIP selection, saved setting folders, and saved setting
 management).  The mixin exposes slot methods that are bound to the
 settings tab controls from :class:`ui.window.Widget`.
+
+Reading the ZIP runs in the background (:func:`cci_ui.tasks.run_task`); the
+data it returns is applied to the report in the callbacks, back on the GUI
+thread.
 """
 
 from __future__ import annotations
 
+import datetime
 import logging
 import os
-from typing import Optional
+from functools import partial
+from typing import Dict, Optional
 
+import pandas as pd
 from PySide6.QtCore import QDate
-from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 
+from cci_ui.tasks import defer_if_busy, run_task, when_idle
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
-from clinical_reporting.report import CLReport
+from clinical_reporting.session import new_report, replace_base_data, without_base_data
 from clinical_reporting.ui.dialogs import choose_settings_directory
 
 logger = logging.getLogger(__name__)
@@ -50,6 +58,8 @@ class SettingsTabMixin:
 
     def click_input_file(self) -> None:
         """Open a file dialog to choose the input Corelisting ZIP file."""
+        if defer_if_busy(self, self.click_input_file):
+            return
         default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -60,23 +70,41 @@ class SettingsTabMixin:
         if not file_path:
             return
 
-        # Reset the report to avoid stale state from a previous load.
-        self.report = CLReport()
+        cut_off_date = self._get_cut_off_date()
+        run_task(
+            self,
+            read_data_dict_zip_corelisting,
+            file_path,
+            cut_off_date=cut_off_date,
+            on_success=partial(self._open_input_file, file_path, cut_off_date),
+            on_error=partial(
+                self._show_input_file_error,
+                file_path,
+                "Nothing was loaded; the report is unchanged.",
+            ),
+            message="Reading Corelisting ZIP…",
+        )
+
+    def _open_input_file(
+        self,
+        file_path: str,
+        cut_off_date: Optional[datetime.date],
+        data: Dict[str, pd.DataFrame],
+    ) -> None:
+        """Start a new report from the ZIP data read by :meth:`click_input_file`."""
+        # A new report, so nothing from a previous load lingers.
+        self.study_name = parse_study_name(file_path)
+        self.report = new_report(self.study_name, data)
         self._last_loaded_setting_path = None
         self._pending_saved_setting_reapply = False
-        self.study_name = parse_study_name(file_path)
-        self.report.set_study_name(self.study_name)
-        cut_off_date = self._get_cut_off_date()
-        self.report.set_data(read_data_dict_zip_corelisting(file_path, cut_off_date=cut_off_date))
         # Remember the source so the cut-off can be re-applied without re-picking.
         self._input_file_path = file_path
         self._applied_cut_off_date = cut_off_date
+        self._failed_cut_off_reload = None
         self.ui.pushButton_remove_input.setEnabled(True)
 
-        # Ensure "Subject" is selected by default and refresh all UI tabs.
-        self.report.set_common_item_state("Subject", selected=True)
         self.update_all_ui()
-        self.ui.label_input_file.setText("Input path: " + file_path)
+        self._show_input_file()
         self._set_label_text(self.label_setting, "")
 
         if self.ui.checkBox_saved_setting.isChecked():
@@ -90,29 +118,22 @@ class SettingsTabMixin:
         Additional inputs are independent of the Corelisting ZIP, so forms
         already applied from the additional-input tab remain available.
         """
+        if defer_if_busy(self, self.click_remove_input):
+            return
         if not self._input_file_path:
             return
 
-        selection_state = self._capture_selection_state()
-        additional_keys = getattr(self, "_additional_form_keys", set())
-        additional_data = {
-            key: value for key, value in (getattr(self.report, "data", {}) or {}).items() if key in additional_keys
-        }
-
-        # Start with a clean report so filters, ordering, renames, and other
-        # configuration tied to the removed Corelisting forms cannot linger.
-        self.report = CLReport()
-        if additional_data:
-            self.report.set_data(additional_data)
-            self._restore_selection_state(selection_state)
-
+        self.report = without_base_data(
+            self.report, getattr(self, "_additional_form_keys", set())
+        )
         self.study_name = None
         self._input_file_path = None
         self._applied_cut_off_date = None
+        self._failed_cut_off_reload = None
         self._last_loaded_setting_path = None
         self._pending_saved_setting_reapply = False
 
-        self.ui.label_input_file.setText("")
+        self._show_input_file()
         self.ui.pushButton_remove_input.setEnabled(False)
         self._set_label_text(self.label_setting, "")
 
@@ -162,30 +183,108 @@ class SettingsTabMixin:
         data. Existing form/item/common selections and any loaded additional
         inputs are preserved where they remain valid. This is a no-op when no
         input file is loaded yet or the effective cut-off has not changed.
+
+        The date field commits whenever it loses focus, which can happen while
+        other work runs (to another app, or to a dialog); the reload then
+        waits until that work is done. A reload that failed isn't retried for
+        the same file and date, so each focus change doesn't repeat the
+        error; picking the ZIP again or another date tries again.
         """
+        if defer_if_busy(self, self._reload_with_current_cut_off):
+            return
         input_path = self._input_file_path
         if not input_path:
             return
 
         cut_off_date = self._get_cut_off_date()
         if cut_off_date == self._applied_cut_off_date:
+            if self._failed_cut_off_reload is not None:
+                # Back to the applied date: the earlier failure no longer matters.
+                self._failed_cut_off_reload = None
+                self._show_input_file()
+            return
+        if (input_path, cut_off_date) == self._failed_cut_off_reload:
             return
 
-        selection_state = self._capture_selection_state()
+        run_task(
+            self,
+            read_data_dict_zip_corelisting,
+            input_path,
+            cut_off_date=cut_off_date,
+            on_success=partial(self._apply_cut_off_data, input_path, cut_off_date),
+            on_error=partial(
+                self._show_cut_off_reload_error, input_path, cut_off_date
+            ),
+            message="Applying the cut-off date…",
+        )
 
-        base_data = read_data_dict_zip_corelisting(input_path, cut_off_date=cut_off_date)
-
-        # Preserve any additional-input forms currently merged into the report.
-        additional_keys = getattr(self, "_additional_form_keys", set())
-        preserved_additional = {
-            key: value for key, value in (getattr(self.report, "data", {}) or {}).items() if key in additional_keys
-        }
-
-        self.report.set_data({**base_data, **preserved_additional})
-        self._restore_selection_state(selection_state)
+    def _apply_cut_off_data(
+        self,
+        input_path: str,
+        cut_off_date: Optional[datetime.date],
+        base_data: Dict[str, pd.DataFrame],
+    ) -> None:
+        """Swap in the ZIP data re-read by :meth:`_reload_with_current_cut_off`."""
+        if input_path != self._input_file_path:
+            return  # The ZIP was removed or replaced meanwhile; this data is stale.
+        replace_base_data(
+            self.report, base_data, getattr(self, "_additional_form_keys", set())
+        )
         self._applied_cut_off_date = cut_off_date
-
+        self._failed_cut_off_reload = None
         self.update_all_ui()
+        self._show_input_file()
+
+    def _show_cut_off_reload_error(
+        self,
+        input_path: str,
+        cut_off_date: Optional[datetime.date],
+        exc: BaseException,
+        details: str,
+    ) -> None:
+        """Say why the reload failed, and remember it so it isn't retried.
+
+        See :meth:`_reload_with_current_cut_off`.
+        """
+        self._failed_cut_off_reload = (input_path, cut_off_date)
+        self._show_input_file_error(
+            input_path,
+            "The cut-off date was not applied; the report still uses the data "
+            "loaded before.",
+            exc,
+            details,
+        )
+
+    def _show_input_file_error(
+        self, file_path: str, outcome: str, exc: BaseException, details: str
+    ) -> None:
+        """Say the ZIP couldn't be read, and what that means (*outcome*).
+
+        The problem stays on the settings tab under the input path; a dialog
+        also shows it once the window is free, since the user may be on
+        another tab.
+        """
+        logger.error("Could not read %s", file_path, exc_info=exc)
+        problem = f"Could not read {os.path.basename(file_path)}: {exc}"
+        self._show_input_file(problem)
+        when_idle(
+            self,
+            partial(
+                QMessageBox.warning,
+                self,
+                "Could not read the Corelisting ZIP",
+                f"{problem}\n\n{outcome}",
+            ),
+        )
+
+    def _show_input_file(self, problem: str = "") -> None:
+        """Show the loaded ZIP's path on the settings tab, and *problem* if any."""
+        lines = []
+        if self._input_file_path:
+            lines.append("Input path: " + self._input_file_path)
+        if problem:
+            lines.append(problem)
+        self.ui.label_input_file.setText("\n".join(lines))
 
     def click_checkBox_saved_setting(self, state: int) -> None:
         """Enable or disable saved setting controls based on the checkbox."""

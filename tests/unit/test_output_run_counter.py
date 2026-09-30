@@ -6,15 +6,20 @@ import types
 
 import pandas as pd
 
+from clinical_reporting import session
 from clinical_reporting.ui import run_save_tab
 from clinical_reporting.ui.base import WidgetBaseMixin
 
 
 class _Report:
+    def __init__(self):
+        self.builds = 0
+
     def validate(self):
         return []
 
     def create_report(self):
+        self.builds += 1
         return pd.DataFrame({"Subject": ["001"]})
 
     def settings_to_dict(self, setting_name):
@@ -78,7 +83,7 @@ class _RunWidget(WidgetBaseMixin, run_save_tab.RunAndSaveMixin):
 def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
     operations = []
     monkeypatch.setattr(
-        run_save_tab, "write_xlsx", lambda *_args: operations.append("write")
+        session, "write_xlsx", lambda *_args: operations.append("write")
     )
     monkeypatch.setattr(
         run_save_tab,
@@ -97,7 +102,7 @@ def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
 
 
 def test_telemetry_failure_does_not_change_successful_save(monkeypatch, tmp_path):
-    monkeypatch.setattr(run_save_tab, "write_xlsx", lambda *_args: None)
+    monkeypatch.setattr(session, "write_xlsx", lambda *_args: None)
 
     def fail_to_count(_report_name):
         raise RuntimeError("telemetry unavailable")
@@ -116,7 +121,7 @@ def test_failed_export_is_not_counted(monkeypatch, tmp_path):
     def fail_to_write(*_args):
         raise OSError("disk full")
 
-    monkeypatch.setattr(run_save_tab, "write_xlsx", fail_to_write)
+    monkeypatch.setattr(session, "write_xlsx", fail_to_write)
     monkeypatch.setattr(
         run_save_tab,
         "record_successful_export",
@@ -128,6 +133,32 @@ def test_failed_export_is_not_counted(monkeypatch, tmp_path):
 
     assert counted == []
     assert widget.label_run_confirmation.value.startswith("Error saving report")
+
+
+def test_export_without_an_output_folder_builds_nothing(monkeypatch, tmp_path):
+    written = []
+    monkeypatch.setattr(session, "write_xlsx", lambda *args: written.append(args))
+    widget = _RunWidget(tmp_path)
+    widget.output_folder_name = None
+
+    widget.click_run()
+
+    assert widget.report.builds == 0 and written == []
+    assert (
+        widget.label_run_confirmation.value == "Please select an output folder first."
+    )
+
+
+def test_export_with_no_matching_rows_writes_nothing(monkeypatch, tmp_path):
+    written = []
+    monkeypatch.setattr(session, "write_xlsx", lambda *args: written.append(args))
+    widget = _RunWidget(tmp_path)
+    widget.report.create_report = lambda: pd.DataFrame()
+
+    widget.click_run()
+
+    assert written == []
+    assert widget.label_run_confirmation.value.startswith("No data to save")
 
 
 def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path):

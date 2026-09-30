@@ -3,13 +3,15 @@
 import pytest
 import shiboken6
 from PySide6.QtCore import QByteArray, QElapsedTimer, QRect, QSettings, Qt
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QInputMethodEvent, QKeySequence, QShortcut
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
     QLineEdit,
     QListWidget,
+    QMainWindow,
     QMessageBox,
+    QPushButton,
     QTableWidget,
     QVBoxLayout,
     QWidget,
@@ -245,13 +247,14 @@ def test_busy_overlay_blocks_clicks_keys_and_shortcuts(shown):
     overlay.busyChanged.connect(changes.append)
 
     overlay.start("Reading Corelisting ZIP…")
-    assert QApplication.focusWidget() is overlay
+    # Focus stays put, so starting work never makes a field commit its edit.
+    assert QApplication.focusWidget() is field
     assert target.childAt(field.geometry().center()) is overlay
     assert not overlay.is_revealed()
-    QTest.keyClicks(QApplication.focusWidget(), "typed")
-    QTest.keyClick(
-        QApplication.focusWidget(), Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier
-    )
+    QTest.keyClicks(field, "typed")
+    QTest.keyClick(field, Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier)
+    QTest.keyClick(field, Qt.Key.Key_Tab)
+    QTest.mouseClick(field, Qt.MouseButton.LeftButton)
     assert _wait_until(overlay.is_revealed, REVEAL_DELAY_MS + 500)
     overlay.stop()
 
@@ -259,22 +262,61 @@ def test_busy_overlay_blocks_clicks_keys_and_shortcuts(shown):
     assert QApplication.focusWidget() is field
     assert not overlay.isVisible() and changes == [True, False]
     assert overlay.message() == "Reading Corelisting ZIP…"
+    QTest.keyClicks(field, "ok")
+    assert field.text() == "ok"
 
 
-def test_busy_overlay_stops_cleanly_when_the_focused_widget_is_gone(shown):
+def test_a_click_whose_press_starts_the_work_is_dropped(shown):
     target = shown(QWidget(), 400, 300)
     field = QLineEdit(target)
-    field.show()
+    field.setGeometry(20, 20, 200, 28)
+    button = QPushButton("Remove input", target)
+    button.setGeometry(20, 60, 120, 28)
+    for widget in (field, button):
+        widget.show()
     field.setFocus()
+    QTest.keyClicks(field, "2024-06-01")
     overlay = BusyOverlay(target)
-    changes = []
-    overlay.busyChanged.connect(changes.append)
+    # Like the cut-off date field: committing the edit starts work.
+    field.editingFinished.connect(overlay.start)
+    clicked = []
+    button.clicked.connect(lambda: clicked.append(True))
 
-    overlay.start()
-    shiboken6.delete(field)
+    # The press moves focus to the button, the field commits, work starts,
+    # and only then does Qt deliver the press to the (now covered) button.
+    QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+    assert overlay.busy
     overlay.stop()
 
-    assert changes == [True, False] and not overlay.busy
+    assert clicked == []
+    QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+    assert clicked == [True]
+
+
+def test_busy_overlay_blocks_typing_anywhere_in_its_window(shown):
+    # Like an AppShell: the overlay covers the central widget of a main window.
+    window = shown(QMainWindow(), 400, 300)
+    central = QWidget()
+    window.setCentralWidget(central)
+    field = QLineEdit(central)
+    field.show()
+    fired = []
+    shortcut = QShortcut(QKeySequence("Ctrl+S"), window)
+    shortcut.activated.connect(lambda: fired.append(True))
+    overlay = BusyOverlay(central)
+    window.setFocus()  # Nothing inside the overlay has focus.
+    QApplication.processEvents()
+
+    overlay.start()
+    QTest.keyClick(window, Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier)
+    typed = QInputMethodEvent()
+    typed.setCommitString("typed with an input method")
+    QApplication.sendEvent(field, typed)
+    overlay.stop()
+
+    assert fired == [] and field.text() == ""
+    QTest.keyClick(window, Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier)
+    assert fired == [True]
 
 
 def test_toasts_stay_above_the_busy_overlay(shown):

@@ -4,17 +4,30 @@ Front ends (the PySide6 desktop app today, possibly a web app later) collect
 input and show results; the decisions about how the report changes live here
 so every front end shares them. This module must never import Qt.
 
-It currently holds the selection snapshot and restore used whenever a
-report's data is rebuilt: changing the cut-off date, removing the
-Corelisting input, or applying additional inputs. Rebuilding creates fresh
-``CLForm`` objects, so the user's selections are captured first and the ones
-that still exist are re-applied afterwards.
+It holds:
+
+- The selection snapshot and restore used whenever a report's data is
+  rebuilt: changing the cut-off date, removing the Corelisting input, or
+  applying additional inputs. Rebuilding creates fresh ``CLForm`` objects, so
+  the user's selections are captured first and the ones that still exist are
+  re-applied afterwards.
+- Starting a report from Corelisting data and swapping that data out.
+- Building and exporting the report, the slow part, written so a front end
+  can run it off its main thread. (Reading files is :mod:`clinical_reporting.data`.)
+
+Threading: :func:`build_report` and :func:`export_report` change no report,
+so a front end may run them in the background, provided nothing changes the
+report they read meanwhile (the desktop app blocks its window). Functions
+that change a report run on the main thread.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Collection, Dict, Optional
 
+import pandas as pd
+
+from clinical_reporting.export import write_xlsx
 from clinical_reporting.report import CLReport
 
 
@@ -81,4 +94,86 @@ def restore_selection(report: CLReport, state: Dict[str, Any]) -> None:
         )
 
 
-__all__ = ["capture_selection", "restore_selection"]
+def new_report(study_name: Optional[str], data: Dict[str, pd.DataFrame]) -> CLReport:
+    """A fresh report over *data*, as right after opening a Corelisting ZIP.
+
+    ``Subject`` starts selected.
+    """
+    report = CLReport()
+    report.set_study_name(study_name)
+    report.set_data(data)
+    report.set_common_item_state("Subject", selected=True)
+    return report
+
+
+def _additional_forms(
+    report: CLReport, additional_keys: Collection[str]
+) -> Dict[str, pd.DataFrame]:
+    data = getattr(report, "data", {}) or {}
+    return {key: value for key, value in data.items() if key in additional_keys}
+
+
+def replace_base_data(
+    report: CLReport,
+    base_data: Dict[str, pd.DataFrame],
+    additional_keys: Collection[str],
+) -> None:
+    """Swap *report*'s Corelisting forms for *base_data* (e.g. a new cut-off).
+
+    Forms named in *additional_keys* (merged in from additional inputs) stay,
+    and the selections that still exist are restored.
+    """
+    state = capture_selection(report)
+    report.set_data({**base_data, **_additional_forms(report, additional_keys)})
+    restore_selection(report, state)
+
+
+def without_base_data(report: CLReport, additional_keys: Collection[str]) -> CLReport:
+    """A fresh report holding only *report*'s additional-input forms.
+
+    Used when the Corelisting input is removed. Starting over drops all
+    filters, ordering and renames, including those on the remaining forms;
+    only the selections on the remaining forms come back.
+    """
+    remaining = _additional_forms(report, additional_keys)
+    fresh = CLReport()
+    if remaining:
+        state = capture_selection(report)
+        fresh.set_data(remaining)
+        restore_selection(fresh, state)
+    return fresh
+
+
+def build_report(report: CLReport) -> Optional[pd.DataFrame]:
+    """Run *report* and return its rows, or ``None`` if nothing matched.
+
+    Raises :class:`~clinical_reporting.validation.ReportValidationError` when
+    the selections can't produce a report.
+    """
+    result = report.create_report()
+    if result is None or result.empty:
+        return None
+    return result.reset_index(drop=True)
+
+
+def export_report(report: CLReport, file_path: str) -> Optional[str]:
+    """Build *report* and write it to *file_path* as a styled Excel file.
+
+    Returns *file_path*, or ``None`` (and writes nothing) if nothing matched.
+    """
+    result = build_report(report)
+    if result is None:
+        return None
+    write_xlsx(result, file_path)
+    return file_path
+
+
+__all__ = [
+    "build_report",
+    "capture_selection",
+    "export_report",
+    "new_report",
+    "replace_base_data",
+    "restore_selection",
+    "without_base_data",
+]

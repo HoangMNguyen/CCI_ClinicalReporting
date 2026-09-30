@@ -2,12 +2,13 @@
 
 This mixin wires the buttons on the "Additional input" tab to allow users
 to load CSV/Excel files, manage the selected list, and rename forms/columns.
+Reading the files runs in the background (:func:`cci_ui.tasks.run_task`).
 """
 
 from __future__ import annotations
 
-import logging
 import os
+from functools import partial
 from pathlib import Path
 from typing import Dict, Set, Tuple
 
@@ -21,18 +22,17 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
 )
 
+from cci_ui.tasks import defer_if_busy, run_task, when_idle
 from clinical_reporting.data import (
     build_additional_data_map,
-    load_tabular_file,
     strip_subject_prefix,
+    try_load_tabular_files,
 )
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.table_actions import (
     add_copy_original_name_action,
     copy_original_names_to_new_names,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class AdditionalInputTabMixin:
@@ -95,6 +95,8 @@ class AdditionalInputTabMixin:
 
     def click_add_additional_files(self) -> None:
         """Open a dialog and load user-selected additional input files."""
+        if defer_if_busy(self, self.click_add_additional_files):
+            return
         initial_dir = (
             getattr(self, "_additional_input_directory", None)
             or os.path.join(os.path.expanduser("~"), "Downloads")
@@ -112,18 +114,47 @@ class AdditionalInputTabMixin:
             Path(file_paths[0]).expanduser().resolve().parent
         )
 
+        new_paths = []
         for file_path in file_paths:
             resolved_path = str(Path(file_path).expanduser().resolve())
-            if resolved_path in self.additional_inputs:
-                continue
-            try:
-                self.additional_inputs[resolved_path] = load_tabular_file(resolved_path)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("Failed to load additional input '%s'", file_path)
+            if (
+                resolved_path not in self.additional_inputs
+                and resolved_path not in new_paths
+            ):
+                new_paths.append(resolved_path)
+        if not new_paths:
+            return
 
+        run_task(
+            self,
+            try_load_tabular_files,
+            new_paths,
+            on_success=self._add_loaded_additional_files,
+            message="Reading additional files…",
+        )
+
+    def _add_loaded_additional_files(
+        self, result: Tuple[Dict[str, pd.DataFrame], Dict[str, str]]
+    ) -> None:
+        """List the files read by :meth:`click_add_additional_files`."""
+        loaded, failures = result
+        self.additional_inputs.update(loaded)
         self._refresh_additional_files_ui()
         self._refresh_additional_tables()
         self._update_additional_buttons_state()
+        if failures:
+            lines = [
+                f"{Path(path).name}: {reason}" for path, reason in failures.items()
+            ]
+            when_idle(
+                self,
+                partial(
+                    QMessageBox.warning,
+                    self,
+                    "Some files could not be read",
+                    "These files were not added:\n" + "\n".join(lines),
+                ),
+            )
 
     def click_remove_additional_files(self) -> None:
         """Remove selected additional input files from the list."""

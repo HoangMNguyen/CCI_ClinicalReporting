@@ -2,6 +2,7 @@
 
 import pandas as pd
 
+from clinical_reporting import data
 from clinical_reporting.ui import additional_input_tab, dialogs, settings_tab
 from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
 from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
@@ -177,7 +178,7 @@ def test_additional_input_dialog_remembers_last_file_directory(monkeypatch, tmp_
         return next(selections), ""
 
     monkeypatch.setattr(additional_input_tab.QFileDialog, "getOpenFileNames", choose_files)
-    monkeypatch.setattr(additional_input_tab, "load_tabular_file", lambda _path: pd.DataFrame())
+    monkeypatch.setattr(data, "load_tabular_file", lambda _path: pd.DataFrame())
 
     widget.click_add_additional_files()
     widget.click_add_additional_files()

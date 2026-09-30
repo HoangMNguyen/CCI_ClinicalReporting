@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import zipfile
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import BinaryIO, Dict, Iterable, Optional, Tuple, Union
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # Keep literal clinical values such as "N/A", "None", and "n/a".  Pandas'
 # remaining conventional markers continue to be interpreted as missing.
@@ -76,6 +79,26 @@ def load_additional_inputs(file_paths: Iterable[str]) -> Dict[str, pd.DataFrame]
         resolved_path = str(Path(file_path).expanduser().resolve())
         additional_inputs[resolved_path] = load_tabular_file(resolved_path)
     return additional_inputs
+
+
+def try_load_tabular_files(
+    file_paths: Iterable[str],
+) -> Tuple[Dict[str, pd.DataFrame], Dict[str, str]]:
+    """Load each CSV or Excel file, carrying on past any that can't be read.
+
+    Returns ``(loaded, failures)``, both keyed by the paths as given;
+    *failures* says why each file couldn't be read. Use
+    :func:`load_additional_inputs` to stop at the first bad file instead.
+    """
+    loaded: Dict[str, pd.DataFrame] = {}
+    failures: Dict[str, str] = {}
+    for file_path in file_paths:
+        try:
+            loaded[file_path] = load_tabular_file(file_path)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("Could not read %s", file_path, exc_info=True)
+            failures[file_path] = str(exc) or type(exc).__name__
+    return loaded, failures
 
 
 def read_data_dict_zip_corelisting(
@@ -193,4 +216,5 @@ __all__ = [
     "parse_study_name",
     "read_data_dict_zip_corelisting",
     "strip_subject_prefix",
+    "try_load_tabular_files",
 ]

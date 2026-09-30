@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
 )
 
+from clinical_reporting import data
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import additional_input_tab as additional_input_module
 from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
@@ -287,3 +288,36 @@ def test_apply_additional_inputs_aborts_on_form_name_conflict(monkeypatch):
     assert set(widget.report.data.keys()) == {"FormA"}
     assert widget.report.data["FormA"].equals(base_df)
     assert widget.update_all_ui_calls == 0
+
+
+def test_files_that_cannot_be_read_are_reported_and_the_rest_added(
+    qapp, monkeypatch, tmp_path
+):
+    widget = DummyAdditionalInputUiWidget()
+    good, bad = tmp_path / "labs.csv", tmp_path / "broken.csv"
+    warnings = []
+
+    def load(path):
+        if path.endswith("broken.csv"):
+            raise ValueError("Error tokenizing data")
+        return pd.DataFrame({"Subject": ["001"]})
+
+    monkeypatch.setattr(
+        additional_input_module.QFileDialog,
+        "getOpenFileNames",
+        lambda *_args: ([str(good), str(bad)], ""),
+    )
+    monkeypatch.setattr(data, "load_tabular_file", load)
+    monkeypatch.setattr(
+        additional_input_module.QMessageBox,
+        "warning",
+        lambda _parent, title, text: warnings.append((title, text)),
+    )
+
+    widget.click_add_additional_files()
+
+    assert list(widget.additional_inputs) == [str(good.resolve())]
+    assert widget.ui.listWidget_additional_file.count() == 1
+    ((title, text),) = warnings
+    assert title == "Some files could not be read"
+    assert "broken.csv: Error tokenizing data" in text

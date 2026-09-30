@@ -40,10 +40,31 @@ class _FakeDateEdit:
         return self._date
 
 
+class _FakeLabel:
+    def __init__(self):
+        self.value = ""
+
+    def setText(self, text):
+        self.value = text
+
+
 class _FakeUi:
     def __init__(self, checked, date_value):
         self.cutoff_checkBox = _FakeCheckBox(checked)
         self.cutoff_dateEdit = _FakeDateEdit(date_value)
+        self.label_input_file = _FakeLabel()
+
+
+class _BusyRunner:
+    """A task runner that is always busy and records deferred actions."""
+
+    busy = True
+
+    def __init__(self):
+        self.deferred = []
+
+    def call_when_idle(self, action):
+        self.deferred.append(action)
 
 
 class DummySettingsWidget(SettingsTabMixin, WidgetBaseMixin):
@@ -54,6 +75,7 @@ class DummySettingsWidget(SettingsTabMixin, WidgetBaseMixin):
         self.ui = _FakeUi(checked, date_value)
         self._input_file_path = None
         self._applied_cut_off_date = None
+        self._failed_cut_off_reload = None
         self._additional_form_keys = set()
         self.update_all_ui_calls = 0
         self.update_items_dependent_ui_calls = 0
@@ -155,3 +177,86 @@ def test_unchecking_removes_cutoff_filter(monkeypatch):
 
     assert widget._applied_cut_off_date is None
     assert len(widget.report.data["FormA"]) == 2
+
+
+def test_failed_reload_keeps_the_data_says_why_and_is_not_repeated(monkeypatch):
+    reads = []
+
+    def broken_loader(path, cut_off_date=None):
+        reads.append(cut_off_date)
+        raise OSError("File is not a zip file")
+
+    warnings = []
+    monkeypatch.setattr(
+        settings_module.QMessageBox,
+        "warning",
+        lambda _parent, title, text: warnings.append(title),
+    )
+    widget = DummySettingsWidget(checked=True, date_value=datetime.date(2024, 6, 1))
+    widget._input_file_path = "study.zip"
+    widget.report.set_data(_loader("study.zip", None))
+    widget.report.add_selected_form("FormA")
+    monkeypatch.setattr(
+        settings_module, "read_data_dict_zip_corelisting", broken_loader
+    )
+
+    widget._reload_with_current_cut_off()
+    widget._reload_with_current_cut_off()  # e.g. the date field lost focus again
+
+    assert len(widget.report.data["FormA"]) == 2
+    assert "FormA" in widget.report.selected_forms
+    assert widget._applied_cut_off_date is None
+    assert widget.ui.label_input_file.value == (
+        "Input path: study.zip\nCould not read study.zip: File is not a zip file"
+    )
+    assert warnings == ["Could not read the Corelisting ZIP"]
+    assert widget.update_all_ui_calls == 0
+    assert reads == [datetime.date(2024, 6, 1)]
+
+    widget.ui.cutoff_dateEdit = _FakeDateEdit(datetime.date(2024, 7, 1))
+    widget._reload_with_current_cut_off()  # Another date is tried.
+
+    assert reads == [datetime.date(2024, 6, 1), datetime.date(2024, 7, 1)]
+
+
+def test_going_back_to_the_applied_cut_off_clears_the_reload_error(monkeypatch):
+    widget = DummySettingsWidget(checked=True, date_value=datetime.date(2024, 6, 1))
+    widget._input_file_path = "study.zip"
+    widget._failed_cut_off_reload = ("study.zip", datetime.date(2024, 6, 1))
+    widget.ui.label_input_file.value = "Input path: study.zip\nCould not read …"
+
+    widget.ui.cutoff_checkBox._checked = False  # Back to no cut-off, as applied.
+    widget._reload_with_current_cut_off()
+
+    assert widget._failed_cut_off_reload is None
+    assert widget.ui.label_input_file.value == "Input path: study.zip"
+
+
+def test_reloaded_data_for_a_removed_input_is_ignored():
+    widget = DummySettingsWidget(checked=True, date_value=datetime.date(2024, 6, 1))
+    widget._input_file_path = None  # Removed while the reload ran.
+
+    widget._apply_cut_off_data(
+        "study.zip", datetime.date(2024, 6, 1), _loader("study.zip", None)
+    )
+
+    assert widget.report.data in (None, {})
+    assert widget._applied_cut_off_date is None
+    assert widget.update_all_ui_calls == 0
+
+
+def test_reload_waits_while_other_work_runs(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        settings_module,
+        "read_data_dict_zip_corelisting",
+        lambda path, cut_off_date=None: calls.append(path) or {},
+    )
+    widget = DummySettingsWidget(checked=True, date_value=datetime.date(2024, 6, 1))
+    widget._input_file_path = "study.zip"
+    widget.task_runner = _BusyRunner()
+
+    widget._reload_with_current_cut_off()
+
+    assert calls == []
+    assert widget.task_runner.deferred == [widget._reload_with_current_cut_off]
