@@ -415,12 +415,15 @@ src/clinical_reporting/
 src/cci_ui/                    # shared design system for all four tools
   app.py                       # create_app(): style, font, theme, error dialog
   assets.py                    # finds bundled files from source or a built exe
+  icons.py                     # icon(IconName.X): icons drawn in theme colors
   theme/tokens.py              # colors, sizes, type scale (no Qt; also exports CSS)
   theme/qss.py                 # stylesheet built from the tokens (no Qt)
   theme/palette.py             # Qt palette built from the tokens
   theme/fonts.py               # loads the bundled Inter font
+  theme/glyphs.py              # renders icons; writes the stylesheet's arrow/tick images
   theme/manager.py             # System/Light/Dark and density, shared by all tools
   assets/fonts/                # Inter 4.1 (SIL Open Font License)
+  assets/icons/                # Lucide 1.49.0 line icons used by the apps (ISC)
 
 src/cci_automation/            # Enrollment Log, DSMB, Clockify tools
   __main__.py                  # runtime entry: python -m cci_automation

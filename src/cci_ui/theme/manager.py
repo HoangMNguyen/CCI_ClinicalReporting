@@ -13,11 +13,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Dict, Optional
 
 from PySide6.QtCore import QObject, QSettings, Qt, Signal
 from PySide6.QtWidgets import QApplication, QWidget
 
+from cci_ui.theme.glyphs import export_glyphs
 from cci_ui.theme.palette import to_qpalette
 from cci_ui.theme.qss import build_stylesheet
 from cci_ui.theme.tokens import (
@@ -166,7 +167,9 @@ class ThemeManager(QObject):
                 scheme, self._density, colors_for(scheme), metrics_for(self._density)
             )
             self._app.setPalette(to_qpalette(theme.colors))
-            self._app.setStyleSheet(build_stylesheet(theme.colors, theme.metrics))
+            self._app.setStyleSheet(
+                build_stylesheet(theme.colors, theme.metrics, _glyphs_for(theme))
+            )
             previous, self._applied, _current = self._applied, theme, theme
         finally:
             self._applying = False
@@ -218,6 +221,17 @@ class ThemeManager(QObject):
         if self._persist:
             self._settings.setValue(key, value)
             self._settings.sync()
+
+
+def _glyphs_for(theme: Theme) -> Optional[Dict[str, str]]:
+    """Stylesheet images for *theme*, or ``None`` (Qt's defaults) if they can't be written."""
+    try:
+        return export_glyphs(theme.colors)
+    except OSError:
+        logger.warning(
+            "Could not write stylesheet images; using Qt's own", exc_info=True
+        )
+        return None
 
 
 def default_density(app: QApplication) -> Density:

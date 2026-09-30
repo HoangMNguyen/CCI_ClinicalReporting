@@ -17,6 +17,19 @@ for entry in (PROJECT_ROOT, SRC_DIR):
         sys.path.insert(0, path_str)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _glyph_folder(tmp_path_factory):
+    """Keep the stylesheet images the theme writes out of the user's cache folder."""
+    folder = tmp_path_factory.mktemp("cci_ui-glyphs")
+    previous = os.environ.get("CCI_UI_GLYPHS")
+    os.environ["CCI_UI_GLYPHS"] = str(folder)
+    yield folder
+    if previous is None:
+        os.environ.pop("CCI_UI_GLYPHS", None)
+    else:
+        os.environ["CCI_UI_GLYPHS"] = previous
+
+
 @pytest.fixture(scope="session")
 def qapp():
     """One QApplication shared by every Qt test in the session."""

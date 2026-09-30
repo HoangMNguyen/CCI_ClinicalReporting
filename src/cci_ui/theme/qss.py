@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import string
 from dataclasses import fields
-from typing import Dict, List
+from typing import Dict, List, Mapping, Optional
 
 from cci_ui.theme.tokens import TYPE_SCALE, ColorTokens, Metrics
 
@@ -328,6 +328,61 @@ QAbstractItemView[cciRole="embedded"] {
 }
 """
 
+# Rules that need images (see cci_ui.theme.glyphs). They are only added when
+# the images could be written, so a failure falls back to Qt's own arrows and
+# checkboxes instead of empty boxes.
+_GLYPH_RULES = """
+QComboBox, QDateEdit[calendarPopup="true"] {
+    padding-right: 26px;
+}
+QComboBox::drop-down, QDateEdit[calendarPopup="true"]::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 24px;
+    border: none;
+    background: transparent;
+}
+QComboBox::down-arrow, QDateEdit[calendarPopup="true"]::down-arrow {
+    image: url("${glyph_chevron_down}");
+    width: 14px;
+    height: 14px;
+}
+QComboBox::down-arrow:disabled,
+QDateEdit[calendarPopup="true"]::down-arrow:disabled {
+    image: url("${glyph_chevron_down_disabled}");
+}
+QCheckBox::indicator, QAbstractItemView::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid ${border_control};
+    border-radius: 4px;
+    background: ${bg_control};
+}
+QCheckBox::indicator:hover, QAbstractItemView::indicator:hover {
+    border-color: ${accent};
+}
+QCheckBox::indicator:checked, QAbstractItemView::indicator:checked {
+    background: ${accent};
+    border-color: ${accent};
+    image: url("${glyph_check}");
+}
+QCheckBox::indicator:disabled, QAbstractItemView::indicator:disabled {
+    background: ${bg_surface_alt};
+    border-color: ${separator};
+}
+QCheckBox::indicator:checked:disabled,
+QAbstractItemView::indicator:checked:disabled {
+    background: ${accent_disabled};
+    border-color: transparent;
+}
+QCalendarWidget QToolButton#qt_calendar_prevmonth {
+    qproperty-icon: url("${glyph_calendar_prev}");
+}
+QCalendarWidget QToolButton#qt_calendar_nextmonth {
+    qproperty-icon: url("${glyph_calendar_next}");
+}
+"""
+
 # Tone rules come after the type scale so ``tone`` can recolor any text style.
 _TONES = """
 QLabel[tone="secondary"] {
@@ -367,15 +422,24 @@ def _type_scale_rules() -> str:
     return "\n".join(rules)
 
 
-def build_stylesheet(colors: ColorTokens, metrics: Metrics) -> str:
+def build_stylesheet(
+    colors: ColorTokens,
+    metrics: Metrics,
+    glyphs: Optional[Mapping[str, str]] = None,
+) -> str:
     """Return the full application stylesheet for one scheme and density.
 
-    Raises ``KeyError`` if a rule uses a placeholder that isn't a token.
+    *glyphs* maps the ``glyph_*`` placeholders to image files, as returned by
+    :func:`cci_ui.theme.glyphs.export_glyphs`; without it the image rules are
+    left out. Raises ``KeyError`` if a rule uses a placeholder that isn't a
+    token.
     """
     # Later rules win over earlier ones of equal specificity: base rules,
-    # then text styles, then tones, then component rules.
-    parts = [_BASE, _type_scale_rules(), _TONES, *_fragments]
-    return string.Template("\n".join(parts)).substitute(_values(colors, metrics))
+    # then images, text styles, tones, and finally component rules.
+    image_rules = [_GLYPH_RULES] if glyphs else []
+    parts = [_BASE, *image_rules, _type_scale_rules(), _TONES, *_fragments]
+    values = {**_values(colors, metrics), **(glyphs or {})}
+    return string.Template("\n".join(parts)).substitute(values)
 
 
 __all__ = ["build_stylesheet", "register_qss"]
