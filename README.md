@@ -379,6 +379,24 @@ Testing notes:
   approved mockup in `docs/design/clinical-reporting-mockup.html`; change both
   together.
 
+### Checking the look: component gallery
+
+The shared design system (`src/cci_ui`) has a gallery window showing every
+component: colors (with contrast), type, icons, buttons, inputs, toggles and
+segmented controls, sections, lists, tables, banners, toasts, the busy
+overlay, and empty states.
+
+```bash
+python -m cci_ui.gallery                               # open it
+python -m cci_ui.gallery --theme dark --density compact --size 1000x620
+python -m cci_ui.gallery --screenshot shots            # every page, light and dark
+```
+
+`--screenshot` runs without opening a window and saves one PNG per page and
+scheme (only the `--page` given, if any), which makes it easy to review a
+change to `cci_ui/theme/tokens.py` or a component. The gallery never changes
+the appearance saved for the real tools.
+
 ## Project Structure
 
 The processing modules are the Qt-free core: the `clinical_reporting` modules
@@ -440,6 +458,8 @@ src/cci_ui/                    # shared design system for all four tools
   widgets/sidebar.py           # Sidebar with status badges; collapses to icons
   widgets/shell.py             # AppShell: sidebar, header, pages, busy overlay
   window_state.py              # remembered window size/position per tool
+  tasks.py                     # TaskRunner: slow work off the GUI thread
+  gallery.py                   # python -m cci_ui.gallery (every component)
   assets/fonts/                # Inter 4.1 (SIL Open Font License)
   assets/icons/                # Lucide 1.49.0 line icons used by the apps (ISC)
 

@@ -38,6 +38,7 @@ def create_app(
     version: str = "",
     argv: Optional[Sequence[str]] = None,
     settings: Optional[QSettings] = None,
+    persist: bool = True,
     install_excepthook: bool = True,
 ) -> Tuple[QApplication, ThemeManager]:
     """Create (or reuse) the QApplication and apply the CCI look.
@@ -54,6 +55,8 @@ def create_app(
         argv: Command-line arguments; defaults to ``sys.argv``.
         settings: Where appearance choices are stored; defaults to the
             settings shared by all CCI tools.
+        persist: False for previews and the gallery, so trying another
+            appearance there never changes the user's saved choice.
         install_excepthook: Show unexpected errors in a dialog instead of
             losing them (the built executables have no console).
     """
@@ -77,7 +80,7 @@ def create_app(
     load_bundled()
     app.setFont(ui_font())
 
-    theme = ThemeManager(app, settings=settings)
+    theme = ThemeManager(app, settings=settings, persist=persist)
     theme.apply()
 
     if install_excepthook:
