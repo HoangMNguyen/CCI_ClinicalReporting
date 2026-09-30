@@ -28,6 +28,16 @@ SRC = Path(__file__).resolve().parent / "src"
 # entity name if these binaries are ever distributed outside the department.
 COMPANY_NAME = "CCI"
 
+# Fonts and icons of the shared design system, copied into every executable at
+# the path cci_ui.assets.assets_root() looks for when frozen.
+UI_ASSETS = SRC / "cci_ui" / "assets"
+
+
+def ui_datas() -> list[tuple[str, str]]:
+    """PyInstaller ``datas`` entries that bundle the shared design-system assets."""
+    return [(str(UI_ASSETS), "cci_ui/assets")]
+
+
 _VERSION_RE = re.compile(r"^__version__\s*=\s*[\"']([^\"']+)[\"']", re.MULTILINE)
 
 

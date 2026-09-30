@@ -369,9 +369,15 @@ VS Code will recommend the Ruff extension and apply the same fixes whenever a
 Python file is saved. Unsafe Ruff fixes remain disabled by default.
 
 Testing notes:
-- `tests/conftest.py` inserts both project root and `src/` into `sys.path`.
+- `tests/conftest.py` inserts both project root and `src/` into `sys.path`, runs
+  Qt offscreen (no windows appear), and provides one shared `qapp` fixture.
 - Larger sample artifacts are stored in `tests/data/`.
-- Keep logic tests in `tests/unit/` and workflow-level checks in `tests/integration/`.
+- Keep logic tests in `tests/unit/`, workflow-level checks in
+  `tests/integration/`, and tests of the shared design system (`cci_ui`) in
+  `tests/ui/`.
+- `tests/ui/test_theme_tokens.py` checks that the design tokens still match the
+  approved mockup in `docs/design/clinical-reporting-mockup.html`; change both
+  together.
 
 ## Project Structure
 
@@ -405,6 +411,16 @@ src/clinical_reporting/
     ordering_tab.py            # output order and renames
     run_save_tab.py            # preview, run, and save
     _generated/ui_form.py      # generated UI binding; do not edit
+
+src/cci_ui/                    # shared design system for all four tools
+  app.py                       # create_app(): style, font, theme, error dialog
+  assets.py                    # finds bundled files from source or a built exe
+  theme/tokens.py              # colors, sizes, type scale (no Qt; also exports CSS)
+  theme/qss.py                 # stylesheet built from the tokens (no Qt)
+  theme/palette.py             # Qt palette built from the tokens
+  theme/fonts.py               # loads the bundled Inter font
+  theme/manager.py             # System/Light/Dark and density, shared by all tools
+  assets/fonts/                # Inter 4.1 (SIL Open Font License)
 
 src/cci_automation/            # Enrollment Log, DSMB, Clockify tools
   __main__.py                  # runtime entry: python -m cci_automation

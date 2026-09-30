@@ -15,7 +15,7 @@ import sys
 # build_support.py lives.
 sys.path.insert(0, SPECPATH)
 
-from build_support import package_version, version_resource
+from build_support import package_version, ui_datas, version_resource
 
 PACKAGE = "peer_review_automation"
 PRODUCT = "Peer Review Automation"
@@ -28,7 +28,7 @@ a = Analysis(
     ['src\\peer_review_automation\\__main__.py'],
     pathex=['src'],
     binaries=[],
-    datas=[],
+    datas=ui_datas(),
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

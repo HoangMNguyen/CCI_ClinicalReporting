@@ -17,7 +17,7 @@ import sys
 # build_support.py lives.
 sys.path.insert(0, SPECPATH)
 
-from build_support import package_version, version_resource
+from build_support import package_version, ui_datas, version_resource
 
 PACKAGE = "clinical_reporting"
 PRODUCT = "CCI Clinical Reporting"
@@ -30,7 +30,7 @@ a = Analysis(
     ['src\\clinical_reporting\\__main__.py'],
     pathex=['src'],
     binaries=[],
-    datas=[('src/clinical_reporting/telemetry.json', 'clinical_reporting')],
+    datas=[('src/clinical_reporting/telemetry.json', 'clinical_reporting'), *ui_datas()],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

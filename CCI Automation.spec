@@ -21,7 +21,7 @@ from pathlib import Path
 # build_support.py lives.
 sys.path.insert(0, SPECPATH)
 
-from build_support import package_version, version_resource
+from build_support import package_version, ui_datas, version_resource
 
 PACKAGE = "cci_automation"
 PRODUCT = "CCI Automation"
@@ -37,7 +37,7 @@ a = Analysis(
     ['src\\cci_automation\\__main__.py'],
     pathex=['src'],
     binaries=[],
-    datas=_datas,
+    datas=[*_datas, *ui_datas()],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

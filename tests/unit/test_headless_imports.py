@@ -1,8 +1,9 @@
 """The processing core must import without Qt.
 
-Everything outside the desktop shells (``*/ui``, ``*/app.py``, ``cci_ui``) is
-shared with headless use and a future web server, so importing it must never
-pull in PySide6.
+The processing modules and the design values are shared with headless use
+and a future web server, so importing them must never pull in PySide6. Only
+the desktop shells (``*/ui``, ``*/app.py``) and the Qt parts of ``cci_ui``
+may import Qt.
 """
 
 import os
@@ -36,6 +37,11 @@ CORE_MODULES = [
     "safety_automation.ae_corelisting.AECoreListing",
     "peer_review_automation",
     "peer_review_automation.sds",
+    # The design values are shared with a future web front end.
+    "cci_ui",
+    "cci_ui.theme",
+    "cci_ui.theme.tokens",
+    "cci_ui.theme.qss",
 ]
 
 
@@ -48,6 +54,7 @@ def test_core_modules_do_not_import_qt():
     )
     result = subprocess.run(
         [sys.executable, "-c", script],
+        stdin=subprocess.DEVNULL,
         capture_output=True,
         text=True,
         cwd=SRC_DIR,
