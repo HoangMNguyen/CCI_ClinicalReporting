@@ -105,6 +105,19 @@ def repolish(widget: QWidget) -> None:
     widget.update()
 
 
+def set_invalid(widget: QWidget, invalid: bool) -> None:
+    """Mark *widget*'s value as invalid, or clear the mark.
+
+    The stylesheet draws invalid combo boxes in the danger color (see the
+    ``invalid`` rule in :mod:`cci_ui.theme.qss`); add rules there before
+    marking other kinds of input. Restyles only when the state changes.
+    """
+    invalid = bool(invalid)  # The rule matches the stored value "true" only.
+    if bool(widget.property("invalid")) != invalid:
+        widget.setProperty("invalid", invalid)
+        repolish(widget)
+
+
 class ThemeManager(QObject):
     """Applies the palette and stylesheet for the chosen mode and density."""
 
@@ -279,6 +292,7 @@ __all__ = [
     "current",
     "default_density",
     "repolish",
+    "set_invalid",
     "shared_settings",
     "theme_events",
 ]

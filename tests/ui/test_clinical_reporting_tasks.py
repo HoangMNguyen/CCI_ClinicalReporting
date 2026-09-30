@@ -13,6 +13,7 @@ import threading
 
 import pandas as pd
 import pytest
+import shiboken6
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
@@ -91,12 +92,14 @@ def window(qapp, monkeypatch, tmp_path):
     yield widget
     widget.close()
     widget.task_runner.wait(5000)
-    widget.deleteLater()
     untagged = [
         message
         for message in widget.shown_messages
         if message and not isinstance(message, feedback.Message)
     ]
+    # Deleted now: with no event loop running, deleteLater would never run and
+    # the window would keep listening to the global theme signal.
+    shiboken6.delete(widget)
     assert untagged == []
 
 

@@ -80,6 +80,7 @@ class Widget(QWidget):
         self._controllers["selection"].call("_init_form_items_tab")
         self._controllers["rules"].call("_init_filters_tab")
         self._controllers["rules"].call("_init_comparison_and_order_tab")
+        self._controllers["rules"].call("_init_join_table")
         self._controllers["output"].call("_init_run_and_save_controls")
         self._controllers["shared"].call("_init_tab_navigation")
         self._controllers["shared"].call("_initialize_list_views")

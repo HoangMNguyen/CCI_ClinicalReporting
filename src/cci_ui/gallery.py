@@ -36,7 +36,13 @@ from PySide6.QtWidgets import (
 )
 
 from cci_ui.icons import IconName
-from cci_ui.theme.manager import ThemeManager, ThemeMode, current, theme_events
+from cci_ui.theme.manager import (
+    ThemeManager,
+    ThemeMode,
+    current,
+    set_invalid,
+    theme_events,
+)
 from cci_ui.theme.palette import qcolor
 from cci_ui.theme.tokens import TYPE_SCALE, Color, ColorTokens, Density
 from cci_ui.widgets.buttons import VARIANTS, icon_button, make_button
@@ -213,7 +219,7 @@ def _inputs_page(_shell: AppShell) -> Page:
     combo.addItems(["Left join", "Inner join", "Outer join"])
     invalid = QComboBox()
     invalid.addItems(["2"])
-    invalid.setProperty("invalid", True)
+    set_invalid(invalid, True)
     date = QDateEdit(QDate(2026, 6, 30))
     date.setCalendarPopup(True)
     date.setFixedWidth(150)

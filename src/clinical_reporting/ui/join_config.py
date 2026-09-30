@@ -4,6 +4,10 @@ This mixin owns the join table: per-form join item dropdowns, join order,
 join type, and the inline conflict highlighting.  The order/rename table
 that shares the tab lives in :mod:`ui.ordering_tab`; join changes trigger
 its refresh because the default column order follows the join order.
+
+Conflicts are drawn in the theme's colors: a shared join order marks its
+dropdowns ``invalid`` (styled by the ``cci_ui`` stylesheet), and a form that
+needs a join item gets its name in the danger color.
 """
 
 from __future__ import annotations
@@ -14,11 +18,21 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush
 from PySide6.QtWidgets import QComboBox, QTableWidgetItem
 
+from cci_ui.theme.manager import current, set_invalid, theme_events
+from cci_ui.theme.palette import qcolor
 from clinical_reporting.models import JoinHow
 
 
 class JoinConfigMixin:
     """Behavior for the join configuration controls."""
+
+    def _init_join_table(self) -> None:
+        """Recolor forms missing a join item when the theme changes.
+
+        (The stylesheet restyles the invalid join orders by itself.)
+        """
+        # A bound method of the window, so Qt drops the connection with it.
+        theme_events().changed.connect(self._paint_missing_join_items)
 
     def update_join_table_ui(self) -> None:
         """Refresh join controls when selections change."""
@@ -113,8 +127,9 @@ class JoinConfigMixin:
         """Flag join orders shared by two or more forms.
 
         When several forms are assigned the same join order the value is
-        ambiguous, so the number is shown in red and bold on every affected
-        row.  Rows with a unique order are reset to the default styling.
+        ambiguous, so the order dropdown of every affected row is marked
+        invalid (the stylesheet shows it in the danger color, semibold, with
+        a danger border). Rows with a unique order are cleared.
         """
         order_col = 4
         table = self.ui.tableWidget_join
@@ -130,10 +145,7 @@ class JoinConfigMixin:
             order_counts[value] = order_counts.get(value, 0) + 1
 
         for combo, value in combos:
-            if order_counts.get(value, 0) > 1:
-                combo.setStyleSheet("QComboBox { color: red; font-weight: bold; }")
-            else:
-                combo.setStyleSheet("")
+            set_invalid(combo, order_counts.get(value, 0) > 1)
 
         # Keep the Run button and its inline hint in sync with the conflict
         # state.  Guarded because this mixin is exercised in isolation by tests
@@ -143,8 +155,19 @@ class JoinConfigMixin:
             refresh_run()
 
     def _highlight_missing_join_items(self) -> None:
-        """Show non-first forms without a join item in red."""
+        """Flag non-first forms without a join item and update Save Output."""
+        self._paint_missing_join_items()
+
+        # Join-item dropdown changes can resolve or introduce this error without
+        # changing the join order, so refresh Save Output from this path too.
+        refresh_run = getattr(self, "_refresh_run_availability", None)
+        if callable(refresh_run):
+            refresh_run()
+
+    def _paint_missing_join_items(self) -> None:
+        """Show non-first forms without a join item in the danger color."""
         table = self.ui.tableWidget_join
+        missing = QBrush(qcolor(current().colors.danger_text))
         for row in range(table.rowCount()):
             form_item = table.item(row, 0)
             order_combo = table.cellWidget(row, 4)
@@ -155,13 +178,7 @@ class JoinConfigMixin:
                 (combo := table.cellWidget(row, col)) is not None and bool(combo.currentText()) for col in range(1, 4)
             )
             is_missing = order_combo.currentText() != "1" and not has_join_item
-            form_item.setForeground(QBrush(Qt.red) if is_missing else QBrush())
-
-        # Join-item dropdown changes can resolve or introduce this error without
-        # changing the join order, so refresh Save Output from this path too.
-        refresh_run = getattr(self, "_refresh_run_availability", None)
-        if callable(refresh_run):
-            refresh_run()
+            form_item.setForeground(missing if is_missing else QBrush())
 
     def _add_item_dropdown(
         self,
