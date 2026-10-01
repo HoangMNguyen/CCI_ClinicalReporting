@@ -7,11 +7,6 @@ The version is deliberately NOT part of this file's name. It comes from
 
     python -m PyInstaller "CCI Automation.spec"
     $env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Automation.spec"
-
-Clockify credentials come from the ``CCI_CLOCKIFY_API_KEY`` and
-``CCI_CLOCKIFY_WORKSPACE_ID`` environment variables at run time. They are
-never bundled: anyone with the executable could read them out of it. (A local
-``src/cci_automation/clockify.json`` only serves runs from source.)
 """
 
 import sys
@@ -24,7 +19,7 @@ from build_support import app_icon, package_version, ui_datas, version_resource
 
 PACKAGE = "cci_automation"
 PRODUCT = "CCI Automation"
-DESCRIPTION = "Enrollment Logs, DSMB Reports, Clockify dashboards, formatting fixes"
+DESCRIPTION = "Enrollment Logs, DSMB Reports, formatting fixes"
 
 VERSION = package_version(PACKAGE)
 EXE_NAME = f"{PRODUCT} V{VERSION}"

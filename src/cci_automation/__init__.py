@@ -1,7 +1,7 @@
-"""CCI Automation: Enrollment Log, DSMB Report, Clockify, and format tools.
+"""CCI Automation: Enrollment Log, DSMB Report, and format tools.
 
-Headless report builders live in the ``enrollment_log``, ``dsmb``,
-``clockify``, and ``format_tools`` subpackages, with shared helpers in
+Headless report builders live in the ``enrollment_log``, ``dsmb``, and
+``format_tools`` subpackages, with shared helpers in
 :mod:`cci_automation.util`; the PySide6 GUI is :mod:`cci_automation.app`.
 Corelisting loading and Excel styling come from the ``clinical_reporting``
 backend. Importing this package does not import Qt.

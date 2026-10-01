@@ -12,7 +12,7 @@ reports, safety listings, and SDS peer review). Each app runs from source with
 | Application | What it produces | Run from source | Spec file |
 | --- | --- | --- | --- |
 | Clinical Reporting Tool | Configurable clinical report exports from Corelisting/CSV/Excel data | `python -m clinical_reporting` | `CCI Clinical Reporting.spec` |
-| CCI Automation | Enrollment Logs, DSMB Reports, Clockify dashboards, formatting fixes | `python -m cci_automation` | `CCI Automation.spec` |
+| CCI Automation | Enrollment Logs, DSMB Reports, formatting fixes | `python -m cci_automation` | `CCI Automation.spec` |
 | Safety Automation | Corelisting AE & DLT listing workbook | `python -m safety_automation` | `Safety Automation.spec` |
 | Peer Review Automation | Medidata SDS peer-review error report | `python -m peer_review_automation` | `Peer Review Automation.spec` |
 
@@ -45,7 +45,7 @@ The requirements files build on each other:
 
 | File | Contents | Install it to |
 |---|---|---|
-| `requirements-core.txt` | The Qt-free processing engine (pandas, numpy, xlsxwriter, openpyxl, requests, python-dateutil) | Run reports headless or on a server |
+| `requirements-core.txt` | The Qt-free processing engine (pandas, numpy, xlsxwriter, openpyxl, python-dateutil) | Run reports headless or on a server |
 | `requirements.txt` | Core + PySide6 | Run the desktop apps |
 | `requirements-dev.txt` | Desktop + `pytest` and `ruff` | Develop and test |
 | `requirements-build.txt` | Desktop + PyInstaller | Build the executables |
@@ -115,44 +115,19 @@ Keyboard shortcuts:
 
 ## CCI Automation
 
-One window, five workflows, selected from a dropdown. Reports are written as
+One window, three workflows, selected from a dropdown. Reports are written as
 styled `.xlsx` files to a chosen output folder.
 
 | Workflow | Input | Notes |
 | --- | --- | --- |
 | Enrollment Log | Corelisting ZIP | Studies 03325, 03821, 10325, 11823, 12423, 15122, 15420, 16321, 30425, 50425. Optional cut-off date. |
 | DSMB Report | Corelisting ZIP | Studies 03325, 03821, 10325, 11823, 12423, 15122, 15420, 16321. Optional cut-off date. |
-| Clockify Dashboard | Clockify detailed-report CSV, or live API when no file is selected | Produces a per-project dashboard with task/milestone/role hour breakdowns and validation tabs. |
-| Add templated tasks | — | Creates the standard task template in a selected Clockify project. |
 | Format for lab range issue and no leading 0 date | CSV or XLSX | Fixes scientific-notation lab ranges and strips leading zeros from dates. |
 
 Enrollment Log and DSMB builders are per-study modules under
 `src/cci_automation/enrollment_log/` and `src/cci_automation/dsmb/`; adding a
 study means adding a module there and listing it in the dispatcher and the
 combo box in `src/cci_automation/app.py`.
-
-### Clockify configuration
-
-Only the two Clockify workflows need credentials. Configure them either as
-environment variables:
-
-```powershell
-$env:CCI_CLOCKIFY_API_KEY = "<api key>"
-$env:CCI_CLOCKIFY_WORKSPACE_ID = "<workspace id>"
-```
-
-or, when running from source, as a git-ignored
-`src/cci_automation/clockify.json` next to `util.py`:
-
-```json
-{"api_key": "<api key>", "workspace_id": "<workspace id>"}
-```
-
-Environment variables take precedence over the file. The built executable
-never includes the file (anyone with the executable could read the key out
-of it), so machines running it need the environment variables. When neither
-is set, the app shows a clear error dialog instead of crashing. Never
-hardcode these values in source.
 
 ## Safety Automation
 
@@ -615,10 +590,10 @@ src/cci_ui/                    # shared design system for all four tools
   assets/icons/                # Lucide 1.49.0 line icons used by the apps (ISC)
   assets/app-icons/            # each tool's .ico, drawn by app_icons.py
 
-src/cci_automation/            # Enrollment Log, DSMB, Clockify tools
+src/cci_automation/            # Enrollment Log, DSMB, format tools
   __main__.py                  # runtime entry: python -m cci_automation
-  util.py                      # Clockify API and shared stats helpers
-  enrollment_log/  dsmb/  clockify/  format_tools/
+  util.py                      # shared stats, Corelisting and formatting helpers
+  enrollment_log/  dsmb/  format_tools/
 
 src/safety_automation/         # Corelisting AE & DLT report
   __main__.py                  # runtime entry: python -m safety_automation
@@ -726,10 +701,8 @@ Configuration bundled at build time:
   works without environment variables; use `telemetry.example.json` as the
   schema when creating or rotating it. Its token can only add counts, not
   read them.
-- **CCI Automation** embeds no credentials: Clockify needs the environment
-  variables on the machine that runs it (see
-  [Clockify configuration](#clockify-configuration)).
-- Safety Automation and Peer Review Automation need no bundled data files.
+- CCI Automation, Safety Automation and Peer Review Automation need no
+  bundled data files.
 
 Note: the `.spec` files and `build_support.py` are tracked in Git like any
 other source file — `.gitignore` no longer ignores `*.spec`. A spec diff now

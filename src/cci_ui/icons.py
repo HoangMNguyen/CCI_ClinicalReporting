@@ -37,8 +37,6 @@ class IconName:
     # CCI Automation workflows
     ENROLLMENT = "users"
     DSMB = "clipboard-check"
-    CLOCKIFY = "clock"
-    TEMPLATED_TASKS = "list-plus"
     FORMAT_TOOLS = "wrench"
     # Window chrome and display settings
     SIDEBAR = "panel-left"

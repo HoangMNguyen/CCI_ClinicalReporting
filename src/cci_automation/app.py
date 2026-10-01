@@ -1,5 +1,4 @@
 # This Python file uses the following encoding: utf-8
-# TODO: update to from util import (clockify_create_tasks, clockify_get_api_key, clockify_get_list_projects, clockify_get_workplace_id) when all functions are tested
 import os
 import sys
 import traceback
@@ -9,11 +8,6 @@ from datetime import date, datetime
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
 from cci_automation.ui_form import Ui_Widget
-from cci_automation.util import (
-    clockify_get_api_key,
-    clockify_get_list_projects,
-    clockify_get_workplace_id,
-)
 
 
 class Widget(QWidget):
@@ -30,8 +24,6 @@ class Widget(QWidget):
             "",
             "Enrollment Log",
             "DSMB Report",
-            "Clockify Dashboard",
-            "Add templated tasks",
             "Format for lab range issue and no leading 0 date",
         ]
         self.ui.comboBox.addItems(comboBox_options)
@@ -73,14 +65,14 @@ class Widget(QWidget):
 
     def clicker(self):
         """Open a file dialog when the user clicks the button.
-        Options: DSMB Report, Enrollment Log, Clockify Dashboard
+        Options: DSMB Report, Enrollment Log, Format for lab range issue
         """
         if self.selected_option == "DSMB Report" or self.selected_option == "Enrollment Log":
             # point to the default download directory
             default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
             file_path, _ = QFileDialog.getOpenFileName(
                 self,
-                "Select the raw file of Clockify Dashboard",
+                "Select the Corelisting ZIP",
                 default_dir,
                 "Zip files (*.zip)",
             )
@@ -89,18 +81,6 @@ class Widget(QWidget):
                 self.ui.label_2.setText(file_path)
                 self.input_file_path = file_path
 
-        elif self.selected_option == "Clockify Dashboard":
-            default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-            file_path, _ = QFileDialog.getOpenFileName(
-                self,
-                "Select the raw file of Clockify Dashboard",
-                default_dir,
-                "CSV files (*.csv)",
-            )
-            # output filename to screen
-            if file_path:
-                self.ui.label_2.setText(file_path)
-                self.input_file_path = file_path
         elif self.selected_option == "Format for lab range issue and no leading 0 date":
             default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
             file_path, _ = QFileDialog.getOpenFileName(
@@ -151,14 +131,6 @@ class Widget(QWidget):
         elif self.selected_option == "DSMB Report":
             self.ui.comboBox_2.addItems(["15420", "11823", "12423", "15122", "03821", "16321", "03325", "10325"])
             self.ui.comboBox_2.setVisible(True)
-        elif self.selected_option == "Clockify Dashboard" or self.selected_option == "Add templated tasks":
-            try:
-                self.ui.comboBox_2.addItems(
-                    clockify_get_list_projects(clockify_get_api_key(), clockify_get_workplace_id())
-                )
-            except Exception as e:
-                QMessageBox.warning(self, "Clockify", str(e))
-            self.ui.comboBox_2.setVisible(True)
         elif self.selected_option == "Format for lab range issue and no leading 0 date":
             # Hide comboBox_2
             self.ui.comboBox_2.setVisible(False)
@@ -179,22 +151,6 @@ class Widget(QWidget):
             self.ui.lineEdit.setEnabled(True)
             self.ui.pushButton.setEnabled(True)
             self.ui.pushButton_2.setEnabled(True)
-        elif self.selected_option == "Clockify Dashboard":
-            self.ui.checkBox.setVisible(False)
-            self.ui.dateEdit.setVisible(False)
-            self.ui.lineEdit.setText(
-                date.today().strftime("%y%m%d") + "-" + self.selected_option2 + "-Clockify Dashboard"
-            )
-            self.ui.lineEdit.setEnabled(False)
-            self.ui.pushButton.setEnabled(True)
-            self.ui.pushButton_2.setEnabled(True)
-        elif self.selected_option == "Add templated tasks":
-            self.ui.checkBox.setVisible(False)
-            self.ui.dateEdit.setVisible(False)
-            self.ui.lineEdit.setText("")
-            self.ui.lineEdit.setEnabled(False)
-            self.ui.pushButton.setEnabled(False)
-            self.ui.pushButton_2.setEnabled(False)
         elif self.selected_option == "Format for lab range issue and no leading 0 date":
             self.ui.checkBox.setVisible(False)
             self.ui.dateEdit.setVisible(False)
@@ -209,12 +165,6 @@ class Widget(QWidget):
         self.selected_option2 = self.ui.comboBox_2.currentText()
         if self.selected_option == "Enrollment Log":
             self.ui.lineEdit.setText(date.today().strftime("%y%m%d") + "-" + self.selected_option2 + " Enrollment Log")
-        elif self.selected_option == "Clockify Dashboard":
-            self.ui.lineEdit.setText(
-                date.today().strftime("%y%m%d") + "-" + self.selected_option2 + "-Clockify Dashboard"
-            )
-        elif self.selected_option == "Add templated tasks":
-            self.ui.lineEdit.setText("")
         elif self.selected_option == "DSMB Report":
             self.ui.lineEdit.setText(datetime.now().strftime("%y%m%d") + "-" + self.selected_option2 + " DSMB Report")
             self.ui.lineEdit.setEnabled(True)
@@ -287,56 +237,6 @@ class Widget(QWidget):
                         + self.ui.lineEdit.text()
                         + ".xlsx"
                     )
-                except Exception as e:
-                    self.ui.label_5.setText("Error encountered.")
-                    QMessageBox.warning(self, "Error", str(e) + traceback.format_exc())
-        elif self.selected_option == "Clockify Dashboard":
-            from cci_automation.clockify.Clockify import ClockifyDashboard
-
-            # option for Clockify Dashboard
-            if not self.selected_option2 or not self.output_folder_name:
-                QMessageBox.warning(
-                    self,
-                    "Warning",
-                    "Please make sure all those selections are entered correctly.",
-                )
-            else:
-                try:
-                    ClockifyDashboard(
-                        self.selected_option2,
-                        self.output_folder_name,
-                        self.input_file_path,
-                    )
-                    self.ui.label_5.setText(
-                        "Confirmed: ClockifyDashboard "
-                        + self.selected_option2
-                        + " project selected. Output file name is "
-                        + date.today().strftime("%y%m%d")
-                        + "-"
-                        + self.selected_option2
-                        + "-Clockify Dashboard"
-                        + ".xlsx"
-                    )
-                except Exception as e:
-                    self.ui.label_5.setText("Error encountered.")
-                    QMessageBox.warning(self, "Error", str(e) + traceback.format_exc())
-        elif self.selected_option == "Add templated tasks":
-            if not self.selected_option2:
-                QMessageBox.warning(
-                    self,
-                    "Warning",
-                    "Please make sure all those selections are entered correctly.",
-                )
-            else:
-                try:
-                    from cci_automation.clockify.Clockify import clockify_create_tasks
-
-                    clockify_create_tasks(
-                        clockify_get_api_key(),
-                        clockify_get_workplace_id(),
-                        self.selected_option2,
-                    )
-                    self.ui.label_5.setText("Confirmed: template task has been added to " + self.selected_option2)
                 except Exception as e:
                     self.ui.label_5.setText("Error encountered.")
                     QMessageBox.warning(self, "Error", str(e) + traceback.format_exc())

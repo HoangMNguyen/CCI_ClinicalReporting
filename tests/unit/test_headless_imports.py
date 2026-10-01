@@ -31,7 +31,6 @@ CORE_MODULES = [
     "cci_automation.util",
     "cci_automation.dsmb.DSMB",
     "cci_automation.enrollment_log.EnrollmentLog",
-    "cci_automation.clockify.Clockify",
     "cci_automation.format_tools.change_type",
     "safety_automation",
     "safety_automation.util",
