@@ -4,6 +4,11 @@ This module handles everything on the final "Preview & export" page,
 including preview generation, report export, and saved-setting
 persistence. Building the preview and the export runs in the background
 (:func:`cci_ui.tasks.run_task`).
+
+A saved setting holds the report's settings
+(:meth:`~clinical_reporting.report.CLReport.settings_to_dict`) plus the
+names given to the additional input files on the Additional input page
+(:func:`clinical_reporting.additional_names.add_to_settings`).
 """
 
 from __future__ import annotations
@@ -17,6 +22,7 @@ import pandas as pd
 
 from cci_ui.tasks import defer_if_busy, run_task
 from clinical_reporting import feedback
+from clinical_reporting.additional_names import add_to_settings
 from clinical_reporting.filenames import output_file_name
 from clinical_reporting.session import build_report, export_report
 from clinical_reporting.telemetry import (
@@ -102,6 +108,12 @@ class RunAndSaveMixin:
         )
         try:
             settings = self.report.settings_to_dict(settings_name)
+            add_to_settings(
+                settings,
+                getattr(self, "additional_inputs", {}),
+                getattr(self, "additional_form_names", {}),
+                getattr(self, "additional_column_names", {}),
+            )
             settings_path = self._settings_store().save(settings_name, settings)
         except Exception as exc:  # pylint: disable=broad-except
             self._set_label_text(
