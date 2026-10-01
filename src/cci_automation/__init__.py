@@ -3,10 +3,10 @@
 Each workflow is a plain ``run()`` that returns the workbook: in
 ``enrollment_log.EnrollmentLog``, ``dsmb.DSMB`` and
 ``format_tools.change_type``, with shared helpers in
-:mod:`cci_automation.util`. The window (on the ``cci_ui`` kit) is
-:mod:`cci_automation.app`.
-Corelisting loading and Excel styling come from the ``clinical_reporting``
-backend. Importing this package does not import Qt.
+:mod:`cci_automation.util`. The window, built on the ``cci_ui`` design
+system, is :mod:`cci_automation.app`. Corelisting loading and Excel styling
+come from the ``clinical_reporting`` backend. Importing this package does not
+import Qt.
 """
 
 # Single source of truth for the release version. ``build_support.py`` reads

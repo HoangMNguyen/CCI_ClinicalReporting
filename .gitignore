@@ -125,7 +125,7 @@ celerybeat.pid
 .env
 .venv
 
-# Local env shortcut scripts (machine-specific, see README "Environment setup")
+# Local env shortcut scripts (machine-specific; README "Setup" has the commands)
 /dev.sh
 /dev.ps1
 /dev.bat

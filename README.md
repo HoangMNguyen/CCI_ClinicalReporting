@@ -1,10 +1,11 @@
 # CCI Clinical Reporting & Automation Suite
 
 A suite of four PySide6 desktop applications for clinical trial reporting,
-built on a single shared headless backend (`clinical_reporting`). The Clinical
-Reporting Tool is the flagship configurable report builder; the three
-automation apps cover department-specific workflows (enrollment logs, DSMB
-reports, safety listings, and SDS peer review). Each app runs from source with
+built on a single shared headless backend (`clinical_reporting`) and a shared
+design system (`cci_ui`). The Clinical Reporting Tool is the flagship
+configurable report builder; the three automation apps cover
+department-specific workflows (enrollment logs, DSMB reports, safety
+listings, and SDS peer review). Each app runs from source with
 `python -m <package>` and ships as its own standalone executable.
 
 ## Applications at a glance
@@ -18,8 +19,9 @@ reports, safety listings, and SDS peer review). Each app runs from source with
 
 ## Setup
 
-Python 3.10+ is required. The `python -m ...` commands are identical on every
-platform; only venv activation and environment variables are shell-specific.
+Python 3.11 or newer is required (pandas 3 and numpy 2.4 need it). The
+`python -m ...` commands are identical on every platform; only venv
+activation and environment variables are shell-specific.
 
 ### 1. Create the environment (once per machine)
 
@@ -119,6 +121,14 @@ Keyboard shortcuts:
   a compact density, and a window that opens where it was.
 - Reading the ZIP, the preview, and the export run in the background, so the
   window no longer freezes.
+- Pages that need data say "No data loaded" until a ZIP (or an additional
+  file) is loaded. Pages also show what was read from the ZIP, the preview's
+  rows and columns, and the file name an export will write.
+- A ZIP or an additional file that can't be read is now explained on the page
+  (2.00 showed nothing: the ZIP's error was lost and the file was skipped).
+  Clashing form names are explained there too, instead of in a dialog.
+- New shortcuts: Ctrl+\\, Ctrl+F, F5, Ctrl+E and Ctrl+S (see the table
+  above).
 - A common item that a later form doesn't join on now comes out as that form's
   own column (`AE.Visit` next to `Visit`) instead of `Visit_x` and `Visit_y`,
   and a later form can join on it again. Reports whose forms join on every
@@ -130,9 +140,7 @@ One window with a sidebar of its three workflows, one page each (the
 sidebar folds to icons on a narrow window). Each page builds its workbook in
 the background and saves it in the chosen folder as
 `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file; the suggested names
-are below. (Before 1.26 a file was saved exactly as named, replacing any file
-of that name, and the suggested names began with the date, e.g.
-`260930-15420 DSMB Report`.)
+are below.
 
 | Page | Input | Suggested name | Notes |
 | --- | --- | --- | --- |
@@ -143,14 +151,39 @@ of that name, and the suggested names began with the date, e.g.
 The study is picked from the list, or taken from the ZIP's file name when that
 names one (a ZIP named for another study than the one chosen is refused, with
 a message). Each workflow is a plain `run()` that returns the workbook as an
-`OutputFile`: `enrollment_log/EnrollmentLog.py`, `dsmb/DSMB.py` (the per-study
-DSMB modules still write a file, which `run()` reads back from a temporary
-folder, so the study's data sits there only during a run) and `format_tools/change_type.py`. A study without a module gets a
-message saying which studies are supported (the DSMB report used to make
-nothing, silently). Adding a study means adding its module under
+`OutputFile`: `enrollment_log/EnrollmentLog.py`, `dsmb/DSMB.py` and
+`format_tools/change_type.py`. The per-study DSMB modules still write a file,
+which `DSMB.run()` reads back from a temporary folder, so the study's data
+sits there only during a run. A study without a module gets a message saying
+which studies are supported. Adding a study means adding its module under
 `src/cci_automation/enrollment_log/` or `src/cci_automation/dsmb/`, a branch
 for it in that workflow's dispatcher, and the study in its
 `SUPPORTED_STUDIES` (the page lists those).
+
+### What's new in 1.26
+
+- The window is on the shared design system: a sidebar of the three
+  workflows instead of the dropdown, light and dark mode, a compact density,
+  and a window that opens where it was.
+- The work runs in the background and is saved in the output folder, which is
+  remembered, as `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file.
+  Run asks for an output folder when none is chosen (it used to do nothing)
+  or the chosen one is gone.
+- The Enrollment log and DSMB names no longer begin with the date
+  (`260930-15420 DSMB Report`). Before, a file was also saved exactly as
+  named, replacing any file of that name.
+- The study is taken from the ZIP's file name when that names one.
+- The Clockify Dashboard and Add templated tasks workflows are gone.
+- Problems you can fix are messages instead of tracebacks:
+  - a study without a module (the DSMB report used to make nothing,
+    silently);
+  - a ZIP named for another study than the one chosen;
+  - an export without a Demographics (DM) form, or, for the DSMB report,
+    with no submitted Demographics forms up to the cut-off date;
+  - files that are gone or can't be read.
+- The format tool no longer stops on a repeated column name, keeps names such
+  as "pH 7.4" (it used to cut them to "pH 7"), and reads a CSV saved by Excel
+  in Windows' own encoding.
 
 ## Safety Automation
 
@@ -158,8 +191,7 @@ One page: **AE & DLT listing**. Choose a Corelisting ZIP (the study number
 comes from its file name) and an output folder, change the suggested file
 name if you like, and Run. The app builds the standardized Adverse Event /
 Dose-Limiting Toxicity workbook for the Safety Department in the background
-and saves it as `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file
-(before 1.08 the file was named exactly as typed).
+and saves it as `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file.
 
 The work is `run()` in `src/safety_automation/ae_corelisting/AECoreListing.py`:
 it takes the ZIP (a path or an open file) and returns the workbook as an
@@ -168,9 +200,24 @@ future web version can call it too. The supported studies are
 `SUPPORTED_STUDIES` there (03325, 10325, 11823, 12423, 15420, 16321); another
 study's export gets a message saying so. Adding a study means adding it there,
 an entry in `STUDY_KEY_MAP` naming the Corelisting forms that hold its AE,
-dose-level, infusion, and end-of-study data, its columns in the
-`get_*_header_list` methods, and its values in the cohort, dose-level and
-infusion `get_*` methods.
+cohort, dose-level, and infusion data (when they aren't named AE, DSCA,
+DSDLA, and EXINF), its columns in the `get_*_header_list` methods, and its
+values in the cohort, dose-level and infusion `get_*` methods.
+
+### What's new in 1.08
+
+- The window is on the shared design system: one page that resizes, light
+  and dark mode, a compact density, and a window that opens where it was.
+- The work runs in the background and is saved in the output folder, which is
+  remembered, as `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file.
+  Run asks for an output folder when none is chosen (it used to do nothing)
+  or the chosen one is gone.
+- The file name is suggested (`<study> AE DLT`). Before, you typed one and
+  the file was saved exactly as typed.
+- A cohort or dose-level form that a study has no columns for is left out
+  instead of stopping the listing (10325 and 11823 with a DSCA form).
+- Problems you can fix are messages instead of tracebacks: an unsupported
+  study, a ZIP that is gone or isn't an export, or a missing form.
 
 ## Peer Review Automation
 
@@ -180,8 +227,8 @@ optionally Rave's validation report, switch on the naming-convention checks
 if you want them, choose an output folder, change the suggested file name
 if you like, and Run. Every finding goes to a workbook named, by default,
 after the SDS file (its name up to the first "-", usually the study):
-`<that name> Peer Review Automation Output YYMMDD_HHMMSS.xlsx` (before 1.02
-it had no date and time), never over an existing file.
+`<that name> Peer Review Automation Output YYMMDD_HHMMSS.xlsx`, never over an
+existing file.
 
 The review is `run()` in `src/peer_review_automation/sds.py`: it takes the
 files (paths or open files) and returns the workbook as an `OutputFile`,
@@ -208,15 +255,58 @@ with open(output.name, "wb") as file:
     file.write(output.data)
 ```
 
+### What's new in 1.02
+
+- The window is on the shared design system: one page that resizes, light
+  and dark mode, a compact density, and a window that opens where it was.
+  The old "Future Project" tab is gone.
+- The work runs in the background and is saved in the output folder, which is
+  remembered, as `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file.
+  Run asks for an output folder when none is chosen (it used to try to save
+  in the root of the drive) or the chosen one is gone.
+- The file name is suggested from the SDS file and can be changed. Before,
+  the file was always named after the SDS file, with no date and time.
+- A problem names the file it is about: one that is gone or can't be
+  opened, a workbook without the Form Definitions or Codelists sheet, a
+  validation report without its columns, or an SDS sheet without a column a
+  check needs.
+
 ## Shared backend
 
-All three automation apps use `clinical_reporting` as their backend rather
-than carrying their own copies: Corelisting ZIP loading and cleaning comes
-from `clinical_reporting.data.read_data_dict_zip_corelisting`, study-name
-parsing from `clinical_reporting.data.parse_study_name`, and shared Excel cell
-styles from `clinical_reporting.export.get_named_excel_formats`. Their report
-builders are Qt-free, so they can be scripted the same way as the reporting
-engine below.
+The automation apps take what they share from `clinical_reporting` rather
+than carrying their own copies:
+
+- `clinical_reporting.workflow`:
+  - `OutputFile`, what every workflow returns: a file name and the
+    workbook's bytes.
+  - `WorkflowInputError` for problems the user can fix, and
+    `UnsupportedStudyError` for a study a workflow doesn't cover.
+  - `reading_input` turns a missing, locked or unreadable input file into a
+    `WorkflowInputError` that names the file. `read_corelisting` reads a
+    Corelisting export through it, with
+    `clinical_reporting.data.read_data_dict_zip_corelisting`.
+  - `study_named_by` reads the study from a ZIP's file name, and
+    `check_study` refuses a ZIP named for another study than the one chosen
+    (CCI Automation).
+- `clinical_reporting.filenames.output_file_name` makes the
+  `<name> YYMMDD_HHMMSS.xlsx` file names.
+- `clinical_reporting.data.parse_study_name` reads the study from a file
+  name (Safety Automation directly; `study_named_by` builds on it).
+- `clinical_reporting.export.get_named_excel_formats` provides shared Excel
+  cell styles (two of the DSMB modules).
+
+Their windows are built on the shared design system, `cci_ui` (see
+[Updating the UI](#updating-the-ui)). Each workflow's `run()` is Qt-free and
+returns the workbook without touching the user's folders, so it can be
+scripted the same way as the reporting engine below:
+
+```python
+from cci_automation.dsmb import DSMB
+
+output = DSMB.run("Core_Listings_15420.zip", study="15420")
+with open(output.name, "wb") as file:  # "15420 DSMB Report YYMMDD_HHMMSS.xlsx"
+    file.write(output.data)
+```
 
 ## Programmatic / API usage
 
@@ -383,6 +473,11 @@ Run only integration tests:
 python -m pytest -q tests/integration
 ```
 
+Run only the design-system and window tests:
+```bash
+python -m pytest -q tests/ui
+```
+
 Run a single test file while iterating:
 ```bash
 python -m pytest -q tests/unit/test_join_deduplication.py
@@ -427,9 +522,10 @@ Python file is saved. Unsafe Ruff fixes remain disabled by default.
   real exports outside the repository: Git ignores `tests/data/` and every
   `.zip`, `.csv` and Excel file so one can't be committed by accident, but
   the repository folder still syncs to Dropbox.
-- Keep logic tests in `tests/unit/`, workflow-level checks in
-  `tests/integration/`, and tests of the shared design system (`cci_ui`) and
-  of whole windows in `tests/ui/`.
+- Keep logic tests in `tests/unit/` (the automation workflows' `run()` tests
+  are there too), Clinical Reporting's end-to-end report, settings and API
+  tests in `tests/integration/`, and tests of the shared design system
+  (`cci_ui`) and of whole windows in `tests/ui/`.
 - Slow work (reading the ZIP and additional files, preview, export) runs on a
   background thread. Tests that wait for it use the `settle` fixture in
   `tests/ui/conftest.py`, which blocks in `TaskRunner.wait()` so the worker
@@ -486,10 +582,14 @@ starts the app and remembers the window's size). `WorkflowPage`
 the output folder, a file name with the name it will save, a banner, and Run.
 The tool hands `WorkflowPage.start` a job that returns the workbook; the page
 runs it in the background and saves it (`cci_ui.files.save_output`). The
-core side of a workflow uses `clinical_reporting.workflow`: `OutputFile` for
-what it returns, `WorkflowInputError` for problems the user can fix (the page
-shows them as warnings when the tool lists the type in `expected_errors`), and
-`read_corelisting` to read an export.
+core side of a workflow uses `clinical_reporting.workflow` (see
+[Shared backend](#shared-backend)); the page shows the errors whose types the
+tool lists in `expected_errors` as warnings.
+
+Every tool's window reopens at the size and position it had when it was
+closed (`cci_ui.window_state.WindowState.remember`); the two with a sidebar
+(Clinical Reporting and CCI Automation) also keep it as wide (and collapsed
+or not) as it was.
 
 A new icon is a Lucide SVG copied into `src/cci_ui/assets/icons/` (from the
 version in `assets/icons/VERSION`) and a constant in `IconName`
@@ -572,10 +672,6 @@ no control stretches at the target window sizes (and that the sidebar and
 the Preview panel rearrange on narrow windows), and `test_preview_tool.py`
 pins the step order (update it when you reorder steps).
 
-The window reopens at the size and position it had when it was closed,
-with the sidebar as wide (and collapsed or not) as it was
-(`cci_ui.window_state.WindowState.remember`).
-
 ### App icons
 
 Each tool's icon is a white line icon on a rounded square of the tool's
@@ -587,9 +683,9 @@ them again and commit them:
 python -m cci_ui.app_icons
 ```
 
-The builds use them as the executables' icons (`build_support.app_icon`),
-and `create_app` (so far only Clinical Reporting calls it) as the window
-icon.
+The builds use them as the executables' icons (`build_support.app_icon`).
+`create_app`, which every tool starts with (the small tools through
+`run_tool`), uses the tool's icon as the window icon.
 
 ## Project Structure
 
@@ -609,22 +705,26 @@ src/clinical_reporting/
   session.py                   # what happens to a report when the user acts; build/export
   settings_store.py            # where saved settings live (local folder today)
   feedback.py                  # status messages tagged info/success/warning/error
-  filenames.py                 # safe file names for exports and saved settings
+  filenames.py                 # safe file names; "<name> YYMMDD_HHMMSS.xlsx" outputs
   pipeline.py                  # joins, filters, ordering, renames, formatting
   report_columns.py            # the output columns and their names, before running
-  workflow.py                  # what the tools' workflows return (OutputFile), input errors
+  workflow.py                  # the tools' workflows: OutputFile, input errors, reading inputs
   validation.py                # executable-report validation; "Cannot run" messages
   steps.py                     # the steps: titles, badges, and what they say
   data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
   export.py                    # xlsx/csv/bytes rendering
+  telemetry.py                 # reports saves to the usage counter (off unless configured)
   ui/                          # PySide6 desktop front end
+    app.py                     # entry point: starts the app and opens the window
     window.py                  # main window composed from feature mixins
+    controller.py              # puts the behavior classes' methods on the window
     main_ui.py                 # builds the pages into the window's shell
     navigation.py              # page changes; badges, header, status bar, toasts
     contract.py                # widget names the mixins may use
     pages/                     # one module per step, built in code
     preview.py                 # python -m clinical_reporting.ui.preview
     sample_data.py             # made-up DEMO01 data for previews and UI tests
+    base.py                    # helpers shared by the behavior mixins
     settings_tab.py            # inputs, cutoff, and saved settings
     additional_input_tab.py    # extra CSV/Excel inputs, form and column renames
     selection_tabs.py          # forms, common items, and form items
@@ -632,6 +732,9 @@ src/clinical_reporting/
     join_config.py             # join order, type, and items
     ordering_tab.py            # output order and renames
     run_save_tab.py            # preview, run, and save
+    dialogs.py                 # dialogs shared by more than one page
+    table_actions.py           # original-name/new-name tables (renames)
+    preview_model.py           # Qt table model for the preview grid
 
 src/cci_ui/                    # shared design system for all four tools
   app.py                       # create_app(): style, font, theme, error dialog
@@ -681,6 +784,7 @@ src/cci_automation/            # Enrollment Log, DSMB, format tools
 src/safety_automation/         # Corelisting AE & DLT report
   __main__.py                  # runtime entry: python -m safety_automation
   app.py                       # the window: one WorkflowPage
+  util.py                      # study name and dose level helpers
   ae_corelisting/AECoreListing.py  # run(): the AE & DLT workbook, Qt-free
 
 src/peer_review_automation/    # Medidata SDS peer review
@@ -690,8 +794,11 @@ src/peer_review_automation/    # Medidata SDS peer review
 
 tests/
   unit/                        # fast logic-focused tests
-  integration/                 # workflow/reporting behavior tests
+  integration/                 # Clinical Reporting end-to-end report/settings/API tests
   ui/                          # design-system and whole-window tests
+
+docs/design/clinical-reporting-mockup.html  # the approved mockup the design follows
+*.spec, build_support.py       # PyInstaller builds (see Building the Executables)
 ```
 
 ## Building the Executables
@@ -759,7 +866,7 @@ names are permanent; the version lives in exactly one place per app:
 To cut a release, bump that one string and rebuild:
 
 ```python
-__version__ = "2.01"
+__version__ = "2.11"
 ```
 
 `build_support.py` reads it and stamps it into both the executable's file
@@ -772,13 +879,17 @@ For a one-off build without editing the source, override with an environment
 variable:
 
 ```powershell
-$env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Automation.spec"
-Remove-Item Env:APP_VERSION  # or every later build gets 2.01 too
+$env:APP_VERSION = "1.26-test"; python -m PyInstaller "CCI Automation.spec"
+Remove-Item Env:APP_VERSION  # or every later build gets 1.26-test too
 ```
 
 ```bash
-APP_VERSION=2.01 python -m PyInstaller "CCI Automation.spec"
+APP_VERSION=1.26-test python -m PyInstaller "CCI Automation.spec"
 ```
+
+A suffix such as `-test` shows in the file name and as the Product version in
+Properties -> Details; the File version there uses only the digits
+(1.26.0.0).
 
 Configuration bundled at build time:
 
@@ -795,5 +906,8 @@ other source file — `.gitignore` no longer ignores `*.spec`. A spec diff now
 always means a real change to the build recipe, never a version bump.
 
 ## Notes
-- The UI resizes dynamically.
-- Avoid modifying generated `build/` and `dist/` artifacts in normal development workflows.
+- Every window is laid out with Qt layouts, so its controls follow the
+  window's size; Clinical Reporting's resize tests are described in
+  [Updating the UI](#updating-the-ui).
+- Avoid modifying generated `build/` and `dist/` artifacts in normal
+  development workflows.
