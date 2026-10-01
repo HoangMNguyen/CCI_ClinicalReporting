@@ -9,7 +9,7 @@ few UI widgets it touches and monkeypatching the loader.
 import datetime
 
 import pandas as pd
-from tests.unit.fakes import FakePathPicker
+from tests.unit.fakes import FakePathPicker, FakeSection
 
 from clinical_reporting import feedback
 from clinical_reporting.report import CLReport
@@ -55,6 +55,7 @@ class _FakeUi:
         self.cutoff_checkBox = _FakeCheckBox(checked)
         self.cutoff_dateEdit = _FakeDateEdit(date_value)
         self.pathPicker_input_file = FakePathPicker()
+        self.section_input_file = FakeSection()
         self.banner_input_file = _FakeLabel()
 
 

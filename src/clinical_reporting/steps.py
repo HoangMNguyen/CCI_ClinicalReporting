@@ -1,18 +1,32 @@
-"""Where each step of a report stands, for the sidebar (no Qt needed).
+"""The report's steps and where each one stands (no Qt needed).
 
-A report is built in ten steps, from loading the data to exporting it.
-:func:`step_statuses` says, for each step, what its sidebar badge shows:
-nothing, a count (forms selected, filters added, ...), done, optional, or a
-problem. Problems come from :func:`clinical_reporting.validation.validate_report`
-by issue code (:data:`ISSUE_STEPS`), so every front end points the user to
-the step that fixes each one. :func:`report_summary` is the one-line summary
-under the window.
+A report is built in ten steps, from loading the data to exporting it
+(:data:`STEP_KEYS`, titled :data:`TITLES`). :func:`step_statuses` says, for
+each step, what its sidebar badge shows: nothing, a count (forms selected,
+filters added, ...), done, optional, or a problem. Problems come from
+:func:`clinical_reporting.validation.validate_report` by issue code
+(:data:`ISSUE_STEPS`), so every front end points the user to the step that
+fixes each one. The other functions word what the steps show:
+:func:`report_summary` (the line under the window), :func:`source_summary`,
+:func:`preview_caption`, :func:`joins_message`, and the Additional input
+step's messages (:func:`additional_applied_message` and the constants).
 """
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, NamedTuple, Optional
+from datetime import datetime
+from typing import (
+    Collection,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sized,
+)
 
+from clinical_reporting import feedback
 from clinical_reporting.validation import ReportValidationIssue
 
 # The steps, in order. The desktop pages use these as their keys.
@@ -39,8 +53,35 @@ STEP_KEYS = (
     PREVIEW,
 )
 
+#: Each step's title, as its page and the sidebar show it.
+TITLES = {
+    SOURCE: "Source data",
+    ADDITIONAL: "Additional input",
+    FORMS: "Forms",
+    COMMON: "Common items",
+    FORM_ITEMS: "Form items",
+    FILTERS: "Filters",
+    JOINS: "Joins",
+    COMPARISONS: "Comparisons",
+    ORDER: "Order & rename",
+    PREVIEW: "Preview & export",
+}
+#: Steps with nothing to show until data is loaded; their pages say so
+#: (:data:`NO_DATA`, :data:`NO_DATA_HINT`) instead.
+NEEDS_DATA = frozenset(STEP_KEYS) - {SOURCE, ADDITIONAL}
+
 #: What the window says before any data is loaded.
 NO_DATA = "No data loaded"
+#: How to load some.
+NO_DATA_HINT = f"Choose a Corelisting ZIP on {TITLES[SOURCE]} to start a report."
+
+#: The Additional input step, applied with no files.
+ADD_FILES_FIRST = feedback.warning("Add at least one file first.")
+#: The Additional input step, once a new Corelisting ZIP dropped its forms.
+APPLY_ADDITIONAL_AGAIN = feedback.info(
+    "The new Corelisting ZIP started a new report. Apply the files again to add "
+    "their forms to it."
+)
 
 # What a badge shows (the values of cci_ui's StepState).
 NONE = "none"
@@ -102,8 +143,14 @@ def issue_step(issue: ReportValidationIssue) -> Optional[str]:
     return ISSUE_STEPS.get(issue.code)
 
 
+_MONTHS = (
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+)  # fmt: skip
+
+
 def _plural(count: int, word: str) -> str:
-    return f"{count} {word}" if count == 1 else f"{count} {word}s"
+    return f"{count:,} {word}" if count == 1 else f"{count:,} {word}s"
 
 
 def _problems(issues: List[ReportValidationIssue]) -> StepStatus:
@@ -197,7 +244,7 @@ def _issues_by_step(
 def report_summary(report, study_name: Optional[str] = None) -> str:
     """One line about the report, e.g. "DEMO01 · 3 forms · 12 items · 1 filter"."""
     if not report.data:
-        return f"{NO_DATA} · choose a Corelisting ZIP on Source data"
+        return f"{NO_DATA} · choose a Corelisting ZIP on {TITLES[SOURCE]}"
     parts = [study_name] if study_name else []
     parts += [
         _plural(len(report.selected_forms or {}), "form"),
@@ -208,8 +255,51 @@ def report_summary(report, study_name: Optional[str] = None) -> str:
     return " · ".join(parts)
 
 
+def source_summary(data: Mapping[str, Sized], read_at: datetime) -> str:
+    """What was read from the Corelisting ZIP, and when.
+
+    For example "18 forms · 2,431 rows · read at 10:12 on 30 Sep"; *data*
+    maps each form to its rows. (The date, not "today": the text stays on
+    screen past midnight.)
+    """
+    forms = _plural(len(data), "form")
+    rows = _plural(sum(len(frame) for frame in data.values()), "row")
+    month = _MONTHS[read_at.month - 1]  # Not %b: that follows the locale.
+    return f"{forms} · {rows} · read at {read_at:%H:%M} on {read_at.day} {month}"
+
+
+def preview_caption(rows: int, columns: int) -> str:
+    """The size of a preview, e.g. "1,284 rows · 42 columns"."""
+    return f"{_plural(rows, 'row')} · {_plural(columns, 'column')}"
+
+
+def joins_message(report) -> Optional[feedback.Message]:
+    """What the Joins step says about the report's joins, if anything."""
+    issues = [issue for issue in report.validate() if issue_step(issue) == JOINS]
+    if issues:
+        problems = " ".join(issue.message for issue in issues)
+        return feedback.error(
+            f"{problems} The report can't be exported until this is fixed."
+        )
+    if len(report.selected_forms or {}) < 2:
+        return feedback.info("Joins apply when two or more forms are selected.")
+    return None
+
+
+def additional_applied_message(forms: Collection[str]) -> feedback.Message:
+    """What applying the additional files did: the forms added (one per file)."""
+    if not forms:
+        return feedback.success("The additional forms were removed from the report.")
+    added = ", ".join(sorted(forms))
+    return feedback.success(
+        f"{_plural(len(forms), 'file')} applied. New forms: {added}."
+    )
+
+
 __all__ = [
     "ADDITIONAL",
+    "ADD_FILES_FIRST",
+    "APPLY_ADDITIONAL_AGAIN",
     "COMMON",
     "COMPARISONS",
     "DONE",
@@ -220,17 +310,24 @@ __all__ = [
     "FORM_ITEMS",
     "ISSUE_STEPS",
     "JOINS",
+    "NEEDS_DATA",
     "NONE",
     "NO_DATA",
+    "NO_DATA_HINT",
     "OPTIONAL",
     "ORDER",
     "PREVIEW",
     "SOURCE",
     "STEP_KEYS",
+    "TITLES",
     "UNPLACED_ISSUE_CODES",
     "StepStatus",
+    "additional_applied_message",
     "issue_step",
+    "joins_message",
+    "preview_caption",
     "report_summary",
     "selected_item_count",
+    "source_summary",
     "step_statuses",
 ]

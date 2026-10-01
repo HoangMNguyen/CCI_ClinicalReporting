@@ -1,6 +1,7 @@
 """The sidebar's step badges, worked out without Qt (clinical_reporting.steps)."""
 
 import ast
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -144,3 +145,53 @@ def test_the_summary_counts_what_the_report_holds():
         "DEMO01 · 2 forms · 2 items · 1 filter · 0 comparisons"
     )
     assert steps.report_summary(CLReport(), "DEMO01").startswith("No data loaded")
+
+
+def test_every_step_has_a_title_and_the_data_steps_are_the_later_ones():
+    assert list(steps.TITLES) == list(steps.STEP_KEYS)
+    assert steps.NEEDS_DATA == set(steps.STEP_KEYS) - {steps.SOURCE, steps.ADDITIONAL}
+    assert steps.TITLES[steps.SOURCE] in steps.NO_DATA_HINT
+
+
+def test_the_source_summary_counts_forms_and_rows_and_says_when():
+    data = {"DM": range(2_000), "AE": range(431), "VS": []}
+    read_at = datetime(2026, 9, 30, 10, 12)
+
+    assert steps.source_summary(data, read_at) == (
+        "3 forms · 2,431 rows · read at 10:12 on 30 Sep"
+    )
+    assert steps.source_summary({"DM": [1]}, read_at).startswith("1 form · 1 row ·")
+
+
+def test_the_additional_input_step_says_what_applying_did():
+    added = steps.additional_applied_message({"LB", "PK"})
+    one = steps.additional_applied_message({"LB"})
+    removed = steps.additional_applied_message(set())
+
+    assert added == "2 files applied. New forms: LB, PK." and added.kind == "success"
+    assert one.startswith("1 file applied.")
+    assert removed.kind == "success" and "removed" in removed
+    assert steps.ADD_FILES_FIRST.kind == "warning"
+    assert steps.APPLY_ADDITIONAL_AGAIN.kind == "info"
+
+
+def test_the_preview_caption_says_its_size():
+    assert steps.preview_caption(1284, 42) == "1,284 rows · 42 columns"
+    assert steps.preview_caption(1, 1) == "1 row · 1 column"
+
+
+def test_the_joins_message_explains_what_stops_the_joins():
+    report = _report()
+    fine = steps.joins_message(report)
+    report.update_join_items("AE", [], 1, JoinHow.LEFT)  # Shares order 1 with DM.
+    shared = steps.joins_message(report)
+    report.add_available_form("AE")
+    one_form = steps.joins_message(report)
+
+    assert fine is None
+    assert shared.kind == "error"
+    assert shared == (
+        "Join order 1 is assigned to multiple forms: AE, DM. "
+        "The report can't be exported until this is fixed."
+    )
+    assert one_form.kind == "info" and "two or more forms" in one_form

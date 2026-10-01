@@ -237,8 +237,12 @@ def test_preview_asked_for_while_busy_runs_once_the_work_is_done(
     settle(opened.task_runner)
 
     assert reader.calls[-1][1] is None  # The cut-off change was applied first.
-    assert opened.ui.tableView_preview.model().rowCount() == 2
-    assert opened.label_run_confirmation.text().startswith("Preview generated")
+    model = opened.ui.tableView_preview.model()
+    assert model.rowCount() == 2
+    assert opened.label_run_confirmation.text() == ""  # "Generating…" is gone.
+    assert opened.ui.shell.page("preview").subtitle_label.text() == (
+        f"2 rows · {model.columnCount()} columns"
+    )
 
 
 def test_export_writes_the_file_in_the_background(opened, settle, tmp_path):

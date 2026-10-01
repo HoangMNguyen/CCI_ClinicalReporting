@@ -3,12 +3,15 @@
 This mixin wires the buttons on the "Additional input" page to allow users
 to load CSV/Excel files, manage the selected list, and rename forms/columns.
 Reading the files runs in the background (:func:`cci_ui.tasks.run_task`).
+The banner on the page says what applying did (the wording is in
+:mod:`clinical_reporting.steps`), which files couldn't be read, and which
+form names clash; after a new Corelisting ZIP it asks to apply the files
+again.
 """
 
 from __future__ import annotations
 
 import os
-from functools import partial
 from pathlib import Path
 from typing import Dict, Set, Tuple
 
@@ -18,11 +21,11 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
     QListWidgetItem,
-    QMessageBox,
     QTableWidgetItem,
 )
 
-from cci_ui.tasks import defer_if_busy, run_task, when_idle
+from cci_ui.tasks import defer_if_busy, run_task
+from clinical_reporting import feedback, steps
 from clinical_reporting.data import (
     build_additional_data_map,
     strip_subject_prefix,
@@ -135,19 +138,22 @@ class AdditionalInputTabMixin:
         self._refresh_additional_files_ui()
         self._refresh_additional_tables()
         self._update_additional_buttons_state()
+        banner = self.ui.banner_additional
         if failures:
-            lines = [
-                f"{Path(path).name}: {reason}" for path, reason in failures.items()
-            ]
-            when_idle(
-                self,
-                partial(
-                    QMessageBox.warning,
-                    self,
-                    "Some files could not be read",
-                    "These files were not added:\n" + "\n".join(lines),
-                ),
+            names = [Path(path).name for path in failures]
+            reasons = [f"{Path(path).name}: {why}" for path, why in failures.items()]
+            # One line on the page (it doesn't scroll); the reasons per file
+            # are behind "Show details".
+            problem = feedback.warning(
+                f"These files could not be read and were not added: "
+                f"{feedback.short_list(names)}.",
+                "\n".join(reasons),
             )
+            self._set_label_text(banner, problem)
+        elif banner.text() and banner.kind() == "warning":
+            # What went wrong before (unreadable files, nothing to apply, a
+            # name clash) is old news; a result or the "apply again" hint isn't.
+            self._set_label_text(banner, "")
 
     def click_remove_additional_files(self) -> None:
         """Remove selected additional input files from the list."""
@@ -357,9 +363,13 @@ class AdditionalInputTabMixin:
     def _forget_applied_additional_forms(self) -> None:
         """Note that the report no longer has the applied additional forms.
 
-        (A new Corelisting ZIP starts a new report.) The files stay listed,
-        ready to apply again.
+        (A new Corelisting ZIP starts a new report.) The files stay listed;
+        the banner says to apply them again.
         """
+        if self._additional_form_keys:
+            self._set_label_text(
+                self.ui.banner_additional, steps.APPLY_ADDITIONAL_AGAIN
+            )
         self._additional_form_keys = set()
         self._additional_input_signature = {}
 
@@ -396,7 +406,7 @@ class AdditionalInputTabMixin:
         return form_names
 
     def _warn_on_additional_form_conflicts(self, existing_forms: Set[str]) -> bool:
-        """Warn when additional forms would overwrite existing form names."""
+        """Say (in the banner) if additional forms' names clash; True if they do."""
         name_map = self._collect_additional_form_names()
         if not name_map:
             return False
@@ -420,8 +430,10 @@ class AdditionalInputTabMixin:
         if not dotted_names and not duplicates and not conflicts:
             return False
 
+        clashing = sorted(set(dotted_names) | set(duplicates) | set(conflicts))
         message_parts = [
-            "Cannot add forms because some form names are invalid or conflict with existing data."
+            "Cannot add forms because some form names are invalid or conflict "
+            "with existing data."
         ]
         if dotted_names:
             message_parts.append("Form names cannot include '.':")
@@ -440,9 +452,15 @@ class AdditionalInputTabMixin:
                     sorted(Path(path).name for path in conflicts[form_name])
                 )
                 message_parts.append(f"  - {form_name}: {file_list}")
-        message_parts.append("Rename the forms in the table and try again.")
 
-        QMessageBox.warning(self, "Form Name Conflict", "\n".join(message_parts))
+        # One line on the page (it doesn't scroll); the reasons per file are
+        # behind "Show details".
+        conflict = feedback.warning(
+            f"These form names can't be used: {feedback.short_list(clashing)}. "
+            "Rename them in the table and try again.",
+            "\n".join(message_parts),
+        )
+        self._set_label_text(self.ui.banner_additional, conflict)
         return True
 
     def _apply_additional_inputs_to_report(self) -> None:
@@ -466,6 +484,12 @@ class AdditionalInputTabMixin:
             return
 
         additional_data = self._build_additional_data_map()
+        if not additional_data and not self._additional_form_keys:
+            self._set_label_text(
+                self.ui.banner_additional,
+                steps.ADD_FILES_FIRST,
+            )
+            return
         new_signature = self._build_additional_input_signature(additional_data)
         signature_changed = new_signature != previous_signature
 
@@ -474,6 +498,10 @@ class AdditionalInputTabMixin:
         self.report.set_data(combined_data)
         self._additional_form_keys = set(additional_data.keys())
         self._additional_input_signature = new_signature
+        self._set_label_text(
+            self.ui.banner_additional,
+            steps.additional_applied_message(additional_data),
+        )
 
         if (
             signature_changed

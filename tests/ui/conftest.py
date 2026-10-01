@@ -1,6 +1,7 @@
 """Fixtures for tests of the shared design system (cci_ui) and whole windows."""
 
 import pytest
+import shiboken6
 from PySide6.QtCore import QElapsedTimer, QEvent, QObject, QSettings
 from PySide6.QtWidgets import QApplication, QWidget
 
@@ -102,3 +103,36 @@ def shown_windows(qapp):
     qapp.installEventFilter(watcher)
     yield watcher.shown
     qapp.removeEventFilter(watcher)
+
+
+@pytest.fixture
+def sample_window(make_manager, settle):
+    """The Clinical Reporting window on the DEMO01 sample, shown and themed.
+
+    It holds the report the preview tool shows: forms DM, AE and VS, common
+    items Subject and Site, one filter, one comparison, one rename.
+    """
+    from clinical_reporting.ui.preview import build_preview_window
+
+    theme = make_manager()
+    theme.apply()
+    window = build_preview_window(theme=theme)
+    window.resize(1280, 820)
+    window.show()
+    QApplication.processEvents()
+    yield window
+    window.close()
+    settle(window.task_runner)
+    # No event loop runs here, so deleteLater wouldn't: delete it now.
+    shiboken6.delete(window)
+
+
+@pytest.fixture
+def empty_window(qapp):
+    """The Clinical Reporting window with no data, not shown."""
+    from clinical_reporting.ui.window import Widget
+
+    window = Widget()
+    QApplication.processEvents()
+    yield window
+    shiboken6.delete(window)

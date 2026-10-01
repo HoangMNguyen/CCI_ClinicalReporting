@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QRect
+from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QLineEdit, QWidget
 
@@ -37,6 +37,11 @@ class SearchField(QLineEdit):
         self.setAccessibleName(placeholder)
         self.setClearButtonEnabled(True)
         self._icon = icon(IconName.SEARCH, "tertiary")
+
+    def activate(self) -> None:
+        """Focus the field with its text selected, ready to type over."""
+        self.setFocus(Qt.FocusReason.ShortcutFocusReason)
+        self.selectAll()
 
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt override)
         super().paintEvent(event)

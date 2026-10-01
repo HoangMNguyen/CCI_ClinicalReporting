@@ -40,6 +40,7 @@ class PathPicker(QWidget):
         settings_key: Optional[str] = None,
         settings: Optional[QSettings] = None,
         removable: bool = False,
+        remove_text: str = "Remove",
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
@@ -55,7 +56,7 @@ class PathPicker(QWidget):
 
         self.path_label = ElidedLabel(placeholder=placeholder, tone="secondary")
         self.button = make_button(button_text, icon_name=IconName.OPEN_FOLDER)
-        self.clear_button = icon_button(IconName.CLOSE, "Remove")
+        self.clear_button = icon_button(IconName.CLOSE, remove_text)
         self.clear_button.setVisible(False)
 
         layout = QHBoxLayout(self)

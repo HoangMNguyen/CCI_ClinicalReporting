@@ -21,7 +21,7 @@ from dataclasses import fields
 from pathlib import Path
 from typing import Callable, List, NamedTuple, Optional, Sequence, Tuple
 
-from PySide6.QtCore import QDate, QSettings, QTemporaryDir, QTimer
+from PySide6.QtCore import QDate, QSettings, Qt, QTemporaryDir, QTimer
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
     QComboBox,
@@ -50,10 +50,12 @@ from cci_ui.widgets.dual_list import DualListPicker
 from cci_ui.widgets.labels import IconLabel, text_label
 from cci_ui.widgets.page import Page, PageKind
 from cci_ui.widgets.path_picker import PathPicker
+from cci_ui.widgets.responsive import ResponsiveSplit
 from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.section import Section
 from cci_ui.widgets.segmented import Segment, SegmentedControl
 from cci_ui.widgets.shell import AppShell
+from cci_ui.widgets.side_panel import SidePanel, full_width, labeled_field
 from cci_ui.widgets.sidebar import StepState
 from cci_ui.widgets.status import StatusBanner, show_error, show_toast
 from cci_ui.widgets.tables import (
@@ -410,17 +412,48 @@ def _status_page(shell: AppShell) -> Page:
     return page
 
 
+def _panel_page(_shell: AppShell) -> Page:
+    page = Page(
+        "Side panel",
+        "Beside a grid on wide windows, below it on narrow ones.",
+        kind=PageKind.SPLIT,
+    )
+    grid = PlaceholderTableWidget("The rows appear here.")
+    grid.setColumnCount(3)
+    grid.setHorizontalHeaderLabels(["Subject", "Visit", "Age"])
+    style_table(grid, row_numbers=True)
+    panel = SidePanel()
+    export = panel.add_section("Export")
+    folder = PathPicker(button_text="Choose…")
+    folder.set_path("C:\\Users\\analyst\\Reports")
+    export.addLayout(labeled_field("Folder", folder))
+    export.addWidget(full_width(make_button("Export to Excel", variant="primary")))
+    save = panel.add_section("Save setting")
+    save.addLayout(labeled_field("Name", QLineEdit("DSMB monthly")))
+    save.addWidget(full_width(make_button("Save setting")))
+    split = ResponsiveSplit(table_card(grid), panel)
+    panel.follow(split)
+    page.body.addWidget(split, 1)
+    return page
+
+
 def _empty_page(_shell: AppShell) -> Page:
     page = Page("Empty state", "What a step shows before data is loaded.")
-    page.body.addWidget(
+    page.body.addWidget(text_label("The page's content, once there is data."))
+    again = make_button("Show the empty state again")
+    again.clicked.connect(lambda: page.show_empty_state(True))
+    page.body.addWidget(again, 0, Qt.AlignmentFlag.AlignLeft)
+    page.body.addStretch(1)
+    page.set_empty_state(
         EmptyState(
             IconName.ZIP_FILE,
             "No data loaded",
             "Choose a Corelisting ZIP on Source data to start a report.",
             action_text="Choose ZIP…",
-        ),
-        1,
+            on_action=lambda: page.show_empty_state(False),
+        )
     )
+    page.show_empty_state(True)
     return page
 
 
@@ -473,6 +506,7 @@ PAGES: Sequence[GalleryPage] = (
         "lists", "Layout", "Two-list picker", IconName.COMMON_ITEMS, _lists_page
     ),
     GalleryPage("tables", "Layout", "Tables", IconName.PREVIEW_EXPORT, _tables_page),
+    GalleryPage("panel", "Layout", "Side panel", IconName.EXPORT, _panel_page),
     GalleryPage(
         "status", "Feedback", "Status & feedback", IconName.WARNING, _status_page
     ),

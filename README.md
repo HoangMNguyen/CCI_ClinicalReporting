@@ -102,6 +102,17 @@ joins/filters, comparisons, and export configured report settings.
 - Form names cannot include `.` because it is reserved for the form/item separator. Additional inputs default to the file name and must be renamed to remove dots.
 - Headless reporting engine that can be driven programmatically without the UI, so the same logic can be reused in scripts, batch jobs, and tool chains. See [Programmatic / API usage](#programmatic--api-usage).
 
+Keyboard shortcuts:
+
+| Keys | Does |
+|---|---|
+| Ctrl+Tab / Ctrl+PgDown, Ctrl+Shift+Tab / Ctrl+PgUp | Next / previous step |
+| Ctrl+\\ | Show or hide the sidebar |
+| Ctrl+F | Search (Forms, Common items, Form items, Order & rename) |
+| F5 | Build the preview again (Preview & export) |
+| Ctrl+E | Export to Excel (Preview & export) |
+| Ctrl+S | Save the setting (Preview & export) |
+
 ## CCI Automation
 
 One window, five workflows, selected from a dropdown. Reports are written as
@@ -407,8 +418,8 @@ Testing notes:
 
 The shared design system (`src/cci_ui`) has a gallery window showing every
 component: colors (with contrast), type, icons, buttons, inputs, toggles and
-segmented controls, sections, lists, tables, banners, toasts, the status
-bar, the busy overlay, and empty states.
+segmented controls, sections, lists, tables, the side panel, banners,
+toasts, the status bar, the busy overlay, and empty states.
 
 ```bash
 python -m cci_ui.gallery                               # open it
@@ -430,9 +441,11 @@ step order (`PAGE_CLASSES`) and puts them in the shell: a sidebar of steps
 sidebar badge (a count, done, optional, or a problem) comes from
 `clinical_reporting/steps.py`, which works it out from the report without
 Qt; problems are mapped to the step that fixes them by validation issue
-code. The preview tool opens the real window on
-made-up DEMO01 data (never a real study), with forms, items, joins, a
-filter, and a comparison already chosen:
+code. The steps' titles are there too (`TITLES`), and so is the list of
+steps that need data (`NEEDS_DATA`): their pages show "No data loaded" and a
+Choose ZIP… button until some is loaded. The preview tool opens the real
+window on made-up DEMO01 data (never a real study), with forms, items,
+joins, a filter, and a comparison already chosen:
 
 ```bash
 python -m clinical_reporting.ui.preview                          # open it
@@ -450,9 +463,19 @@ shows a read error.)
 - **Give the behavior mixins a new widget:** they reach widgets as
   `self.ui.<name>`, so add the widget to its page and its name to that page's
   `EXPORTS`.
-- **Add or reorder a step:** add its key to `STEP_KEYS` in
-  `clinical_reporting/steps.py` and a page class (with that `KEY`, a
-  `SECTION`, `ICON`, and `EXPORTS`) to `PAGE_CLASSES`, in the same order.
+- **Add or reorder a step:** add its key to `STEP_KEYS` (and its title to
+  `TITLES`) in `clinical_reporting/steps.py`, and a page class (with that
+  `KEY`, a `SECTION`, `ICON`, and `EXPORTS`) to `PAGE_CLASSES`, in the same
+  order.
+- **Show a message on a page:** give it a `StatusBanner` and set it with
+  `_set_label_text(banner, feedback.<kind>(...))`. The status bar repeats it
+  (and a toast, when it is a success or error on another page), unless the
+  banner is made with `announce=False` because it describes the page's
+  current state, like the Joins banner.
+- **Add a shortcut to a page:** `page.add_shortcut(keys, action)`; it works
+  while the page's content is shown (not on another page, not in its empty
+  state). For a button pass its `click`, which does nothing while the button
+  is disabled.
 - **Change the report from a new place:** call `self._report_changed()`
   afterwards, so the sidebar badges and the status bar follow. A new
   validation issue code needs a step in `steps.ISSUE_STEPS` (or a place in
@@ -491,7 +514,7 @@ src/clinical_reporting/
   filenames.py                 # safe file names for exports and saved settings
   pipeline.py                  # joins, filters, ordering, renames, formatting
   validation.py                # executable-report validation; "Cannot run" messages
-  steps.py                     # sidebar badge for each step; status bar summary
+  steps.py                     # the steps: titles, badges, and what they say
   data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
   export.py                    # xlsx/csv/bytes rendering
   ui/                          # PySide6 desktop front end
@@ -523,9 +546,10 @@ src/cci_ui/                    # shared design system for all four tools
   widgets/buttons.py           # make_button/icon_button: primary, secondary, plain…
   widgets/labels.py            # type-scale labels; ElidedLabel shortens long paths
   widgets/section.py           # Section: titled card of label/field rows
-  widgets/page.py              # Page: title, body, footer; form/workspace/split kinds
+  widgets/page.py              # Page: title, body, footer, empty state; form/workspace/split
   widgets/responsive.py        # breakpoints; panel beside or below the main area
   widgets/path_picker.py       # PathPicker: path + Choose… + Remove
+  widgets/side_panel.py        # SidePanel: sections beside a grid, or below it
   widgets/toggle.py            # ToggleSwitch (a QCheckBox drawn as a switch)
   widgets/segmented.py         # SegmentedControl
   widgets/display.py           # Display button + popover (appearance, density)

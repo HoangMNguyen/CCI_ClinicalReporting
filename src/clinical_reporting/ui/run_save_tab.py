@@ -200,14 +200,9 @@ class RunAndSaveMixin:
             return
         self.ui.tableView_preview.setModel(ReportPreviewModel(result_df))
         self.ui.tableView_preview.verticalHeader().setVisible(True)
-        self.ui.tableView_preview.resizeColumnsToContents()
-        self._set_label_text(
-            self.label_run_confirmation,
-            feedback.success(
-                f"Preview generated successfully. Found {len(result_df)} rows "
-                f"with {len(result_df.columns)} columns."
-            ),
-        )
+        self.ui.tableView_preview.fit_columns()
+        # The page shows the size under its title; nothing else to say.
+        self._set_label_text(self.label_run_confirmation, "")
 
     def _show_preview_error(self, exc: BaseException, details: str) -> None:
         """Clear the preview and say why it couldn't be built."""
@@ -280,10 +275,20 @@ class RunAndSaveMixin:
         )
 
     def _forget_export_results(self) -> None:
-        """Clear the export and save results of the data loaded before."""
+        """Clear the preview, export and save results of the data loaded before.
+
+        The new data's preview is built when the user asks (Refresh) or opens
+        the page: a new report has no forms selected yet.
+        """
+        self._forget_preview()
         self._last_export_path = None
         self._set_label_text(self.label_run_confirmation, "")
         self._set_label_text(self.label_save_confirmation, "")
+
+    def _forget_preview(self) -> None:
+        """Clear the preview grid (the page's caption follows)."""
+        if self.ui.tableView_preview.model() is not None:
+            self.ui.tableView_preview.setModel(None)
 
     def _show_export_error(self, exc: BaseException, details: str) -> None:
         """Say why the report couldn't be exported."""

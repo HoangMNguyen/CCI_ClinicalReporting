@@ -6,14 +6,16 @@ mixin:
 
 - builds the preview whenever its page opens;
 - keeps the sidebar badges (:func:`clinical_reporting.steps.step_statuses`),
-  the header, the window title, and the status bar summary up to date. The
-  other behaviors call :meth:`~ui.base.WidgetBaseMixin._report_changed`
-  after changing the report; the refresh runs once control returns to the
-  event loop, however many changes were made;
+  the header, the window title, the status bar summary, and the "No data
+  loaded" state of the pages that need data up to date. The other
+  behaviors call :meth:`~ui.base.WidgetBaseMixin._report_changed` after
+  changing the report; the refresh runs once control returns to the event
+  loop, however many changes were made;
 - shows the newest message of the pages' banners in the status bar (when
   that banner clears, the newest one still showing takes its place), and
   as a toast when it is a result (success or error) that appears on a page
-  other than the one open.
+  other than the one open. Banners that describe a page's state (their
+  ``announce`` is off, like the Joins page's) are left out.
 """
 
 from __future__ import annotations
@@ -54,13 +56,14 @@ class NavigationMixin:
         # newest.
         self._showing_banners: List[StatusBanner] = []
         for banner in self.ui.shell.findChildren(StatusBanner):
-            # A bound method, so the connection doesn't keep the window alive.
-            banner.messageChanged.connect(self._repeat_message)
+            if banner.announce:
+                # A bound method: the connection doesn't keep the window alive.
+                banner.messageChanged.connect(self._repeat_message)
         self._refresh_shell()
 
     def on_page_changed(self, key: str) -> None:
         """Trigger updates when specific pages become active."""
-        if key == steps.PREVIEW:
+        if key == steps.PREVIEW and self.report.data:
             self.preview_report()
 
     def _refresh_shell(self) -> None:
@@ -79,6 +82,11 @@ class NavigationMixin:
             )
         study = self.study_name
         loaded = bool(self.report.data)
+        for key in steps.NEEDS_DATA:
+            shell.page(key).show_empty_state(not loaded)
+        if not loaded:
+            # However the data went (the ZIP or the additional files removed).
+            self._forget_preview()
         shell.set_context(study or ("" if loaded else steps.NO_DATA))
         self.setWindowTitle(f"{study} — {APP_NAME}" if study else APP_NAME)
         shell.status_bar.set_summary(steps.report_summary(self.report, study))

@@ -100,8 +100,15 @@ class StatusBanner(QFrame):
     #: Emitted whenever a message is shown or cleared, even the same one again.
     messageChanged = Signal()
 
-    def __init__(self, parent: Optional[QWidget] = None, *, dismissible: bool = True):
+    def __init__(
+        self,
+        parent: Optional[QWidget] = None,
+        *,
+        dismissible: bool = True,
+        announce: bool = True,
+    ):
         super().__init__(parent)
+        self._announce = announce
         self.setProperty("cciRole", "banner")
         self._text = ""
         self._kind = "info"
@@ -161,6 +168,16 @@ class StatusBanner(QFrame):
         # Only after parenting (see cci_ui.widgets).
         self.dismiss_button.setVisible(dismissible)
         self.setVisible(False)
+
+    @property
+    def announce(self) -> bool:
+        """Whether the window repeats this banner's messages elsewhere.
+
+        Yes (the status bar, toasts) for results of what the user did; no for
+        a summary of the page's current state that is set again often. The
+        window reads it once, when it starts following its banners.
+        """
+        return self._announce
 
     def is_showing(self) -> bool:
         """Whether a message is set (true even before the banner has a parent)."""

@@ -190,8 +190,11 @@ QAbstractItemView::item:selected:!active {
 QTableView {
     gridline-color: ${separator};
 }
+/* Headers don't take the item views' border: beside the row numbers it
+   drew a line down past the last row. */
 QHeaderView {
     background: transparent;
+    border: none;
 }
 QHeaderView::section {
     background: ${bg_surface};

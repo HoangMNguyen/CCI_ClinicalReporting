@@ -263,6 +263,8 @@ class AppShell(QWidget):
     def _add_shortcut(
         self, keys: Union[str, QKeySequence.StandardKey], action: Callable[[], None]
     ) -> None:
+        # While the focus is anywhere in the shell, whichever page is shown
+        # (unlike Page.add_shortcut, which follows one page's content).
         shortcut = QShortcut(QKeySequence(keys), self)
         shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         shortcut.activated.connect(action)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QWidget
 
 from cci_ui.icons import IconName
@@ -13,18 +14,20 @@ from clinical_reporting import steps
 
 
 class _SelectionPage(Page):
-    """A page holding one available ⇄ selected picker that fills it."""
+    """A page holding one available ⇄ selected picker that fills it.
+
+    Ctrl+F goes to the search field.
+    """
 
     def __init__(
         self,
-        title: str,
         subtitle: str,
         *,
         search_placeholder: str,
         available_placeholder: str,
         parent: Optional[QWidget] = None,
     ) -> None:
-        super().__init__(title, subtitle, parent=parent)
+        super().__init__(steps.TITLES[self.KEY], subtitle, parent=parent)
         self.picker = DualListPicker(
             search_placeholder=search_placeholder,
             available_placeholder=available_placeholder,
@@ -37,6 +40,7 @@ class _SelectionPage(Page):
             button.setToolTip(tooltip)
             button.setAccessibleName(tooltip)
         self.body.addWidget(self.picker, 1)
+        self.add_shortcut(QKeySequence.StandardKey.Find, self.picker.search.activate)
 
 
 class FormsPage(_SelectionPage):
@@ -57,7 +61,6 @@ class FormsPage(_SelectionPage):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Forms",
             "Choose which forms go into the report.",
             search_placeholder="Search forms",
             available_placeholder="No forms to add. Load a Corelisting ZIP first.",
@@ -90,7 +93,6 @@ class CommonItemsPage(_SelectionPage):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Common items",
             "Items shared by every selected form, such as the subject and visit.",
             search_placeholder="Search common items",
             available_placeholder="No common items to add.",
@@ -123,7 +125,6 @@ class FormItemsPage(_SelectionPage):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Form items",
             "Items from each selected form to include as report columns.",
             search_placeholder="Search form items",
             available_placeholder="No items to add. Select forms first.",

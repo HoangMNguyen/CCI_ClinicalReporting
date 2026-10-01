@@ -9,8 +9,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QTableWidget,
 )
+from tests.unit.fakes import FakeBanner
 
-from clinical_reporting import data
+from clinical_reporting import data, steps
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import additional_input_tab as additional_input_module
 from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
@@ -27,6 +28,7 @@ class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
         self.additional_column_names = {}
         self._additional_form_keys = set()
         self.report = CLReport()
+        self.ui = types.SimpleNamespace(banner_additional=FakeBanner())
         self.update_all_ui_calls = 0
 
     def update_all_ui(self):
@@ -41,7 +43,7 @@ def qapp():
     return app
 
 
-class DummyAdditionalInputUiWidget(AdditionalInputTabMixin):
+class DummyAdditionalInputUiWidget(AdditionalInputTabMixin, WidgetBaseMixin):
     """Qt-backed stand-in for additional-input table interactions."""
 
     def __init__(self):
@@ -57,6 +59,7 @@ class DummyAdditionalInputUiWidget(AdditionalInputTabMixin):
             listWidget_additional_file=QListWidget(),
             tableWidget_update_form_name=form_table,
             tableWidget_update_column_name=column_table,
+            banner_additional=FakeBanner(),
         )
         self._init_additional_input_tab()
 
@@ -233,43 +236,28 @@ def test_renaming_additional_form_replaces_old_entry():
     assert set(widget.report.data.keys()) == {"RSC_clean"}
 
 
-def test_warn_on_additional_form_conflicts_detects_duplicates(monkeypatch):
+def test_warn_on_additional_form_conflicts_detects_duplicates():
     widget = DummyWidget()
     widget.additional_inputs["/tmp/a.csv"] = pd.DataFrame({"Subject": ["S1"]})
     widget.additional_inputs["/tmp/b.csv"] = pd.DataFrame({"Subject": ["S2"]})
     widget.additional_form_names["/tmp/a.csv"] = "DupForm"
     widget.additional_form_names["/tmp/b.csv"] = "DupForm"
 
-    calls = []
-
-    def fake_warning(parent, title, message):
-        calls.append((title, message))
-
-    monkeypatch.setattr(additional_input_module.QMessageBox, "warning", fake_warning)
-
     assert widget._warn_on_additional_form_conflicts(set()) is True
-    assert calls
-    assert "DupForm" in calls[0][1]
+    shown = widget.ui.banner_additional.value
+    assert "DupForm" in shown and shown.kind == "warning"
 
 
-def test_warn_on_additional_form_conflicts_detects_dots(monkeypatch):
+def test_warn_on_additional_form_conflicts_detects_dots():
     widget = DummyWidget()
     widget.additional_inputs["/tmp/a.csv"] = pd.DataFrame({"Subject": ["S1"]})
     widget.additional_form_names["/tmp/a.csv"] = "Form.With.Dot"
 
-    calls = []
-
-    def fake_warning(parent, title, message):
-        calls.append((title, message))
-
-    monkeypatch.setattr(additional_input_module.QMessageBox, "warning", fake_warning)
-
     assert widget._warn_on_additional_form_conflicts(set()) is True
-    assert calls
-    assert "Form.With.Dot" in calls[0][1]
+    assert "Form.With.Dot" in widget.ui.banner_additional.value
 
 
-def test_apply_additional_inputs_aborts_on_form_name_conflict(monkeypatch):
+def test_apply_additional_inputs_aborts_on_form_name_conflict():
     widget = DummyWidget()
     base_df = pd.DataFrame({"Subject": ["S1"], "A1": [1]})
     widget.report.set_data({"FormA": base_df})
@@ -278,16 +266,45 @@ def test_apply_additional_inputs_aborts_on_form_name_conflict(monkeypatch):
     widget.additional_inputs[add_path] = pd.DataFrame({"Subject": ["S1"], "B1": [2]})
     widget.additional_form_names[add_path] = "FormA"
 
-    def fake_warning(parent, title, message):
-        return None
-
-    monkeypatch.setattr(additional_input_module.QMessageBox, "warning", fake_warning)
-
     widget.click_apply_additional_forms()
 
     assert set(widget.report.data.keys()) == {"FormA"}
     assert widget.report.data["FormA"].equals(base_df)
     assert widget.update_all_ui_calls == 0
+    shown = widget.ui.banner_additional.value
+    assert shown.startswith("These form names can't be used: FormA.")
+    assert "Conflicts with existing report forms" in shown.details
+
+
+def test_applying_says_what_it_added_and_nothing_without_files():
+    widget = DummyWidget()
+    widget.click_apply_additional_forms()
+    nothing = widget.ui.banner_additional.value
+    widget.additional_inputs["/tmp/lab.csv"] = pd.DataFrame({"Subject": ["S1"]})
+    widget.additional_form_names["/tmp/lab.csv"] = "LB"
+
+    widget.click_apply_additional_forms()
+    applied = widget.ui.banner_additional.value
+    widget.additional_inputs.clear()
+    widget.click_apply_additional_forms()
+
+    assert nothing == "Add at least one file first." and nothing.kind == "warning"
+    assert applied == "1 file applied. New forms: LB." and applied.kind == "success"
+    assert widget.ui.banner_additional.value.startswith("The additional forms were")
+    assert widget.update_all_ui_calls == 2
+
+
+def test_a_new_zip_asks_for_the_applied_files_again():
+    widget = DummyWidget()
+    widget._forget_applied_additional_forms()  # Nothing applied: nothing to say.
+    quiet = widget.ui.banner_additional.value
+    widget._additional_form_keys = {"LB"}
+
+    widget._forget_applied_additional_forms()
+
+    assert quiet == "" and widget._additional_form_keys == set()
+    shown = widget.ui.banner_additional.value
+    assert shown.kind == "info" and "Apply the files again" in shown
 
 
 def test_files_that_cannot_be_read_are_reported_and_the_rest_added(
@@ -295,7 +312,6 @@ def test_files_that_cannot_be_read_are_reported_and_the_rest_added(
 ):
     widget = DummyAdditionalInputUiWidget()
     good, bad = tmp_path / "labs.csv", tmp_path / "broken.csv"
-    warnings = []
 
     def load(path):
         if path.endswith("broken.csv"):
@@ -308,16 +324,42 @@ def test_files_that_cannot_be_read_are_reported_and_the_rest_added(
         lambda *_args: ([str(good), str(bad)], ""),
     )
     monkeypatch.setattr(data, "load_tabular_file", load)
-    monkeypatch.setattr(
-        additional_input_module.QMessageBox,
-        "warning",
-        lambda _parent, title, text: warnings.append((title, text)),
-    )
 
     widget.click_add_additional_files()
 
     assert list(widget.additional_inputs) == [str(good.resolve())]
     assert widget.ui.listWidget_additional_file.count() == 1
-    ((title, text),) = warnings
-    assert title == "Some files could not be read"
-    assert "broken.csv: Error tokenizing data" in text
+    shown = widget.ui.banner_additional.value
+    assert shown == "These files could not be read and were not added: broken.csv."
+    assert shown.kind == "warning"
+    assert "broken.csv: Error tokenizing data" in shown.details
+
+
+def test_a_later_add_that_reads_everything_clears_the_warning(qapp):
+    widget = DummyAdditionalInputUiWidget()
+    widget._add_loaded_additional_files(({}, {"bad.csv": "Error tokenizing data"}))
+    warned = widget.ui.banner_additional.value
+    widget._add_loaded_additional_files(({"good.csv": pd.DataFrame()}, {}))
+
+    assert warned.startswith("These files could not be read")
+    assert widget.ui.banner_additional.value == ""
+
+
+def test_a_later_add_keeps_other_messages(qapp):
+    widget = DummyAdditionalInputUiWidget()
+    widget.ui.banner_additional.setText(steps.APPLY_ADDITIONAL_AGAIN)
+
+    widget._add_loaded_additional_files(({"good.csv": pd.DataFrame()}, {}))
+
+    assert widget.ui.banner_additional.value == steps.APPLY_ADDITIONAL_AGAIN
+
+
+def test_a_later_add_clears_the_nothing_to_apply_warning(qapp):
+    widget = DummyAdditionalInputUiWidget()
+    widget.click_apply_additional_forms()
+    warned = widget.ui.banner_additional.value
+
+    widget._add_loaded_additional_files(({"good.csv": pd.DataFrame()}, {}))
+
+    assert warned == steps.ADD_FILES_FIRST
+    assert widget.ui.banner_additional.value == ""

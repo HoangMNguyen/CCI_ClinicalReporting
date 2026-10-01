@@ -7,8 +7,6 @@ loop, so the tests process events before looking.
 """
 
 import pandas as pd
-import pytest
-import shiboken6
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QPushButton
@@ -16,31 +14,8 @@ from PySide6.QtWidgets import QApplication, QPushButton
 from cci_ui.widgets.sidebar import StepState
 from cci_ui.widgets.status import ToastHost
 from clinical_reporting import feedback, steps
-from clinical_reporting.ui.preview import PAGE_KEYS, build_preview_window
+from clinical_reporting.ui.preview import PAGE_KEYS
 from clinical_reporting.ui.sample_data import STUDY, sample_forms
-from clinical_reporting.ui.window import Widget
-
-
-@pytest.fixture
-def sample_window(make_manager, settle):
-    theme = make_manager()
-    theme.apply()
-    window = build_preview_window(theme=theme)
-    window.resize(1280, 820)
-    window.show()
-    QApplication.processEvents()
-    yield window
-    window.close()
-    settle(window.task_runner)
-    shiboken6.delete(window)
-
-
-@pytest.fixture
-def empty_window(qapp):
-    window = Widget()
-    QApplication.processEvents()
-    yield window
-    shiboken6.delete(window)
 
 
 def _badge(window, key):
@@ -264,7 +239,10 @@ def test_a_new_zip_forgets_the_old_additional_forms_and_results(sample_window):
     assert applied == (StepState.DONE, None)
     assert _badge(sample_window, "additional") == (StepState.OPTIONAL, None)
     assert sample_window.ui.label_run_confirmation.text() == ""
-    assert sample_window.ui.shell.status_bar.message() == ""
+    # The newest message left: apply the additional files again.
+    assert sample_window.ui.shell.status_bar.message().startswith(
+        "The new Corelisting ZIP started a new report."
+    )
     assert sample_window.windowTitle() == "DEMO02 — Clinical Reporting"
 
 

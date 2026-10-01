@@ -32,6 +32,7 @@ from cci_ui.widgets import (  # noqa: F401  (imported for their stylesheet rules
     section,
     segmented,
     shell,
+    side_panel,
     sidebar,
     status,
     tables,

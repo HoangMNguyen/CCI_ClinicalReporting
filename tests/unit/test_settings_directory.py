@@ -1,7 +1,7 @@
 """Tests for retaining the selected settings directory in folder dialogs."""
 
 import pandas as pd
-from tests.unit.fakes import FakePathPicker
+from tests.unit.fakes import FakeBanner, FakePathPicker
 
 from clinical_reporting import data
 from clinical_reporting.ui import additional_input_tab, dialogs, settings_tab
@@ -65,6 +65,7 @@ class _AdditionalInputWidget(AdditionalInputTabMixin):
         self._additional_input_directory = None
         self.additional_inputs = {}
         self.ui = type("Ui", (), {})()
+        self.ui.banner_additional = FakeBanner()
 
     def _refresh_additional_files_ui(self):
         pass

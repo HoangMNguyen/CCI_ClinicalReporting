@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QApplication
 from cci_ui.theme.manager import ThemeMode, current, theme_events
 from clinical_reporting import feedback
 from clinical_reporting.models import JoinHow
-from clinical_reporting.ui.preview import PAGE_KEYS, build_preview_window
+from clinical_reporting.ui.preview import PAGE_KEYS
 from clinical_reporting.ui.window import Widget
 
 
@@ -24,19 +24,6 @@ def theme(make_manager):
     manager = make_manager()
     manager.apply()
     return manager
-
-
-@pytest.fixture
-def sample_window(theme, settle):
-    """The window holding the configured sample report, shown and themed."""
-    window = build_preview_window()
-    window.resize(1280, 820)
-    window.show()
-    QApplication.processEvents()
-    yield window
-    window.close()
-    settle(window.task_runner)
-    shiboken6.delete(window)
 
 
 def _theme_listeners() -> int:
@@ -82,8 +69,10 @@ def test_every_page_shows_and_the_preview_builds(sample_window, theme, settle, m
         assert shell.page(key).isVisible()
 
     assert shell.current() == "preview"
-    assert sample_window.ui.tableView_preview.model().rowCount() > 0
-    assert sample_window.ui.label_run_confirmation.kind() == "success"
+    rows = sample_window.ui.tableView_preview.model().rowCount()
+    assert rows > 0
+    caption = shell.page("preview").subtitle_label.text()
+    assert caption.startswith(f"{rows:,} rows · ")
 
 
 def test_the_sample_report_exports(sample_window, settle, tmp_path):

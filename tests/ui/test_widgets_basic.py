@@ -2,9 +2,18 @@
 
 import pytest
 from PySide6.QtCore import QPoint, QSettings, Qt
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtGui import QMouseEvent, QStandardItemModel
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QFileDialog, QLabel, QLineEdit, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QFrame,
+    QLabel,
+    QLineEdit,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from cci_ui.icons import IconName
 from cci_ui.theme import manager as theme_manager
@@ -16,12 +25,19 @@ from cci_ui.widgets.labels import ElidedLabel, text_label
 from cci_ui.widgets.page import Page, PageKind
 from cci_ui.widgets.path_picker import PathPicker
 from cci_ui.widgets.responsive import Breakpoint, ResponsiveSplit
+from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.section import Section
 from cci_ui.widgets.segmented import Segment, SegmentedControl
+from cci_ui.widgets.side_panel import SidePanel, full_width, labeled_field
 from cci_ui.widgets.status import StatusBanner
-from cci_ui.widgets.tables import TableToolbar
+from cci_ui.widgets.tables import TableToolbar, style_table, table_card
 from cci_ui.widgets.toggle import ToggleSwitch
-from cci_ui.widgets.views import EmptyState
+from cci_ui.widgets.views import (
+    COLUMN_MAX_W,
+    EmptyState,
+    PlaceholderTableWidget,
+    PreviewTableView,
+)
 
 LONG_PATH = r"C:\Users\analyst\Downloads\Core_Listings_DEMO01_2026-09-29_export.zip"
 
@@ -398,3 +414,190 @@ def test_empty_texts_stay_hidden_and_given_texts_show(qapp):
     visible = [child.isVisibleTo(owner) for child, owner in zip(empty + given, owners)]
 
     assert visible == [False] * len(empty) + [True] * len(given)
+
+
+# ---------------------------------------------------------------------------
+# Page states and shortcuts, the side panel, small additions
+
+
+def test_a_page_can_change_its_subtitle(qapp):
+    page = _shown(Page("Preview & export", "Check the rows."), 600, 400)
+
+    page.set_subtitle("1,284 rows · 42 columns")
+    shown = page.subtitle_label.isVisible(), page.subtitle_label.text()
+    page.set_subtitle("")
+
+    assert shown == (True, "1,284 rows · 42 columns")
+    assert not page.subtitle_label.isVisible()
+
+
+def test_an_empty_state_replaces_the_body_and_actions_only(qapp):
+    page = Page("Forms", "Choose forms.")
+    content = QLabel("the lists")
+    page.body.addWidget(content)
+    refresh = make_button("Refresh")
+    page.add_action(refresh)
+    next_button = page.set_next("Common items", lambda: None)
+    state = EmptyState(IconName.ZIP_FILE, "No data loaded")
+    page.set_empty_state(state)
+    _shown(page, 700, 500)
+    before = page.is_showing_empty_state(), state.isVisible()
+
+    page.show_empty_state(True)
+    QApplication.processEvents()
+
+    assert before == (False, False)
+    assert page.empty_state is state
+    assert page.is_showing_empty_state() and state.isVisible()
+    assert not content.isVisible() and not refresh.isVisible()
+    assert page.title_label.isVisible() and next_button.isVisible()
+    page.show_empty_state(False)
+    assert content.isVisible() and refresh.isVisible() and not state.isVisible()
+    with pytest.raises(ValueError):
+        page.set_empty_state(EmptyState(IconName.ZIP_FILE, "Again"))
+    with pytest.raises(ValueError):
+        Page("No state").show_empty_state(True)
+
+
+def test_page_shortcuts_work_only_on_the_page_shown(qapp):
+    window = QWidget()
+    field = QLineEdit()
+    stack = QStackedWidget()
+    layout = QVBoxLayout(window)
+    layout.addWidget(field)
+    layout.addWidget(stack)
+    pressed = []
+    for name in ("first", "second"):
+        page = Page(name)
+        page.add_shortcut("F5", lambda name=name: pressed.append(name))
+        stack.addWidget(page)
+    second = stack.widget(1)
+    second.set_empty_state(EmptyState(IconName.ZIP_FILE, "No data loaded"))
+    window.show()
+    window.activateWindow()
+    QApplication.processEvents()
+    field.setFocus()
+
+    QTest.keyClick(field, Qt.Key.Key_F5)
+    stack.setCurrentIndex(1)
+    QTest.keyClick(field, Qt.Key.Key_F5)
+    second.show_empty_state(True)  # Nothing to act on: the key does nothing.
+    QTest.keyClick(field, Qt.Key.Key_F5)
+    window.close()
+
+    assert pressed == ["first", "second"]
+
+
+def test_a_shortcut_to_a_disabled_button_does_nothing(qapp):
+    page = Page("Preview")
+    button = make_button("Export")
+    page.add_action(button)
+    clicked = []
+    button.clicked.connect(lambda: clicked.append(True))
+    page.add_shortcut("Ctrl+E", button.click)
+    page.show()
+    page.activateWindow()
+    QApplication.processEvents()
+
+    QTest.keyClick(page, Qt.Key.Key_E, Qt.KeyboardModifier.ControlModifier)
+    button.setEnabled(False)
+    QTest.keyClick(page, Qt.Key.Key_E, Qt.KeyboardModifier.ControlModifier)
+    page.close()
+
+    assert clicked == [True]
+
+
+def test_side_panel_sections_stack_or_sit_side_by_side(qapp):
+    panel = SidePanel()
+    export = panel.add_section("Export")
+    export.addLayout(labeled_field("Folder", QLineEdit()))
+    export.addWidget(full_width(make_button("Export to Excel")))
+    save = panel.add_section("Save setting")
+    save.addWidget(full_width(make_button("Save setting")))
+    split = ResponsiveSplit(QLabel("grid"), panel)
+    panel.follow(split)
+    _shown(split, 1200, 600)
+    (separator,) = [
+        frame
+        for frame in panel.findChildren(QFrame)
+        if frame.property("cciRole") in ("separator", "separatorVertical")
+    ]
+    first, second = (layout.parentWidget() for layout in (export, save))
+    beside = (second.y() > first.y(), separator.property("cciRole"))
+
+    split.resize(600, 600)  # Narrow: the panel moves below the main area.
+    QApplication.processEvents()
+
+    assert beside == (True, "separator")
+    assert panel.is_stacked()
+    assert second.x() > first.x() and second.y() == first.y()
+    assert separator.property("cciRole") == "separatorVertical"
+
+
+def test_a_path_picker_names_what_its_remove_button_removes(qapp):
+    picker = PathPicker(removable=True, remove_text="Remove file")
+
+    assert picker.clear_button.toolTip() == "Remove file"
+    assert PathPicker(removable=True).clear_button.toolTip() == "Remove"
+
+
+def test_a_search_field_can_be_focused_ready_to_type_over(qapp):
+    window = QWidget()
+    field = SearchField()
+    QVBoxLayout(window).addWidget(field)
+    field.setText("adverse")
+    window.show()
+    window.activateWindow()
+    QApplication.processEvents()
+
+    field.activate()
+
+    assert field.hasFocus() and field.selectedText() == "adverse"
+    window.close()
+
+
+def test_result_columns_fit_their_contents_up_to_a_limit(qapp):
+    model = QStandardItemModel(3, 2)
+    model.setHorizontalHeaderLabels(["Id", "Comment"])
+    for row in range(3):
+        model.setData(model.index(row, 0), str(row))
+        model.setData(model.index(row, 1), "a long free-text comment " * 20)
+    view = PreviewTableView()
+    view.setModel(model)
+    _shown(view, 900, 300)
+
+    view.fit_columns()
+
+    assert view.columnWidth(0) < 80
+    assert view.columnWidth(1) == COLUMN_MAX_W
+
+
+def test_an_empty_state_shows_all_of_a_wrapped_message(qapp):
+    message = "Choose a Corelisting ZIP on Source data to start a report. " * 3
+    state = _shown(EmptyState(IconName.ZIP_FILE, "No data loaded", message), 700, 500)
+    label = state.message_label
+
+    assert label.height() >= label.heightForWidth(label.width())
+    assert label.height() > label.fontMetrics().height()  # It wraps.
+
+
+def test_banners_announce_unless_told_not_to(qapp):
+    assert StatusBanner().announce
+    assert not StatusBanner(announce=False).announce
+
+
+def test_no_line_runs_down_the_row_numbers_below_the_last_row(make_manager):
+    make_manager().apply()  # The line came from the stylesheet.
+    table = PlaceholderTableWidget()
+    table.setColumnCount(2)
+    style_table(table, row_numbers=True)
+    table.setRowCount(1)
+    card = _shown(table_card(table), 400, 300)
+    header = table.verticalHeader()
+    edge = header.mapTo(card, header.rect().topRight()).x()
+    image = card.grab().toImage()
+    below_rows = card.height() - 20
+
+    colors = {image.pixelColor(x, below_rows).name() for x in range(edge - 2, edge + 3)}
+
+    assert len(colors) == 1, colors

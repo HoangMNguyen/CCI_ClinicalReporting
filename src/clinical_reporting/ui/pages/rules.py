@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QWidget
 
 from cci_ui.icons import IconName
 from cci_ui.widgets.page import Page
+from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.tables import ColumnSpec, TableToolbar, table_card
 from clinical_reporting import steps
 
@@ -28,7 +29,9 @@ class FiltersPage(Page):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Filters", "Keep only rows that match every filter.", parent=parent
+            steps.TITLES[self.KEY],
+            "Keep only rows that match every filter.",
+            parent=parent,
         )
         # Row numbers: validation messages name filters by row.
         self.tableWidget_static_filter = make_table(
@@ -54,11 +57,11 @@ class JoinsPage(Page):
     KEY = steps.JOINS
     SECTION = "Rules"
     ICON = IconName.JOINS
-    EXPORTS = ("tableWidget_join",)
+    EXPORTS = ("banner_joins", "tableWidget_join")
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Joins",
+            steps.TITLES[self.KEY],
             "Set how the selected forms are combined. Forms are joined in Order, "
             "using Item 1–3 as the matching keys.",
             parent=parent,
@@ -75,6 +78,10 @@ class JoinsPage(Page):
             ],
             placeholder="Select forms to set how they are joined.",
         )
+        # What stops the joins from working, kept current as they change: a
+        # state of the page, so it isn't repeated in the status bar.
+        self.banner_joins = StatusBanner(dismissible=False, announce=False)
+        self.body.addWidget(self.banner_joins)
         self.body.addWidget(table_card(self.tableWidget_join), 1)
 
 
@@ -92,7 +99,7 @@ class ComparisonsPage(Page):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Comparisons",
+            steps.TITLES[self.KEY],
             "Keep only rows where one item compares to another, for example an "
             "end date on or after its start date.",
             parent=parent,

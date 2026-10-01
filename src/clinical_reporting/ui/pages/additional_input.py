@@ -10,6 +10,7 @@ from cci_ui.icons import IconName
 from cci_ui.widgets.buttons import make_button
 from cci_ui.widgets.labels import section_label
 from cci_ui.widgets.page import Page
+from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.tables import ColumnSpec, table_card
 from cci_ui.widgets.views import PlaceholderListWidget
 from clinical_reporting import steps
@@ -29,6 +30,7 @@ class AdditionalInputPage(Page):
         "pushButton_additional_file_add",
         "pushButton_additional_file_remove",
         "pushButton_apply_additional_files",
+        "banner_additional",
         "listWidget_additional_file",
         "tableWidget_update_form_name",
         "tableWidget_update_column_name",
@@ -36,7 +38,7 @@ class AdditionalInputPage(Page):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Additional input",
+            steps.TITLES[self.KEY],
             "Optional. Add CSV or Excel files, rename their forms and columns, "
             "then apply them to the report.",
             parent=parent,
@@ -54,6 +56,8 @@ class AdditionalInputPage(Page):
         toolbar.addWidget(self.pushButton_additional_file_remove)
         toolbar.addStretch(1)
         toolbar.addWidget(self.pushButton_apply_additional_files)
+        # What applying did, or why it couldn't.
+        self.banner_additional = StatusBanner()
 
         self.listWidget_additional_file = PlaceholderListWidget(
             "No files added. Add CSV or Excel files to use them as extra forms."
@@ -89,5 +93,6 @@ class AdditionalInputPage(Page):
         files_card.setMaximumHeight(140)
 
         self.body.addLayout(toolbar)
+        self.body.addWidget(self.banner_additional)
         self.body.addWidget(files_card)
         self.body.addLayout(names, 1)

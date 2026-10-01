@@ -7,7 +7,8 @@ its refresh because the default column order follows the join order.
 
 Conflicts are drawn in the theme's colors: a shared join order marks its
 dropdowns ``invalid`` (styled by the ``cci_ui`` stylesheet), and a form that
-needs a join item gets its name in the danger color.
+needs a join item gets its name in the danger color. The banner above the
+table spells the problems out (:func:`clinical_reporting.steps.joins_message`).
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import QComboBox, QTableWidgetItem
 
 from cci_ui.theme.manager import current, set_invalid, theme_events
 from cci_ui.theme.palette import qcolor
+from clinical_reporting import steps
 from clinical_reporting.models import JoinHow
 
 
@@ -96,6 +98,12 @@ class JoinConfigMixin:
 
         self._highlight_duplicate_join_orders()
         self._highlight_missing_join_items()
+        self._refresh_joins_banner()
+
+    def _refresh_joins_banner(self) -> None:
+        """Say above the join table what stops the joins, or why there are none."""
+        message = steps.joins_message(self.report)
+        self._set_label_text(getattr(self.ui, "banner_joins", None), message or "")
 
     def on_join_order_changed(self, row: int, value: str) -> None:
         """Enable or disable join columns depending on the order selection."""
@@ -259,6 +267,7 @@ class JoinConfigMixin:
 
         self.report.update_join_list(join_list)
         self._highlight_missing_join_items()
+        self._refresh_joins_banner()
         self._report_changed()
 
         # The default column order follows the join order, so re-derive the

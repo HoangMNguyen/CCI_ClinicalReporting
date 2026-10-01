@@ -1,9 +1,10 @@
 """Lists and tables that say what belongs in them while empty, and empty pages.
 
 The placeholder views are the standard Qt classes (``QListWidget``,
-``QTableWidget``, ``QTableView``) with one addition, so existing code that
-fills them keeps working. :class:`EmptyState` fills a whole page, for
-example "No data loaded" before a file is chosen.
+``QTableWidget``, ``QTableView``) plus a placeholder (and, for results,
+:meth:`PreviewTableView.fit_columns`), so existing code that fills them keeps
+working. :class:`EmptyState` fills a whole page, for example "No data
+loaded" before a file is chosen.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QHBoxLayout,
     QListWidget,
     QTableView,
     QTableWidget,
@@ -25,6 +27,14 @@ from cci_ui.theme.manager import current
 from cci_ui.theme.palette import qcolor
 from cci_ui.widgets.buttons import make_button
 from cci_ui.widgets.labels import IconLabel, text_label
+
+#: Widest a result column grows to fit its contents; longer values are
+#: shortened (as the mockup's preview grid does).
+COLUMN_MAX_W = 320
+#: Rows looked at when sizing result columns: enough for a fair width,
+#: without reading every row of a large result (it runs on the GUI thread).
+SIZE_SAMPLE_ROWS = 100
+_MESSAGE_MAX_W = 360
 
 
 def _paint_placeholder(view: QAbstractItemView, text: str) -> None:
@@ -91,6 +101,19 @@ class PreviewTableView(_PlaceholderMixin, QTableView):
     def __init__(self, placeholder: str = "", parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._placeholder = placeholder
+        self.horizontalHeader().setResizeContentsPrecision(SIZE_SAMPLE_ROWS)
+
+    def fit_columns(self, max_width: int = COLUMN_MAX_W) -> None:
+        """Size columns to their contents (sampled rows), at most *max_width*.
+
+        Longer values are shortened on screen; give the model a tooltip so
+        hovering shows them whole.
+        """
+        self.resizeColumnsToContents()
+        header = self.horizontalHeader()
+        for column in range(header.count()):
+            if header.sectionSize(column) > max_width:
+                header.resizeSection(column, max_width)
 
     def setModel(self, model) -> None:  # noqa: N802 (Qt override)
         super().setModel(model)
@@ -126,8 +149,15 @@ class EmptyState(QWidget):
         layout.addWidget(self.title_label)
         self.message_label = text_label(message, tone="secondary", wrap=True)
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.message_label.setMaximumWidth(360)
-        layout.addWidget(self.message_label, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.message_label.setMaximumWidth(_MESSAGE_MAX_W)
+        # Centred by stretches, not an alignment flag: a layout sizes an
+        # aligned label to its preferred width and one line of height, which
+        # cut a wrapped message short.
+        message_row = QHBoxLayout()
+        message_row.addStretch(1)
+        message_row.addWidget(self.message_label, 100)
+        message_row.addStretch(1)
+        layout.addLayout(message_row)
         # Only after parenting (see cci_ui.widgets).
         self.message_label.setVisible(bool(message))
         self.action_button = None
@@ -141,6 +171,8 @@ class EmptyState(QWidget):
 
 
 __all__ = [
+    "COLUMN_MAX_W",
+    "SIZE_SAMPLE_ROWS",
     "EmptyState",
     "PlaceholderListWidget",
     "PlaceholderTableWidget",

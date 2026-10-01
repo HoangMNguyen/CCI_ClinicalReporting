@@ -24,7 +24,7 @@ from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QFileDialog
 
 from cci_ui.tasks import defer_if_busy, run_task
-from clinical_reporting import feedback
+from clinical_reporting import feedback, steps
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
 from clinical_reporting.session import new_report, replace_base_data, without_base_data
 from clinical_reporting.ui.dialogs import choose_settings_directory
@@ -125,6 +125,7 @@ class SettingsTabMixin:
 
         self.update_all_ui()
         self._show_input_file()
+        self._show_data_read(data)
         self._set_label_text(self.label_setting, "")
 
         if self.ui.checkBox_saved_setting.isChecked():
@@ -155,6 +156,7 @@ class SettingsTabMixin:
         self._forget_export_results()
 
         self._show_input_file()
+        self._show_data_read(None)
         self.ui.pushButton_remove_input.setEnabled(False)
         self._set_label_text(self.label_setting, "")
 
@@ -252,6 +254,7 @@ class SettingsTabMixin:
         self._failed_cut_off_reload = None
         self.update_all_ui()
         self._show_input_file()
+        self._show_data_read(base_data)
 
     def _show_cut_off_reload_error(
         self,
@@ -287,6 +290,14 @@ class SettingsTabMixin:
             f"Could not read {os.path.basename(file_path)}: {exc}\n{outcome}", details
         )
         self._show_input_file(problem)
+
+    def _show_data_read(self, data: Optional[Dict[str, pd.DataFrame]]) -> None:
+        """Under the ZIP: how many forms and rows were read, and when."""
+        if data is None:
+            summary = ""
+        else:
+            summary = steps.source_summary(data, datetime.datetime.now())
+        self.ui.section_input_file.set_footnote(summary)
 
     def _show_input_file(self, problem: Optional[feedback.Message] = None) -> None:
         """Show the loaded ZIP on the Source data page, and *problem* if any."""
@@ -327,7 +338,7 @@ class SettingsTabMixin:
             combo.addItem(saved.name, saved.key)
 
         if saved_settings:
-            combo.insertItem(0, "Select a saved setting", None)
+            combo.insertItem(0, combo.placeholderText(), None)
             combo.setEnabled(True)
         else:
             combo.addItem("No saved settings found for this study", None)

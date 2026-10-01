@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock
 
 import pandas as pd
-from tests.unit.fakes import FakePathPicker
+from tests.unit.fakes import FakePathPicker, FakeSection, FakeTableView
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
@@ -38,6 +38,8 @@ class _ComboBox:
 class _Ui:
     def __init__(self):
         self.pathPicker_input_file = FakePathPicker("corelisting.zip")
+        self.section_input_file = FakeSection()
+        self.tableView_preview = FakeTableView()
         self.banner_input_file = _TextWidget()
         self.pushButton_remove_input = _TextWidget()
         self.comboBox_saved_setting = _ComboBox()
@@ -96,6 +98,7 @@ def test_remove_input_clears_core_data_and_preserves_additional_forms():
 
     assert set(widget.report.data) == {"Extra"}
     assert set(widget.report.selected_forms) == {"Extra"}
+    assert widget.ui.tableView_preview.model() is None  # The old preview goes.
     assert widget.report.static_filter_items == []
     assert widget.report.study_name is None
     assert widget.study_name is None

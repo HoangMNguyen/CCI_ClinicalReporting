@@ -8,14 +8,21 @@ Three kinds of page decide how extra window space is used:
   in it take the extra space and scroll inside themselves.
 - ``split``: like workspace, for a main area plus a side panel
   (see :class:`~cci_ui.widgets.responsive.ResponsiveSplit`).
+
+A page with nothing to show yet (no data loaded, say) can show an empty
+state in place of its body and header actions: :meth:`Page.set_empty_state`
+and :meth:`Page.show_empty_state`. :meth:`Page.add_shortcut` adds a key that
+works while the page's content is shown (not its empty state, not when
+another page is).
 """
 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -84,8 +91,11 @@ class Page(QWidget):
 
         self.title_label = text_label(title, style="title1")
         self.subtitle_label = text_label(subtitle, tone="secondary", wrap=True)
-        self.actions = QHBoxLayout()
+        self._actions_widget = QWidget()
+        self.actions = QHBoxLayout(self._actions_widget)
+        self.actions.setContentsMargins(0, 0, 0, 0)
         self.actions.setSpacing(8)
+        self._empty_state: Optional[QWidget] = None
 
         self._header = QWidget()
         header_layout = QHBoxLayout(self._header)
@@ -97,11 +107,17 @@ class Page(QWidget):
         header_layout.addLayout(titles, 1)
         # Only after parenting (see cci_ui.widgets).
         self.subtitle_label.setVisible(bool(subtitle))
-        header_layout.addLayout(self.actions)
+        header_layout.addWidget(self._actions_widget)
 
+        # The body and, when set, the empty state shown in its place.
+        self._body_widget = QWidget()
         #: Put the page's content here.
-        self.body = QVBoxLayout()
+        self.body = QVBoxLayout(self._body_widget)
+        self.body.setContentsMargins(0, 0, 0, 0)
         self.body.setSpacing(12)
+        self._main = QVBoxLayout()
+        self._main.setContentsMargins(0, 0, 0, 0)
+        self._main.addWidget(self._body_widget, 1)
 
         self._footer_widget = QWidget()
         #: Footer buttons, right-aligned (e.g. "Next: Forms →").
@@ -131,7 +147,7 @@ class Page(QWidget):
         self._column.setProperty("cciRole", "pageContent")
         self._column_layout = QVBoxLayout(self._column)
         self._column_layout.addWidget(self._header)
-        self._column_layout.addLayout(self.body)
+        self._column_layout.addLayout(self._main)
         self._column_layout.addStretch(1)
         self._column_layout.addWidget(self._footer_widget)
 
@@ -157,7 +173,7 @@ class Page(QWidget):
         self._header_margins.addWidget(self._header)
         outer.addLayout(self._header_margins)
         self._body_margins = QVBoxLayout()
-        self._body_margins.addLayout(self.body, 1)
+        self._body_margins.addLayout(self._main, 1)
         outer.addLayout(self._body_margins, 1)
         outer.addWidget(self._footer_widget)
 
@@ -177,6 +193,63 @@ class Page(QWidget):
 
     def title(self) -> str:
         return self.title_label.text()
+
+    def set_subtitle(self, text: str) -> None:
+        """Change the line under the title; "" hides it."""
+        self.subtitle_label.setText(text)
+        self.subtitle_label.setVisible(bool(text))
+
+    def add_shortcut(
+        self,
+        keys: Union[str, QKeySequence, QKeySequence.StandardKey],
+        action: Callable[[], None],
+    ) -> QShortcut:
+        """Run *action* on *keys* while this page's content is shown.
+
+        Not while another page is shown, nor while the page shows its empty
+        state. For a button, pass its ``click``: it does nothing while the
+        button is disabled.
+        """
+        # Parented to the body, which is hidden along with the page or by
+        # the empty state; a hidden parent turns the shortcut off.
+        shortcut = QShortcut(QKeySequence(keys), self._body_widget)
+        shortcut.activated.connect(action)
+        return shortcut
+
+    # ------------------------------------------------------------------
+    # Empty state
+
+    def set_empty_state(self, state: QWidget) -> None:
+        """What the page shows instead of its body and actions when empty.
+
+        It stays hidden until :meth:`show_empty_state`; the title, subtitle,
+        and footer stay either way.
+        """
+        if self._empty_state is not None:
+            raise ValueError("The page already has an empty state")
+        self._empty_state = state
+        self._main.addWidget(state, 1)
+        state.hide()  # Only after parenting (see cci_ui.widgets).
+
+    def show_empty_state(self, show: bool) -> None:
+        """Show the empty state in place of the body and actions, or not."""
+        if self._empty_state is None:
+            raise ValueError("Call set_empty_state first")
+        self._empty_state.setVisible(show)
+        self._body_widget.setVisible(not show)
+        self._actions_widget.setVisible(not show)
+
+    @property
+    def empty_state(self) -> Optional[QWidget]:
+        """The widget :meth:`set_empty_state` gave the page, if any."""
+        return self._empty_state
+
+    def is_showing_empty_state(self) -> bool:
+        """Whether the empty state is in place of the body.
+
+        (Even while the page itself is hidden.)
+        """
+        return self._empty_state is not None and not self._body_widget.isVisibleTo(self)
 
     # ------------------------------------------------------------------
     # Header actions and footer

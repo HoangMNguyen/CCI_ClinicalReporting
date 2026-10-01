@@ -22,6 +22,7 @@ class SourceDataPage(Page):
     SECTION = "Data"
     ICON = IconName.SOURCE_DATA
     EXPORTS = (
+        "section_input_file",
         "pathPicker_input_file",
         "pushButton_input_file",
         "pushButton_remove_input",
@@ -37,7 +38,7 @@ class SourceDataPage(Page):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Source data",
+            steps.TITLES[self.KEY],
             "Load a Corelisting export to start a report.",
             kind=PageKind.FORM,
             parent=parent,
@@ -45,12 +46,16 @@ class SourceDataPage(Page):
         # Why the ZIP couldn't be read, when it couldn't.
         self.banner_input_file = StatusBanner()
         self.pathPicker_input_file = PathPicker(
-            button_text="Choose ZIP…", placeholder="No ZIP chosen", removable=True
+            button_text="Choose ZIP…",
+            placeholder="No ZIP chosen",
+            removable=True,
+            remove_text="Remove file",
         )
         self.pushButton_input_file = self.pathPicker_input_file.button
         self.pushButton_remove_input = self.pathPicker_input_file.clear_button
-        zip_section = Section("Corelisting ZIP")
-        zip_section.add_row("File", self.pathPicker_input_file)
+        # Its footnote says what was read (forms, rows, when).
+        self.section_input_file = Section("Corelisting ZIP")
+        self.section_input_file.add_row("File", self.pathPicker_input_file)
 
         self.cutoff_checkBox = ToggleSwitch()
         self.cutoff_checkBox.setAccessibleName("Apply cut-off date")
@@ -69,6 +74,9 @@ class SourceDataPage(Page):
         self.checkBox_saved_setting = ToggleSwitch()
         self.checkBox_saved_setting.setAccessibleName("Start from a saved setting")
         self.comboBox_saved_setting = QComboBox()
+        # Shown while the list is empty (the toggle is off); the list's own
+        # first entry repeats it.
+        self.comboBox_saved_setting.setPlaceholderText("Choose a setting…")
         self.pathPicker_settings_folder = PathPicker(
             button_text="Settings folder…", placeholder="No folder chosen"
         )
@@ -84,7 +92,7 @@ class SourceDataPage(Page):
 
         for widget in (
             self.banner_input_file,
-            zip_section,
+            self.section_input_file,
             cutoff_section,
             saved_section,
             self.label_setting,

@@ -4,7 +4,8 @@
 order, puts them in an :class:`~cci_ui.widgets.shell.AppShell` (sidebar,
 header, status bar), and exposes each page's ``EXPORTS`` as its own
 attributes. The behavior mixins reach widgets through it as
-``self.ui.<name>``.
+``self.ui.<name>``. The pages of :data:`clinical_reporting.steps.NEEDS_DATA`
+get a "No data loaded" state, whose button chooses a Corelisting ZIP.
 
 To add or reorder a step, change :data:`PAGE_CLASSES` (and
 :data:`clinical_reporting.steps.STEP_KEYS`, which the pages' keys come from).
@@ -17,9 +18,12 @@ from typing import List, Optional
 
 from PySide6.QtWidgets import QMainWindow
 
+from cci_ui.icons import IconName
 from cci_ui.theme.manager import ThemeManager
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.shell import AppShell
+from cci_ui.widgets.views import EmptyState
+from clinical_reporting import steps
 
 from .pages.additional_input import AdditionalInputPage
 from .pages.order_rename import OrderRenamePage
@@ -69,7 +73,20 @@ class ClinicalReportingUi:
             page.set_next(
                 next_page.title(), partial(self.shell.set_current, next_page.KEY)
             )
+        for page in self.pages:
+            if page.KEY in steps.NEEDS_DATA:
+                page.set_empty_state(self._no_data_state())
         host.setCentralWidget(self.shell)
+
+    def _no_data_state(self) -> EmptyState:
+        return EmptyState(
+            IconName.ZIP_FILE,
+            steps.NO_DATA,
+            steps.NO_DATA_HINT,
+            action_text="Choose ZIP…",
+            # The Source data page's button, so its handler does the rest.
+            on_action=self.pushButton_input_file.click,
+        )
 
 
 __all__ = ["APP_NAME", "PAGE_CLASSES", "WINDOW_NAMES", "ClinicalReportingUi"]

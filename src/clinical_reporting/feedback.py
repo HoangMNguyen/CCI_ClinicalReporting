@@ -9,7 +9,7 @@ later) can style it without parsing the text.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Iterable, Optional
 
 KINDS = ("info", "success", "warning", "error")
 
@@ -74,6 +74,17 @@ def one_line(text: str) -> str:
     return " ".join(ended + lines[-1:])
 
 
+def short_list(names: Iterable[str], shown: int = 5) -> str:
+    """*names* joined by commas, at most *shown* of them: "a, b and 3 more".
+
+    For a message's one line; put the full list in its details.
+    """
+    names = list(names)
+    if len(names) <= shown:
+        return ", ".join(names)
+    return f"{', '.join(names[:shown])} and {len(names) - shown} more"
+
+
 __all__ = [
     "KINDS",
     "Message",
@@ -81,6 +92,7 @@ __all__ = [
     "info",
     "kind_of",
     "one_line",
+    "short_list",
     "success",
     "warning",
 ]

@@ -17,3 +17,10 @@ def test_one_line_drops_line_breaks_and_bullets():
     assert feedback.one_line("Could not read x: bad zip\nNothing was loaded.") == (
         "Could not read x: bad zip. Nothing was loaded."
     )
+
+
+def test_short_list_names_a_few_and_counts_the_rest():
+    assert feedback.short_list(["a.csv", "b.csv"]) == "a.csv, b.csv"
+    assert feedback.short_list([f"f{n}" for n in range(8)], shown=3) == (
+        "f0, f1, f2 and 5 more"
+    )

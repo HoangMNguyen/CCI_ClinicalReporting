@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QAbstractItemView, QHBoxLayout, QWidget
 
 from cci_ui.icons import IconName
@@ -18,7 +19,10 @@ from ._common import make_table
 
 
 class OrderRenamePage(Page):
-    """Where the report's columns get their order and readable names."""
+    """Where the report's columns get their order and readable names.
+
+    Ctrl+F goes to the search field.
+    """
 
     KEY = steps.ORDER
     SECTION = "Output"
@@ -37,7 +41,7 @@ class OrderRenamePage(Page):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Order & rename",
+            steps.TITLES[self.KEY],
             "Set the column order of the Excel output and give columns readable names.",
             parent=parent,
         )
@@ -84,3 +88,6 @@ class OrderRenamePage(Page):
         )
         self.body.addLayout(toolbar)
         self.body.addWidget(table_card(self.tableWidget_rename), 1)
+        self.add_shortcut(
+            QKeySequence.StandardKey.Find, self.lineEdit_order_search.activate
+        )

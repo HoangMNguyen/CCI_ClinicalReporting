@@ -2,64 +2,35 @@
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QBoxLayout,
-    QFrame,
-    QHBoxLayout,
-    QLineEdit,
-    QScrollArea,
-    QSizePolicy,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QWidget
 
 from cci_ui.icons import IconName
-from cci_ui.theme.manager import repolish
 from cci_ui.widgets.buttons import make_button
-from cci_ui.widgets.labels import section_label, text_label
+from cci_ui.widgets.labels import text_label
 from cci_ui.widgets.page import Page, PageKind
 from cci_ui.widgets.path_picker import PathPicker
 from cci_ui.widgets.responsive import ResponsiveSplit
+from cci_ui.widgets.side_panel import SidePanel, full_width, labeled_field
 from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.tables import style_table, table_card
 from cci_ui.widgets.toggle import ToggleSwitch
 from cci_ui.widgets.views import PreviewTableView
 from clinical_reporting import steps
+from clinical_reporting.filenames import output_file_name
 
-_PANEL_PADDING = 14
-
-
-def _field(label: str, widget: QWidget) -> QVBoxLayout:
-    """A small label above *widget*, as in the panel's fields."""
-    layout = QVBoxLayout()
-    layout.setSpacing(4)
-    layout.addWidget(text_label(label, style="callout", tone="secondary"))
-    layout.addWidget(widget)
-    return layout
-
-
-def _panel_section(title: str) -> Tuple[QWidget, QVBoxLayout]:
-    """One titled section of the panel, and the layout to fill it."""
-    section = QWidget()
-    layout = QVBoxLayout(section)
-    layout.setContentsMargins(
-        _PANEL_PADDING, _PANEL_PADDING, _PANEL_PADDING, _PANEL_PADDING
-    )
-    layout.setSpacing(10)
-    layout.addWidget(section_label(title))
-    return section, layout
-
-
-def _wide(button: QWidget) -> QWidget:
-    button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-    return button
+#: The line under the title until a preview shows its size there.
+SUBTITLE = "Check the rows, then export them to Excel."
 
 
 class PreviewExportPage(Page):
-    """The last step: check the rows, export them, save the setting for reuse."""
+    """The last step: check the rows, export them, save the setting for reuse.
+
+    The page keeps its own captions current: the preview's size under the
+    title, and the export's file name under the name field. F5 refreshes,
+    Ctrl+E exports, and Ctrl+S saves the setting.
+    """
 
     KEY = steps.PREVIEW
     SECTION = "Output"
@@ -82,10 +53,7 @@ class PreviewExportPage(Page):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
-            "Preview & export",
-            "Check the rows, then export them to Excel.",
-            kind=PageKind.SPLIT,
-            parent=parent,
+            steps.TITLES[self.KEY], SUBTITLE, kind=PageKind.SPLIT, parent=parent
         )
         self.pushButton_refresh_preview = make_button(
             "Refresh", icon_name=IconName.REFRESH
@@ -96,15 +64,24 @@ class PreviewExportPage(Page):
             "The preview appears here when the report can run."
         )
         style_table(self.tableView_preview, row_numbers=True)
+        self.tableView_preview.modelChanged.connect(self._show_preview_size)
 
-        self.split = ResponsiveSplit(
-            table_card(self.tableView_preview), self._build_panel()
-        )
-        self.split.stackedChanged.connect(self._arrange_panel)
-        self._arrange_panel(self.split.is_stacked())
+        self.panel = self._build_panel()
+        self.split = ResponsiveSplit(table_card(self.tableView_preview), self.panel)
+        self.panel.follow(self.split)
         self.body.addWidget(self.split, 1)
 
-    def _build_panel(self) -> QWidget:
+        for keys, button, tooltip in (
+            ("F5", self.pushButton_refresh_preview, "Build the preview again (F5)"),
+            ("Ctrl+E", self.pushButton_run, "Export to Excel (Ctrl+E)"),
+            ("Ctrl+S", self.pushButton_save_setting, "Save setting (Ctrl+S)"),
+        ):
+            button.setToolTip(tooltip)
+            self.add_shortcut(keys, button.click)  # Not while it's disabled.
+
+    def _build_panel(self) -> SidePanel:
+        panel = SidePanel()
+
         # Export
         self.pathPicker_output_folder = PathPicker(
             button_text="Choose…", placeholder="No folder chosen"
@@ -112,23 +89,20 @@ class PreviewExportPage(Page):
         self.pushButton_output_folder = self.pathPicker_output_folder.button
         self.lineEdit_file_name = QLineEdit()
         self.lineEdit_file_name.setPlaceholderText("Optional, e.g. DEMO01 DSMB")
+        self.lineEdit_file_name.textChanged.connect(self._show_file_name)
+        self.file_name_caption = text_label(style="caption", wrap=True)
         self.label_run_confirmation = StatusBanner()
-        self.pushButton_run = _wide(
+        self.pushButton_run = full_width(
             make_button("Export to Excel", variant="primary", icon_name=IconName.EXPORT)
         )
-        self._export_section, export = _panel_section("Export")
-        export.addLayout(_field("Folder", self.pathPicker_output_folder))
-        name_field = _field("File name", self.lineEdit_file_name)
-        name_field.addWidget(
-            text_label(
-                "A date and time are added: name YYMMDD_HHMMSS.xlsx",
-                style="caption",
-                wrap=True,
-            )
-        )
+        export = panel.add_section("Export")
+        export.addLayout(labeled_field("Folder", self.pathPicker_output_folder))
+        name_field = labeled_field("File name", self.lineEdit_file_name)
+        name_field.addWidget(self.file_name_caption)
         export.addLayout(name_field)
         export.addWidget(self.label_run_confirmation)
         export.addWidget(self.pushButton_run)
+        self._show_file_name()
 
         # Save setting
         self.checkBox_save_current_setting = ToggleSwitch()
@@ -145,56 +119,30 @@ class PreviewExportPage(Page):
         )
         self.pushButton_output_setting = self.pathPicker_output_setting_folder.button
         self.label_save_confirmation = StatusBanner()
-        self.pushButton_save_setting = _wide(
+        self.pushButton_save_setting = full_width(
             make_button("Save setting", icon_name=IconName.SAVE)
         )
-        self._save_section, save = _panel_section("Save setting")
+        save = panel.add_section("Save setting")
         save.addLayout(save_toggle)
-        save.addLayout(_field("Name", self.lineEdit_setting_name))
-        save.addLayout(_field("Folder", self.pathPicker_output_setting_folder))
+        save.addLayout(labeled_field("Name", self.lineEdit_setting_name))
+        save.addLayout(labeled_field("Folder", self.pathPicker_output_setting_folder))
         save.addWidget(self.label_save_confirmation)
         save.addWidget(self.pushButton_save_setting)
-
-        self._separator = QFrame()
-        self._sections = QBoxLayout(QBoxLayout.Direction.TopToBottom)
-        self._sections.setContentsMargins(0, 0, 0, 0)
-        self._sections.setSpacing(0)
-        top = Qt.AlignmentFlag.AlignTop
-        self._sections.addWidget(self._export_section, 0, top)
-        self._sections.addWidget(self._separator)
-        self._sections.addWidget(self._save_section, 0, top)
-        self._sections.addStretch(1)  # Beside the grid: spare height goes last.
-
-        content = QWidget()
-        content.setProperty("cciRole", "pageContent")
-        content.setLayout(self._sections)
-        scroll = QScrollArea()
-        scroll.setProperty("cciRole", "page")
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(content)
-
-        panel = QFrame()
-        panel.setProperty("cciRole", "card")
-        panel_layout = QVBoxLayout(panel)
-        panel_layout.setContentsMargins(1, 1, 1, 1)
-        panel_layout.addWidget(scroll)
         return panel
 
-    def _arrange_panel(self, stacked: bool) -> None:
-        """Sections one above the other beside the grid, side by side below it."""
-        self._sections.setDirection(
-            QBoxLayout.Direction.LeftToRight
-            if stacked
-            else QBoxLayout.Direction.TopToBottom
+    def _show_preview_size(self) -> None:
+        """Under the title: the preview's rows and columns, once it has some."""
+        model = self.tableView_preview.model()
+        rows = model.rowCount() if model is not None else 0
+        self.set_subtitle(
+            steps.preview_caption(rows, model.columnCount()) if rows else SUBTITLE
         )
-        # Below the grid the two sections share the width; beside it they
-        # keep their own height and the trailing stretch takes the rest.
-        share = 1 if stacked else 0
-        self._sections.setStretchFactor(self._export_section, share)
-        self._sections.setStretchFactor(self._save_section, share)
-        self._sections.setStretch(self._sections.count() - 1, 1 - share)
-        self._separator.setProperty(
-            "cciRole", "separatorVertical" if stacked else "separator"
-        )
-        repolish(self._separator)
+
+    def _show_file_name(self) -> None:
+        """Under the name field: the file the export would write now."""
+        name = output_file_name(self.lineEdit_file_name.text())
+        self.file_name_caption.setText(f"Saved as {name} (date and time of export)")
+
+    def showEvent(self, event) -> None:  # noqa: N802 (Qt override)
+        super().showEvent(event)
+        self._show_file_name()  # The time in it moves on.
