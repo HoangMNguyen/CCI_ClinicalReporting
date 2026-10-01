@@ -13,6 +13,8 @@ import pytest
 @pytest.fixture
 def lambda_app(monkeypatch):
     path = Path(__file__).parents[2] / "infra" / "run_counter" / "function" / "app.py"
+    if not path.is_file():  # infra/ is ignored by Git, so a clone has none
+        pytest.skip("infra/run_counter is not in this checkout")
     spec = importlib.util.spec_from_file_location("run_counter_lambda", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -30,7 +32,9 @@ def _event(
     saved_name: str | None = None,
 ):
     if saved_name is None:
-        saved_name = "monthly report.xlsx" if event_type == "report_saved" else "baseline"
+        saved_name = (
+            "monthly report.xlsx" if event_type == "report_saved" else "baseline"
+        )
     name_field = "report_name" if event_type == "report_saved" else "setting_name"
     return {
         "headers": {"authorization": f"Bearer {token}"},
@@ -99,14 +103,21 @@ def test_legacy_event_without_a_saved_name_remains_accepted(lambda_app):
     response = lambda_app.lambda_handler(event, None)
 
     assert response["statusCode"] == 204
-    assert "report_name" not in client.transactions[0]["TransactItems"][0]["Put"]["Item"]
+    assert (
+        "report_name" not in client.transactions[0]["TransactItems"][0]["Put"]["Item"]
+    )
 
 
 def test_invalid_auth_and_payload_are_rejected_without_dynamodb(lambda_app):
     client = FakeDynamoDB()
     lambda_app._dynamodb_client = client
 
-    assert lambda_app.lambda_handler(_event(str(uuid.uuid4()), "wrong"), None)["statusCode"] == 401
+    assert (
+        lambda_app.lambda_handler(_event(str(uuid.uuid4()), "wrong"), None)[
+            "statusCode"
+        ]
+        == 401
+    )
     assert lambda_app.lambda_handler(_event("not-a-uuid"), None)["statusCode"] == 400
     assert (
         lambda_app.lambda_handler(

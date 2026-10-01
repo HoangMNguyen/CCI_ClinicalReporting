@@ -14,11 +14,9 @@ def test_enrollment_log_subject_id_is_written_as_text(tmp_path, study_name, colu
 
     enrollment_log = EnrollmentLog.__new__(EnrollmentLog)
     enrollment_log.study_name = study_name
-    enrollment_log.output_dir = str(tmp_path)
-    enrollment_log.output_file_name = f"enrollment_{study_name}"
     enrollment_log.output_df = pd.DataFrame([values], columns=columns)
 
-    enrollment_log.output()
+    enrollment_log.output(Path(tmp_path) / f"enrollment_{study_name}.xlsx")
 
     worksheet = load_workbook(Path(tmp_path) / f"enrollment_{study_name}.xlsx")[f"Enrollment Log {study_name}"]
 

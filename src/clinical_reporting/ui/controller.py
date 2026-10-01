@@ -29,7 +29,7 @@ def compose_behaviors(*behaviors: type):
 class FeatureController:
     """Bind methods from cohesive behavior classes to one main window.
 
-    The existing tab behavior methods intentionally continue to run with the
+    The existing page behavior methods intentionally continue to run with the
     window as ``self`` during the migration.  That preserves shared state and
     signal wiring while removing the fragile ten-class inheritance chain.
     """

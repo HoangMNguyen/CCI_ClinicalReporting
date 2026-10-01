@@ -7,37 +7,29 @@ The version is deliberately NOT part of this file's name. It comes from
 
     python -m PyInstaller "CCI Automation.spec"
     $env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Automation.spec"
-
-Clockify credentials come from the ``CCI_CLOCKIFY_API_KEY`` and
-``CCI_CLOCKIFY_WORKSPACE_ID`` environment variables at run time. A local
-git-ignored ``src/cci_automation/clockify.json`` is bundled only if present,
-as a fallback for machines where the variables are not set.
+    Remove-Item Env:APP_VERSION  # or every later build gets 2.01 too
 """
 
 import sys
-from pathlib import Path
 
 # SPECPATH (the repository root) is injected by PyInstaller, and is where
 # build_support.py lives.
 sys.path.insert(0, SPECPATH)
 
-from build_support import package_version, version_resource
+from build_support import app_icon, package_version, ui_datas, version_resource
 
 PACKAGE = "cci_automation"
 PRODUCT = "CCI Automation"
-DESCRIPTION = "Enrollment Logs, DSMB Reports, Clockify dashboards, formatting fixes"
+DESCRIPTION = "Enrollment Logs, DSMB Reports, formatting fixes"
 
 VERSION = package_version(PACKAGE)
 EXE_NAME = f"{PRODUCT} V{VERSION}"
-
-_clockify_json = Path(SPECPATH) / "src" / "cci_automation" / "clockify.json"
-_datas = [(str(_clockify_json), "cci_automation")] if _clockify_json.exists() else []
 
 a = Analysis(
     ['src\\cci_automation\\__main__.py'],
     pathex=['src'],
     binaries=[],
-    datas=_datas,
+    datas=ui_datas(),
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -68,4 +60,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version=version_resource(VERSION, PRODUCT, DESCRIPTION, EXE_NAME),
+    icon=app_icon("cci-automation"),
 )

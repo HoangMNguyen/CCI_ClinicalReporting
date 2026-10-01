@@ -4,8 +4,13 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QComboBox, QTableWidget, QTableWidgetItem
 
+from cci_ui.theme import manager as theme_manager
+from cci_ui.theme.manager import Theme, current
+from cci_ui.theme.palette import qcolor
+from cci_ui.theme.tokens import COMFORTABLE, DARK, Density, Scheme
 from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
+from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.join_config import JoinConfigMixin
 
 
@@ -17,10 +22,18 @@ def qapp():
     return app
 
 
-class DummyJoinWidget(JoinConfigMixin):
+class DummyJoinWidget(JoinConfigMixin, WidgetBaseMixin):
     def __init__(self, report: CLReport, table: QTableWidget):
         self.report = report
         self.ui = types.SimpleNamespace(tableWidget_join=table)
+
+
+def _danger():
+    return qcolor(current().colors.danger_text)
+
+
+def _is_invalid(combo) -> bool:
+    return bool(combo.property("invalid"))
 
 
 def _build_join_table() -> QTableWidget:
@@ -90,13 +103,10 @@ def test_duplicate_join_orders_are_highlighted(qapp):
 
     widget._highlight_duplicate_join_orders()
 
-    # The unique order (row 0) keeps default styling.
-    assert table.cellWidget(0, 4).styleSheet() == ""
-    # The shared order (rows 1 and 2) is shown red and bold.
-    for row in (1, 2):
-        style = table.cellWidget(row, 4).styleSheet()
-        assert "color: red" in style
-        assert "font-weight: bold" in style
+    # The unique order (row 0) is fine; the shared order (rows 1 and 2) is
+    # marked invalid, which the stylesheet draws in the danger color.
+    assert not _is_invalid(table.cellWidget(0, 4))
+    assert _is_invalid(table.cellWidget(1, 4)) and _is_invalid(table.cellWidget(2, 4))
 
 
 def test_join_order_highlight_clears_when_unique(qapp):
@@ -104,17 +114,17 @@ def test_join_order_highlight_clears_when_unique(qapp):
     widget = DummyJoinWidget(CLReport(), table)
 
     widget._highlight_duplicate_join_orders()
-    assert "color: red" in table.cellWidget(0, 4).styleSheet()
+    assert _is_invalid(table.cellWidget(0, 4))
 
-    # Resolve the conflict and re-run; styling should reset.
+    # Resolve the conflict and re-run; the mark should clear.
     table.cellWidget(1, 4).setCurrentText("1")
     widget._highlight_duplicate_join_orders()
 
-    assert table.cellWidget(0, 4).styleSheet() == ""
-    assert table.cellWidget(1, 4).styleSheet() == ""
+    assert not _is_invalid(table.cellWidget(0, 4))
+    assert not _is_invalid(table.cellWidget(1, 4))
 
 
-def test_form_name_is_red_when_non_first_form_has_no_join_item(qapp):
+def test_form_name_is_in_the_danger_color_when_it_needs_a_join_item(qapp):
     report = CLReport()
     report.selected_forms = {"DM": CLForm("DM")}
     table = _build_join_table()
@@ -124,7 +134,7 @@ def test_form_name_is_red_when_non_first_form_has_no_join_item(qapp):
 
     widget.update_join_list()
 
-    assert table.item(0, 0).foreground().color() == Qt.red
+    assert table.item(0, 0).foreground().color() == _danger()
 
 
 def test_missing_join_item_highlight_clears_when_item_is_selected(qapp):
@@ -133,7 +143,7 @@ def test_missing_join_item_highlight_clears_when_item_is_selected(qapp):
     for col in range(1, 4):
         table.cellWidget(0, col).setCurrentText("")
     widget._highlight_missing_join_items()
-    assert table.item(0, 0).foreground().color() == Qt.red
+    assert table.item(0, 0).foreground().color() == _danger()
 
     table.cellWidget(0, 1).setCurrentText("Subject")
     widget._highlight_missing_join_items()
@@ -162,3 +172,23 @@ def test_first_form_without_join_items_is_not_highlighted(qapp):
     widget._highlight_missing_join_items()
 
     assert table.item(0, 0).foreground().style() == Qt.NoBrush
+
+
+def test_painting_the_missing_items_uses_the_current_theme_only(qapp, monkeypatch):
+    table = _build_join_table()
+    widget = DummyJoinWidget(CLReport(), table)
+    refresh_calls = []
+    widget._refresh_run_availability = lambda: refresh_calls.append(True)
+    for col in range(1, 4):
+        table.cellWidget(0, col).setCurrentText("")
+    monkeypatch.setattr(
+        theme_manager,
+        "_current",
+        Theme(Scheme.DARK, Density.COMFORTABLE, DARK, COMFORTABLE),
+    )
+
+    # What a theme change calls: recolor, without re-running the run checks.
+    widget._paint_missing_join_items()
+
+    assert table.item(0, 0).foreground().color() == qcolor(DARK.danger_text)
+    assert refresh_calls == []

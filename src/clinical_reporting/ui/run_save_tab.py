@@ -1,25 +1,37 @@
 """Run, preview, and persistence mixin for the Clinical Reporting widget.
 
-This module handles everything on the final "Preview and Save" tab,
+This module handles everything on the final "Preview & export" page,
 including preview generation, report export, and saved-setting
-persistence.
+persistence. Building the preview and the export runs in the background
+(:func:`cci_ui.tasks.run_task`).
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
+import traceback
 from typing import Optional
 
-from clinical_reporting.export import write_xlsx
+import pandas as pd
+
+from cci_ui.tasks import defer_if_busy, run_task
+from clinical_reporting import feedback
+from clinical_reporting.filenames import output_file_name
+from clinical_reporting.session import build_report, export_report
 from clinical_reporting.telemetry import (
     record_successful_export,
     record_successful_setting_save,
 )
 from clinical_reporting.ui.dialogs import choose_settings_directory
 from clinical_reporting.ui.preview_model import ReportPreviewModel
-from clinical_reporting.validation import ReportValidationError, format_issue_messages
+from clinical_reporting.validation import (
+    CANNOT_RUN_PREFIX,
+    JOIN_BLOCKING_ISSUE_CODES,
+    ReportValidationError,
+    cannot_run_message,
+    report_issues_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +42,14 @@ class RunAndSaveMixin:
     def _init_run_and_save_controls(self) -> None:
         """Connect run, save, and persistence-related buttons."""
         self.ui.pushButton_run.clicked.connect(self.click_run)
+        self.ui.pushButton_refresh_preview.clicked.connect(self.preview_report)
         self.ui.pushButton_save_setting.clicked.connect(self.click_save_setting)
-        self.ui.pushButton_output_setting.clicked.connect(self.click_output_setting_folder)
-        self.ui.checkBox_save_current_setting.stateChanged.connect(self.on_save_current_setting_state_changed)
+        self.ui.pushButton_output_setting.clicked.connect(
+            self.click_output_setting_folder
+        )
+        self.ui.checkBox_save_current_setting.stateChanged.connect(
+            self.on_save_current_setting_state_changed
+        )
         self.on_save_current_setting_state_changed()
 
     def on_save_current_setting_state_changed(self) -> None:
@@ -51,7 +68,10 @@ class RunAndSaveMixin:
         if not self.ui.checkBox_save_current_setting.isChecked():
             self._set_label_text(
                 self.label_save_confirmation,
-                "Enable 'Save the current setting?' before selecting a settings folder.",
+                feedback.warning(
+                    "Turn on 'Save these settings for reuse' before choosing a "
+                    "settings folder."
+                ),
             )
             return
 
@@ -62,7 +82,9 @@ class RunAndSaveMixin:
         if not self.ui.checkBox_save_current_setting.isChecked():
             self._set_label_text(
                 self.label_save_confirmation,
-                "Enable 'Save the current setting?' before saving.",
+                feedback.warning(
+                    "Turn on 'Save these settings for reuse' before saving."
+                ),
             )
             return
 
@@ -70,19 +92,24 @@ class RunAndSaveMixin:
         if not settings_name:
             self._set_label_text(
                 self.label_save_confirmation,
-                "Please enter a setting name before saving.",
+                feedback.warning("Please enter a setting name before saving."),
             )
             return
 
-        settings_dir, error = self._prepare_settings_directory()
-        if error:
-            self._set_label_text(self.label_save_confirmation, error)
-            return
-
-        settings_path = os.path.join(settings_dir, f"{settings_name}.json")
-        error = self._save_settings_to_path(settings_path, settings_name)
-        if error:
-            self._set_label_text(self.label_save_confirmation, error)
+        # Remember the folder so both settings-folder buttons open there next.
+        self.settings_directory = (
+            self.settings_directory or self._get_default_settings_directory()
+        )
+        try:
+            settings = self.report.settings_to_dict(settings_name)
+            settings_path = self._settings_store().save(settings_name, settings)
+        except Exception as exc:  # pylint: disable=broad-except
+            self._set_label_text(
+                self.label_save_confirmation,
+                feedback.error(
+                    f"Failed to save settings: {exc}", traceback.format_exc()
+                ),
+            )
             return
 
         try:
@@ -94,67 +121,23 @@ class RunAndSaveMixin:
 
         self._set_label_text(
             self.label_save_confirmation,
-            f"Settings saved to {settings_path}",
+            feedback.success(f"Settings saved to {settings_path}"),
         )
         if self.ui.checkBox_saved_setting.isChecked():
             self._refresh_saved_settings()
 
-    def _prepare_settings_directory(self) -> tuple[str, Optional[str]]:
-        """Ensure the settings directory exists before saving."""
-        settings_dir = self.settings_directory or self._get_default_settings_directory()
-        self.settings_directory = settings_dir
-        try:
-            os.makedirs(settings_dir, exist_ok=True)
-        except OSError as exc:
-            return settings_dir, f"Failed to prepare settings folder: {exc}"
-        return settings_dir, None
-
-    def _save_settings_to_path(self, path: str, settings_name: str) -> Optional[str]:
-        """Serialize the current report settings to *path*."""
-        try:
-            self.report.save_setting_to_json(path, setting_name=settings_name)
-        except Exception as exc:  # pylint: disable=broad-except
-            return f"Failed to save settings: {exc}"
-        return None
-
     # ------------------------------------------------------------------
     # Join-configuration guarding
 
-    #: Prefix used for the inline join-order conflict message so the button
-    #: refresh can recognise (and clear) its own stale hint without clobbering
-    #: unrelated run/preview status text.
-    _JOIN_CONFLICT_PREFIX = "Cannot run:"
-    _JOIN_BLOCKING_ISSUE_CODES = frozenset(
-        {"duplicate_join_order", "missing_join_items"}
-    )
-
-    def _issues_message(self, issues) -> str:
-        """Render validation issues as the shared "Cannot run:" bullet list."""
-        return f"{self._JOIN_CONFLICT_PREFIX}\n{format_issue_messages(issues)}"
-
-    def _validation_message(self, issue_codes=None) -> Optional[str]:
-        """Return "Cannot run:" feedback for the current validation issues.
-
-        ``issue_codes`` restricts the check to those codes (the run guard
-        reacts only to join-blocking problems); ``None`` reports every issue.
-        Returns ``None`` when nothing blocks the report.
-        """
+    def _join_configuration_error_message(self) -> Optional[feedback.Message]:
+        """Return validation feedback for join errors that block output."""
         report = getattr(self, "report", None)
         if report is None:
             return None
-        issues = report.validate()
-        if issue_codes is not None:
-            issues = [issue for issue in issues if issue.code in issue_codes]
-        if not issues:
-            return None
-        return self._issues_message(issues)
-
-    def _join_configuration_error_message(self) -> Optional[str]:
-        """Return validation feedback for join errors that block output."""
-        return self._validation_message(self._JOIN_BLOCKING_ISSUE_CODES)
+        return report_issues_message(report, JOIN_BLOCKING_ISSUE_CODES)
 
     def _refresh_run_availability(self) -> None:
-        """Enable/disable Save Output and surface join-configuration errors.
+        """Enable/disable Export to Excel and surface join-configuration errors.
 
         Called whenever the join configuration changes so the disabled state and
         the inline hint stay in sync with the current selections.
@@ -167,7 +150,7 @@ class RunAndSaveMixin:
             self._set_label_text(self.label_run_confirmation, message)
         elif (
             self.label_run_confirmation is not None
-            and self.label_run_confirmation.text().startswith(self._JOIN_CONFLICT_PREFIX)
+            and self.label_run_confirmation.text().startswith(CANNOT_RUN_PREFIX)
         ):
             # Conflict resolved: clear only our own stale hint.
             self._set_label_text(self.label_run_confirmation, "")
@@ -175,102 +158,138 @@ class RunAndSaveMixin:
     # ------------------------------------------------------------------
     # Report preview and export
 
-    def _report_validation_message(self) -> Optional[str]:
+    def _report_validation_message(self) -> Optional[feedback.Message]:
         """Return actionable validation feedback for the current report."""
 
         if getattr(self, "report", None) is None:
-            return f"{self._JOIN_CONFLICT_PREFIX} no report is loaded."
-        return self._validation_message()
+            return feedback.warning(f"{CANNOT_RUN_PREFIX} no report is loaded.")
+        return report_issues_message(self.report)
 
     def preview_report(self) -> None:
         """Generate and display a preview of the report."""
+        if defer_if_busy(self, self.preview_report):
+            return
         validation_message = self._report_validation_message()
         if validation_message is not None:
             self._set_label_text(self.label_run_confirmation, validation_message)
             self.ui.tableView_preview.setModel(None)
             return
-        try:
-            self._set_label_text(self.label_run_confirmation, "Generating preview...")
-            result_df = self.report.create_report()
-            if result_df is not None and not result_df.empty:
-                result_df = result_df.reset_index(drop=True)
-                model = ReportPreviewModel(result_df)
-                self.ui.tableView_preview.setModel(model)
-                self.ui.tableView_preview.verticalHeader().setVisible(True)
-                self.ui.tableView_preview.resizeColumnsToContents()
-                self._set_label_text(
-                    self.label_run_confirmation,
-                    f"Preview generated successfully. Found {len(result_df)} rows with {len(result_df.columns)} columns.",
-                )
-            else:
-                self._set_label_text(
-                    self.label_run_confirmation,
-                    "No data found. Please check your form selections, filters, and join settings.",
-                )
-                self.ui.tableView_preview.setModel(None)
-        except ReportValidationError as exc:
-            self._set_label_text(
-                self.label_run_confirmation, self._issues_message(exc.issues)
-            )
-            self.ui.tableView_preview.setModel(None)
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Error generating preview")
+        self._set_label_text(
+            self.label_run_confirmation, feedback.info("Generating preview...")
+        )
+        run_task(
+            self,
+            build_report,
+            self.report,
+            on_success=self._show_preview,
+            on_error=self._show_preview_error,
+            message="Building the preview…",
+        )
+
+    def _show_preview(self, result_df: Optional[pd.DataFrame]) -> None:
+        """Show the rows built by :meth:`preview_report`."""
+        if result_df is None:
             self._set_label_text(
                 self.label_run_confirmation,
-                f"Error generating preview: {exc}",
+                feedback.warning(
+                    "No data found. Please check your form selections, filters, "
+                    "and join settings."
+                ),
             )
             self.ui.tableView_preview.setModel(None)
+            return
+        self.ui.tableView_preview.setModel(ReportPreviewModel(result_df))
+        self.ui.tableView_preview.verticalHeader().setVisible(True)
+        self.ui.tableView_preview.fit_columns()
+        # The page shows the size under its title; nothing else to say.
+        self._set_label_text(self.label_run_confirmation, "")
+
+    def _show_preview_error(self, exc: BaseException, details: str) -> None:
+        """Clear the preview and say why it couldn't be built."""
+        self.ui.tableView_preview.setModel(None)
+        self._show_report_error("Error generating preview", exc, details)
+
+    def _show_report_error(
+        self, what_failed: str, exc: BaseException, details: str
+    ) -> None:
+        """Explain why building the report failed (preview or export)."""
+        if isinstance(exc, ReportValidationError):
+            self._set_label_text(
+                self.label_run_confirmation, cannot_run_message(exc.issues)
+            )
+            return
+        logger.error(what_failed, exc_info=exc)
+        self._set_label_text(
+            self.label_run_confirmation,
+            feedback.error(f"{what_failed}: {exc}", details),
+        )
 
     def click_run(self) -> None:
         """Run the report and export it to an Excel file."""
+        if defer_if_busy(self, self.click_run):
+            return
         validation_message = self._report_validation_message()
         if validation_message is not None:
             self._set_label_text(self.label_run_confirmation, validation_message)
             return
+        # Checked first, so a missing folder doesn't cost a full report build.
+        if not self.output_folder_name:
+            self._set_label_text(
+                self.label_run_confirmation,
+                feedback.warning("Please select an output folder first."),
+            )
+            return
+
+        file_name = output_file_name(self.ui.lineEdit_file_name.text())
+        run_task(
+            self,
+            export_report,
+            self.report,
+            os.path.join(self.output_folder_name, file_name),
+            on_success=self._show_export_result,
+            on_error=self._show_export_error,
+            message="Exporting the report…",
+        )
+
+    def _show_export_result(self, file_path: Optional[str]) -> None:
+        """Confirm the file written by :meth:`click_run` (None: no rows)."""
+        if file_path is None:
+            self._set_label_text(
+                self.label_run_confirmation,
+                feedback.warning(
+                    "No data to save. Please check your selections and filters."
+                ),
+            )
+            return
         try:
-            result_df = self.report.create_report()
-            if result_df is None or result_df.empty:
-                self._set_label_text(
-                    self.label_run_confirmation,
-                    "No data to save. Please check your selections and filters.",
-                )
-                return
+            # Usage counting is best-effort and must never change the
+            # user's successful save outcome or produce UI feedback.
+            record_successful_export(os.path.basename(file_path))
+        except Exception:  # Defensive isolation from telemetry regressions.
+            pass
+        self._last_export_path = file_path
+        self._report_changed()
+        self._set_label_text(
+            self.label_run_confirmation,
+            feedback.success(f"Report saved successfully to {file_path}"),
+        )
 
-            if not self.output_folder_name:
-                self._set_label_text(
-                    self.label_run_confirmation,
-                    "Please select an output folder first.",
-                )
-                return
+    def _forget_export_results(self) -> None:
+        """Clear the preview, export and save results of the data loaded before.
 
-            file_name = self.ui.lineEdit_file_name.text()
-            timestamp = datetime.now().strftime(" %y%m%d_%H%M%S")
-            file_name += timestamp
-            if not file_name.endswith(".xlsx"):
-                file_name += ".xlsx"
+        The new data's preview is built when the user asks (Refresh) or opens
+        the page: a new report has no forms selected yet.
+        """
+        self._forget_preview()
+        self._last_export_path = None
+        self._set_label_text(self.label_run_confirmation, "")
+        self._set_label_text(self.label_save_confirmation, "")
 
-            file_path = os.path.join(self.output_folder_name, file_name)
-            # Write the report with the standard styling and short-date
-            # formatting. The export logic lives in the exporter service so the
-            # same output can be produced headlessly (scripts, tool chains, API).
-            write_xlsx(result_df, file_path)
-            try:
-                # Usage counting is best-effort and must never change the
-                # user's successful save outcome or produce UI feedback.
-                record_successful_export(file_name)
-            except Exception:  # Defensive isolation from telemetry regressions.
-                pass
-            self._set_label_text(
-                self.label_run_confirmation,
-                f"Report saved successfully to {file_path}",
-            )
-        except ReportValidationError as exc:
-            self._set_label_text(
-                self.label_run_confirmation, self._issues_message(exc.issues)
-            )
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Error saving report")
-            self._set_label_text(
-                self.label_run_confirmation,
-                f"Error saving report: {exc}",
-            )
+    def _forget_preview(self) -> None:
+        """Clear the preview grid (the page's caption follows)."""
+        if self.ui.tableView_preview.model() is not None:
+            self.ui.tableView_preview.setModel(None)
+
+    def _show_export_error(self, exc: BaseException, details: str) -> None:
+        """Say why the report couldn't be exported."""
+        self._show_report_error("Error saving report", exc, details)

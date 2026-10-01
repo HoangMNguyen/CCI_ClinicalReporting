@@ -63,6 +63,11 @@ class Operator:
     NULLARY = (IS_NULL, IS_NOT_NULL)
 
 
+def is_positive_integer(value) -> bool:
+    """Whether *value* is a whole number above zero (and not a bool)."""
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 def qualify(form_name: str, item: str) -> str:
     """Build a qualified ``form.item`` identifier."""
     return f"{form_name}{FORM_ITEM_SEPARATOR}{item}"
@@ -182,7 +187,7 @@ class CLForm:
         return self.join_items
 
     def set_join_items(self, items: list):
-        self.join_items = deepcopy(items)
+        self.join_items = list(items or [])  # None (no join items) is []
 
     def set_join_order(self, order: int):
         self.join_order = order

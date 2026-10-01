@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import zipfile
 from pathlib import Path
-from typing import Dict, Iterable, Tuple, Union
+from typing import BinaryIO, Dict, Iterable, Optional, Tuple, Union
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # Keep literal clinical values such as "N/A", "None", and "n/a".  Pandas'
 # remaining conventional markers continue to be interpreted as missing.
@@ -36,18 +39,33 @@ _READ_TABULAR_KWARGS = {
 
 
 def load_tabular_file(
-    file_path: str, *, sheet: Union[int, str, None] = 0
+    source: Union[str, os.PathLike, BinaryIO],
+    *,
+    name: Optional[str] = None,
+    sheet: Union[int, str, None] = 0,
 ) -> pd.DataFrame:
-    """Load a CSV or Excel file while preserving literal clinical NA values."""
-    path = Path(file_path).expanduser()
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+    """Load a CSV or Excel file while preserving literal clinical NA values.
 
-    suffix = path.suffix.lower()
+    *source* is a file path or an open binary file (an upload, for example).
+    For an open file, pass *name* so the type can be told from its extension.
+    """
+    if isinstance(source, (str, os.PathLike)):
+        path = Path(source).expanduser()
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {source}")
+        reader_source = path
+        suffix = path.suffix.lower()
+    else:
+        reader_source = source
+        source_name = getattr(source, "name", None)
+        if name is None and isinstance(source_name, str):
+            name = source_name
+        suffix = Path(name or "").suffix.lower()
+
     if suffix == ".csv":
-        return pd.read_csv(path, **_READ_TABULAR_KWARGS)
+        return pd.read_csv(reader_source, **_READ_TABULAR_KWARGS)
     if suffix in {".xls", ".xlsx"}:
-        return pd.read_excel(path, sheet_name=sheet, **_READ_TABULAR_KWARGS)
+        return pd.read_excel(reader_source, sheet_name=sheet, **_READ_TABULAR_KWARGS)
 
     raise ValueError(
         f"Unsupported file type for additional input: {suffix or 'unknown'}"
@@ -63,8 +81,34 @@ def load_additional_inputs(file_paths: Iterable[str]) -> Dict[str, pd.DataFrame]
     return additional_inputs
 
 
-def read_data_dict_zip_corelisting(input_dir: str, cut_off_date=None) -> dict:
-    """Read a Corelisting ZIP and apply its clinical data-cleaning rules."""
+def try_load_tabular_files(
+    file_paths: Iterable[str],
+) -> Tuple[Dict[str, pd.DataFrame], Dict[str, str]]:
+    """Load each CSV or Excel file, carrying on past any that can't be read.
+
+    Returns ``(loaded, failures)``, both keyed by the paths as given;
+    *failures* says why each file couldn't be read. Use
+    :func:`load_additional_inputs` to stop at the first bad file instead.
+    """
+    loaded: Dict[str, pd.DataFrame] = {}
+    failures: Dict[str, str] = {}
+    for file_path in file_paths:
+        try:
+            loaded[file_path] = load_tabular_file(file_path)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("Could not read %s", file_path, exc_info=True)
+            failures[file_path] = str(exc) or type(exc).__name__
+    return loaded, failures
+
+
+def read_data_dict_zip_corelisting(
+    input_dir: Union[str, os.PathLike, BinaryIO], cut_off_date=None
+) -> dict:
+    """Read a Corelisting ZIP and apply its clinical data-cleaning rules.
+
+    *input_dir* is the ZIP's path or an open binary file (an upload, for
+    example); :class:`zipfile.ZipFile` accepts either.
+    """
     data: dict = {}
     if cut_off_date is not None:
         cut_off_date = pd.to_datetime(cut_off_date)
@@ -172,4 +216,5 @@ __all__ = [
     "parse_study_name",
     "read_data_dict_zip_corelisting",
     "strip_subject_prefix",
+    "try_load_tabular_files",
 ]
