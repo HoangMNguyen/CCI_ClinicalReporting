@@ -1,0 +1,326 @@
+# Clinical Reporting Tool
+
+The suite's configurable report builder. Users pick source forms, choose
+common or per-form items, set joins, filters, and comparisons, preview the
+result, and export it, saving the configuration as a setting to reuse. The
+package is also the suite's Qt-free backend: the automation tools build on its
+[shared modules](../../README.md#shared-backend).
+
+Run it from the repository root once the environment is
+[set up](../../README.md#setup):
+
+```bash
+python -m clinical_reporting
+```
+
+## Using it
+
+- Use Core Listing and other sources from both Excel and CSV files.
+- Form, common, and per-form item pickers with regex-based case-insensitive
+  search filters.
+- Join, rename, comparison, and filter configuration tables tailored for
+  clinical datasets.
+- Save/load settings plus quick run helpers for generating reports.
+- Form names cannot include `.` because it is reserved for the form/item
+  separator. Additional inputs default to the file name and must be renamed
+  to remove dots.
+- The steps sit in a sidebar with status badges. Reading the ZIP, building
+  the preview, and exporting run in the background, and a ZIP or additional
+  file that can't be read, or clashing form names, are explained on the page.
+- Headless reporting engine that can be driven programmatically without the
+  UI, so the same logic can be reused in scripts, batch jobs, and tool chains.
+  See [Programmatic / API usage](#programmatic--api-usage).
+
+Keyboard shortcuts:
+
+| Keys | Does |
+|---|---|
+| Ctrl+Tab / Ctrl+PgDown, Ctrl+Shift+Tab / Ctrl+PgUp | Next / previous step |
+| Ctrl+\\ | Show or hide the sidebar |
+| Ctrl+F | Search (Forms, Common items, Form items, Order & rename) |
+| F5 | Build the preview again (Preview & export) |
+| Ctrl+E | Export to Excel (Preview & export) |
+| Ctrl+S | Save the setting (Preview & export) |
+
+## Programmatic / API usage
+
+The reporting engine is decoupled from the PySide6 UI, so it can be driven
+directly from another Python program (scripts, batch jobs, tool chains, or a
+future service layer). The UI is just one client of the same core engine.
+
+The pipeline has four headless building blocks:
+
+| Step | Module | What it does |
+| --- | --- | --- |
+| Load data | `clinical_reporting.data` | Read a Corelisting zip / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
+| Configure | `clinical_reporting.models.ReportConfig` | A typed wrapper over the same settings JSON the UI saves/loads. |
+| Run | `clinical_reporting.report.CLReport` | Apply the config to the data and execute `create_report()`. |
+| Export | `clinical_reporting.export` | Write the result to xlsx/csv, or render it to bytes. |
+
+None of these import Qt, so they run anywhere Python + pandas are available.
+
+### Minimal end-to-end example
+
+```python
+from clinical_reporting import CLReport, ReportConfig
+from clinical_reporting.data import read_data_dict_zip_corelisting
+from clinical_reporting.export import write_xlsx
+
+# 1. Load the study data into {form_name: DataFrame}
+report = CLReport()
+report.set_data(read_data_dict_zip_corelisting("study_export.zip"))
+
+# 2. Apply a configuration saved from the UI (load + reconcile in one call)
+missing = report.apply_config(ReportConfig.from_settings_json("setting.json"))
+if missing["forms"] or missing["items"]:
+    print("Dropped (not present in current data):", missing)
+
+# 3. Run the engine, then 4. export
+df = report.create_report()
+write_xlsx(df, "report.xlsx")
+```
+
+`create_report()` validates the complete definition before execution and raises
+`ReportValidationError` instead of silently ignoring invalid joins, filters, or
+output names. Call `report.validate()` first when a program needs to present all
+issues at once; each issue exposes `code`, `message`, `field`, and `to_dict()`.
+
+`set_data()` must be called before `apply_config()` so the configuration can be
+reconciled against the columns actually present. `apply_config()` returns a
+`{"forms": [...], "items": [...]}` report of anything dropped because the
+current data no longer supports it — the same information the UI shows as a
+warning label.
+
+### Building a configuration in code
+
+Any `.json` saved from the UI is a valid config, but you can also build one in
+memory using the same schema:
+
+```python
+config = ReportConfig.from_dict(
+    {
+        "study_name": "STUDY01",
+        "selected_common_items": ["Subject"],
+        "selected_forms": {
+            "DM": {
+                "name": "DM",
+                "selected_form_items": ["Age"],
+                "join_items": [],
+                "join_order": 1,
+                "join_how": "Left join",
+            },
+            "VS": {
+                "name": "VS",
+                "selected_form_items": ["Pulse"],
+                "join_items": ["Subject"],
+                "join_order": 2,
+                "join_how": "Left join",
+            },
+        },
+        "rename_dict": {"DM.Age": "Age"},
+        "static_filter_items": [["DM.Age", ">", "18"]],
+        "dynamic_filter_items": [],
+    }
+)
+report.apply_config(config)
+```
+
+> Note: form-specific items only exist when more than one form is loaded. With a
+> single form every column is treated as a common item, so a column selected as
+> a form item is reconciled into the common pool.
+
+Output columns (before renames) are named the way filters and renames refer
+to them: selected common items keep their plain names, and a form's selected
+items are `FORM.item` (`DM.Age`). A later form (join order 2 or higher) that
+doesn't join on a selected common item puts out its own values of it under its
+name too: in the example above, selecting `Visit` as a common item while VS
+joins on `Subject` only gives both `Visit` (DM's values) and `VS.Visit`.
+`clinical_reporting.report_columns.output_identifiers(report)` lists the
+columns a report will put out, in their default order.
+
+A filter on a common item applies to every form that has it, before the forms
+are joined; a filter on `VS.Visit` applies to VS's copy only.
+
+### Additional inputs and export options
+
+```python
+from clinical_reporting.data import (
+    load_additional_inputs,
+    build_additional_data_map,
+)
+from clinical_reporting.export import dataframe_to_xlsx_bytes, write_csv
+
+# Combine a Corelisting zip with extra CSV/Excel files
+base = read_data_dict_zip_corelisting("study_export.zip")
+inputs = load_additional_inputs(["labs.csv"])  # {resolved_path: DataFrame}
+# try_load_tabular_files(paths) skips unreadable files instead of raising and
+# returns (loaded, failures), both keyed by the paths as given
+extra = build_additional_data_map(
+    inputs,
+    form_names={path: "LABS" for path in inputs},  # path -> form name
+    column_names={},  # (path, original_col) -> new name
+)
+report.set_data({**base, **extra})
+
+# Export options
+write_csv(df, "report.csv")  # CSV on disk
+xlsx_bytes = dataframe_to_xlsx_bytes(df)  # in-memory bytes (e.g. stream over HTTP)
+```
+
+### Persisting a configuration
+
+A programmatically built configuration can be written back to the same JSON the
+UI reads, so headless runs and the UI stay interchangeable:
+
+```python
+report.save_setting_to_json("my_setting.json", setting_name="batch-run")
+# or, from a ReportConfig:
+config.to_settings_json("my_setting.json")
+```
+
+To store settings somewhere other than a JSON file, take the dictionary and
+hand it to a settings store (the desktop app uses the local-folder store):
+
+```python
+from clinical_reporting.settings_store import LocalFolderStore
+
+settings = report.settings_to_dict("batch-run")
+LocalFolderStore("C:/Reports/settings").save("batch-run", settings)
+```
+
+## Usage telemetry
+
+Saving a report or a setting is reported to a usage counter, silently and in
+the background (`telemetry.py`); a failed delivery never affects the save.
+Counting is off unless an endpoint and a token are configured, either by the
+environment variables `CLINICAL_REPORTING_RUN_COUNTER_URL` and
+`CLINICAL_REPORTING_RUN_COUNTER_TOKEN` (these win) or by
+`src/clinical_reporting/telemetry.json`.
+
+The release build embeds `telemetry.json` (ignored by Git; it must exist
+locally before building) so usage counting works without environment
+variables; use `telemetry.example.json` as the schema when creating or
+rotating it. Its token can only add counts, not read them.
+
+## Changing the UI
+
+The window is built on the shared design system,
+[`cci_ui`](../cci_ui/README.md), in Python code (no Qt Designer files). Its
+pages are one module per step in `src/clinical_reporting/ui/pages/`;
+`ui/main_ui.py` lists them in step order (`PAGE_CLASSES`) and puts them in the
+shell: a sidebar of steps (an icon strip on narrow windows), a header, and a
+status bar. Each step's sidebar badge (a count, done, optional, or a problem)
+comes from `clinical_reporting/steps.py`, which works it out from the report
+without Qt; problems are mapped to the step that fixes them by validation
+issue code. The steps' titles are there too (`TITLES`), and so is the list of
+steps that need data (`NEEDS_DATA`): their pages show "No data loaded" and a
+Choose ZIP… button until some is loaded.
+
+The preview tool opens the real window on made-up DEMO01 data (never a real
+study), with forms, items, joins, a filter, and a comparison already chosen:
+
+```bash
+python -m clinical_reporting.ui.preview                          # open it
+python -m clinical_reporting.ui.preview joins --theme dark --size 1920x1001
+python -m clinical_reporting.ui.preview all --screenshot shots --size 1000x620,1920x1001
+python -m clinical_reporting.ui.preview --help                   # page names, options
+```
+
+`--empty` starts without data. Like the design system's
+[gallery](../cci_ui/README.md#checking-the-look-the-gallery), it never changes
+the saved appearance. (The sample isn't a real ZIP, so turning the cut-off
+date on shows a read error.)
+
+- **Change a page:** edit its module in `ui/pages/`, then check it with the
+  preview tool.
+- **Give the behavior mixins a new widget:** they reach widgets as
+  `self.ui.<name>`, so add the widget to its page and its name to that page's
+  `EXPORTS`.
+- **Add or reorder a step:** add its key to `STEP_KEYS` (and its title to
+  `TITLES`) in `clinical_reporting/steps.py`, and a page class (with that
+  `KEY`, a `SECTION`, `ICON`, and `EXPORTS`) to `PAGE_CLASSES`, in the same
+  order.
+- **Show a message on a page:** give it a `StatusBanner` and set it with
+  `_set_label_text(banner, feedback.<kind>(...))`. The status bar repeats it
+  (and a toast, when it is a success or error on another page), unless the
+  banner is made with `announce=False` because it describes the page's
+  current state, like the Joins banner.
+- **Add a shortcut to a page:** `page.add_shortcut(keys, action)`; it works
+  while the page's content is shown (not on another page, not in its empty
+  state). For a button pass its `click`, which does nothing while the button
+  is disabled.
+- **Change the report from a new place:** call `self._report_changed()`
+  afterwards, so the sidebar badges and the status bar follow. A new
+  validation issue code needs a step in `steps.ISSUE_STEPS` (or a place in
+  `FILTER_ITEM_ISSUE_CODES`, placed by the issue's field, or in
+  `UNPLACED_ISSUE_CODES`); `tests/unit/test_steps.py` fails until it has one.
+
+Then run `python -m pytest -q tests/ui`. Among those tests,
+`test_ui_contract.py` checks that the mixins and the pages agree on widget
+names and that the pages follow `STEP_KEYS`, `test_resize_behavior.py` that
+no control stretches at the target window sizes (and that the sidebar and
+the Preview panel rearrange on narrow windows), and `test_preview_tool.py`
+pins the step order (update it when you reorder steps).
+
+## Testing notes
+
+The suite-wide testing setup is in the
+[root README](../../README.md#testing-and-linting). For Clinical Reporting:
+
+- Messages shown in the app's status labels are tagged with how serious they
+  are: pass `feedback.info/success/warning/error(...)` (from
+  `clinical_reporting.feedback`) to `_set_label_text`, adding the traceback as
+  `details` for errors. `tests/unit/test_message_kinds.py` fails on text built
+  inside those calls (literals, f-strings, joins), and the window tests in
+  `tests/ui/test_clinical_reporting_tasks.py` fail on any untagged message
+  shown during those tests. The status bar repeats the latest message, and a
+  success or error shown on a page other than the open one also pops up as a
+  toast.
+- The sidebar's badges and the status bar summary refresh when control
+  returns to the event loop; window tests call
+  `QApplication.processEvents()` before checking them.
+
+## Package layout
+
+Everything except `__main__.py` and `ui/` is Qt-free (see
+[Qt-free core](../../README.md#qt-free-core-thin-front-ends)).
+
+```text
+src/clinical_reporting/
+  __main__.py                  # runtime entry: python -m clinical_reporting
+  models.py                    # form/config models, labels, identifiers
+  report.py                    # report state, persistence, reconciliation
+  session.py                   # what happens to a report when the user acts; build/export
+  settings_store.py            # where saved settings live (local folder today)
+  feedback.py                  # status messages tagged info/success/warning/error
+  filenames.py                 # safe file names; "<name> YYMMDD_HHMMSS.xlsx" outputs
+  pipeline.py                  # joins, filters, ordering, renames, formatting
+  report_columns.py            # the output columns and their names, before running
+  workflow.py                  # the tools' workflows: OutputFile, input errors, reading inputs
+  validation.py                # executable-report validation; "Cannot run" messages
+  steps.py                     # the steps: titles, badges, and what they say
+  data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
+  export.py                    # xlsx/csv/bytes rendering
+  telemetry.py                 # reports saves to the usage counter (off unless configured)
+  ui/                          # PySide6 desktop front end
+    app.py                     # entry point: starts the app and opens the window
+    window.py                  # main window composed from feature mixins
+    controller.py              # puts the behavior classes' methods on the window
+    main_ui.py                 # builds the pages into the window's shell
+    navigation.py              # page changes; badges, header, status bar, toasts
+    contract.py                # widget names the mixins may use
+    pages/                     # one module per step, built in code
+    preview.py                 # python -m clinical_reporting.ui.preview
+    sample_data.py             # made-up DEMO01 data for previews and UI tests
+    base.py                    # helpers shared by the behavior mixins
+    settings_tab.py            # inputs, cutoff, and saved settings
+    additional_input_tab.py    # extra CSV/Excel inputs, form and column renames
+    selection_tabs.py          # forms, common items, and form items
+    filters_tab.py             # static and dynamic filters
+    join_config.py             # join order, type, and items
+    ordering_tab.py            # output order and renames
+    run_save_tab.py            # preview, run, and save
+    dialogs.py                 # dialogs shared by more than one page
+    table_actions.py           # original-name/new-name tables (renames)
+    preview_model.py           # Qt table model for the preview grid
+```
