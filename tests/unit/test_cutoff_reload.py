@@ -189,12 +189,6 @@ def test_failed_reload_keeps_the_data_says_why_and_is_not_repeated(monkeypatch):
         reads.append(cut_off_date)
         raise OSError("File is not a zip file")
 
-    errors = []
-    monkeypatch.setattr(
-        settings_module,
-        "show_error",
-        lambda _parent, title, message, details: errors.append((title, details)),
-    )
     widget = DummySettingsWidget(checked=True, date_value=datetime.date(2024, 6, 1))
     widget._input_file_path = "study.zip"
     widget.report.set_data(_loader("study.zip", None))
@@ -211,10 +205,12 @@ def test_failed_reload_keeps_the_data_says_why_and_is_not_repeated(monkeypatch):
     assert widget._applied_cut_off_date is None
     assert widget.ui.pathPicker_input_file.path() == "study.zip"
     problem = widget.ui.banner_input_file.value
-    assert problem == "Could not read study.zip: File is not a zip file"
+    assert problem == (
+        "Could not read study.zip: File is not a zip file\n"
+        "The cut-off date was not applied; the report still uses the data "
+        "loaded before."
+    )
     assert feedback.kind_of(problem) == "error" and "OSError" in problem.details
-    ((title, details),) = errors
-    assert title == "Could not read the Corelisting ZIP" and "OSError" in details
     assert widget.update_all_ui_calls == 0
     assert reads == [datetime.date(2024, 6, 1)]
 

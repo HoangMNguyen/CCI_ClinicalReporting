@@ -24,6 +24,7 @@ CORE_MODULES = [
     "clinical_reporting.report",
     "clinical_reporting.session",
     "clinical_reporting.settings_store",
+    "clinical_reporting.steps",
     "clinical_reporting.telemetry",
     "clinical_reporting.validation",
     "cci_automation",

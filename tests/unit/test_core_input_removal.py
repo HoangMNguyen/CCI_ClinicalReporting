@@ -7,6 +7,7 @@ from tests.unit.fakes import FakePathPicker
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
+from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
 from clinical_reporting.ui.settings_tab import SettingsTabMixin
 
 
@@ -42,7 +43,7 @@ class _Ui:
         self.comboBox_saved_setting = _ComboBox()
 
 
-class _RemovalWidget(SettingsTabMixin, WidgetBaseMixin):
+class _RemovalWidget(SettingsTabMixin, RunAndSaveMixin, WidgetBaseMixin):
     def __init__(self):
         self.ui = _Ui()
         self.report = CLReport()
@@ -53,6 +54,8 @@ class _RemovalWidget(SettingsTabMixin, WidgetBaseMixin):
         self._pending_saved_setting_reapply = True
         self._additional_form_keys = {"Extra"}
         self.label_setting = _TextWidget()
+        self.label_run_confirmation = _TextWidget()
+        self.label_save_confirmation = _TextWidget()
         self.update_all_ui_calls = 0
         self.update_items_dependent_ui_calls = 0
 

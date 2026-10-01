@@ -388,6 +388,10 @@ def _status_page(shell: AppShell) -> Page:
 
     toast = make_button("Show a toast")
     toast.clicked.connect(lambda: show_toast(shell, "Settings saved"))
+    status = make_button("Status bar message")
+    status.clicked.connect(
+        lambda: shell.status_bar.show_message("Settings saved", "success")
+    )
     busy = make_button("Busy for 2 seconds")
 
     def run_busy() -> None:
@@ -401,7 +405,7 @@ def _status_page(shell: AppShell) -> Page:
             shell, "Export failed", "Couldn't write the file.", "Traceback …"
         )
     )
-    page.body.addWidget(_row(toast, busy, error))
+    page.body.addWidget(_row(toast, status, busy, error))
     page.body.addStretch(1)
     return page
 
@@ -482,6 +486,9 @@ def build_gallery(theme: ThemeManager) -> Tuple[QMainWindow, AppShell]:
     window.setWindowTitle("CCI design system")
     shell = AppShell(theme, title="Design system")
     shell.set_context("Gallery")
+    shell.status_bar.set_summary(
+        f"{len(PAGES)} pages · {len(IconName.all())} icons · {len(VARIANTS)} buttons"
+    )
     window.setCentralWidget(shell)
     for page in PAGES:
         shell.add_page(

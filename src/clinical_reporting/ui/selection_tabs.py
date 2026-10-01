@@ -1,4 +1,4 @@
-"""Form, common-item, and per-form-item selection tabs.
+"""Form, common-item, and per-form-item selection pages.
 
 The three mixins here are the same dual-list picker pattern applied to
 three collections: whole forms, common items shared across forms, and the
@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QListWidgetItem
 
 
 class FormsTabMixin:
-    """Behavior for the form selection tab."""
+    """Behavior for the Forms page."""
 
     def _init_form_tab(self) -> None:
         """Attach handlers used to manage form selection widgets."""
@@ -95,10 +95,10 @@ class FormsTabMixin:
 
 
 class CommonItemsTabMixin:
-    """Behavior for the common items tab."""
+    """Behavior for the Common items page."""
 
     def _init_common_items_tab(self) -> None:
-        """Connect signals for the common items tab."""
+        """Connect signals for the Common items page."""
         self.ui.pushButton_select_common_item.clicked.connect(
             self.click_select_common_item
         )
@@ -177,7 +177,7 @@ class CommonItemsTabMixin:
 
 
 class FormItemsTabMixin:
-    """Behavior for the per-form items tab.
+    """Behavior for the Form items page.
 
     Mirrors the common-item behavior but keeps the form name prefix to
     disambiguate items originating from different forms.

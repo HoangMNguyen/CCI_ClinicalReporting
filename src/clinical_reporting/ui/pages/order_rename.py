@@ -12,6 +12,7 @@ from cci_ui.widgets.labels import text_label
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.tables import ColumnSpec, table_card
+from clinical_reporting import steps
 
 from ._common import make_table
 
@@ -19,7 +20,7 @@ from ._common import make_table
 class OrderRenamePage(Page):
     """Where the report's columns get their order and readable names."""
 
-    KEY = "order"
+    KEY = steps.ORDER
     SECTION = "Output"
     ICON = IconName.ORDER_RENAME
     EXPORTS = (

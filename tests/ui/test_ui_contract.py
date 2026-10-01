@@ -8,8 +8,9 @@ fail when either side changes without the other.
 import ast
 from pathlib import Path
 
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QMainWindow
 
+from clinical_reporting import steps
 from clinical_reporting.ui import window as window_module
 from clinical_reporting.ui.contract import UI_CONTRACT
 from clinical_reporting.ui.main_ui import (
@@ -24,7 +25,7 @@ UI_METHODS = {"setup"}
 
 
 def _built_ui():
-    host = QWidget()
+    host = QMainWindow()
     ui = ClinicalReportingUi()
     ui.setup(host)
     return host, ui
@@ -72,9 +73,9 @@ def test_no_name_is_exported_twice():
 
 
 def test_every_page_names_its_step():
-    keys = [page.KEY for page in PAGE_CLASSES]
+    keys = tuple(page.KEY for page in PAGE_CLASSES)
 
-    assert len(keys) == len(set(keys))
+    assert keys == steps.STEP_KEYS  # The steps' badges are keyed by these.
     assert all(page.SECTION and page.ICON for page in PAGE_CLASSES)
 
 

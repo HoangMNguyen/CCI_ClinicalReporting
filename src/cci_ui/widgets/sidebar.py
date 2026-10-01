@@ -29,7 +29,7 @@ from cci_ui.theme.manager import current, theme_events
 from cci_ui.theme.palette import qcolor
 from cci_ui.theme.qss import register_qss
 from cci_ui.widgets.buttons import icon_button
-from cci_ui.widgets.labels import text_label
+from cci_ui.widgets.labels import escape_ampersands, text_label
 
 register_qss(
     """
@@ -94,7 +94,9 @@ class SidebarItem(QAbstractButton):
         self.setCheckable(True)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover)
         self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
-        self.setText(title)
+        # The title is painted, but Qt still reads the button text for a
+        # keyboard shortcut: a lone "&" would make one ("Order & rename").
+        self.setText(escape_ampersands(title))
         self._update_tooltip()
 
     # ------------------------------------------------------------------
@@ -272,6 +274,9 @@ class Sidebar(QFrame):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # A click on an item mustn't move the focus to the scroll area: the
+        # field being edited would commit (and maybe start work) first.
+        scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         scroll.setWidget(self._list)
 
         layout = QVBoxLayout(self)

@@ -231,6 +231,7 @@ class OrderRenameTabMixin:
             self.report.set_rename_item(original_name, new_name)
         else:
             self.report.remove_rename_item(original_name)
+        self._report_changed()
 
     def copy_selected_original_names_to_rename(self) -> None:
         """Copy each selected row's original name into its editable name cell."""
@@ -240,6 +241,7 @@ class OrderRenameTabMixin:
             self.report.set_rename_item(original_name, original_item.text())
 
         copy_original_names_to_new_names(self.ui.tableWidget_rename, persist)
+        self._report_changed()
 
     # ------------------------------------------------------------------
     # Item ordering controls

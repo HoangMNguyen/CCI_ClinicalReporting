@@ -22,7 +22,7 @@ from typing import List, Optional, Sequence, Tuple
 
 from PySide6.QtCore import QSettings, QTemporaryDir
 
-from cci_ui.theme.manager import ThemeMode
+from cci_ui.theme.manager import ThemeManager, ThemeMode
 from cci_ui.theme.tokens import Density
 from clinical_reporting.ui.main_ui import PAGE_CLASSES
 
@@ -74,8 +74,13 @@ def _parse(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def build_preview_window(*, with_data: bool = True):
-    """The real window, holding the configured DEMO01 sample report."""
+def build_preview_window(
+    *, with_data: bool = True, theme: Optional[ThemeManager] = None
+):
+    """The real window, holding the configured DEMO01 sample report.
+
+    *theme* (the app's ThemeManager) adds the header's Display button.
+    """
     from clinical_reporting.ui.sample_data import (
         STUDY,
         configure_sample_report,
@@ -83,7 +88,7 @@ def build_preview_window(*, with_data: bool = True):
     )
     from clinical_reporting.ui.window import Widget
 
-    window = Widget()
+    window = Widget(theme=theme)
     if with_data:
         window.open_input_data(
             f"Core_Listings_{STUDY}_sample.zip", None, sample_forms()
@@ -127,11 +132,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         theme.set_density(Density(args.density))
 
     keys = list(PAGE_KEYS) if "all" in args.pages else args.pages
-    window = build_preview_window(with_data=not args.empty)
-    tabs = window.ui.tabWidget
+    window = build_preview_window(with_data=not args.empty, theme=theme)
+    shell = window.ui.shell
     window.resize(*args.size[0])
     if keys:
-        tabs.setCurrentIndex(PAGE_KEYS.index(keys[0]))
+        shell.set_current(keys[0])
 
     if args.screenshot is None:
         window.show()
@@ -146,7 +151,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         for width, height in args.size:
             window.resize(width, height)
             for key in keys or PAGE_KEYS:
-                tabs.setCurrentIndex(PAGE_KEYS.index(key))
+                shell.set_current(key)
                 _settle(window, app)
                 name = (
                     f"{key}-{theme.scheme.value}-{theme.density.value}"

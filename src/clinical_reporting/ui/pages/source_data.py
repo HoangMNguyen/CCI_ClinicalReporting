@@ -12,12 +12,13 @@ from cci_ui.widgets.path_picker import PathPicker
 from cci_ui.widgets.section import Section
 from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.toggle import ToggleSwitch
+from clinical_reporting import steps
 
 
 class SourceDataPage(Page):
     """Where every report starts."""
 
-    KEY = "source"
+    KEY = steps.SOURCE
     SECTION = "Data"
     ICON = IconName.SOURCE_DATA
     EXPORTS = (

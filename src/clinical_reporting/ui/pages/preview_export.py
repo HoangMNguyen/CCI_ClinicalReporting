@@ -27,6 +27,7 @@ from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.tables import style_table, table_card
 from cci_ui.widgets.toggle import ToggleSwitch
 from cci_ui.widgets.views import PreviewTableView
+from clinical_reporting import steps
 
 _PANEL_PADDING = 14
 
@@ -60,7 +61,7 @@ def _wide(button: QWidget) -> QWidget:
 class PreviewExportPage(Page):
     """The last step: check the rows, export them, save the setting for reuse."""
 
-    KEY = "preview"
+    KEY = steps.PREVIEW
     SECTION = "Output"
     ICON = IconName.PREVIEW_EXPORT
     EXPORTS = (

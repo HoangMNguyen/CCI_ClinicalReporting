@@ -389,7 +389,12 @@ Testing notes:
   `details` for errors. `tests/unit/test_message_kinds.py` fails on text built
   inside those calls (literals, f-strings, joins), and the window tests in
   `tests/ui/test_clinical_reporting_tasks.py` fail on any untagged message
-  shown during those tests.
+  shown during those tests. The status bar repeats the latest message, and a
+  success or error shown on a page other than the open one also pops up as a
+  toast.
+- The sidebar's badges and the status bar summary refresh when control
+  returns to the event loop; window tests call
+  `QApplication.processEvents()` before checking them.
 - `tests/ui/test_no_stray_windows.py` builds the component gallery and the
   Clinical Reporting window and fails if any widget opens as its own window
   (a widget shown before it has a parent does, and flickers on screen). A
@@ -402,8 +407,8 @@ Testing notes:
 
 The shared design system (`src/cci_ui`) has a gallery window showing every
 component: colors (with contrast), type, icons, buttons, inputs, toggles and
-segmented controls, sections, lists, tables, banners, toasts, the busy
-overlay, and empty states.
+segmented controls, sections, lists, tables, banners, toasts, the status
+bar, the busy overlay, and empty states.
 
 ```bash
 python -m cci_ui.gallery                               # open it
@@ -420,7 +425,12 @@ the appearance saved for the real tools.
 
 The Clinical Reporting window's pages are built in Python code, one module
 per step in `src/clinical_reporting/ui/pages/`; `ui/main_ui.py` lists them in
-step order (`PAGE_CLASSES`). The preview tool opens the real window on
+step order (`PAGE_CLASSES`) and puts them in the shell: a sidebar of steps
+(an icon strip on narrow windows), a header, and a status bar. Each step's
+sidebar badge (a count, done, optional, or a problem) comes from
+`clinical_reporting/steps.py`, which works it out from the report without
+Qt; problems are mapped to the step that fixes them by validation issue
+code. The preview tool opens the real window on
 made-up DEMO01 data (never a real study), with forms, items, joins, a
 filter, and a comparison already chosen:
 
@@ -440,14 +450,25 @@ shows a read error.)
 - **Give the behavior mixins a new widget:** they reach widgets as
   `self.ui.<name>`, so add the widget to its page and its name to that page's
   `EXPORTS`.
-- **Add or reorder a step:** add a page class (with `KEY`, `SECTION`, `ICON`,
-  and `EXPORTS`) to `PAGE_CLASSES`.
+- **Add or reorder a step:** add its key to `STEP_KEYS` in
+  `clinical_reporting/steps.py` and a page class (with that `KEY`, a
+  `SECTION`, `ICON`, and `EXPORTS`) to `PAGE_CLASSES`, in the same order.
+- **Change the report from a new place:** call `self._report_changed()`
+  afterwards, so the sidebar badges and the status bar follow. A new
+  validation issue code needs a step in `steps.ISSUE_STEPS` (or a place in
+  `FILTER_ITEM_ISSUE_CODES`, placed by the issue's field, or in
+  `UNPLACED_ISSUE_CODES`); `tests/unit/test_steps.py` fails until it has one.
 
 Then run `python -m pytest -q tests/ui`. Among those tests,
 `test_ui_contract.py` checks that the mixins and the pages agree on widget
-names, `test_resize_behavior.py` that no control stretches at the target
-window sizes, and `test_preview_tool.py` pins the step order (update it when
-you reorder steps).
+names and that the pages follow `STEP_KEYS`, `test_resize_behavior.py` that
+no control stretches at the target window sizes (and that the sidebar and
+the Preview panel rearrange on narrow windows), and `test_preview_tool.py`
+pins the step order (update it when you reorder steps).
+
+The window reopens at the size and position it had when it was closed,
+with the sidebar as wide (and collapsed or not) as it was
+(`cci_ui.window_state.WindowState.remember`).
 
 ## Project Structure
 
@@ -469,12 +490,14 @@ src/clinical_reporting/
   feedback.py                  # status messages tagged info/success/warning/error
   filenames.py                 # safe file names for exports and saved settings
   pipeline.py                  # joins, filters, ordering, renames, formatting
-  validation.py                # executable-report validation
+  validation.py                # executable-report validation; "Cannot run" messages
+  steps.py                     # sidebar badge for each step; status bar summary
   data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
   export.py                    # xlsx/csv/bytes rendering
   ui/                          # PySide6 desktop front end
     window.py                  # main window composed from feature mixins
-    main_ui.py                 # builds the pages into the window
+    main_ui.py                 # builds the pages into the window's shell
+    navigation.py              # page changes; badges, header, status bar, toasts
     contract.py                # widget names the mixins may use
     pages/                     # one module per step, built in code
     preview.py                 # python -m clinical_reporting.ui.preview
@@ -513,8 +536,8 @@ src/cci_ui/                    # shared design system for all four tools
   widgets/tables.py            # column rules, density rows, table_card, TableToolbar
   widgets/dual_list.py         # DualListPicker (available ⇄ selected lists)
   widgets/sidebar.py           # Sidebar with status badges; collapses to icons
-  widgets/shell.py             # AppShell: sidebar, header, pages, busy overlay
-  window_state.py              # remembered window size/position per tool
+  widgets/shell.py             # AppShell: sidebar, header, pages, status bar, busy overlay
+  window_state.py              # remembered window size/position and sidebar per tool
   tasks.py                     # run_task/TaskRunner: slow work off the GUI thread
   gallery.py                   # python -m cci_ui.gallery (every component)
   assets/fonts/                # Inter 4.1 (SIL Open Font License)

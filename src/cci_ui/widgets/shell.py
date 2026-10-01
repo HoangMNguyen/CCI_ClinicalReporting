@@ -1,22 +1,25 @@
 """The inside of every tool's window: sidebar, header, pages, and overlays.
 
 :class:`AppShell` arranges an optional :class:`~cci_ui.widgets.sidebar.Sidebar`
-beside a header and a stack of pages. Below ``LAYOUT.sidebar_collapse_below``
-window width the sidebar collapses to icons (with a dead zone, see
-:mod:`~cci_ui.widgets.responsive`); the ≡ button or Ctrl+\\ toggles it at
-any width, and that choice holds until the window next crosses the
-threshold. The shell also owns the window's busy overlay.
+beside a header and a stack of pages, above a status bar. Below
+``LAYOUT.sidebar_collapse_below`` window width the sidebar collapses to icons
+(with a dead zone, see :mod:`~cci_ui.widgets.responsive`); the ≡ button or
+Ctrl+\\ toggles it at any width, and that choice holds until the window next
+crosses the threshold. With a sidebar, Ctrl+Tab and Ctrl+PgDown also go to
+the next page, Ctrl+Shift+Tab and Ctrl+PgUp to the previous one. The shell
+also owns the window's busy overlay.
 """
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional, Union
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
+    QSizePolicy,
     QSplitter,
     QStackedWidget,
     QVBoxLayout,
@@ -29,9 +32,10 @@ from cci_ui.theme.qss import register_qss
 from cci_ui.theme.tokens import LAYOUT
 from cci_ui.widgets.busy import BusyOverlay
 from cci_ui.widgets.display import DisplayButton
-from cci_ui.widgets.labels import IconLabel, text_label
+from cci_ui.widgets.labels import ElidedLabel, IconLabel, text_label
 from cci_ui.widgets.responsive import Breakpoint
 from cci_ui.widgets.sidebar import Sidebar
+from cci_ui.widgets.status import KIND_ICONS, KINDS
 
 register_qss(
     """
@@ -40,11 +44,25 @@ QFrame[cciRole="appHeader"] {
     border: none;
     border-bottom: 1px solid ${separator};
 }
+QFrame[cciRole="statusBar"] {
+    background: ${bg_window};
+    border: none;
+    border-top: 1px solid ${separator};
+}
 """
 )
 
 #: Shortcut that shows or hides the sidebar.
 SIDEBAR_SHORTCUT = "Ctrl+\\"
+#: Shortcuts to the next and previous page (as a tab widget has).
+NEXT_PAGE_SHORTCUTS = (QKeySequence.StandardKey.NextChild, "Ctrl+PgDown")
+PREVIOUS_PAGE_SHORTCUTS = (QKeySequence.StandardKey.PreviousChild, "Ctrl+PgUp")
+#: How long after the window first shows a restored sidebar state holds,
+#: whatever sizes the window passes through while it opens (a window
+#: reopening maximized is first laid out at its normal size).
+RESTORE_SETTLE_MS = 500
+#: Share of the status bar's width a message may take; the summary keeps the rest.
+MESSAGE_SHARE = 0.6
 
 
 class AppHeader(QFrame):
@@ -87,8 +105,83 @@ class AppHeader(QFrame):
         self._trailing.addWidget(widget)
 
 
+def _status_text() -> ElidedLabel:
+    label = ElidedLabel(tone="secondary", mode=Qt.TextElideMode.ElideRight)
+    label.setProperty("textStyle", "caption")
+    return label
+
+
+class AppStatusBar(QFrame):
+    """The strip along the bottom: a summary on the left, the last message on the right.
+
+    A message shows on one line (line breaks become spaces), shortened when
+    it doesn't fit; its tooltip has the whole text.
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setProperty("cciRole", "statusBar")
+        self.summary_label = _status_text()
+        self.kind_icon = IconLabel(*KIND_ICONS["info"], size=12)
+        self.message_label = _status_text()
+        self.message_label.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
+        )
+        self._kind = ""
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 0, 12, 0)
+        layout.setSpacing(6)
+        layout.addWidget(self.summary_label, 1)
+        layout.addSpacing(10)
+        layout.addWidget(self.kind_icon)
+        layout.addWidget(self.message_label)
+        # Only after parenting (see cci_ui.widgets).
+        self.kind_icon.setVisible(False)
+        theme_events().changed.connect(self._apply_metrics)
+        self._apply_metrics()
+
+    def _apply_metrics(self) -> None:
+        self.setFixedHeight(current().metrics.status_h)
+
+    def set_summary(self, text: str) -> None:
+        self.summary_label.setText(text)
+
+    def summary(self) -> str:
+        return self.summary_label.text()
+
+    def show_message(self, text: str, kind: str = "info") -> None:
+        """Show *text* with the symbol for *kind* (info, success, warning, error)."""
+        if kind not in KINDS:
+            raise ValueError(f"Unknown message kind {kind!r}; expected one of {KINDS}")
+        self._kind = kind
+        self.kind_icon.set_icon(*KIND_ICONS[kind])
+        self.kind_icon.setVisible(True)
+        self.message_label.setText(" ".join(text.split()))
+
+    def clear_message(self) -> None:
+        self._kind = ""
+        self.kind_icon.setVisible(False)
+        self.message_label.setText("")
+
+    def message(self) -> str:
+        return self.message_label.text()
+
+    def message_kind(self) -> str:
+        """The kind of the message shown, or "" when there is none."""
+        return self._kind
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 (Qt override)
+        super().resizeEvent(event)
+        self.message_label.setMaximumWidth(int(self.width() * MESSAGE_SHARE))
+
+
 class AppShell(QWidget):
-    """Sidebar (optional), header with the Display button, pages, busy overlay."""
+    """Sidebar (optional), header with the Display button, pages, status bar.
+
+    Pass the app's :class:`~cci_ui.theme.manager.ThemeManager` as *theme* for
+    the header's Display button; without one (tests) the header has none.
+    """
 
     #: Emitted with the page key whenever the current page changes.
     currentPageChanged = Signal(str)
@@ -99,7 +192,7 @@ class AppShell(QWidget):
 
     def __init__(
         self,
-        theme: ThemeManager,
+        theme: Optional[ThemeManager],
         *,
         title: str,
         with_sidebar: bool = True,
@@ -114,14 +207,21 @@ class AppShell(QWidget):
         self._context = ""
         self._sidebar_width = LAYOUT.sidebar_w
         self._breakpoint = Breakpoint(LAYOUT.sidebar_collapse_below)
-        # After restore_sidebar(), the first width seen only primes the
-        # breakpoint, so the restored state isn't overridden on first show.
+        # After restore_sidebar(), widths seen until the window has settled
+        # only prime the breakpoint, so the restored state isn't overridden.
         self._keep_restored_state = False
+        self._restore_settled = QTimer(self)
+        self._restore_settled.setSingleShot(True)
+        self._restore_settled.setInterval(RESTORE_SETTLE_MS)
+        self._restore_settled.timeout.connect(self._end_restore)
 
         self.header = AppHeader()
-        self.display_button = DisplayButton(theme)
-        self.header.add_trailing(self.display_button)
+        self.display_button: Optional[DisplayButton] = None
+        if theme is not None:
+            self.display_button = DisplayButton(theme)
+            self.header.add_trailing(self.display_button)
         self.stack = QStackedWidget()
+        self.status_bar = AppStatusBar()
         main = QWidget()
         main_layout = QVBoxLayout(main)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -131,6 +231,7 @@ class AppShell(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         self.sidebar: Optional[Sidebar] = None
         self.splitter: Optional[QSplitter] = None
         if with_sidebar:
@@ -146,15 +247,25 @@ class AppShell(QWidget):
             self.splitter.splitterMoved.connect(self._remember_sidebar_width)
             layout.addWidget(self.splitter)
             self._apply_sidebar_width()
-            shortcut = QShortcut(QKeySequence(SIDEBAR_SHORTCUT), self)
-            shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-            shortcut.activated.connect(self.toggle_sidebar)
+            self._add_shortcut(SIDEBAR_SHORTCUT, self.toggle_sidebar)
+            for keys in NEXT_PAGE_SHORTCUTS:
+                self._add_shortcut(keys, self.next_page)
+            for keys in PREVIOUS_PAGE_SHORTCUTS:
+                self._add_shortcut(keys, self.previous_page)
         else:
             self.header.set_context(title)
             layout.addWidget(main)
+        layout.addWidget(self.status_bar)
 
         #: Covers the whole shell (sidebar included) while work runs.
         self.busy = BusyOverlay(self)
+
+    def _add_shortcut(
+        self, keys: Union[str, QKeySequence.StandardKey], action: Callable[[], None]
+    ) -> None:
+        shortcut = QShortcut(QKeySequence(keys), self)
+        shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        shortcut.activated.connect(action)
 
     # ------------------------------------------------------------------
     # Pages
@@ -192,6 +303,10 @@ class AppShell(QWidget):
     def current(self) -> str:
         return self._current
 
+    def current_page(self) -> Optional[QWidget]:
+        """The page shown, or ``None`` before any page is added."""
+        return self._pages.get(self._current)
+
     def set_current(self, key: str) -> None:
         """Show page *key*; emits :attr:`currentPageChanged` if it changed."""
         page = self._pages[key]
@@ -202,6 +317,22 @@ class AppShell(QWidget):
             self._current = key
             self._update_header()
             self.currentPageChanged.emit(key)
+
+    def next_page(self) -> None:
+        """Show the page after the current one (none after the last)."""
+        self._step_page(1)
+
+    def previous_page(self) -> None:
+        """Show the page before the current one (none before the first)."""
+        self._step_page(-1)
+
+    def _step_page(self, step: int) -> None:
+        keys = list(self._pages)
+        if not keys:
+            return
+        index = keys.index(self._current) + step
+        if 0 <= index < len(keys):
+            self.set_current(keys[index])
 
     def set_context(self, context: str) -> None:
         """What the header shows before the page title, e.g. the study name."""
@@ -233,10 +364,16 @@ class AppShell(QWidget):
         self.sidebarCollapsedChanged.emit(collapsed)
 
     def restore_sidebar(self, width: int, collapsed: bool) -> None:
-        """Apply a remembered width and collapsed state (e.g. before first show)."""
+        """Apply a remembered width and collapsed state (before the first show).
+
+        The state holds while the window opens (see :data:`RESTORE_SETTLE_MS`);
+        after that, crossing the breakpoint collapses or expands as usual.
+        """
         self.set_sidebar_width(width)
         self.set_sidebar_collapsed(collapsed)
         self._keep_restored_state = True
+        if self.isVisible():  # Already shown: no showEvent will start the wait.
+            self._restore_settled.start()
 
     def sidebar_width(self) -> int:
         """Width of the expanded sidebar (what the user last dragged it to)."""
@@ -272,15 +409,30 @@ class AppShell(QWidget):
             self._sidebar_width = self.sidebar.width()
             self.sidebarWidthChanged.emit(self._sidebar_width)
 
+    def _end_restore(self) -> None:
+        self._keep_restored_state = False
+
+    def showEvent(self, event) -> None:  # noqa: N802 (Qt override)
+        super().showEvent(event)
+        if self._keep_restored_state and not self._restore_settled.isActive():
+            self._restore_settled.start()
+
     def resizeEvent(self, event) -> None:  # noqa: N802 (Qt override)
         super().resizeEvent(event)
         if self.sidebar is None:
             return
         crossed = self._breakpoint.update(self.width())
-        if self._keep_restored_state:
-            self._keep_restored_state = False
-        elif crossed:
+        if crossed and not self._keep_restored_state:
             self.set_sidebar_collapsed(bool(self._breakpoint.below))
 
 
-__all__ = ["SIDEBAR_SHORTCUT", "AppHeader", "AppShell"]
+__all__ = [
+    "MESSAGE_SHARE",
+    "NEXT_PAGE_SHORTCUTS",
+    "PREVIOUS_PAGE_SHORTCUTS",
+    "RESTORE_SETTLE_MS",
+    "SIDEBAR_SHORTCUT",
+    "AppHeader",
+    "AppShell",
+    "AppStatusBar",
+]

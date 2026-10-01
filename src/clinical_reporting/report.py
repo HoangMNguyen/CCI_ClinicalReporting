@@ -37,7 +37,7 @@ class CLReport:
         self.static_filter_items = []  # Static filter items: Item Name, Operator, Value
         self.dynamic_filter_items = []  # Dynamic filter items: Item Name 1 , Operator, Item Name 2
         self.selected_items_order_list = []
-        # True once the user rearranged items on the reordering tab. Until
+        # True once the user rearranged items on the Order & rename page. Until
         # then the order list is re-derived from the default layout (common
         # items first, then form items grouped by join order).
         self.order_list_customized = False
@@ -260,7 +260,7 @@ class CLReport:
     def set_selected_items_order_list(self, order_list: list):
         """Set the ordered list of selected items.
 
-        Called when the user rearranges items on the reordering tab, so the
+        Called when the user rearranges items on the Order & rename page, so the
         arrangement is treated as manual from here on and no longer re-derived
         from the default (join-order based) layout.
         """
@@ -274,7 +274,7 @@ class CLReport:
         column order), followed by each form's selected items grouped by join
         (merge) order. This default is re-derived on every call — changing a
         form's join order re-groups the list — until the user rearranges items
-        on the reordering tab (``order_list_customized``). From then on the
+        on the Order & rename page (``order_list_customized``). From then on the
         manual arrangement is preserved and new selections are inserted at
         their default position rather than appended.
         """

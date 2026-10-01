@@ -18,7 +18,7 @@ with them. A dialog a callback wants to show should wait until the window
 is free: pass it to :func:`when_idle`.
 
 The overlay drops clicks and keys, but some actions still arrive while a job
-runs. One user action can trigger two: a tab change makes the date field on
+runs. One user action can trigger two: a page change makes the date field on
 the hidden page commit (starting a reload), then shows the preview page
 (asking for a preview). And fields commit when they lose focus to another
 app or a dialog. Start these actions with :func:`defer_if_busy`, so they run

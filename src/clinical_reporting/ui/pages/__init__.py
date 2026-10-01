@@ -7,6 +7,8 @@ copies them onto ``window.ui`` (:mod:`clinical_reporting.ui.contract` is
 the set of all of them). To give a mixin a new widget, add it to its page
 and to that page's ``EXPORTS``.
 
-Each page class also names its step: ``KEY`` (used by the preview tool and
-the sidebar), ``SECTION`` (the sidebar group), and ``ICON``.
+Each page class also names its step: ``KEY`` (one of
+:data:`clinical_reporting.steps.STEP_KEYS`, which keys the sidebar and its
+badges and the preview tool's page names), ``SECTION`` (the sidebar group),
+and ``ICON``.
 """

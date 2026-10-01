@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QWidget
 from cci_ui.icons import IconName
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.tables import ColumnSpec, TableToolbar, table_card
+from clinical_reporting import steps
 
 from ._common import make_table
 
@@ -16,7 +17,7 @@ from ._common import make_table
 class FiltersPage(Page):
     """Rows kept only when an item matches a value."""
 
-    KEY = "filters"
+    KEY = steps.FILTERS
     SECTION = "Rules"
     ICON = IconName.FILTERS
     EXPORTS = (
@@ -50,7 +51,7 @@ class FiltersPage(Page):
 class JoinsPage(Page):
     """How the selected forms are combined."""
 
-    KEY = "joins"
+    KEY = steps.JOINS
     SECTION = "Rules"
     ICON = IconName.JOINS
     EXPORTS = ("tableWidget_join",)
@@ -80,7 +81,7 @@ class JoinsPage(Page):
 class ComparisonsPage(Page):
     """Rows kept only when one item compares to another."""
 
-    KEY = "comparisons"
+    KEY = steps.COMPARISONS
     SECTION = "Rules"
     ICON = IconName.COMPARISONS
     EXPORTS = (

@@ -2,7 +2,7 @@
 
 This mixin owns the join table: per-form join item dropdowns, join order,
 join type, and the inline conflict highlighting.  The order/rename table
-that shares the tab lives in :mod:`ui.ordering_tab`; join changes trigger
+on the Order & rename page lives in :mod:`ui.ordering_tab`; join changes trigger
 its refresh because the default column order follows the join order.
 
 Conflicts are drawn in the theme's colors: a shared join order marks its
@@ -259,6 +259,7 @@ class JoinConfigMixin:
 
         self.report.update_join_list(join_list)
         self._highlight_missing_join_items()
+        self._report_changed()
 
         # The default column order follows the join order, so re-derive the
         # combined order/rename table (owned by OrderRenameTabMixin) after join

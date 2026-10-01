@@ -71,6 +71,7 @@ class FiltersTabMixin:
         logger.debug(
             "Synchronized static filters: %s", self.report.get_static_filter_items()
         )
+        self._report_changed()
 
     def _selected_filter_items(self) -> list[str]:
         """Return the sorted list of selectable filter items.
@@ -217,6 +218,7 @@ class FiltersTabMixin:
         # Rebuild the table so the surviving rows' operator handlers are
         # reconnected with their new row indexes.
         self.update_static_filter_table()
+        self._report_changed()
 
     def _on_filter_changed(self, *args) -> None:
         """Rebuild the report's static filters from the current table state.
@@ -291,6 +293,7 @@ class FiltersTabMixin:
                 item2 = item2_combo.currentText()
                 self.report.remove_dynamic_filter_item(item1, operator, item2)
             self.ui.tableWidget_dynamic_filter.removeRow(row)
+        self._report_changed()
 
     def synchronize_dynamic_filters(self) -> None:
         """Rebuild the report's dynamic filters from the table, skipping empty rows.
@@ -314,6 +317,7 @@ class FiltersTabMixin:
         logger.debug(
             "Synchronized dynamic filters: %s", self.report.get_dynamic_filter_items()
         )
+        self._report_changed()
 
     def _on_dynamic_filter_changed(self, *args) -> None:
         """Rebuild the report's dynamic filters from the current table state."""

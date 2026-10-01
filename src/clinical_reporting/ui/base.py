@@ -1,9 +1,9 @@
 """Shared utilities for the Clinical Reporting main widget.
 
 This module defines :class:`WidgetBaseMixin`, a collection of helper
-methods that are used across multiple UI tabs.  The mixin centralizes the
+methods that are used across multiple pages.  The mixin centralizes the
 state initialization and provides shared routines for working with forms,
-common items, and per-form items.  Individual tab mixins import these
+common items, and per-form items.  The per-page mixins use these
 helpers to keep their logic narrowly focused on UI responsibilities
 instead of duplicating low-level list management code.
 """
@@ -25,11 +25,10 @@ from clinical_reporting.ui.dialogs import show_settings_folder
 
 
 class WidgetBaseMixin:
-    """Common behavior shared by all widget tabs."""
+    """Common behavior shared by all pages."""
 
     def _initialize_state(self) -> None:
-        """Set up application state that is shared across tabs."""
-        self.setWindowTitle("Clinical Reporting Tool")
+        """Set up application state that is shared across pages."""
         self.study_name = None
         self.report = CLReport()
         self.output_folder_name = None
@@ -44,11 +43,13 @@ class WidgetBaseMixin:
         # (path, cut-off) of a reload that failed, so it isn't retried on
         # every focus change of the date field.
         self._failed_cut_off_reload = None
+        # The file last exported, for the Preview & export step's badge.
+        self._last_export_path: Optional[str] = None
         # True while update_all_ui coordinates a full refresh; narrower
         # helpers use it to skip refreshes the coordinator already covers.
         self._in_coordinated_refresh = False
 
-        # Cache confirmation labels so they can be updated from individual tabs
+        # Cache confirmation labels so they can be updated from individual pages
         # without repeatedly resolving attribute names on the UI form.
         self.label_run_confirmation = getattr(self.ui, "label_run_confirmation", None)
         self.label_save_confirmation = getattr(self.ui, "label_save_confirmation", None)
@@ -59,7 +60,7 @@ class WidgetBaseMixin:
         show_settings_folder(self, self._get_default_settings_directory())
 
     # ------------------------------------------------------------------
-    # Shared helpers used by multiple tabs
+    # Shared helpers used by multiple pages
 
     def _initialize_list_views(self) -> None:
         """Populate list widgets with their initial contents."""
@@ -100,6 +101,20 @@ class WidgetBaseMixin:
         self.update_order_rename_table()
         self.update_static_filter_table()
         self.update_dynamic_filter_table()
+        self._report_changed()
+
+    def _report_changed(self) -> None:
+        """Call after changing the report: the sidebar badges and status bar follow.
+
+        :meth:`update_all_ui` and :meth:`update_items_dependent_ui` call it;
+        so must anything else that changes the report (filters, joins,
+        renames, exports). Changes made together refresh once, when control
+        returns to the event loop (see :mod:`ui.navigation`). Does nothing in
+        windows without the navigation (the unit tests' partial windows).
+        """
+        refresh = getattr(self, "_shell_refresh", None)
+        if refresh is not None:
+            refresh.start()
 
     # ------------------------------------------------------------------
     # Selection state capture / restore
@@ -119,7 +134,7 @@ class WidgetBaseMixin:
         restore_selection(self.report, state)
 
     # ------------------------------------------------------------------
-    # Saved-settings storage (shared by the settings and output tabs)
+    # Saved-settings storage (shared by the Source data and Preview & export pages)
 
     def _get_default_settings_directory(self) -> str:
         """Return the default folder used to store saved settings."""

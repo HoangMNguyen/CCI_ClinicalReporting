@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QWidget
 from cci_ui.icons import IconName
 from cci_ui.widgets.dual_list import DualListPicker
 from cci_ui.widgets.page import Page
+from clinical_reporting import steps
 
 
 class _SelectionPage(Page):
@@ -41,7 +42,7 @@ class _SelectionPage(Page):
 class FormsPage(_SelectionPage):
     """Which forms go into the report."""
 
-    KEY = "forms"
+    KEY = steps.FORMS
     SECTION = "Selection"
     ICON = IconName.FORMS
     EXPORTS = (
@@ -74,7 +75,7 @@ class FormsPage(_SelectionPage):
 class CommonItemsPage(_SelectionPage):
     """Items every selected form has, such as the subject and visit."""
 
-    KEY = "common"
+    KEY = steps.COMMON
     SECTION = "Selection"
     ICON = IconName.COMMON_ITEMS
     EXPORTS = (
@@ -107,7 +108,7 @@ class CommonItemsPage(_SelectionPage):
 class FormItemsPage(_SelectionPage):
     """Items of each selected form to include as report columns."""
 
-    KEY = "formitems"
+    KEY = steps.FORM_ITEMS
     SECTION = "Selection"
     ICON = IconName.FORM_ITEMS
     EXPORTS = (

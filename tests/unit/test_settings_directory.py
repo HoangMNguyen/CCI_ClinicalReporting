@@ -111,7 +111,7 @@ def test_output_settings_folder_dialog_remembers_last_selection(monkeypatch):
     widget = _OutputWidget()
 
     # Both buttons share dialogs.choose_settings_directory, so the dialog
-    # is patched on the dialogs module for the output tab too.
+    # is patched on the dialogs module for the Preview & export page too.
     _assert_dialog_remembers_selection(
         monkeypatch,
         dialogs,

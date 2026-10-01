@@ -1,6 +1,6 @@
-"""Additional input tab mixin for loading external files.
+"""Additional input page mixin for loading external files.
 
-This mixin wires the buttons on the "Additional input" tab to allow users
+This mixin wires the buttons on the "Additional input" page to allow users
 to load CSV/Excel files, manage the selected list, and rename forms/columns.
 Reading the files runs in the background (:func:`cci_ui.tasks.run_task`).
 """
@@ -36,10 +36,10 @@ from clinical_reporting.ui.table_actions import (
 
 
 class AdditionalInputTabMixin:
-    """Behavior for the additional input tab."""
+    """Behavior for the Additional input page."""
 
     def _init_additional_input_tab(self) -> None:
-        """Attach handlers and prepare state for the additional input tab."""
+        """Attach handlers and prepare state for the Additional input page."""
         self.additional_inputs: Dict[str, pd.DataFrame] = {}
         self.additional_form_names: Dict[str, str] = {}
         self.additional_column_names: Dict[Tuple[str, str], str] = {}
@@ -353,6 +353,15 @@ class AdditionalInputTabMixin:
 
     # ------------------------------------------------------------------
     # Report integration
+
+    def _forget_applied_additional_forms(self) -> None:
+        """Note that the report no longer has the applied additional forms.
+
+        (A new Corelisting ZIP starts a new report.) The files stay listed,
+        ready to apply again.
+        """
+        self._additional_form_keys = set()
+        self._additional_input_signature = {}
 
     def _build_additional_data_map(self) -> Dict[str, pd.DataFrame]:
         """Construct a dict of form_name -> dataframe with applied renames.

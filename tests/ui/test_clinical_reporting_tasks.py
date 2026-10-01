@@ -15,9 +15,11 @@ import pandas as pd
 import pytest
 import shiboken6
 from PySide6.QtCore import QDate, Qt
+from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from cci_ui.widgets.shell import SIDEBAR_SHORTCUT
 from clinical_reporting import feedback
 from clinical_reporting.ui import run_save_tab, settings_tab
 from clinical_reporting.ui.window import Widget
@@ -53,18 +55,6 @@ def reader(monkeypatch):
     gated = _GatedReader()
     monkeypatch.setattr(settings_tab, "read_data_dict_zip_corelisting", gated)
     return gated
-
-
-@pytest.fixture
-def warnings(monkeypatch):
-    """Error dialogs shown, as (title, message), instead of opening them."""
-    shown = []
-    monkeypatch.setattr(
-        settings_tab,
-        "show_error",
-        lambda _parent, title, message, _details="": shown.append((title, message)),
-    )
-    return shown
 
 
 @pytest.fixture
@@ -145,7 +135,7 @@ def test_reading_the_zip_blocks_the_window_until_it_is_done(window, reader, sett
     assert window.ui.listWidget_form_available.count() == 2
 
 
-def test_an_unreadable_zip_keeps_the_loaded_report(opened, reader, warnings, settle):
+def test_an_unreadable_zip_keeps_the_loaded_report(opened, reader, settle):
     loaded = opened.report
     reader.error = OSError("File is not a zip file")
 
@@ -153,20 +143,17 @@ def test_an_unreadable_zip_keeps_the_loaded_report(opened, reader, warnings, set
     settle(opened.task_runner)
 
     problem = f"Could not read {ZIP_NAME}: File is not a zip file"
+    outcome = "Nothing was loaded; the report is unchanged."
     assert opened.report is loaded
-    assert opened.ui.banner_input_file.text() == problem
+    assert opened.ui.banner_input_file.text() == f"{problem}\n{outcome}"
+    assert opened.ui.banner_input_file.kind() == "error"
     assert opened.ui.pathPicker_input_file.path().endswith(ZIP_NAME)
-    assert warnings == [
-        (
-            "Could not read the Corelisting ZIP",
-            f"{problem}\n\nNothing was loaded; the report is unchanged.",
-        )
-    ]
+    status_bar = opened.ui.shell.status_bar
+    assert status_bar.message() == f"{problem}. {outcome}"
+    assert status_bar.message_kind() == "error"
 
 
-def test_a_failed_reload_is_reported_once_not_retried_in_a_loop(
-    opened, reader, warnings, settle
-):
+def test_a_failed_reload_is_reported_once_not_retried_in_a_loop(opened, reader, settle):
     reader.error = OSError("The file is locked")
     reads_before = len(reader.calls)
     applied = opened._applied_cut_off_date
@@ -179,7 +166,8 @@ def test_a_failed_reload_is_reported_once_not_retried_in_a_loop(
 
     assert len(reader.calls) == reads_before + 1
     assert opened._applied_cut_off_date == applied
-    assert len(warnings) == 1 and "cut-off date was not applied" in warnings[0][1]
+    reported = [m for m in opened.shown_messages if "was not applied" in (m or "")]
+    assert len(reported) == 1 and reported[0].kind == "error"
 
 
 def test_remove_input_clicked_as_the_date_commits_leaves_a_consistent_window(
@@ -204,24 +192,33 @@ def test_remove_input_clicked_as_the_date_commits_leaves_a_consistent_window(
     assert opened._input_file_path is None and opened.report.data == {}
 
 
-def test_keys_do_nothing_while_a_tab_change_reloads_the_data(opened, reader, settle):
+def test_keys_do_nothing_while_a_page_change_reloads_the_data(opened, reader, settle):
     _edit_the_date(opened)
     reader.go.clear()
-    tabs = opened.ui.tabWidget
-    tab_bar = tabs.tabBar()
+    shell = opened.ui.shell
 
-    # Hiding the settings page commits the date, which starts the reload.
-    QTest.mouseClick(
-        tab_bar, Qt.MouseButton.LeftButton, pos=tab_bar.tabRect(1).center()
-    )
-    assert opened.task_runner.busy and tabs.currentIndex() == 1
+    # Hiding the Source data page commits the date, which starts the reload.
+    QTest.mouseClick(shell.sidebar.item("additional"), Qt.MouseButton.LeftButton)
+    assert opened.task_runner.busy and shell.current() == "additional"
     focused = QApplication.focusWidget()
-    QTest.keyClick(focused, Qt.Key.Key_Tab, Qt.KeyboardModifier.ControlModifier)
+    collapsed = shell.is_sidebar_collapsed()
     QTest.keyClick(focused, Qt.Key.Key_Tab)
+    QTest.keyClick(focused, Qt.Key.Key_Down)
+    QTest.keySequence(focused, QKeySequence(SIDEBAR_SHORTCUT))
+    QTest.keyClick(focused, Qt.Key.Key_PageDown, Qt.KeyboardModifier.ControlModifier)
 
-    assert tabs.currentIndex() == 1 and QApplication.focusWidget() is focused
+    assert shell.current() == "additional" and QApplication.focusWidget() is focused
+    assert shell.is_sidebar_collapsed() is collapsed
     reader.go.set()
     settle(opened.task_runner)
+
+
+def test_the_source_step_stays_done_after_a_cut_off_reload(opened):
+    QApplication.processEvents()
+    item = opened.ui.shell.sidebar.item("source")
+
+    assert opened._applied_cut_off_date is not None  # The fixture reloaded.
+    assert item.state().value == "done" and item.toolTip().endswith(ZIP_NAME)
 
 
 def test_preview_asked_for_while_busy_runs_once_the_work_is_done(

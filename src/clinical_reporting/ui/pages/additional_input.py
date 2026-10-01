@@ -12,6 +12,7 @@ from cci_ui.widgets.labels import section_label
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.tables import ColumnSpec, table_card
 from cci_ui.widgets.views import PlaceholderListWidget
+from clinical_reporting import steps
 
 from ._common import make_table
 
@@ -21,7 +22,7 @@ _NAME_COLUMNS = (ColumnSpec("stretch"), ColumnSpec("stretch"))
 class AdditionalInputPage(Page):
     """Optional files added to the report as extra forms."""
 
-    KEY = "additional"
+    KEY = steps.ADDITIONAL
     SECTION = "Data"
     ICON = IconName.ADDITIONAL_INPUT
     EXPORTS = (

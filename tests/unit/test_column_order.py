@@ -3,7 +3,7 @@
 Columns must keep the order they have in the loaded files instead of being
 sorted alphabetically: common items stay leftmost (in first-form order), each
 form's items follow in file order grouped by merge (join) order, and only the
-reordering tab may change the arrangement.
+Order & rename page may change the arrangement.
 """
 
 import pandas as pd
@@ -130,7 +130,7 @@ def test_manual_order_survives_join_order_changes(report_with_data):
     report.selected_forms["VS"].set_form_item_state("Pulse", selected=True)
     report.update_selected_items_order_list()
 
-    # User rearranges on the reordering tab; join order changes must not undo it.
+    # User rearranges on the Order & rename page; join order changes mustn't undo it.
     report.set_selected_items_order_list(["DM.Weight", "Subject", "VS.Pulse"])
     report.update_join_items("VS", [], 1, JoinHow.LEFT)
     report.update_join_items("DM", ["Subject"], 2, JoinHow.LEFT)
@@ -188,7 +188,7 @@ def test_manual_reordering_is_preserved_when_new_items_arrive(report_with_data):
     report.selected_forms["DM"].set_form_item_state("Weight", selected=True)
     report.update_selected_items_order_list()
 
-    # User rearranges on the reordering tab.
+    # User rearranges on the Order & rename page.
     report.set_selected_items_order_list(["DM.Weight", "Subject"])
 
     # A newly selected item slots in after its default predecessor without

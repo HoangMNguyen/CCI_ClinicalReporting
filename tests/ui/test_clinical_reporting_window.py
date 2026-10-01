@@ -74,14 +74,14 @@ def test_a_theme_change_only_recolors(qapp):
 @pytest.mark.parametrize("mode", [ThemeMode.LIGHT, ThemeMode.DARK])
 def test_every_page_shows_and_the_preview_builds(sample_window, theme, settle, mode):
     theme.set_mode(mode)
-    tabs = sample_window.ui.tabWidget
+    shell = sample_window.ui.shell
 
-    for index in range(tabs.count()):
-        tabs.setCurrentIndex(index)
+    for key in PAGE_KEYS:
+        shell.set_current(key)
         settle(sample_window.task_runner)
-        assert tabs.currentWidget().isVisible()
+        assert shell.page(key).isVisible()
 
-    assert tabs.currentWidget() is sample_window.ui.page_preview
+    assert shell.current() == "preview"
     assert sample_window.ui.tableView_preview.model().rowCount() > 0
     assert sample_window.ui.label_run_confirmation.kind() == "success"
 
@@ -100,7 +100,7 @@ def test_the_sample_report_exports(sample_window, settle, tmp_path):
 def test_duplicate_join_orders_draw_in_the_danger_color(sample_window):
     sample_window.report.update_join_items("VS", ["Subject"], 2, JoinHow.LEFT)
     sample_window.update_all_ui()  # AE and VS now share join order 2.
-    sample_window.ui.tabWidget.setCurrentIndex(PAGE_KEYS.index("joins"))
+    sample_window.ui.shell.set_current("joins")
     QApplication.processEvents()
     table = sample_window.ui.tableWidget_join
     rows = {table.item(row, 0).text(): row for row in range(table.rowCount())}

@@ -2,7 +2,8 @@
 
 The report model is intentionally mutable because it is edited by the Qt UI.
 This module provides the boundary that turns that partially configured state
-into either a valid executable definition or a structured list of problems.
+into either a valid executable definition or a structured list of problems,
+and the "Cannot run:" messages that tell the user about them.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Optional
 
+from clinical_reporting import feedback
 from clinical_reporting.models import (
     FORM_ITEM_SEPARATOR,
     JoinHow,
@@ -375,3 +377,36 @@ def raise_for_report(report) -> None:
     issues = validate_report(report)
     if issues:
         raise ReportValidationError(issues)
+
+
+# ---------------------------------------------------------------------------
+# Messages for the user (any front end)
+
+#: How the message listing what stops a report from running starts; the
+#: desktop app recognizes its own hint by it.
+CANNOT_RUN_PREFIX = "Cannot run:"
+#: Join problems that disable the export as soon as they appear; the others
+#: are reported when the user previews or exports.
+JOIN_BLOCKING_ISSUE_CODES = frozenset({"duplicate_join_order", "missing_join_items"})
+
+
+def cannot_run_message(issues: Iterable[ReportValidationIssue]) -> feedback.Message:
+    """*issues* as the "Cannot run:" bullet list, as a warning."""
+
+    return feedback.warning(f"{CANNOT_RUN_PREFIX}\n{format_issue_messages(issues)}")
+
+
+def report_issues_message(
+    report, issue_codes: Optional[Iterable[str]] = None
+) -> Optional[feedback.Message]:
+    """What stops *report* from running, or ``None`` when nothing does.
+
+    *issue_codes* limits the check to those codes (the export button reacts
+    only to :data:`JOIN_BLOCKING_ISSUE_CODES`); ``None`` checks everything.
+    """
+
+    issues = report.validate()
+    if issue_codes is not None:
+        codes = set(issue_codes)
+        issues = [issue for issue in issues if issue.code in codes]
+    return cannot_run_message(issues) if issues else None

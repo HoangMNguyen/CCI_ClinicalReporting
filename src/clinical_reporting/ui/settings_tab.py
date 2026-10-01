@@ -1,9 +1,9 @@
-"""Settings tab mixin for the Clinical Reporting widget.
+"""Source data page mixin for the Clinical Reporting widget.
 
 This module collects all of the logic that interacts with filesystem
 resources (input ZIP selection, saved setting folders, and saved setting
 management).  The mixin exposes slot methods that are bound to the
-settings tab controls from :class:`ui.window.Widget`.
+Source data page's controls from :class:`ui.window.Widget`.
 
 Reading the ZIP runs in the background (:func:`cci_ui.tasks.run_task`); the
 data it returns is applied to the report in the callbacks, back on the GUI
@@ -23,8 +23,7 @@ import pandas as pd
 from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QFileDialog
 
-from cci_ui.tasks import defer_if_busy, run_task, when_idle
-from cci_ui.widgets.status import show_error
+from cci_ui.tasks import defer_if_busy, run_task
 from clinical_reporting import feedback
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
 from clinical_reporting.session import new_report, replace_base_data, without_base_data
@@ -34,10 +33,10 @@ logger = logging.getLogger(__name__)
 
 
 class SettingsTabMixin:
-    """Behavior for the settings tab and saved-setting management."""
+    """Behavior for the Source data page and saved-setting management."""
 
     def _init_settings_tab(self) -> None:
-        """Wire up controls on the settings tab."""
+        """Wire up controls on the Source data page."""
         self.ui.pushButton_input_file.clicked.connect(self.click_input_file)
         self.ui.pushButton_remove_input.clicked.connect(self.click_remove_input)
         self.ui.pushButton_remove_input.setEnabled(bool(self._input_file_path))
@@ -68,7 +67,7 @@ class SettingsTabMixin:
             calendar.activated.connect(self._reload_with_current_cut_off)
 
     # ------------------------------------------------------------------
-    # Slots bound to settings tab buttons
+    # Slots bound to the Source data page's buttons
 
     def click_input_file(self) -> None:
         """Open a file dialog to choose the input Corelisting ZIP file."""
@@ -119,6 +118,9 @@ class SettingsTabMixin:
         self._input_file_path = file_path
         self._applied_cut_off_date = cut_off_date
         self._failed_cut_off_reload = None
+        # The new report has none of the applied additional forms.
+        self._forget_applied_additional_forms()
+        self._forget_export_results()
         self.ui.pushButton_remove_input.setEnabled(True)
 
         self.update_all_ui()
@@ -134,7 +136,7 @@ class SettingsTabMixin:
         """Remove the selected Corelisting ZIP and its forms from the report.
 
         Additional inputs are independent of the Corelisting ZIP, so forms
-        already applied from the additional-input tab remain available.
+        already applied from the Additional input page remain available.
         """
         if defer_if_busy(self, self.click_remove_input):
             return
@@ -150,6 +152,7 @@ class SettingsTabMixin:
         self._failed_cut_off_reload = None
         self._last_loaded_setting_path = None
         self._pending_saved_setting_reapply = False
+        self._forget_export_results()
 
         self._show_input_file()
         self.ui.pushButton_remove_input.setEnabled(False)
@@ -275,24 +278,15 @@ class SettingsTabMixin:
     ) -> None:
         """Say the ZIP couldn't be read, and what that means (*outcome*).
 
-        The problem stays on the Source data page; a dialog also shows it
-        once the window is free, since the user may be on another page.
+        The problem stays on the Source data page, with the traceback behind
+        "Show details"; the status bar repeats it, as a toast if the user is
+        on another page (see :mod:`ui.navigation`).
         """
         logger.error("Could not read %s", file_path, exc_info=exc)
         problem = feedback.error(
-            f"Could not read {os.path.basename(file_path)}: {exc}", details
+            f"Could not read {os.path.basename(file_path)}: {exc}\n{outcome}", details
         )
         self._show_input_file(problem)
-        when_idle(
-            self,
-            partial(
-                show_error,
-                self,
-                "Could not read the Corelisting ZIP",
-                f"{problem}\n\n{outcome}",
-                problem.details or "",
-            ),
-        )
 
     def _show_input_file(self, problem: Optional[feedback.Message] = None) -> None:
         """Show the loaded ZIP on the Source data page, and *problem* if any."""

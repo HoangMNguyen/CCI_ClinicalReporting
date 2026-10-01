@@ -25,7 +25,13 @@ from clinical_reporting.telemetry import (
 )
 from clinical_reporting.ui.dialogs import choose_settings_directory
 from clinical_reporting.ui.preview_model import ReportPreviewModel
-from clinical_reporting.validation import ReportValidationError, format_issue_messages
+from clinical_reporting.validation import (
+    CANNOT_RUN_PREFIX,
+    JOIN_BLOCKING_ISSUE_CODES,
+    ReportValidationError,
+    cannot_run_message,
+    report_issues_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -123,40 +129,12 @@ class RunAndSaveMixin:
     # ------------------------------------------------------------------
     # Join-configuration guarding
 
-    #: Prefix used for the inline join-order conflict message so the button
-    #: refresh can recognise (and clear) its own stale hint without clobbering
-    #: unrelated run/preview status text.
-    _JOIN_CONFLICT_PREFIX = "Cannot run:"
-    _JOIN_BLOCKING_ISSUE_CODES = frozenset(
-        {"duplicate_join_order", "missing_join_items"}
-    )
-
-    def _issues_message(self, issues) -> feedback.Message:
-        """Render validation issues as the shared "Cannot run:" bullet list."""
-        return feedback.warning(
-            f"{self._JOIN_CONFLICT_PREFIX}\n{format_issue_messages(issues)}"
-        )
-
-    def _validation_message(self, issue_codes=None) -> Optional[feedback.Message]:
-        """Return "Cannot run:" feedback for the current validation issues.
-
-        ``issue_codes`` restricts the check to those codes (the run guard
-        reacts only to join-blocking problems); ``None`` reports every issue.
-        Returns ``None`` when nothing blocks the report.
-        """
+    def _join_configuration_error_message(self) -> Optional[feedback.Message]:
+        """Return validation feedback for join errors that block output."""
         report = getattr(self, "report", None)
         if report is None:
             return None
-        issues = report.validate()
-        if issue_codes is not None:
-            issues = [issue for issue in issues if issue.code in issue_codes]
-        if not issues:
-            return None
-        return self._issues_message(issues)
-
-    def _join_configuration_error_message(self) -> Optional[feedback.Message]:
-        """Return validation feedback for join errors that block output."""
-        return self._validation_message(self._JOIN_BLOCKING_ISSUE_CODES)
+        return report_issues_message(report, JOIN_BLOCKING_ISSUE_CODES)
 
     def _refresh_run_availability(self) -> None:
         """Enable/disable Export to Excel and surface join-configuration errors.
@@ -172,9 +150,7 @@ class RunAndSaveMixin:
             self._set_label_text(self.label_run_confirmation, message)
         elif (
             self.label_run_confirmation is not None
-            and self.label_run_confirmation.text().startswith(
-                self._JOIN_CONFLICT_PREFIX
-            )
+            and self.label_run_confirmation.text().startswith(CANNOT_RUN_PREFIX)
         ):
             # Conflict resolved: clear only our own stale hint.
             self._set_label_text(self.label_run_confirmation, "")
@@ -186,10 +162,8 @@ class RunAndSaveMixin:
         """Return actionable validation feedback for the current report."""
 
         if getattr(self, "report", None) is None:
-            return feedback.warning(
-                f"{self._JOIN_CONFLICT_PREFIX} no report is loaded."
-            )
-        return self._validation_message()
+            return feedback.warning(f"{CANNOT_RUN_PREFIX} no report is loaded.")
+        return report_issues_message(self.report)
 
     def preview_report(self) -> None:
         """Generate and display a preview of the report."""
@@ -246,7 +220,7 @@ class RunAndSaveMixin:
         """Explain why building the report failed (preview or export)."""
         if isinstance(exc, ReportValidationError):
             self._set_label_text(
-                self.label_run_confirmation, self._issues_message(exc.issues)
+                self.label_run_confirmation, cannot_run_message(exc.issues)
             )
             return
         logger.error(what_failed, exc_info=exc)
@@ -298,10 +272,18 @@ class RunAndSaveMixin:
             record_successful_export(os.path.basename(file_path))
         except Exception:  # Defensive isolation from telemetry regressions.
             pass
+        self._last_export_path = file_path
+        self._report_changed()
         self._set_label_text(
             self.label_run_confirmation,
             feedback.success(f"Report saved successfully to {file_path}"),
         )
+
+    def _forget_export_results(self) -> None:
+        """Clear the export and save results of the data loaded before."""
+        self._last_export_path = None
+        self._set_label_text(self.label_run_confirmation, "")
+        self._set_label_text(self.label_save_confirmation, "")
 
     def _show_export_error(self, exc: BaseException, details: str) -> None:
         """Say why the report couldn't be exported."""

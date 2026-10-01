@@ -25,9 +25,21 @@ from cci_ui.widgets.busy import REVEAL_DELAY_MS, BusyOverlay
 from cci_ui.widgets.dual_list import DualListPicker
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.search import SearchField
-from cci_ui.widgets.shell import SIDEBAR_SHORTCUT, AppShell
-from cci_ui.widgets.sidebar import Sidebar, StepState
-from cci_ui.widgets.status import MAX_TOASTS, StatusBanner, show_error, show_toast
+from cci_ui.widgets.shell import (
+    MESSAGE_SHARE,
+    RESTORE_SETTLE_MS,
+    SIDEBAR_SHORTCUT,
+    AppShell,
+    AppStatusBar,
+)
+from cci_ui.widgets.sidebar import Sidebar, SidebarItem, StepState
+from cci_ui.widgets.status import (
+    MAX_TOASTS,
+    TOAST_MAX_W,
+    StatusBanner,
+    show_error,
+    show_toast,
+)
 from cci_ui.widgets.tables import (
     ColumnSpec,
     TableToolbar,
@@ -41,7 +53,12 @@ from cci_ui.widgets.views import (
     PlaceholderTableWidget,
     PreviewTableView,
 )
-from cci_ui.window_state import WindowState, first_launch_geometry
+from cci_ui.window_state import (
+    SIDEBAR_COLLAPSED_KEY,
+    SIDEBAR_WIDTH_KEY,
+    WindowState,
+    first_launch_geometry,
+)
 from clinical_reporting import feedback
 
 
@@ -194,6 +211,18 @@ def test_banner_details_copy_and_action(shown):
         banner.show_message("x", "loud")
 
 
+def test_banner_says_whenever_its_message_changes(qapp):
+    banner = StatusBanner()
+    changes = []
+    banner.messageChanged.connect(lambda: changes.append(banner.text()))
+
+    banner.setText(feedback.success("Saved"))
+    banner.setText(feedback.success("Saved"))  # The same result again.
+    banner.clear()
+
+    assert changes == ["Saved", "Saved", ""]
+
+
 def test_banner_dismiss_hides_it(qapp):
     container, banner = _placed_banner()
     dismissed = []
@@ -203,6 +232,19 @@ def test_banner_dismiss_hides_it(qapp):
     banner.dismiss_button.click()
 
     assert banner.isHidden() and dismissed == [True]
+
+
+def test_a_long_toast_stays_inside_the_window(shown):
+    window = shown(QWidget(), 600, 400)
+    text = "Settings saved to C:\\Users\\analyst\\" + "Folder\\" * 40 + "DSMB.json"
+
+    toast = show_toast(window, text)
+    QApplication.processEvents()
+
+    assert toast.width() <= min(TOAST_MAX_W, 600 - 48)
+    assert toast.accessibleName() == text and toast.label.text() == text
+    shown_text = super(type(toast.label), toast.label).text()
+    assert shown_text != text and shown_text.endswith("DSMB.json")
 
 
 def test_toasts_stack_up_to_a_limit_and_go_away(shown, shown_windows):
@@ -451,6 +493,28 @@ def test_sidebar_arrow_keys_pick_the_next_item(shown):
     assert sidebar.current() == "joins" and picked == ["joins"]
 
 
+def test_sidebar_titles_make_no_keyboard_shortcut(qapp):
+    item = SidebarItem("order", "Order & rename", "list")
+
+    assert item.title() == "Order & rename" and item.text() == "Order && rename"
+
+
+def test_clicking_the_sidebar_leaves_the_focus_where_it_was(shown):
+    window = QWidget()
+    field = QLineEdit()
+    sidebar = _sidebar()
+    layout = QVBoxLayout(window)
+    layout.addWidget(field)
+    layout.addWidget(sidebar)
+    shown(window, 300, 400)
+    field.setFocus()
+
+    QTest.mouseClick(sidebar.item("joins"), Qt.MouseButton.LeftButton)
+
+    # A field losing focus commits its edit, which may start work.
+    assert sidebar.current() == "joins" and QApplication.focusWidget() is field
+
+
 def test_collapsed_sidebar_hides_titles_and_shows_rules(qapp):
     sidebar = _sidebar()
     sidebar.set_collapsed(True)
@@ -500,6 +564,33 @@ def test_shell_collapses_the_sidebar_on_narrow_windows(make_manager, shown):
     assert shell.splitter.widget(1).x() < LAYOUT.sidebar_collapsed_w + 10
 
 
+def test_a_restored_sidebar_state_holds_while_the_window_opens(make_manager, shown):
+    shell = _shell(make_manager)
+    shell.restore_sidebar(260, collapsed=True)
+
+    # As a window reopening maximized: laid out at its normal size first.
+    shown(shell, 1000, 700)
+    shell.resize(1900, 700)
+    QApplication.processEvents()
+    held = shell.is_sidebar_collapsed()
+    QTest.qWait(RESTORE_SETTLE_MS + 100)
+    shell.resize(1000, 700)
+    shell.resize(1900, 700)
+
+    assert held
+    assert not shell.is_sidebar_collapsed()  # Settled: crossing works again.
+
+
+def test_a_state_restored_on_a_shown_shell_also_settles(make_manager, shown):
+    shell = shown(_shell(make_manager), 1300, 700)
+
+    shell.restore_sidebar(260, collapsed=False)
+    QTest.qWait(RESTORE_SETTLE_MS + 100)
+    shell.resize(900, 700)
+
+    assert shell.is_sidebar_collapsed()
+
+
 def test_restored_sidebar_state_survives_the_first_show(make_manager, shown):
     collapsed_wide = _shell(make_manager)
     collapsed_wide.restore_sidebar(260, collapsed=True)
@@ -532,6 +623,69 @@ def test_sidebar_shortcut_toggles_at_any_width(make_manager, shown):
     QTest.keySequence(shell.sidebar.item("source"), QKeySequence(SIDEBAR_SHORTCUT))
 
     assert shell.is_sidebar_collapsed()
+
+
+def test_shell_shows_the_current_page_and_a_display_button_with_a_theme(
+    make_manager,
+):
+    shell = _shell(make_manager)
+    shell.set_current("joins")
+    bare = AppShell(None, title="Test tool")
+
+    assert shell.current_page() is shell.page("joins")
+    assert shell.display_button is not None and bare.display_button is None
+    assert bare.current_page() is None
+
+
+def test_status_bar_shows_a_summary_and_the_latest_message(qapp):
+    status_bar = AppStatusBar()
+
+    status_bar.set_summary("DEMO01 · 3 forms")
+    status_bar.show_message("Cannot run:\n  Join order 2 is used twice.", "warning")
+    shown = status_bar.message(), status_bar.message_kind()
+    icon_shown = status_bar.kind_icon.isVisibleTo(status_bar)
+    status_bar.clear_message()
+
+    assert status_bar.summary() == "DEMO01 · 3 forms"
+    assert shown == ("Cannot run: Join order 2 is used twice.", "warning")
+    assert icon_shown and not status_bar.kind_icon.isVisibleTo(status_bar)
+    assert (status_bar.message(), status_bar.message_kind()) == ("", "")
+    with pytest.raises(ValueError):
+        status_bar.show_message("Saved", "done")
+
+
+def test_long_messages_leave_room_for_the_summary(make_manager, shown):
+    shell = shown(_shell(make_manager), 1300, 700)
+    status_bar = shell.status_bar
+    status_bar.set_summary("DEMO01 · 3 forms · 12 items")
+
+    status_bar.show_message("Report saved successfully to " + "C:\\folder" * 40)
+    QApplication.processEvents()
+
+    assert status_bar.message_label.width() <= MESSAGE_SHARE * status_bar.width() + 1
+    assert status_bar.summary_label.width() > 100
+    assert status_bar.height() == theme_manager.current().metrics.status_h
+
+
+def test_step_shortcuts_go_to_the_next_and_previous_page(make_manager, shown):
+    shell = shown(_shell(make_manager), 1300, 700)
+    shell.add_page("preview", Page("Preview"), title="Preview", section="Output")
+    focus = shell.sidebar.item("source")
+    focus.setFocus()
+    ctrl = Qt.KeyboardModifier.ControlModifier
+    seen = []
+
+    for key, modifiers in [
+        (Qt.Key.Key_PageDown, ctrl),
+        (Qt.Key.Key_Tab, ctrl),
+        (Qt.Key.Key_Tab, ctrl),  # Already on the last page.
+        (Qt.Key.Key_PageUp, ctrl),
+        (Qt.Key.Key_Backtab, ctrl | Qt.KeyboardModifier.ShiftModifier),
+    ]:
+        QTest.keyClick(focus, key, modifiers)
+        seen.append(shell.current())
+
+    assert seen == ["joins", "preview", "preview", "joins", "source"]
 
 
 def test_small_tool_shell_has_no_sidebar(make_manager):
@@ -605,3 +759,49 @@ def test_window_state_keeps_other_values(qapp, tmp_path):
 
     assert int(state.value("sidebar_width")) == 260
     assert state.value("missing", "default") == "default"
+
+
+def test_remember_restores_the_window_and_sidebar_after_a_restart(
+    make_manager, qapp, tmp_path
+):
+    settings = QSettings(str(tmp_path / "windows.ini"), QSettings.Format.IniFormat)
+    window = QMainWindow()
+    shell = _shell(make_manager)
+    window.setCentralWidget(shell)
+    WindowState("clinical-reporting", settings).remember(
+        window, first_size=(1300, 700), min_size=(900, 500), shell=shell
+    )
+    window.show()
+    shell.set_sidebar_width(280)
+    shell.set_sidebar_collapsed(True)
+    size = window.size()
+    window.close()  # Saves.
+
+    reopened = QMainWindow()
+    reopened_shell = _shell(make_manager)
+    reopened.setCentralWidget(reopened_shell)
+    WindowState("clinical-reporting", settings).remember(
+        reopened, first_size=(800, 600), min_size=(900, 500), shell=reopened_shell
+    )
+    reopened.show()
+    QApplication.processEvents()
+    try:
+        assert reopened.size() == size
+        assert reopened_shell.is_sidebar_collapsed()
+        assert reopened_shell.sidebar_width() == 280
+    finally:
+        reopened.close()
+        shiboken6.delete(window)
+        shiboken6.delete(reopened)
+
+
+def test_window_state_reads_numbers_and_flags_stored_as_text(qapp, tmp_path):
+    settings = QSettings(str(tmp_path / "windows.ini"), QSettings.Format.IniFormat)
+    state = WindowState("safety", settings)
+    state.set_value(SIDEBAR_WIDTH_KEY, 260)
+    state.set_value(SIDEBAR_COLLAPSED_KEY, False)
+    settings.sync()
+    reread = WindowState("safety", QSettings(settings.fileName(), settings.format()))
+
+    assert reread.value(SIDEBAR_WIDTH_KEY, 0, int) == 260
+    assert reread.value(SIDEBAR_COLLAPSED_KEY, True, bool) is False

@@ -1,8 +1,8 @@
-"""Dialog workflows shared by more than one tab.
+"""Dialog workflows shared by more than one page.
 
-Keeping these here avoids tab-to-tab imports: both the settings tab and the
-output tab open the same settings-folder dialog, so the workflow lives in
-this neutral module instead of either tab's own.
+Keeping these here avoids page-to-page imports: both the Source data page
+and the Preview & export page open the same settings-folder dialog, so the
+workflow lives in this neutral module instead of either page's own.
 """
 
 from __future__ import annotations
@@ -25,10 +25,11 @@ def show_settings_folder(widget, folder: str) -> None:
 def choose_settings_directory(widget) -> None:
     """Run the shared settings-folder selection workflow on *widget*.
 
-    The settings-folder buttons on the settings and output tabs share this
-    workflow: open the directory dialog, remember the choice, confirm it, and
-    refresh the saved-settings list. Each click handler performs only its
-    tab-specific precondition before delegating here.
+    The settings-folder buttons on the Source data and Preview & export
+    pages share this workflow: open the directory dialog, remember the
+    choice, confirm it, and refresh the saved-settings list. Each click
+    handler performs only its page-specific precondition before delegating
+    here.
     """
     initial_dir = widget.settings_directory or widget._get_default_settings_directory()
     settings_dir = QFileDialog.getExistingDirectory(

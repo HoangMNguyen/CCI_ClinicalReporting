@@ -62,4 +62,25 @@ def kind_of(text: Optional[str]) -> str:
     return getattr(text, "kind", "info")
 
 
-__all__ = ["KINDS", "Message", "error", "info", "kind_of", "success", "warning"]
+def one_line(text: str) -> str:
+    """*text* for a one-line status: lines joined, their "- " bullets dropped.
+
+    (Lists of problems, such as "Cannot run:" messages, put one per line.)
+    A line that doesn't end in punctuation gets a full stop before the next.
+    """
+    lines = [line.strip().removeprefix("- ") for line in text.splitlines()]
+    lines = [line for line in lines if line]
+    ended = [line if line[-1] in ".:;!?…" else f"{line}." for line in lines[:-1]]
+    return " ".join(ended + lines[-1:])
+
+
+__all__ = [
+    "KINDS",
+    "Message",
+    "error",
+    "info",
+    "kind_of",
+    "one_line",
+    "success",
+    "warning",
+]

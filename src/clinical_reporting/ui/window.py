@@ -1,21 +1,24 @@
-"""Composed main widget for the Clinical Reporting tool.
+"""Composed main window for the Clinical Reporting tool.
 
 The original :mod:`widget` module contained a single 1,600-line class
 that intertwined UI wiring, persistence, and domain orchestration.  This
 module replaces it with a composition of focused mixins that live in the
 :mod:`ui` package.  Each mixin encapsulates one functional area (settings,
 forms, filters, etc.), while :class:`Widget` coordinates them to create
-the final :class:`~PySide6.QtWidgets.QWidget` used by the application.
+the application's main window.
 The widgets come from :class:`~ui.main_ui.ClinicalReportingUi`, built in
-code; layouts and column rules handle resizing.
+code: the pages sit in an :class:`~cci_ui.widgets.shell.AppShell` with a
+sidebar of steps; layouts and column rules handle resizing.
 """
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QWidget
+from typing import Optional
+
+from PySide6.QtWidgets import QMainWindow
 
 from cci_ui.tasks import TaskRunner
-from cci_ui.widgets.busy import BusyOverlay
+from cci_ui.theme.manager import ThemeManager
 
 from .additional_input_tab import AdditionalInputTabMixin
 from .base import WidgetBaseMixin
@@ -46,13 +49,17 @@ BEHAVIORS = (
 
 
 @compose_behaviors(*BEHAVIORS)
-class Widget(QWidget):
-    """Main window composed from explicit feature controllers."""
+class Widget(QMainWindow):
+    """Main window composed from explicit feature controllers.
 
-    def __init__(self, parent=None):
+    Pass the app's *theme* manager for the header's Display button (the
+    tests and previews may leave it out).
+    """
+
+    def __init__(self, parent=None, *, theme: Optional[ThemeManager] = None):
         super().__init__(parent)
         self.ui = ClinicalReportingUi()
-        self.ui.setup(self)
+        self.ui.setup(self, theme)
 
         self._controllers = {
             "shared": FeatureController(self, WidgetBaseMixin, NavigationMixin),
@@ -78,10 +85,10 @@ class Widget(QWidget):
         self._controllers["rules"].call("_init_comparison_and_order_tab")
         self._controllers["rules"].call("_init_join_table")
         self._controllers["output"].call("_init_run_and_save_controls")
-        self._controllers["shared"].call("_init_tab_navigation")
         self._controllers["shared"].call("_initialize_list_views")
-        # The overlay keeps itself sized to the window.
-        self.task_runner = TaskRunner(self, overlay=BusyOverlay(self))
+        self._controllers["shared"].call("_init_navigation")
+        # The shell's overlay covers the sidebar too while work runs.
+        self.task_runner = TaskRunner(self, overlay=self.ui.shell.busy)
 
     def closeEvent(self, event):  # noqa: N802 - Qt override
         """Ignore any job still running, and start no more, once closing."""

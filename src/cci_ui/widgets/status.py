@@ -41,7 +41,7 @@ from cci_ui.theme.manager import current, repolish
 from cci_ui.theme.palette import qcolor
 from cci_ui.theme.qss import register_qss
 from cci_ui.widgets.buttons import icon_button, make_button
-from cci_ui.widgets.labels import IconLabel
+from cci_ui.widgets.labels import ElidedLabel, IconLabel
 
 KINDS = ("info", "success", "warning", "error")
 #: Kind -> (icon, icon role).
@@ -97,6 +97,8 @@ class StatusBanner(QFrame):
 
     #: Emitted when the user closes the banner with its ✕ button.
     dismissed = Signal()
+    #: Emitted whenever a message is shown or cleared, even the same one again.
+    messageChanged = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None, *, dismissible: bool = True):
         super().__init__(parent)
@@ -194,6 +196,7 @@ class StatusBanner(QFrame):
         self._details = ""
         self._label.clear()
         self._set_showing(False)
+        self.messageChanged.emit()
 
     # ------------------------------------------------------------------
     # Richer API
@@ -217,6 +220,7 @@ class StatusBanner(QFrame):
         self._details_view.setPlainText(self._details)
         self._set_details_open(False)
         self._set_showing(True)
+        self.messageChanged.emit()
 
     def set_action(self, text: str, callback: Optional[Callable[[], None]]) -> None:
         """Show a link button such as "Go to Joins"; pass no callback to hide it."""
@@ -250,11 +254,19 @@ class StatusBanner(QFrame):
 
 #: At most this many toasts are stacked; older ones make room.
 MAX_TOASTS = 3
+#: Widest a toast gets; longer text is shortened in the middle.
+TOAST_MAX_W = 520
+#: Space kept free on each side of a toast in a narrow window.
+_TOAST_SIDE_GAP = 24
 _FADE_MS = 180
 
 
 class _Toast(QWidget):
-    """One pill-shaped message; fades in, waits, fades out, then deletes itself."""
+    """One pill-shaped message; fades in, waits, fades out, then deletes itself.
+
+    At most :data:`TOAST_MAX_W` wide (less in a narrow window); text that
+    doesn't fit is shortened in the middle, keeping a path's file name.
+    """
 
     def __init__(self, text: str, kind: str, duration_ms: int, parent: QWidget):
         super().__init__(parent)
@@ -269,12 +281,14 @@ class _Toast(QWidget):
         row.setContentsMargins(14, 8, 16, 8)
         row.setSpacing(8)
         row.addWidget(IconLabel(*KIND_ICONS[kind]))
-        label = QLabel(text)
-        label.setTextFormat(Qt.TextFormat.PlainText)
-        row.addWidget(label)
+        self.label = ElidedLabel(text)
+        row.addWidget(self.label)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(12, 4, 12, 12)  # room for the shadow
         outer.addWidget(pill)
+        self.setMaximumWidth(
+            min(TOAST_MAX_W, max(160, parent.width() - 2 * _TOAST_SIDE_GAP))
+        )
         self.setAccessibleName(text)
 
         self._opacity = QGraphicsOpacityEffect(self)
@@ -363,7 +377,9 @@ def show_error(
 
 __all__ = [
     "KINDS",
+    "KIND_ICONS",
     "MAX_TOASTS",
+    "TOAST_MAX_W",
     "StatusBanner",
     "ToastHost",
     "show_error",
