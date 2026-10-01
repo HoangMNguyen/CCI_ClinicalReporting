@@ -302,7 +302,8 @@ Then run `python -m pytest -q tests/ui`. Among those tests,
 `test_ui_contract.py` checks that the mixins and the pages agree on widget
 names and that the pages follow `STEP_KEYS`, `test_resize_behavior.py` that
 no control stretches at the target window sizes (and that the sidebar and
-the Preview panel rearrange on narrow windows), and `test_preview_tool.py`
+the Preview panel rearrange on narrow windows, and that long paths in the
+panel's messages wrap instead of widening it), and `test_preview_tool.py`
 pins the step order (update it when you reorder steps).
 
 ## Testing notes
