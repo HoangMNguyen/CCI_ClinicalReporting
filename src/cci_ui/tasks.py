@@ -38,11 +38,23 @@ from __future__ import annotations
 
 import sys
 import traceback
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+)
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
 
-from cci_ui.widgets.busy import BusyOverlay
+if TYPE_CHECKING:
+    # Only for annotations: importing the widgets here would be circular
+    # (cci_ui.widgets.workflow_page runs its work through this module).
+    from cci_ui.widgets.busy import BusyOverlay
 
 #: Success callback: receives the work function's return value.
 SuccessCallback = Callable[[Any], None]

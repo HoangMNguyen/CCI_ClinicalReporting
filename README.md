@@ -142,16 +142,23 @@ combo box in `src/cci_automation/app.py`.
 
 ## Safety Automation
 
-Single workflow: **Corelisting AE & DLT report**. Select a Corelisting ZIP —
-the study number is detected from the file name — and the app produces the
-standardized Adverse Event / Dose-Limiting Toxicity listing workbook for the
-Safety Department.
+One page: **AE & DLT listing**. Choose a Corelisting ZIP (the study number
+comes from its file name) and an output folder, change the suggested file
+name if you like, and Run. The app builds the standardized Adverse Event /
+Dose-Limiting Toxicity workbook for the Safety Department in the background
+and saves it as `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file
+(before 1.17 the file was named exactly as typed).
 
-Supported studies are driven by `STUDY_KEY_MAP` in
-`src/safety_automation/ae_corelisting/AECoreListing.py` (currently 03325,
-10325, 12423, 15420, 16321), which maps each study to its form-name keys.
-Adding a study is usually just a new map entry describing which Corelisting
-forms hold the AE, dose-level, infusion, and end-of-study data.
+The work is `run()` in `src/safety_automation/ae_corelisting/AECoreListing.py`:
+it takes the ZIP (a path or an open file) and returns the workbook as an
+`OutputFile` (name and bytes) without touching a folder, so a script or a
+future web version can call it too. The supported studies are
+`SUPPORTED_STUDIES` there (03325, 10325, 11823, 12423, 15420, 16321); another
+study's export gets a message saying so. Adding a study means adding it there,
+an entry in `STUDY_KEY_MAP` naming the Corelisting forms that hold its AE,
+dose-level, infusion, and end-of-study data, its columns in the
+`get_*_header_list` methods, and its values in the cohort, dose-level and
+infusion `get_*` methods.
 
 ## Peer Review Automation
 
@@ -423,7 +430,7 @@ The design system is `src/cci_ui`: the colors, sizes and type (`theme/`),
 the components (`widgets/`), the icons, and the four tools' app icons. The
 Clinical Reporting pages are built from it in
 `src/clinical_reporting/ui/pages/`, in Python code (no Qt Designer files).
-The other three tools get their app icons from it now and move onto it next.
+Safety Automation is built on it too (Peer Review and CCI Automation follow).
 
 ### Colors, sizes, and type
 
@@ -443,6 +450,18 @@ page (that puts it under `tests/ui/test_no_stray_windows.py`, which fails
 if building one opens a stray window). Show or hide a child widget only once
 it has a parent; the package docstring explains why.
 
+The small tools are built from two pieces. `cci_ui.tool_window.ToolWindow` is
+the window (the shell, a task runner behind the busy overlay; `run_tool`
+starts the app and remembers the window's size). `WorkflowPage`
+(`widgets/workflow_page.py`) is one workflow's page: the tool's input rows,
+the output folder, a file name with the name it will save, a banner, and Run.
+The tool hands `WorkflowPage.start` a job that returns the workbook; the page
+runs it in the background and saves it (`cci_ui.files.save_output`). The
+core side of a workflow uses `clinical_reporting.workflow`: `OutputFile` for
+what it returns, `WorkflowInputError` for problems the user can fix (the page
+shows them as warnings when the tool lists the type in `expected_errors`), and
+`read_corelisting` to read an export.
+
 A new icon is a Lucide SVG copied into `src/cci_ui/assets/icons/` (from the
 version in `assets/icons/VERSION`) and a constant in `IconName`
 (`cci_ui/icons.py`); `tests/ui/test_icons.py` checks that every file has a
@@ -452,8 +471,9 @@ name and every name a file.
 
 The shared design system (`src/cci_ui`) has a gallery window showing every
 component: colors (with contrast), type, icons, buttons, inputs, toggles and
-segmented controls, sections, lists, tables, the side panel, banners,
-toasts, the status bar, the busy overlay, and empty states.
+segmented controls, sections, lists, tables, the side panel, the workflow
+page of the small tools, banners, toasts, the status bar, the busy overlay,
+and empty states.
 
 ```bash
 python -m cci_ui.gallery                               # open it
@@ -563,6 +583,7 @@ src/clinical_reporting/
   filenames.py                 # safe file names for exports and saved settings
   pipeline.py                  # joins, filters, ordering, renames, formatting
   report_columns.py            # the output columns and their names, before running
+  workflow.py                  # what the tools' workflows return (OutputFile), input errors
   validation.py                # executable-report validation; "Cannot run" messages
   steps.py                     # the steps: titles, badges, and what they say
   data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
@@ -611,6 +632,9 @@ src/cci_ui/                    # shared design system for all four tools
   widgets/dual_list.py         # DualListPicker (available ⇄ selected lists)
   widgets/sidebar.py           # Sidebar with status badges; collapses to icons
   widgets/shell.py             # AppShell: sidebar, header, pages, status bar, busy overlay
+  widgets/workflow_page.py     # WorkflowPage: a small tool's inputs, output, and Run
+  tool_window.py               # ToolWindow, show_tool, run_tool: a small tool's window
+  files.py                     # save_output: a workflow's workbook into the chosen folder
   window_state.py              # remembered window size/position and sidebar per tool
   tasks.py                     # run_task/TaskRunner: slow work off the GUI thread
   gallery.py                   # python -m cci_ui.gallery (every component)
@@ -626,7 +650,8 @@ src/cci_automation/            # Enrollment Log, DSMB, format tools
 
 src/safety_automation/         # Corelisting AE & DLT report
   __main__.py                  # runtime entry: python -m safety_automation
-  ae_corelisting/
+  app.py                       # the window: one WorkflowPage
+  ae_corelisting/AECoreListing.py  # run(): the AE & DLT workbook, Qt-free
 
 src/peer_review_automation/    # Medidata SDS peer review
   __main__.py                  # runtime entry: python -m peer_review_automation
@@ -671,11 +696,11 @@ Set-Content -Path build -Stream com.dropbox.ignored -Value 1
 Set-Content -Path dist -Stream com.dropbox.ignored -Value 1
 ```
 
-To check a Clinical Reporting build without clicking through it, run it with
+To check a build without clicking through it, run it with
 `CCI_UI_SELFTEST` set to a file path: the app starts, writes what it loaded
-(style, font, assets, window icon, and whether it has its bundled
-`telemetry.json`) to that file as JSON, and quits with exit code 0 (1 if a
-check failed; the report then says why under `error`):
+(style, font, assets, window icon, and, for Clinical Reporting, whether it
+has its bundled `telemetry.json`) to that file as JSON, and quits with exit
+code 0 (1 if a check failed; the report then says why under `error`):
 
 ```powershell
 $env:CCI_UI_SELFTEST = "$PWD\dist\selftest.json"
@@ -686,7 +711,8 @@ Remove-Item Env:CCI_UI_SELFTEST
 $run.ExitCode; Get-Content .\dist\selftest.json
 ```
 
-(The other three tools take it up when they move onto the design system.)
+(Safety Automation does this too; the other two tools take it up when they
+move onto the design system.)
 
 ### Versioning a release
 

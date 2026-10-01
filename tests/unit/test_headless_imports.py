@@ -28,6 +28,7 @@ CORE_MODULES = [
     "clinical_reporting.steps",
     "clinical_reporting.telemetry",
     "clinical_reporting.validation",
+    "clinical_reporting.workflow",
     "cci_automation",
     "cci_automation.util",
     "cci_automation.dsmb.DSMB",
@@ -38,6 +39,8 @@ CORE_MODULES = [
     "safety_automation.ae_corelisting.AECoreListing",
     "peer_review_automation",
     "peer_review_automation.sds",
+    # Plain file writing, run on the worker thread.
+    "cci_ui.files",
     # The design values are shared with a future web front end.
     "cci_ui",
     "cci_ui.theme",

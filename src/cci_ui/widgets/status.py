@@ -221,6 +221,10 @@ class StatusBanner(QFrame):
     def kind(self) -> str:
         return self._kind
 
+    def details(self) -> str:
+        """The text "Show details" reveals ("" when there is none)."""
+        return self._details
+
     def show_message(
         self, text: str, kind: str = "info", details: Optional[str] = None
     ) -> None:

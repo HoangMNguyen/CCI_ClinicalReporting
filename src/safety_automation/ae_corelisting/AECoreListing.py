@@ -1,16 +1,68 @@
-#!/usr/bin/env python3
+"""The AE & DLT listing: Safety Automation's one workflow.
+
+:func:`run` reads a Corelisting export and returns the workbook
+(:class:`clinical_reporting.workflow.OutputFile`); :class:`AECoreListing`
+works out the listing for one study. Nothing here touches Qt or a folder.
+"""
+
 import datetime  # Import datetime module
+import io
 import warnings
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 
-from clinical_reporting.data import read_data_dict_zip_corelisting
+from clinical_reporting.filenames import output_file_name
+from clinical_reporting.workflow import (
+    OutputFile,
+    UnsupportedStudyError,
+    input_name,
+    missing_forms_error,
+    read_corelisting,
+)
 from safety_automation.util import get_dose_level, get_study_name
+
+# The listing's pandas steps warn about things that don't matter here. Only
+# warnings raised from this module are ignored (a warnings.catch_warnings()
+# around a run would change the filters of the whole process while it runs).
+warnings.filterwarnings("ignore", module=r"safety_automation\.ae_corelisting")
+
+#: What the messages call this workflow (in the middle of a sentence).
+WORKFLOW = "the AE & DLT listing"
+#: Studies the listing is set up for (each has its AE columns below).
+SUPPORTED_STUDIES = ("03325", "10325", "11823", "12423", "15420", "16321")
+
+
+def default_file_name(study: str) -> str:
+    """The file name to suggest for *study*'s workbook (the run adds the time)."""
+    return f"{study} AE DLT"
+
+
+def run(corelisting, *, file_name: str = "", study: Optional[str] = None) -> OutputFile:
+    """Build the AE & DLT workbook from a Corelisting export.
+
+    *corelisting* is the ZIP: its path, or a file-like object (an upload). The
+    study comes from its file name unless *study* is given. The workbook is
+    named *file_name* (or :func:`default_file_name`) plus the date and time.
+    Raises :class:`~clinical_reporting.workflow.WorkflowInputError` when the
+    study isn't supported or the export lacks a form the listing reads.
+    """
+    study = study or get_study_name(input_name(corelisting))
+    if study not in SUPPORTED_STUDIES:
+        raise UnsupportedStudyError(WORKFLOW, study, SUPPORTED_STUDIES)
+    data = read_corelisting(corelisting)
+    key_map = AECoreListing.STUDY_KEY_MAP.get(study, {})
+    needed = {key_map.get("AE", "AE"), key_map.get("EXINF", "EXINF")}
+    if not needed <= set(data):
+        raise missing_forms_error(WORKFLOW, needed - set(data))
+    workbook = AECoreListing(data, study).to_excel_bytes()
+    name = (file_name or "").strip() or default_file_name(study)
+    return OutputFile(output_file_name(name), workbook)
 
 
 class AECoreListing:
-    warnings.filterwarnings("ignore")
+    """The AE & DLT listing of one study, worked out from its Corelisting forms."""
 
     # Add this mapping as a class variable or set in __init__
     STUDY_KEY_MAP = {
@@ -48,19 +100,18 @@ class AECoreListing:
         # Add more studies as needed
     }
 
-    def __init__(self, input_dir, output_dir, output_file_name):
-        if input_dir is None:
-            print("No dir selected!")
-            return
-        else:
-            self.study_name = get_study_name(input_dir)
-            self.input_dir = input_dir
-            self.output_dir = output_dir
-            self.output_file_name = output_file_name
-            self.key_map = self.STUDY_KEY_MAP.get(self.study_name, {})
-            self.data = read_data_dict_zip_corelisting(self.input_dir)
-            self.output_df = self.calculate_output_df(self.data)
-            self.output(self.output_df, self.output_dir, self.output_file_name)
+    def __init__(self, data, study_name):
+        """Work out the listing from *data* (form name to its DataFrame)."""
+        self.study_name = study_name
+        self.key_map = self.STUDY_KEY_MAP.get(self.study_name, {})
+        self.data = data
+        self.output_df = self.calculate_output_df(self.data)
+
+    def to_excel_bytes(self) -> bytes:
+        """The listing workbook: the reformatted report and its source forms."""
+        buffer = io.BytesIO()
+        self.output(self.output_df, buffer)
+        return buffer.getvalue()
 
     def get_cohort_value_dict(self, study_name):
         # initialize cohort_value_dict
@@ -290,6 +341,7 @@ class AECoreListing:
         return header
 
     def get_DSCA_header_list(self, study_name):
+        header = None  # The study has no cohort assignment.
         if study_name == "03325":
             header = [
                 "Subject",
@@ -310,6 +362,7 @@ class AECoreListing:
         return header
 
     def get_DSDLA_header_list(self, study_name):
+        header = None  # The study has no dose-level assignment.
         if study_name == "03325":
             header = [
                 "Subject",
@@ -525,6 +578,16 @@ class AECoreListing:
         DSCA_key = self.key_map.get("DSCA", "DSCA")
         EXINF_key = self.key_map.get("EXINF", "EXINF")
 
+        # The cohort and dose-level forms count only for studies set up for them.
+        uses_dsca = (
+            DSCA_key in data.keys()
+            and self.get_DSCA_header_list(self.study_name) is not None
+        )
+        uses_dsdla = (
+            DSDLA_key in data.keys()
+            and self.get_DSDLA_header_list(self.study_name) is not None
+        )
+
         # Things to do:
         output_df = pd.DataFrame()
         # for each element in the header list, check if it is in the data[AE_key] columns. If it is, then copy over the data to the output_df but without the part with parentheses
@@ -576,7 +639,7 @@ class AECoreListing:
                 abbrev, abbrev.upper(), case=False
             )
 
-        if DSCA_key in data.keys():
+        if uses_dsca:
             # get data from DSCA
             DSCA_header_list = self.get_DSCA_header_list(self.study_name)
             DSCA_df = data[DSCA_key][DSCA_header_list]
@@ -593,7 +656,7 @@ class AECoreListing:
             subject_index = output_df.columns.get_loc("Subject")
             output_df.insert(subject_index + 1, "Cohort", output_df.pop("Cohort"))
 
-        if DSDLA_key in data.keys():
+        if uses_dsdla:
             # get data from Dose Level Assignment
             DSDLA_header_list = self.get_DSDLA_header_list(self.study_name)
             DSDLA_df = data[DSDLA_key][DSDLA_header_list]
@@ -605,7 +668,7 @@ class AECoreListing:
             # fill blank values with "pending"
             DSDLA_df["Dose Level Assignment"] = DSDLA_df["Dose Level Assignment"].fillna("Pending")
             output_df = output_df.merge(DSDLA_df, on="Subject", how="left")
-            if DSCA_key in data.keys():
+            if uses_dsca:
                 # inset the "Dose Level Assignment" column after the "Cohort" column
                 cohort_index = output_df.columns.get_loc("Cohort")
                 output_df.insert(cohort_index + 1, "Dose Level Assignment", output_df.pop("Dose Level Assignment"))
@@ -729,10 +792,10 @@ class AECoreListing:
         output_df["Duration"] = output_df["Duration"].mask(output_df["Stop Date"] == "Pending", "Pending")
         # fill DLT Duration with "pending" if it is blank
         output_df["DLT Duration"] = output_df["DLT Duration"].fillna("Pending")
-        if DSCA_key in data.keys():
+        if uses_dsca:
             # fill Cohort with "pending" if it is blank
             output_df["Cohort"] = output_df["Cohort"].fillna("Pending")
-        if DSDLA_key in data.keys():
+        if uses_dsdla:
             # fill Dose Level Assignment with "pending" if it is blank
             output_df["Dose Level Assignment"] = output_df["Dose Level Assignment"].fillna("Pending")
             # fill Dose Level As Treated with "pending" if it is blank
@@ -743,7 +806,8 @@ class AECoreListing:
         output_df = output_df.drop_duplicates()
         return output_df
 
-    def output(self, output_df, output_dir, output_file_name):
+    def output(self, output_df, target):
+        """Write the workbook to *target* (a path or a binary file)."""
         # get the keys based on the study name
         AE_key = self.key_map.get("AE", "AE")
         DSDLA_key = self.key_map.get("DSDLA", "DSDLA")
@@ -751,10 +815,7 @@ class AECoreListing:
         EXINF_key = self.key_map.get("EXINF", "EXINF")
 
         # Create an Excel writer object using xlsxwriter engine
-        with pd.ExcelWriter(
-            output_dir + "/" + output_file_name + ".xlsx",
-            engine="xlsxwriter",
-        ) as writer:
+        with pd.ExcelWriter(target, engine="xlsxwriter") as writer:
             date_format = writer.book.add_format(
                 {
                     "num_format": "mm/dd/yyyy",

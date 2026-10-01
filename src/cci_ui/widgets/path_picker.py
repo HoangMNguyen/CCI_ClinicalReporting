@@ -65,6 +65,8 @@ class PathPicker(QWidget):
         layout.addWidget(self.path_label, 1)
         layout.addWidget(self.button)
         layout.addWidget(self.clear_button)
+        # Focusing the picker (setFocus, a label's buddy) focuses Choose….
+        self.setFocusProxy(self.button)
 
         if mode != "external":
             self.button.clicked.connect(self.choose)
@@ -98,6 +100,17 @@ class PathPicker(QWidget):
 
     def clear(self) -> None:
         self.set_paths([])
+
+    def restore_last_folder(self) -> None:
+        """In ``dir`` mode, show the folder chosen last time, if it still exists.
+
+        (Checking that it exists waits for the drive, e.g. a network share.)
+        """
+        if self._mode != "dir" or not self._settings_key:
+            return
+        folder = self._settings_store().value(f"folders/{self._settings_key}", "")
+        if folder and os.path.isdir(folder):
+            self.set_path(str(folder))
 
     # ------------------------------------------------------------------
     # Dialog

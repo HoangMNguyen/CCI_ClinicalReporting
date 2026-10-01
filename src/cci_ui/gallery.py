@@ -67,8 +67,10 @@ from cci_ui.widgets.tables import (
 )
 from cci_ui.widgets.toggle import ToggleSwitch
 from cci_ui.widgets.views import EmptyState, PlaceholderTableWidget
+from cci_ui.widgets.workflow_page import WorkflowPage
 
 SAMPLE_PATH = r"C:\Users\analyst\Downloads\Core_Listings_DEMO01_2026-09-29.zip"
+SAMPLE_FOLDER = r"C:\Users\analyst\Reports"
 
 
 # ----------------------------------------------------------------------
@@ -437,6 +439,24 @@ def _panel_page(_shell: AppShell) -> Page:
     return page
 
 
+def _workflow_page(_shell: AppShell) -> Page:
+    source = PathPicker("file")
+    source.set_path(SAMPLE_PATH)
+    page = WorkflowPage(
+        "Workflow page",
+        "A small tool's page: its files, where to save, a file name, and Run.",
+        inputs=[("Corelisting ZIP", source)],
+        name_preview=lambda name: f"{name} 260930_101500.xlsx",
+        folder_key=None,
+    )
+    page.output_folder.set_path(SAMPLE_FOLDER)
+    page.suggest_file_name("DEMO01 AE DLT")
+    page.banner.show_message(
+        f"Saved DEMO01 AE DLT 260930_101500.xlsx in {SAMPLE_FOLDER}.", "success"
+    )
+    return page
+
+
 def _empty_page(_shell: AppShell) -> Page:
     page = Page("Empty state", "What a step shows before data is loaded.")
     page.body.addWidget(text_label("The page's content, once there is data."))
@@ -507,6 +527,7 @@ PAGES: Sequence[GalleryPage] = (
     ),
     GalleryPage("tables", "Layout", "Tables", IconName.PREVIEW_EXPORT, _tables_page),
     GalleryPage("panel", "Layout", "Side panel", IconName.EXPORT, _panel_page),
+    GalleryPage("workflow", "Layout", "Workflow page", IconName.RUN, _workflow_page),
     GalleryPage(
         "status", "Feedback", "Status & feedback", IconName.WARNING, _status_page
     ),

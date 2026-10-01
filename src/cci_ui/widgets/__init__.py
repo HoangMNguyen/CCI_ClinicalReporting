@@ -38,4 +38,5 @@ from cci_ui.widgets import (  # noqa: F401  (imported for their stylesheet rules
     tables,
     toggle,
     views,
+    workflow_page,
 )

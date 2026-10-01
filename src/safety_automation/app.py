@@ -1,116 +1,111 @@
-# This Python file uses the following encoding: utf-8
-import os
+"""Safety Automation's window: one page that builds the AE & DLT listing.
+
+The page (:class:`cci_ui.widgets.workflow_page.WorkflowPage`) takes the
+Corelisting ZIP, where to save, and a file name. The work happens in
+:func:`safety_automation.ae_corelisting.AECoreListing.run`, which reads the
+ZIP and returns the workbook; the page saves it.
+"""
+
+from __future__ import annotations
+
 import sys
-import traceback
+from functools import partial
+from typing import Optional
 
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
+from PySide6.QtCore import QSettings
+from PySide6.QtWidgets import QWidget
 
-# Important:
-# You need to run the following command to generate the ui_form.py file
-#     pyside6-uic form.ui -o ui_form.py, or
-#     pyside2-uic form.ui -o ui_form.py
-from safety_automation.ui_form import Ui_Widget
+import safety_automation.ae_corelisting.AECoreListing as listing
+from cci_ui.icons import IconName
+from cci_ui.theme.manager import ThemeManager
+from cci_ui.tool_window import ToolWindow, run_tool
+from cci_ui.widgets.path_picker import PathPicker
+from cci_ui.widgets.workflow_page import WorkflowPage
+from clinical_reporting.filenames import output_file_name
+from clinical_reporting.workflow import WorkflowInputError
+from safety_automation import __version__
+from safety_automation.util import get_study_name
 
-
-class Widget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.ui = Ui_Widget()
-        self.ui.setupUi(self)
-        self.load_ui()
-
-    def load_ui(self):
-        # Combo Box
-        comboBox_options = ["Corelisting AE & DLT report"]
-        self.ui.optionComboBox.addItems(comboBox_options)
-
-        # Choose input Directory
-        self.ui.inputButton.clicked.connect(self.input_clicker)
-
-        # Choose output Directory
-        self.ui.outputButton.clicked.connect(self.output_clicker)
-
-        # Run
-        self.ui.runButton.clicked.connect(self.run_clicker)
-
-        # Combo box 1
-        self.onComboBoxChanged()
-        self.ui.optionComboBox.currentIndexChanged.connect(self.onComboBoxChanged)
-
-        # Line edit for Input
-        self.on_lineEdit_changed()
-        self.ui.lineEdit.textChanged.connect(self.on_lineEdit_changed)
-        self.input_file_path = None
-
-    def on_lineEdit_changed(self, text=None):
-        # update the changed line edit
-        self.output_file_name = text
-
-    def onComboBoxChanged(self):
-        """Handle changes in comboBox and update comboBox_2 and other UI elements."""
-        self.selected_option = self.ui.optionComboBox.currentText()
-
-    def input_clicker(self):
-        """Open a file dialog when the user clicks the button.
-        Choose corelisting (zip file) only.
-        """
-        if self.selected_option == "Corelisting AE & DLT report":
-            # point to the default download directory
-            default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-            file_path, _ = QFileDialog.getOpenFileName(
-                self,
-                "Select the Corelisting ZIP",
-                default_dir,
-                "Zip files (*.zip)",
-            )
-            # output filename to screen
-            if file_path:
-                self.ui.inputLabel.setText(file_path)
-                self.input_file_path = file_path
-
-    def output_clicker(self):
-        # self.ui.label.setText("You Clicked")
-        default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-        output_folder_name = QFileDialog.getExistingDirectory(self, "Select Output Folder", default_dir)
-        # output filename to screen
-        if output_folder_name:
-            self.ui.outputLabel.setText(output_folder_name)
-            self.output_folder_name = output_folder_name
-
-    def run_clicker(self):
-        if self.selected_option == "Corelisting AE & DLT report":
-            from safety_automation.ae_corelisting.AECoreListing import AECoreListing
-
-            if (
-                not self.selected_option
-                or not self.input_file_path
-                or not self.output_folder_name
-                or not self.output_file_name
-            ):
-                QMessageBox.warning(
-                    self,
-                    "Warning",
-                    "Please make sure all those selections are entered correctly.",
-                )
-            else:
-                try:
-                    AECoreListing(self.input_file_path, self.output_folder_name, self.output_file_name)
-                    self.ui.confirmLabel.setText(
-                        "Confirmed: Corelisting AE & DLT report selected. Output file name is "
-                        + self.output_file_name
-                        + ".xlsx"
-                    )
-                except Exception as e:
-                    self.ui.confirmLabel.setText("Error: encountered.")
-                    QMessageBox.warning(self, "Error", str(e) + traceback.format_exc())
+#: Settings key and Windows taskbar id of this tool.
+APP_ID = "safety-automation"
+APP_NAME = "Safety Automation"
+#: Smallest window that keeps the page usable; size on first launch.
+MIN_SIZE = (560, 440)
+FIRST_SIZE = (680, 540)
+PAGE_KEY = "ae-dlt-listing"
+PAGE_TITLE = "AE & DLT listing"
+PAGE_SUBTITLE = (
+    "Build the adverse event and dose-limiting toxicity workbook from a "
+    "Corelisting export."
+)
 
 
-def main():
-    app = QApplication(sys.argv)
-    widget = Widget()
-    widget.show()
-    sys.exit(app.exec())
+class Widget(ToolWindow):
+    """The Safety Automation window.
+
+    *settings* holds the folders it remembers (the tool's own settings by
+    default; tests pass a throwaway file).
+    """
+
+    def __init__(
+        self,
+        theme: Optional[ThemeManager] = None,
+        *,
+        settings: Optional[QSettings] = None,
+        parent: Optional[QWidget] = None,
+    ) -> None:
+        super().__init__(theme, title=APP_NAME, parent=parent)
+        #: The Corelisting export; its file name tells the study.
+        self.corelisting = PathPicker(
+            "file",
+            dialog_title="Choose the Corelisting ZIP",
+            file_filter="Zip files (*.zip)",
+            settings_key="corelisting",
+            settings=settings,
+        )
+        self.page = WorkflowPage(
+            PAGE_TITLE,
+            PAGE_SUBTITLE,
+            inputs=[("Corelisting ZIP", self.corelisting)],
+            name_preview=output_file_name,
+            expected_errors=(WorkflowInputError,),
+            settings=settings,
+        )
+        self.shell.add_page(
+            PAGE_KEY, self.page, title=PAGE_TITLE, icon_name=IconName.APP_SAFETY
+        )
+        self.corelisting.pathChanged.connect(self._suggest_file_name)
+        self.page.runRequested.connect(self.run)
+        self.corelisting.setFocus()  # Where a keyboard user starts.
+
+    def _suggest_file_name(self, path: str) -> None:
+        study = get_study_name(path) if path else None
+        self.page.suggest_file_name(listing.default_file_name(study) if study else "")
+
+    def run(self) -> None:
+        """Build the workbook from the chosen ZIP and save it."""
+        zip_path = self.corelisting.path()
+        if not zip_path:
+            self.page.warn("Choose a Corelisting ZIP first.")
+            return
+        self.page.start(
+            self,
+            partial(listing.run, zip_path, file_name=self.page.file_name_base()),
+            message="Building the AE & DLT workbook…",
+        )
+
+
+def main() -> int:
+    """Start Safety Automation and run it until its window closes."""
+    return run_tool(
+        Widget,
+        app_id=APP_ID,
+        name=APP_NAME,
+        version=__version__,
+        first_size=FIRST_SIZE,
+        min_size=MIN_SIZE,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
