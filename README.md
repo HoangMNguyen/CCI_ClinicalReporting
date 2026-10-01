@@ -683,7 +683,7 @@ __version__ = "2.01"
 ```
 
 `build_support.py` reads it and stamps it into both the executable's file
-name (`CCI Automation V1.22.exe`) and its Windows VERSIONINFO resource, so
+name (`CCI Automation V<version>.exe`) and its Windows VERSIONINFO resource, so
 the version shown in Explorer under **Properties -> Details** can never drift
 from the version in the file name. The running app can also report its own
 version via `<package>.__version__`.
@@ -693,6 +693,7 @@ variable:
 
 ```powershell
 $env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Automation.spec"
+Remove-Item Env:APP_VERSION  # or every later build gets 2.01 too
 ```
 
 ```bash

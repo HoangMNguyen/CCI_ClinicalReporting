@@ -7,6 +7,7 @@ The version is deliberately NOT part of this file's name. It comes from
 
     python -m PyInstaller "CCI Clinical Reporting.spec"
     $env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Clinical Reporting.spec"
+    Remove-Item Env:APP_VERSION  # or every later build gets 2.01 too
 
 Requires a local ``src/clinical_reporting/telemetry.json`` (git-ignored).
 """

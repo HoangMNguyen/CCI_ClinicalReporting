@@ -7,6 +7,7 @@ The version is deliberately NOT part of this file's name. It comes from
 
     python -m PyInstaller "CCI Automation.spec"
     $env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Automation.spec"
+    Remove-Item Env:APP_VERSION  # or every later build gets 2.01 too
 """
 
 import sys
