@@ -9,7 +9,9 @@ filters added, ...), done, optional, or a problem. Problems come from
 fixes each one. The other functions word what the steps show:
 :func:`report_summary` (the line under the window), :func:`source_summary`,
 :func:`preview_caption`, :func:`joins_message`, and the Additional input
-step's messages (:func:`additional_applied_message` and the constants).
+step's messages (:func:`additional_applied_message`, the constants, and the
+``saved_names_*`` wording for the names a loaded setting saved for its
+additional files; see :mod:`clinical_reporting.additional_names`).
 """
 
 from __future__ import annotations
@@ -23,10 +25,17 @@ from typing import (
     Mapping,
     NamedTuple,
     Optional,
+    Sequence,
     Sized,
+    Tuple,
 )
 
 from clinical_reporting import feedback, report_columns
+from clinical_reporting.additional_names import (
+    BY_COLUMNS,
+    BY_FILE_NAME,
+    SavedFileNames,
+)
 from clinical_reporting.models import qualify
 from clinical_reporting.validation import ReportValidationIssue
 
@@ -83,6 +92,8 @@ APPLY_ADDITIONAL_AGAIN = feedback.info(
     "The new Corelisting ZIP started a new report. Apply the files again to add "
     "their forms to it."
 )
+#: The first entry of a file's Saved names dropdown: no saved names used.
+SAVED_NAMES_NONE = "None"
 
 # What a badge shows (the values of cci_ui's StepState).
 NONE = "none"
@@ -311,6 +322,173 @@ def additional_applied_message(forms: Collection[str]) -> feedback.Message:
     )
 
 
+_MATCHED_BY = {BY_FILE_NAME: "by its file name", BY_COLUMNS: "by its columns"}
+
+
+def _and_list(names: Sequence[str]) -> str:
+    """*names* in a sentence: "a", "a and b", "a, b and c"."""
+    if len(names) <= 1:
+        return "".join(names)
+    return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def saved_names_label(entry: SavedFileNames) -> str:
+    """A saved entry as a Saved names dropdown lists it: "LAB · lab_results.csv"."""
+    if entry.form_name:
+        return f"{entry.form_name} · {entry.file_name}"
+    return entry.file_name
+
+
+def saved_names_tip(
+    entry: Optional[SavedFileNames] = None, by: Optional[str] = None
+) -> str:
+    """A Saved names dropdown's tooltip: the entry it shows, and why.
+
+    *by* is how the entry was matched to the file
+    (:attr:`clinical_reporting.additional_names.Match.by`); ``None`` when
+    the user picked it.
+    """
+    if entry is None:
+        return (
+            "No saved names are used for this file. Pick an entry to fill in "
+            "its form and column names."
+        )
+    if by == BY_FILE_NAME:
+        return f"Picked because the file name matches {entry.file_name}."
+    if by == BY_COLUMNS:
+        return f"Picked because its columns match {entry.file_name}."
+    return f"Using the names saved for {entry.file_name}."
+
+
+def saved_names_filled_message(
+    setting_name: str,
+    picks: Sequence[Tuple[str, Optional[str]]],
+    unmatched: Optional[Mapping[str, Sequence[str]]] = None,
+) -> feedback.Message:
+    """What picking a loaded setting's saved names for the listed files did.
+
+    *picks* are ``(file name, how it was matched)`` pairs; *unmatched* maps
+    a file name to saved column names that file doesn't have, which makes
+    the message a warning.
+    """
+    parts = [f"{name} {_MATCHED_BY.get(by, '')}".rstrip() for name, by in picks]
+    text = (
+        f"Saved names from “{setting_name}” picked for "
+        f"{_plural(len(picks), 'file')}: {feedback.short_list(parts)}."
+    )
+    if unmatched:
+        missing = [
+            f"{name}: {', '.join(columns)}" for name, columns in unmatched.items()
+        ]
+        return feedback.warning(
+            f"{text} Some saved column names aren't in "
+            f"{feedback.short_list(list(unmatched))}. Check them, then Apply to "
+            "report.",
+            "\n".join(missing),
+        )
+    details = "\n".join(parts) if len(parts) > 5 else None
+    return feedback.info(f"{text} Check them, then Apply to report.", details)
+
+
+def saved_names_picked_message(
+    entry: SavedFileNames, file_name: str, unmatched: Sequence[str]
+) -> feedback.Message:
+    """What picking *entry* in *file_name*'s Saved names dropdown did.
+
+    A warning when some of the entry's renamed columns aren't in the file
+    (*unmatched*).
+    """
+    name = entry.form_name or entry.file_name
+    if unmatched:
+        count = (
+            "1 saved column name has"
+            if len(unmatched) == 1
+            else f"{len(unmatched):,} saved column names have"
+        )
+        return feedback.warning(
+            f"{name}: {count} no matching column in {file_name}: "
+            f"{feedback.short_list(unmatched)}.",
+            "\n".join(unmatched) if len(unmatched) > 5 else None,
+        )
+    return feedback.info(
+        f"Names from {name} filled in for {file_name}. Check them, then Apply "
+        "to report."
+    )
+
+
+def saved_names_missing_message(
+    setting_name: str, entries: Sequence[SavedFileNames]
+) -> feedback.Message:
+    """The files a loaded setting needs that aren't added yet (*entries*)."""
+    names = [
+        f"{entry.file_name} ({entry.form_name})" if entry.form_name else entry.file_name
+        for entry in entries
+    ]
+    return feedback.warning(
+        f"Still to add for “{setting_name}”: {feedback.short_list(names)}. "
+        "Add them, and their saved names will be picked for you, or pick them in "
+        "Saved names for files already added.",
+        "\n".join(names) if len(names) > 5 else None,
+    )
+
+
+def saved_names_cleared_message(file_name: str) -> feedback.Message:
+    """Picking None in *file_name*'s Saved names dropdown cleared its names."""
+    return feedback.info(f"Saved names cleared for {file_name}.")
+
+
+def saved_names_kept_message(file_name: str) -> feedback.Message:
+    """Picking None left *file_name*'s names, which the user had changed."""
+    return feedback.info(
+        f"{file_name} no longer uses saved names. The names you changed stay."
+    )
+
+
+def saved_names_hint(
+    missing_forms: Iterable[str],
+    entries: Iterable[SavedFileNames],
+    added: Collection[SavedFileNames] = (),
+) -> Optional[str]:
+    """For a loaded setting's "Missing forms" warning: the files that bring them.
+
+    Says which additional files to add for the *missing_forms* that have
+    saved names; for those whose file is already *added* (see
+    ``AdditionalInputTabMixin._saved_names_added``), to check its form name
+    and apply it. ``None`` when no missing form has saved names.
+    """
+    by_form = {entry.form_name: entry for entry in entries if entry.form_name}
+    forms = [form for form in missing_forms if form in by_form]
+    if not forms:
+        return None
+    where = TITLES[ADDITIONAL]
+    to_add = [form for form in forms if by_form[form] not in added]
+    to_apply = [form for form in forms if by_form[form] in added]
+    hints = []
+    if len(to_add) == 1:
+        hints.append(
+            f"{to_add[0]} comes from an additional file. Add "
+            f"{by_form[to_add[0]].file_name} on {where}, and its saved names will "
+            "be picked for you."
+        )
+    elif to_add:
+        files = _and_list([by_form[form].file_name for form in to_add])
+        hints.append(
+            f"{_and_list(to_add)} come from additional files. Add {files} on "
+            f"{where}, and their saved names will be picked for you."
+        )
+    if len(to_apply) == 1:
+        hints.append(
+            f"The file for {to_apply[0]} is added: check its form name on {where}, "
+            "then Apply to report."
+        )
+    elif to_apply:
+        hints.append(
+            f"The files for {_and_list(to_apply)} are added: check their form "
+            f"names on {where}, then Apply to report."
+        )
+    return " ".join(hints)
+
+
 __all__ = [
     "ADDITIONAL",
     "ADD_FILES_FIRST",
@@ -332,6 +510,7 @@ __all__ = [
     "OPTIONAL",
     "ORDER",
     "PREVIEW",
+    "SAVED_NAMES_NONE",
     "SOURCE",
     "STEP_KEYS",
     "TITLES",
@@ -342,6 +521,14 @@ __all__ = [
     "joins_message",
     "preview_caption",
     "report_summary",
+    "saved_names_cleared_message",
+    "saved_names_filled_message",
+    "saved_names_hint",
+    "saved_names_label",
+    "saved_names_kept_message",
+    "saved_names_missing_message",
+    "saved_names_picked_message",
+    "saved_names_tip",
     "selected_item_count",
     "source_summary",
     "step_statuses",
