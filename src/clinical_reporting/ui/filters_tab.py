@@ -14,7 +14,8 @@ from typing import Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QComboBox, QCompleter, QTableWidgetItem
 
-from clinical_reporting.models import Operator, qualify
+from clinical_reporting import report_columns
+from clinical_reporting.models import Operator
 
 logger = logging.getLogger(__name__)
 
@@ -76,24 +77,19 @@ class FiltersTabMixin:
     def _selected_filter_items(self) -> list[str]:
         """Return the sorted list of selectable filter items.
 
-        Combines the selected common items with each selected form item rendered
-        as a ``form.item`` qualified name. Shared by the static and dynamic
+        The report's output columns: the selected common items, and each form's
+        columns as ``form.item`` qualified names (its selected items and the
+        common items it doesn't join on). Shared by the static and dynamic
         filter item pickers.
         """
-        items = list(self.report.get_selected_common_items())
-        for form_name in self.report.get_selected_forms_list():
-            form = self.report.selected_forms[form_name]
-            for item in form.get_selected_form_items():
-                items.append(qualify(form_name, item))
-        items.sort()
-        return items
+        return sorted(report_columns.output_identifiers(self.report))
 
     def _populate_searchable_item_combo(
         self, combo: QComboBox, selected_value: Optional[str]
     ) -> None:
         """Turn ``combo`` into an editable, substring-searchable item picker.
 
-        Lists every currently selected item; typing filters the dropdown popup
+        Lists every output column; typing filters the dropdown popup
         to the entries that contain the typed text (case-insensitive). When no
         ``selected_value`` is supplied the combo starts empty, so a freshly
         added filter row applies nothing until the user picks an item.

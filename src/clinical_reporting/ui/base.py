@@ -76,8 +76,9 @@ class WidgetBaseMixin:
         (form or common-item selection changes, loading inputs or saved
         settings). The narrower ``update_*`` helpers refresh only their own
         widgets, so each list and table is rebuilt exactly once from here.
-        The flag suppresses the join table's own order/rename refresh during
-        population; the final step rebuilds those tables once instead.
+        The flag suppresses the join table's own refresh of the order/rename
+        and filter tables during population; the final step rebuilds those
+        tables once instead.
         """
         self._in_coordinated_refresh = True
         try:

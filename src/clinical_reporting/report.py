@@ -3,6 +3,7 @@ import logging
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from clinical_reporting import report_columns
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
     CLForm,
@@ -41,9 +42,11 @@ class CLReport:
         # then the order list is re-derived from the default layout (common
         # items first, then form items grouped by join order).
         self.order_list_customized = False
-        # Renames and filters whose items are currently deselected. They are
-        # kept out of validation, execution, and saved settings, and restored
-        # by ``sync_with_selection`` once their items are selected again.
+        # Renames and filters whose items are currently deselected (or whose
+        # FORM.item column went because the form now joins on that common
+        # item). They are kept out of validation, execution, and saved
+        # settings, and restored by ``sync_with_selection`` once their items
+        # are back.
         self._inactive_rename_dict = {}
         self._inactive_static_filters = []
         self._inactive_dynamic_filters = []
@@ -181,10 +184,7 @@ class CLReport:
         selection order. This mirrors the sequence the report engine uses when
         joining forms.
         """
-        return sorted(
-            self.selected_forms.keys(),
-            key=lambda name: self.selected_forms[name].get_join_order() or 999,
-        )
+        return report_columns.forms_in_join_order(self.selected_forms)
 
     def add_all_available_common_items(self):
         """Add all static available common items to the available common items list."""
@@ -271,18 +271,18 @@ class CLReport:
         """Update the selected items order list with all currently selected items.
 
         The default layout is: selected common items first (leftmost, in input
-        column order), followed by each form's selected items grouped by join
-        (merge) order. This default is re-derived on every call — changing a
-        form's join order re-groups the list — until the user rearranges items
-        on the Order & rename page (``order_list_customized``). From then on the
-        manual arrangement is preserved and new selections are inserted at
-        their default position rather than appended.
+        column order), followed by each form's columns grouped by join (merge)
+        order: the common items it doesn't join on, then its selected items
+        (:func:`clinical_reporting.report_columns.output_identifiers`, the
+        columns the engine puts out). This default is re-derived on every call
+        — changing a form's join order re-groups the list — until the user
+        rearranges items on the Order & rename page (``order_list_customized``).
+        From then on the manual arrangement is preserved and new columns are
+        inserted at their default position (next to their form's other
+        columns) rather than appended.
         """
-        # Canonical default order: common items, then form items per join order.
-        canonical_order = list(self.selected_common_items)
-        for form_name in self.get_forms_in_join_order():
-            form = self.selected_forms[form_name]
-            canonical_order.extend(qualify(form_name, item) for item in form.get_selected_form_items())
+        # Canonical default order: common items, then each form's columns.
+        canonical_order = report_columns.output_identifiers(self)
 
         canonical_set = set(canonical_order)
 
@@ -300,12 +300,34 @@ class CLReport:
 
         placed = set(new_order_list)
 
-        # Insert each new item right after its canonical predecessor so common
-        # items stay leftmost and form items stay grouped with their form.
+        common = set(self.selected_common_items)
+
+        def form_of(identifier: str) -> Optional[str]:
+            # FORM.item (form names have no "."); common items have no form.
+            return None if identifier in common else split_qualified(identifier)[0]
+
+        # Insert each new item where it goes by default, so common items stay
+        # leftmost and a form's columns stay together: right after the column
+        # before it when that is its form's; else just before the first placed
+        # column of its form that follows (past others of its form that are
+        # new too); else right after the column before it.
         for index, item in enumerate(canonical_order):
             if item in placed:
                 continue
-            position = 0 if index == 0 else new_order_list.index(canonical_order[index - 1]) + 1
+            form = form_of(item)
+            previous = canonical_order[index - 1] if index else None
+            position = None
+            if form is not None and previous is not None and form_of(previous) == form:
+                position = new_order_list.index(previous) + 1
+            elif form is not None:
+                for later in canonical_order[index + 1 :]:
+                    if form_of(later) != form:
+                        break
+                    if later in placed:
+                        position = new_order_list.index(later)
+                        break
+            if position is None:
+                position = 0 if previous is None else new_order_list.index(previous) + 1
             new_order_list.insert(position, item)
             placed.add(item)
 
@@ -334,7 +356,7 @@ class CLReport:
         form = CLForm(data.get("name", form_name))
         form.available_form_items = deepcopy(data.get("available_form_items", []))
         form.selected_form_items = deepcopy(data.get("selected_form_items", []))
-        form.join_items = deepcopy(data.get("join_items", []))
+        form.join_items = list(data.get("join_items") or [])
         form.join_order = data.get("join_order")
         form.join_how = data.get("join_how")
         return form
@@ -532,18 +554,18 @@ class CLReport:
         }
 
     def _active_identifiers(self, *, include_unqualified: bool) -> set[str]:
-        """Return identifiers of the currently selected common and form items.
+        """Return the report's output columns (renames, filters and order use them).
 
-        Form items are always included as qualified ``form.item`` names. With
-        ``include_unqualified`` their bare item names are added too, since
-        filters may reference a form item without its form prefix.
+        The selected common items and, as qualified ``form.item`` names, each
+        form's selected items and a later form's copy of a common item it
+        doesn't join on (:func:`clinical_reporting.report_columns.output_identifiers`).
+        With ``include_unqualified`` the bare form item names are added too,
+        since filters may reference a form item without its form prefix.
         """
-        identifiers: set[str] = set(self.selected_common_items)
-        for form_name, form in self.selected_forms.items():
-            for item in form.get_selected_form_items():
-                identifiers.add(qualify(form_name, item))
-                if include_unqualified:
-                    identifiers.add(item)
+        identifiers = set(report_columns.output_identifiers(self))
+        if include_unqualified:
+            for form in self.selected_forms.values():
+                identifiers.update(form.get_selected_form_items())
         return identifiers
 
     @staticmethod
@@ -568,12 +590,18 @@ class CLReport:
     def sync_with_selection(self) -> None:
         """Align renames, filters, and ordering with the current selection.
 
-        Renames and filters that reference a deselected form, form item, or
-        common item are parked: they are excluded from validation, report
-        execution, and saved settings, but restored here once their items are
-        selected again. An active rename always wins over a parked one for the
-        same item. Order lists are simply pruned, since re-selected items are
-        re-inserted at their default position. Safe to call repeatedly.
+        Renames and filters that reference a column the report no longer has
+        (a deselected form, form item, or common item, or a form's copy of a
+        common item it now joins on) are parked: they are excluded from
+        validation, report execution, and saved settings, but restored here
+        once their columns are back. An active rename always wins over a parked
+        one for the same item. Order lists are simply pruned, since a column
+        that comes back is re-inserted at its default position. Safe to call
+        repeatedly.
+
+        The join setters below call this themselves, since joins decide which
+        ``FORM.item`` columns exist; after selection changes the caller does
+        (the window's ``update_items_dependent_ui``).
         """
         selected = self._active_identifiers(include_unqualified=False)
         filterable = self._active_identifiers(include_unqualified=True)
@@ -665,24 +693,37 @@ class CLReport:
             {name: form.get_join_order() for name, form in self.selected_forms.items()}
         )
 
+    # The common items a form joins on decide which of them it puts out as
+    # FORM.item (clinical_reporting.report_columns), so every join change
+    # re-syncs renames, filters and order lists with the columns that now
+    # exist (sync_with_selection). Change several forms' joins with one
+    # update_join_list call: a column that is gone between two calls loses
+    # its place in a customized order.
+
     def add_join_item(self, form: str, item: str, order: int, how: str):
-        """Add a join item to the form."""
+        """Add a join item to the form, then re-sync (see above)."""
         if form in self.selected_forms.keys():
             self.selected_forms[form].set_join_item_state(item, include=True)
             self.selected_forms[form].set_join_order(order)
             self.selected_forms[form].set_join_how(how)
+            self.sync_with_selection()
 
-    def update_join_items(self, form: str, items: list, order: int, how: str):
-        """Update the join items for a form."""
+    def _set_join(self, form: str, items: list, order: int, how: str) -> None:
         if form in self.selected_forms.keys():
             self.selected_forms[form].set_join_items(items)
             self.selected_forms[form].set_join_order(order)
             self.selected_forms[form].set_join_how(how)
 
+    def update_join_items(self, form: str, items: list, order: int, how: str):
+        """Update the join items for a form, then re-sync (see above)."""
+        self._set_join(form, items, order, how)
+        self.sync_with_selection()
+
     def update_join_list(self, join_list: list):
-        """Update the join list for all forms."""
+        """Update several forms' joins, then re-sync once (see above)."""
         for form, items, order, how in join_list:
-            self.update_join_items(form, items, order, how)
+            self._set_join(form, items, order, how)
+        self.sync_with_selection()
 
     def get_all_selected_items(self):
         """Get all items from all selected forms and common items."""
@@ -704,12 +745,11 @@ class CLReport:
             if (item, operator, value) not in self.static_filter_items:
                 self.static_filter_items.append((item, operator, value))
         elif is_qualified(item):
-            # Item is form-prefixed (e.g. "DM.Legal Sex (ig_DM1.SEX)")
-            form_name, item_name = split_qualified(item)
-            if form_name in self.selected_forms:
-                if item_name in self.selected_forms[form_name].get_selected_form_items():
-                    if (item, operator, value) not in self.static_filter_items:
-                        self.static_filter_items.append((item, operator, value))
+            # Item is form-prefixed (e.g. "DM.Legal Sex (ig_DM1.SEX)"): a form's
+            # selected item, or its own copy of a common item it doesn't join on.
+            if item in self._active_identifiers(include_unqualified=False):
+                if (item, operator, value) not in self.static_filter_items:
+                    self.static_filter_items.append((item, operator, value))
         else:
             # Check if the item is in any form's selected items
             for form_name, form in self.selected_forms.items():

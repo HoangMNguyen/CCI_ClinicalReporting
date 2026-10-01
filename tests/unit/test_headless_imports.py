@@ -22,6 +22,7 @@ CORE_MODULES = [
     "clinical_reporting.models",
     "clinical_reporting.pipeline",
     "clinical_reporting.report",
+    "clinical_reporting.report_columns",
     "clinical_reporting.session",
     "clinical_reporting.settings_store",
     "clinical_reporting.steps",

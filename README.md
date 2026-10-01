@@ -113,6 +113,17 @@ Keyboard shortcuts:
 | Ctrl+E | Export to Excel (Preview & export) |
 | Ctrl+S | Save the setting (Preview & export) |
 
+### What's new in 2.10
+
+- A new look: the steps in a sidebar with status badges, light and dark mode,
+  a compact density, and a window that opens where it was.
+- Reading the ZIP, the preview, and the export run in the background, so the
+  window no longer freezes.
+- A common item that a later form doesn't join on now comes out as that form's
+  own column (`AE.Visit` next to `Visit`) instead of `Visit_x` and `Visit_y`,
+  and a later form can join on it again. Reports whose forms join on every
+  selected common item come out exactly as before.
+
 ## CCI Automation
 
 One window, three workflows, selected from a dropdown. Reports are written as
@@ -258,6 +269,18 @@ report.apply_config(config)
 > Note: form-specific items only exist when more than one form is loaded. With a
 > single form every column is treated as a common item, so a column selected as
 > a form item is reconciled into the common pool.
+
+Output columns (before renames) are named the way filters and renames refer
+to them: selected common items keep their plain names, and a form's selected
+items are `FORM.item` (`DM.Age`). A later form (join order 2 or higher) that
+doesn't join on a selected common item puts out its own values of it under its
+name too: in the example above, selecting `Visit` as a common item while VS
+joins on `Subject` only gives both `Visit` (DM's values) and `VS.Visit`.
+`clinical_reporting.report_columns.output_identifiers(report)` lists the
+columns a report will put out, in their default order.
+
+A filter on a common item applies to every form that has it, before the forms
+are joined; a filter on `VS.Visit` applies to VS's copy only.
 
 ### Additional inputs and export options
 
@@ -539,6 +562,7 @@ src/clinical_reporting/
   feedback.py                  # status messages tagged info/success/warning/error
   filenames.py                 # safe file names for exports and saved settings
   pipeline.py                  # joins, filters, ordering, renames, formatting
+  report_columns.py            # the output columns and their names, before running
   validation.py                # executable-report validation; "Cannot run" messages
   steps.py                     # the steps: titles, badges, and what they say
   data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)

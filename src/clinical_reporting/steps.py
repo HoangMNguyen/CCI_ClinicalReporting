@@ -26,7 +26,8 @@ from typing import (
     Sized,
 )
 
-from clinical_reporting import feedback
+from clinical_reporting import feedback, report_columns
+from clinical_reporting.models import qualify
 from clinical_reporting.validation import ReportValidationIssue
 
 # The steps, in order. The desktop pages use these as their keys.
@@ -164,7 +165,11 @@ def _counted(count: int, tip: str) -> StepStatus:
 
 
 def selected_item_count(report) -> int:
-    """Columns the report will have: common items plus each form's items."""
+    """Items selected: the common items plus each form's items.
+
+    (The report can have more columns: a later form's own copies of common
+    items it doesn't join on, see :mod:`clinical_reporting.report_columns`.)
+    """
     forms = (report.selected_forms or {}).values()
     return len(report.selected_common_items or []) + sum(
         len(form.get_selected_form_items()) for form in forms
@@ -283,6 +288,16 @@ def joins_message(report) -> Optional[feedback.Message]:
         )
     if len(report.selected_forms or {}) < 2:
         return feedback.info("Joins apply when two or more forms are selected.")
+    unjoined = report_columns.unjoined_common_items(report)
+    if unjoined:
+        names = [
+            qualify(form, item) for form, items in unjoined.items() for item in items
+        ]
+        return feedback.info(
+            "Forms keep their own values of common items they don't join on: "
+            f"{feedback.short_list(names)}.",
+            details="\n".join(names),
+        )
     return None
 
 

@@ -95,6 +95,51 @@ def test_the_joins_banner_says_what_stops_the_joins(sample_window):
     assert sample_window.ui.shell.status_bar.message().startswith("Cannot run:")
 
 
+def test_a_common_item_the_forms_dont_join_on_gets_their_own_columns(sample_window):
+    """AE and VS join on Subject and Site. Selecting Visit as well gives them
+    AE.Visit and VS.Visit, which Order & rename and the filters offer, until a
+    form joins on Visit too."""
+    window = sample_window
+    window.report.set_common_item_state("Visit", selected=True)
+    window.update_all_ui()
+    QApplication.processEvents()
+
+    def order_rows():
+        table = window.ui.tableWidget_rename
+        return [table.item(row, 0).text() for row in range(table.rowCount())]
+
+    assert {"AE.Visit", "VS.Visit"} <= set(order_rows())
+    assert {"AE.Visit", "VS.Visit"} <= set(window._selected_filter_items())
+    assert window.ui.banner_joins.kind() == "info"
+    assert "AE.Visit" in window.ui.banner_joins.text()
+
+    table = window.ui.tableWidget_join
+    rows = {table.item(row, 0).text(): row for row in range(table.rowCount())}
+    table.cellWidget(rows["VS"], 3).setCurrentText("Visit")
+    QApplication.processEvents()
+
+    assert "AE.Visit" in order_rows() and "VS.Visit" not in order_rows()
+    assert "VS.Visit" not in window._selected_filter_items()
+    out = window.report.create_report()
+    assert "AE.Visit" in out.columns
+    assert not [name for name in out.columns if name.endswith(("_x", "_y"))]
+
+
+def test_a_join_edit_keeps_a_comparison_row_still_being_filled_in(sample_window):
+    window = sample_window
+    filters = window.ui.tableWidget_dynamic_filter
+    window.dynamic_filter_add()  # A new, empty comparison row.
+    rows = filters.rowCount()
+
+    table = window.ui.tableWidget_join
+    form_rows = {table.item(row, 0).text(): row for row in range(table.rowCount())}
+    table.cellWidget(form_rows["AE"], 5).setCurrentText("Inner join")
+    QApplication.processEvents()
+
+    # The join type changes no column, so the filter tables stay as they are.
+    assert filters.rowCount() == rows
+
+
 def test_the_source_footnote_says_what_was_read(sample_window):
     footnote = sample_window.ui.section_input_file.footnote_label
 

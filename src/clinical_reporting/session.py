@@ -83,15 +83,17 @@ def restore_selection(report: CLReport, state: Dict[str, Any]) -> None:
         report.set_common_item_state("Subject", selected=True)
 
     # Restore join configuration for forms that still exist, dropping any
-    # join items that are no longer valid selected common items.
+    # join items that are no longer valid selected common items. All in one
+    # call: in between, a form's FORM.item columns would be missing and lose
+    # their place in a customized column order.
     valid_common = set(report.get_selected_common_items())
+    joins = []
     for form_name, join_config in state.get("join", {}).items():
         if form_name not in report.selected_forms:
             continue
         items = [item for item in join_config["items"] if item in valid_common]
-        report.update_join_items(
-            form_name, items, join_config["order"], join_config["how"]
-        )
+        joins.append((form_name, items, join_config["order"], join_config["how"]))
+    report.update_join_list(joins)
 
 
 def new_report(study_name: Optional[str], data: Dict[str, pd.DataFrame]) -> CLReport:
