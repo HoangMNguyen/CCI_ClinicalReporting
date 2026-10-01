@@ -24,6 +24,20 @@ python -m clinical_reporting
 - Form names cannot include `.` because it is reserved for the form/item
   separator. Additional inputs default to the file name and must be renamed
   to remove dots.
+- A saved setting also keeps the form and column names given to its
+  additional input files. Load it, and the Additional input page shows a
+  Saved names dropdown for each file you add.
+  - A file with the same name (from any folder), or else the same column
+    headers, gets its names picked and filled in, as long as the match is
+    unambiguous.
+  - Check the names, or pick another entry or None, then click Apply to
+    report; the setting's selections on those forms come back.
+  - Names you typed yourself are never replaced by a pick, nor cleared by
+    picking None.
+  - A "Still to add" banner on Additional input lists the setting's files
+    that aren't added yet. When the setting is loaded, its "Missing forms"
+    warning on Source data says which files to add, or which added files to
+    check and apply.
 - The steps sit in a sidebar with status badges. Reading the ZIP, building
   the preview, and exporting run in the background, and a ZIP or additional
   file that can't be read, or clashing form names, are explained on the page.
@@ -155,12 +169,29 @@ base = read_data_dict_zip_corelisting("study_export.zip")
 inputs = load_additional_inputs(["labs.csv"])  # {resolved_path: DataFrame}
 # try_load_tabular_files(paths) skips unreadable files instead of raising and
 # returns (loaded, failures), both keyed by the paths as given
-extra = build_additional_data_map(
-    inputs,
-    form_names={path: "LABS" for path in inputs},  # path -> form name
-    column_names={},  # (path, original_col) -> new name
-)
+form_names = {path: "LABS" for path in inputs}  # path -> form name
+column_names = {}  # (path, original_col) -> new name
+extra = build_additional_data_map(inputs, form_names, column_names)
 report.set_data({**base, **extra})
+
+# Keep those names with a setting, and reuse them for next month's files
+from clinical_reporting.additional_names import (
+    add_to_settings,
+    from_settings,
+    match,
+    names_from,
+)
+from clinical_reporting.data import named_columns
+
+settings = add_to_settings(
+    report.settings_to_dict("monthly"), inputs, form_names, column_names
+)
+saved = from_settings(settings)  # [] for settings saved without names
+next_inputs = load_additional_inputs(["2026-10/LABS.csv"])
+files = {path: named_columns(df) for path, df in next_inputs.items()}
+for path, found in match(saved, files).items():  # by file name, then columns
+    given = names_from(saved[found.index], files[path])
+    # given.form_name, given.column_names ({original: new}), given.unmatched
 
 # Export options
 write_csv(df, "report.csv")  # CSV on disk
@@ -187,6 +218,18 @@ from clinical_reporting.settings_store import LocalFolderStore
 settings = report.settings_to_dict("batch-run")
 LocalFolderStore("C:/Reports/settings").save("batch-run", settings)
 ```
+
+A setting saved from the desktop app may also hold `additional_input_names`:
+the form and column names given to its additional input files, by file name
+and original column headers, never by folder
+(`clinical_reporting.additional_names`). The key is optional and compatible
+both ways. Settings saved without it load as before, and versions before 2.11
+ignore it, as they ignore any key they don't know. Re-saving such a setting
+in an older version drops the names. A damaged entry is skipped and logged;
+the rest of the setting still loads. Saving keeps the names of the files
+listed at the time, as the Additional input page shows them: re-saving a
+setting in a run without some of its files drops their names, just as the
+forms those files would bring drop out of the setting.
 
 ## Usage telemetry
 
@@ -300,6 +343,7 @@ src/clinical_reporting/
   validation.py                # executable-report validation; "Cannot run" messages
   steps.py                     # the steps: titles, badges, and what they say
   data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
+  additional_names.py          # extra inputs' form/column names kept with a saved setting
   export.py                    # xlsx/csv/bytes rendering
   telemetry.py                 # reports saves to the usage counter (off unless configured)
   ui/                          # PySide6 desktop front end
@@ -314,7 +358,7 @@ src/clinical_reporting/
     sample_data.py             # made-up DEMO01 data for previews and UI tests
     base.py                    # helpers shared by the behavior mixins
     settings_tab.py            # inputs, cutoff, and saved settings
-    additional_input_tab.py    # extra CSV/Excel inputs, form and column renames
+    additional_input_tab.py    # extra CSV/Excel inputs, form and column renames, saved names
     selection_tabs.py          # forms, common items, and form items
     filters_tab.py             # static and dynamic filters
     join_config.py             # join order, type, and items
