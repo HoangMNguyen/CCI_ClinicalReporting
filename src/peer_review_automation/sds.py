@@ -1,30 +1,142 @@
-#!/usr/bin/env python3
+"""Peer Review Automation's one workflow: review a Medidata SDS workbook.
 
+:func:`run` reads the SDS workbook (and, if given, Rave's validation report)
+and returns the review workbook (:class:`clinical_reporting.workflow.OutputFile`);
+:class:`SDSData` does the checks. Nothing here touches Qt or a folder.
+"""
+
+import io
 import os
+import zipfile
 
 import pandas as pd
 import xlsxwriter
 
+from clinical_reporting.filenames import output_file_name
+from clinical_reporting.workflow import (
+    OutputFile,
+    WorkflowInputError,
+    file_name_of,
+    input_name,
+    reading_input,
+)
+
+#: What the messages call this workflow (in the middle of a sentence).
+WORKFLOW = "the SDS review"
+#: The SDS workbook's sheets the review reads (a list: pandas reads them all).
+SDS_SHEETS = ["Form Definitions", "Codelists"]
+#: The validation report's columns the review keeps.
+VALIDATION_COLUMNS = ["Category", "Section", "Error Name", "Description", "Object"]
+#: What a review is called when the SDS file name says nothing.
+DEFAULT_NAME = "Peer Review Automation Output"
+
+
+def default_file_name(sds_workbook) -> str:
+    """The file name to suggest for a review (the run adds the date and time).
+
+    The SDS file's name up to its first "-" (usually the study), then
+    "Peer Review Automation Output".
+    """
+    stem = os.path.splitext(os.path.basename(input_name(sds_workbook)))[0]
+    study = stem.split("-")[0].strip()
+    return f"{study} {DEFAULT_NAME}" if study else DEFAULT_NAME
+
+
+def read_sds(sds_workbook) -> dict:
+    """The SDS workbook's Form Definitions and Codelists sheets, as DataFrames."""
+    # Reading a workbook, pandas' ValueError and ImportError (an old .xls, or
+    # a password-protected workbook) can only mean the file isn't one it reads.
+    with reading_input(
+        sds_workbook,
+        "an SDS workbook (.xlsx)",
+        unreadable=(zipfile.BadZipFile, KeyError, ValueError, ImportError),
+        damage="damaged or password-protected",
+    ):
+        with pd.ExcelFile(sds_workbook) as workbook:
+            sheets = workbook.sheet_names
+            missing = [sheet for sheet in SDS_SHEETS if sheet not in sheets]
+            if missing:
+                raise WorkflowInputError(
+                    f"{file_name_of(sds_workbook, 'The file')} has no "
+                    f"{' or '.join(missing)} sheet, so it isn't an SDS workbook."
+                )
+            return workbook.parse(sheet_name=SDS_SHEETS)
+
+
+def read_validation(validation) -> pd.DataFrame:
+    """Rave's validation report (a CSV), checked for the columns the review keeps."""
+    # Reading a CSV, pandas' ValueError (not text, not a table) means the same.
+    with reading_input(
+        validation,
+        "Rave's validation report (CSV)",
+        unreadable=(KeyError, ValueError),
+    ):
+        report = pd.read_csv(validation)
+    missing = [column for column in VALIDATION_COLUMNS if column not in report.columns]
+    if missing:
+        columns = "column" if len(missing) == 1 else "columns"
+        raise WorkflowInputError(
+            f"{file_name_of(validation, 'The file')} has no {', '.join(missing)} "
+            f"{columns}, so it isn't Rave's validation report."
+        )
+    return report
+
+
+def run(
+    sds_workbook,
+    *,
+    validation=None,
+    check_naming: bool = False,
+    file_name: str = "",
+) -> OutputFile:
+    """Review an SDS workbook and return the findings as a workbook.
+
+    *sds_workbook* and *validation* (Rave's validation report, a CSV; optional)
+    are paths or file-like objects. With *check_naming* the naming conventions
+    are checked too. The workbook is named *file_name* (or
+    :func:`default_file_name`) plus the date and time. Raises
+    :class:`~clinical_reporting.workflow.WorkflowInputError` when a file is
+    gone or isn't what the review reads.
+    """
+    sheets = read_sds(sds_workbook)
+    report = read_validation(validation) if validation else None
+    try:
+        review = SDSData(check_naming, sheets, report)
+    except KeyError as exc:
+        # The checks read the columns they need as they go (some only for some
+        # rows), so a missing one shows up here.
+        if not exc.args:  # Not a missing column.
+            raise
+        raise WorkflowInputError(
+            f'{file_name_of(sds_workbook, "The file")} has no "{exc.args[0]}" column in its '
+            f"{' or '.join(SDS_SHEETS)} sheet, which {WORKFLOW} reads."
+        ) from exc
+    buffer = io.BytesIO()
+    review.output(buffer)
+    name = (file_name or "").strip() or default_file_name(sds_workbook)
+    return OutputFile(output_file_name(name), buffer.getvalue())
+
 
 class SDSData():
-    def __init__(self,nameCheck, SDS_file_path = None, val_file_path = None):    
-        if SDS_file_path is None:
-            print("No file selected!")
-            return
-        file_name = os.path.split(SDS_file_path)[1]
-        self.file_name = file_name.split('-')[0]
-        self.SDSAllData = pd.read_excel(SDS_file_path, sheet_name=["Form Definitions", "Codelists"])   
+    """The findings of the SDS checks (:attr:`errorList`), and their workbook."""
+
+    def __init__(self, nameCheck, sds_sheets, val_df=None):
+        """Check *sds_sheets* (:func:`read_sds`); with *nameCheck* the naming too.
+
+        *val_df* is Rave's validation report (:func:`read_validation`), or None.
+        """
+        self.SDSAllData = sds_sheets
         self.errorList = []
         #self.df = pd.DataFrame(self.FDdata, columns= ['Form Name','Item Name', 'External ID', 'Label'])
         self.df = self.SDSAllData['Form Definitions']
         self.df1 = self.SDSAllData['Codelists']
         self.APR(nameCheck)
-        self.val_file_path = val_file_path
-        if val_file_path is not None:
-            self.validation(val_file_path)
+        self.has_validation = val_df is not None
+        if val_df is not None:
+            self.validation(val_df)
         
-    def validation(self, val_file_path):
-        self.val_df = pd.read_csv(val_file_path)
+    def validation(self, val_df):
+        self.val_df = val_df
         self.val_df = self.val_df[['Category', 'Section', 'Error Name', 'Description','Object']]
         to_remove = ['Item Group Tabular Display Contains Label', 'Multiple dynamic rules on object', 'Item length is longer than the longest codelist item', 'Hide/Show in Editable Grid','Rule evaluation might result in too many permutations']
         self.val_df = self.val_df[~self.val_df['Error Name'].astype(str).str.contains('|'.join(to_remove))]
@@ -367,9 +479,10 @@ class SDSData():
         
         return ', '.join(columnLetters)
     
-    def output(self, filepath):
+    def output(self, target):
+        """Write the findings workbook to *target* (a path or a binary file)."""
         output_df = pd.DataFrame(self.errorList, columns=['Form Label', 'Item Group Label','Item','Type of Error', 'Details'])
-        with pd.ExcelWriter(filepath  + '/' + self.file_name + ' Peer Review Automation Output.xlsx') as writer:  
+        with pd.ExcelWriter(target, engine="xlsxwriter") as writer:
             output_df.to_excel(writer, sheet_name='Form Definition Review', index = False)
             worksheet1 = writer.sheets['Form Definition Review']
             blue_header_format = writer.book.add_format({'bg_color': '#B7DEE8',
@@ -383,7 +496,7 @@ class SDSData():
             worksheet1.autofit()
             worksheet1.set_row(0, 40)
             worksheet1.set_column('A:C', 30)
-            if self.val_file_path is not None:
+            if self.has_validation:
                 
                 self.val_df.to_excel(writer, sheet_name='Validation Review', index = False)
                 worksheet2 = writer.sheets['Validation Review']

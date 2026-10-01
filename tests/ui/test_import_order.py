@@ -25,7 +25,7 @@ def _modules():
         for module in pkgutil.walk_packages(package.__path__, prefix):
             if not module.name.endswith("__main__"):
                 names.append(module.name)
-    names += ["safety_automation.app"]
+    names += ["safety_automation.app", "peer_review_automation.app"]
     return names
 
 

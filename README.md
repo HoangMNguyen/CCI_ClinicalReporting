@@ -162,9 +162,18 @@ infusion `get_*` methods.
 
 ## Peer Review Automation
 
-Validates a Medidata **SDS (Study Design Spec)** workbook — the
-`Form Definitions` and `Codelists` sheets — and writes every finding to
-`<study> Peer Review Automation Output.xlsx`.
+One page: **SDS peer review**. Choose a Medidata **SDS (Study Design Spec)**
+workbook (its `Form Definitions` and `Codelists` sheets are checked), and
+optionally Rave's validation report, switch on the naming-convention checks
+if you want them, choose an output folder, change the suggested file name
+if you like, and Run. Every finding goes to a workbook named, by default,
+after the SDS file (its name up to the first "-", usually the study):
+`<that name> Peer Review Automation Output YYMMDD_HHMMSS.xlsx` (before 1.11
+it had no date and time), never over an existing file.
+
+The review is `run()` in `src/peer_review_automation/sds.py`: it takes the
+files (paths or open files) and returns the workbook as an `OutputFile`,
+without touching a folder.
 
 Checks include:
 
@@ -174,11 +183,18 @@ Checks include:
 - Item/Item Group names not matching their External ID.
 - Codelist display types (picklist vs. other) inconsistent with the number of visible options.
 - Shared vs. non-shared naming conventions (`_YS_`/`_NS_`), and codelist/unit attachments matching item names.
-- Optional naming-convention checks (`CL_`/`DT_`/`NM_`/`TX_`/... prefixes, help-text `YH`/`NH` markers) via the checkbox.
-- Optional cross-check against an exported validation CSV, with a built-in ignore list for known-acceptable error names; results land on a separate "Validation Review" sheet.
+- Optional naming-convention checks (`CL_`/`DT_`/`NM_`/`TX_`/... prefixes, help-text `YH`/`NH` markers) via the switch.
+- Optional cross-check against Rave's validation report (a CSV), with a built-in ignore list for known-acceptable error names; results land on a separate "Validation Review" sheet.
 
-The review logic is headless (`src/peer_review_automation/sds.py`) and usable
-without the GUI: `SDSData(name_check, sds_path, validation_csv_path).output(out_dir)`.
+The review works without the window too:
+
+```python
+from peer_review_automation import sds
+
+output = sds.run("STUDY01-SDS.xlsx", validation="validation.csv", check_naming=True)
+with open(output.name, "wb") as file:
+    file.write(output.data)
+```
 
 ## Shared backend
 
@@ -430,7 +446,8 @@ The design system is `src/cci_ui`: the colors, sizes and type (`theme/`),
 the components (`widgets/`), the icons, and the four tools' app icons. The
 Clinical Reporting pages are built from it in
 `src/clinical_reporting/ui/pages/`, in Python code (no Qt Designer files).
-Safety Automation is built on it too (Peer Review and CCI Automation follow).
+Safety Automation and Peer Review Automation are built on it too (CCI
+Automation follows).
 
 ### Colors, sizes, and type
 
@@ -655,7 +672,8 @@ src/safety_automation/         # Corelisting AE & DLT report
 
 src/peer_review_automation/    # Medidata SDS peer review
   __main__.py                  # runtime entry: python -m peer_review_automation
-  sds.py                       # headless SDS review logic
+  app.py                       # the window: one WorkflowPage
+  sds.py                       # run(): the review workbook, Qt-free
 
 tests/
   unit/                        # fast logic-focused tests
@@ -711,8 +729,8 @@ Remove-Item Env:CCI_UI_SELFTEST
 $run.ExitCode; Get-Content .\dist\selftest.json
 ```
 
-(Safety Automation does this too; the other two tools take it up when they
-move onto the design system.)
+(Safety Automation and Peer Review Automation do this too; CCI Automation
+takes it up when it moves onto the design system.)
 
 ### Versioning a release
 

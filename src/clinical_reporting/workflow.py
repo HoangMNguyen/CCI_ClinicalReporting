@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import os
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Iterable, Optional
+from typing import Iterable, Iterator, Optional, Tuple, Type
 
 from clinical_reporting.data import read_data_dict_zip_corelisting
 
@@ -77,17 +78,34 @@ def input_name(source) -> str:
     return name if isinstance(name, str) else ""
 
 
-def read_corelisting(source, cut_off_date=None) -> dict:
-    """Read a Corelisting export for a workflow: form name to its DataFrame.
+def file_name_of(source, fallback: str = "the file") -> str:
+    """The name to call *source* in a message: its file name, or *fallback*."""
+    return os.path.basename(input_name(source)) or fallback
 
-    *source* is the ZIP's path or a file-like object (see
-    :func:`clinical_reporting.data.read_data_dict_zip_corelisting`). A file
-    that isn't there any more, can't be opened, isn't a ZIP, or lacks the
-    Corelisting columns raises :class:`WorkflowInputError` saying so.
+
+@contextmanager
+def reading_input(
+    source,
+    what: str,
+    *,
+    unreadable: Tuple[Type[BaseException], ...] = (zipfile.BadZipFile, KeyError),
+    damage: str = "damaged",
+) -> Iterator[None]:
+    """Report a problem reading the input file *source* as a WorkflowInputError.
+
+    A file that isn't there any more or can't be opened gets a message that
+    names it, and so do the *unreadable* errors: "Couldn't read X. The file
+    may be <damage>, or it isn't <what>." (*what* e.g. "a Corelisting
+    export"). Wrap only the reading, and widen *unreadable* only where those
+    errors can only mean an unreadable file: pandas raises ValueError for a
+    file that isn't a workbook, but also for a bad date in a good one. A
+    :class:`WorkflowInputError` raised inside passes as is.
     """
-    name = os.path.basename(input_name(source)) or "the Corelisting export"
+    name = file_name_of(source)
     try:
-        return read_data_dict_zip_corelisting(source, cut_off_date)
+        yield
+    except WorkflowInputError:
+        raise
     except FileNotFoundError as exc:
         raise WorkflowInputError(
             f"Couldn't find {name}. It may have been moved or deleted; choose it again."
@@ -97,18 +115,31 @@ def read_corelisting(source, cut_off_date=None) -> dict:
             f"Couldn't open {name}. It may be open in another program, or you "
             "may not have access to it."
         ) from exc
-    except (zipfile.BadZipFile, KeyError) as exc:
+    except unreadable as exc:
         raise WorkflowInputError(
-            f"Couldn't read {name}. The file may be damaged, or it isn't a "
-            "Corelisting export."
+            f"Couldn't read {name}. The file may be {damage}, or it isn't {what}."
         ) from exc
+
+
+def read_corelisting(source, cut_off_date=None) -> dict:
+    """Read a Corelisting export for a workflow: form name to its DataFrame.
+
+    *source* is the ZIP's path or a file-like object (see
+    :func:`clinical_reporting.data.read_data_dict_zip_corelisting`). A file
+    that isn't there any more, can't be opened, isn't a ZIP, or lacks the
+    Corelisting columns raises :class:`WorkflowInputError` saying so.
+    """
+    with reading_input(source, "a Corelisting export"):
+        return read_data_dict_zip_corelisting(source, cut_off_date)
 
 
 __all__ = [
     "OutputFile",
     "UnsupportedStudyError",
     "WorkflowInputError",
+    "file_name_of",
     "input_name",
     "missing_forms_error",
     "read_corelisting",
+    "reading_input",
 ]

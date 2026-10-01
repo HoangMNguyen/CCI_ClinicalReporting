@@ -6,7 +6,6 @@ extend-exclude = [
     "build",
     "dist",
     "src/cci_automation/ui_form.py",
-    "src/peer_review_automation/PRAwindow_ui.py",
 ]
 unsafe-fixes = false
 show-fixes = true

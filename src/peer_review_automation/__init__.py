@@ -1,7 +1,8 @@
 """Peer Review Automation: validates Medidata SDS workbooks.
 
-The headless review logic lives in :mod:`peer_review_automation.sds`; the
-PySide6 GUI in :mod:`peer_review_automation.app`. Importing this package does
+The review is :func:`peer_review_automation.sds.run`, a plain function that
+returns the findings workbook; the window (on the ``cci_ui`` kit) is
+:mod:`peer_review_automation.app`. Importing this package does
 not import Qt.
 """
 

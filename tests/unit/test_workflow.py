@@ -14,6 +14,7 @@ from clinical_reporting.workflow import (
     input_name,
     missing_forms_error,
     read_corelisting,
+    reading_input,
 )
 
 
@@ -68,5 +69,34 @@ def test_a_zip_without_the_corelisting_columns_isnt_an_export():
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr("notes.csv", "a,b\n1,2\n")
 
-    with pytest.raises(WorkflowInputError, match="Couldn't read the Corelisting"):
+    with pytest.raises(WorkflowInputError, match="isn't a Corelisting export"):
         read_corelisting(buffer)
+
+
+def test_an_input_that_cant_be_opened_says_so(tmp_path):
+    path = tmp_path / "Core_Listings_16321_x.zip"
+
+    with pytest.raises(WorkflowInputError, match="Couldn't open Core_Listings_16321"):
+        with reading_input(str(path), "a Corelisting export"):
+            raise PermissionError(13, "Permission denied", str(path))
+
+
+def test_a_bad_date_in_a_good_export_is_not_called_an_unreadable_file():
+    rows = "Subject,Event Date,Form Status,Form ILB Status\n"
+    rows += (
+        "100-1-01,2026-01-01,Submitted,False\n100-1-02,UN JAN 2026,Submitted,False\n"
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("Core_Listings_AE.csv", rows)
+
+    with pytest.raises(ValueError) as raised:
+        read_corelisting(buffer)
+
+    assert not isinstance(raised.value, WorkflowInputError)
+
+
+def test_a_message_the_reading_raises_itself_passes_as_is():
+    with pytest.raises(WorkflowInputError, match="^Pick another file.$"):
+        with reading_input("x.zip", "a Corelisting export"):
+            raise WorkflowInputError("Pick another file.")
