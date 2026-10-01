@@ -104,8 +104,9 @@ class Section(QWidget):
         layout.setSpacing(6)
 
         self.title_label = section_label(title)
-        self.title_label.setVisible(bool(title))
         layout.addWidget(self.title_label)
+        # Only after parenting (see cci_ui.widgets).
+        self.title_label.setVisible(bool(title))
 
         self.card = QFrame()
         self.card.setProperty("cciRole", "card")
@@ -116,8 +117,8 @@ class Section(QWidget):
 
         self.footnote_label = text_label(footnote, style="footnote", wrap=True)
         self.footnote_label.setContentsMargins(4, 0, 4, 0)
-        self.footnote_label.setVisible(bool(footnote))
         layout.addWidget(self.footnote_label)
+        self.footnote_label.setVisible(bool(footnote))
 
     def add_row(
         self,

@@ -127,8 +127,9 @@ class EmptyState(QWidget):
         self.message_label = text_label(message, tone="secondary", wrap=True)
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.message_label.setMaximumWidth(360)
-        self.message_label.setVisible(bool(message))
         layout.addWidget(self.message_label, 0, Qt.AlignmentFlag.AlignHCenter)
+        # Only after parenting (see cci_ui.widgets).
+        self.message_label.setVisible(bool(message))
         self.action_button = None
         if action_text:
             self.action_button = make_button(action_text, variant="primary")

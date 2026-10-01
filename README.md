@@ -390,6 +390,10 @@ Testing notes:
   inside those calls (literals, f-strings, joins), and the window tests in
   `tests/ui/test_clinical_reporting_tasks.py` fail on any untagged message
   shown during those tests.
+- `tests/ui/test_no_stray_windows.py` builds the component gallery and the
+  Clinical Reporting window and fails if any widget opens as its own window
+  (a widget shown before it has a parent does, and flickers on screen). A
+  new component is only covered once it is in the gallery.
 - `tests/ui/test_theme_tokens.py` checks that the design tokens still match the
   approved mockup in `docs/design/clinical-reporting-mockup.html`; change both
   together.

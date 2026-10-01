@@ -6,6 +6,7 @@ from PySide6.QtGui import QMouseEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QFileDialog, QLabel, QLineEdit, QWidget
 
+from cci_ui.icons import IconName
 from cci_ui.theme import manager as theme_manager
 from cci_ui.theme.manager import Theme, ThemeMode, current
 from cci_ui.theme.tokens import COMPACT, LAYOUT, LIGHT, Density, Scheme
@@ -17,7 +18,10 @@ from cci_ui.widgets.path_picker import PathPicker
 from cci_ui.widgets.responsive import Breakpoint, ResponsiveSplit
 from cci_ui.widgets.section import Section
 from cci_ui.widgets.segmented import Segment, SegmentedControl
+from cci_ui.widgets.status import StatusBanner
+from cci_ui.widgets.tables import TableToolbar
 from cci_ui.widgets.toggle import ToggleSwitch
+from cci_ui.widgets.views import EmptyState
 
 LONG_PATH = r"C:\Users\analyst\Downloads\Core_Listings_DEMO01_2026-09-29_export.zip"
 
@@ -369,3 +373,28 @@ def test_popover_resizes_when_density_changes_while_open(make_manager):
 
     assert popover.size() == popover.sizeHint()
     popover.close()
+
+
+def test_empty_texts_stay_hidden_and_given_texts_show(qapp):
+    empty = [
+        (page := Page("Joins")).subtitle_label,
+        (section := Section()).title_label,
+        section.footnote_label,
+        (toolbar := TableToolbar()).caption_label,
+        (state := EmptyState(IconName.INFO, "Nothing here")).message_label,
+        (fixed_banner := StatusBanner(dismissible=False)).dismiss_button,
+    ]
+    given = [
+        (full_page := Page("Joins", "How forms combine")).subtitle_label,
+        (full_section := Section("Cut-off", "Rows on or before")).title_label,
+        full_section.footnote_label,
+        (full_toolbar := TableToolbar(caption="Select a row")).caption_label,
+        (full_state := EmptyState(IconName.INFO, "None", "Add one")).message_label,
+        (banner := StatusBanner()).dismiss_button,
+    ]
+    owners = [page, section, section, toolbar, state, fixed_banner]
+    owners += [full_page, full_section, full_section, full_toolbar, full_state, banner]
+
+    visible = [child.isVisibleTo(owner) for child, owner in zip(empty + given, owners)]
+
+    assert visible == [False] * len(empty) + [True] * len(given)

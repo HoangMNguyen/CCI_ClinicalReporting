@@ -182,8 +182,9 @@ class TableToolbar(QWidget):
         self._layout.setSpacing(10)
         self._layout.addWidget(button_group(self.add_button, self.remove_button))
         self.caption_label = text_label(caption, style="caption")
-        self.caption_label.setVisible(bool(caption))
         self._layout.addWidget(self.caption_label)
+        # Only after parenting (see cci_ui.widgets).
+        self.caption_label.setVisible(bool(caption))
         self._layout.addStretch(1)
 
     def add_extra(self, widget: QWidget) -> None:

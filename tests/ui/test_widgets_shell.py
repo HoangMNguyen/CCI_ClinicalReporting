@@ -205,7 +205,7 @@ def test_banner_dismiss_hides_it(qapp):
     assert banner.isHidden() and dismissed == [True]
 
 
-def test_toasts_stack_up_to_a_limit_and_go_away(shown):
+def test_toasts_stack_up_to_a_limit_and_go_away(shown, shown_windows):
     window = shown(QWidget(), 600, 400)
     for number in range(MAX_TOASTS + 2):
         show_toast(window, f"Saved {number}", duration_ms=60)
@@ -213,6 +213,8 @@ def test_toasts_stack_up_to_a_limit_and_go_away(shown):
     host = window.findChild(status.ToastHost)
 
     assert len(host.toasts()) == MAX_TOASTS
+    # Evicted toasts don't flash as windows of their own.
+    assert [label for widget, label in shown_windows if widget is not window] == []
     assert _wait_until(lambda: host.toasts() == [])
 
 

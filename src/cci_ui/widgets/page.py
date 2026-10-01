@@ -84,7 +84,6 @@ class Page(QWidget):
 
         self.title_label = text_label(title, style="title1")
         self.subtitle_label = text_label(subtitle, tone="secondary", wrap=True)
-        self.subtitle_label.setVisible(bool(subtitle))
         self.actions = QHBoxLayout()
         self.actions.setSpacing(8)
 
@@ -96,6 +95,8 @@ class Page(QWidget):
         titles.addWidget(self.title_label)
         titles.addWidget(self.subtitle_label)
         header_layout.addLayout(titles, 1)
+        # Only after parenting (see cci_ui.widgets).
+        self.subtitle_label.setVisible(bool(subtitle))
         header_layout.addLayout(self.actions)
 
         #: Put the page's content here.

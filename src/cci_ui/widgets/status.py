@@ -141,7 +141,6 @@ class StatusBanner(QFrame):
         self.action_button.setVisible(False)
         self.action_button.clicked.connect(self._run_action)
         self.dismiss_button = icon_button(IconName.CLOSE, "Dismiss")
-        self.dismiss_button.setVisible(dismissible)
         self.dismiss_button.clicked.connect(self._dismiss)
 
         text_column = QVBoxLayout()
@@ -157,6 +156,8 @@ class StatusBanner(QFrame):
         layout.addLayout(text_column, 1)
         layout.addWidget(self.action_button, 0, Qt.AlignmentFlag.AlignTop)
         layout.addWidget(self.dismiss_button, 0, Qt.AlignmentFlag.AlignTop)
+        # Only after parenting (see cci_ui.widgets).
+        self.dismiss_button.setVisible(dismissible)
         self.setVisible(False)
 
     def is_showing(self) -> bool:
@@ -328,6 +329,7 @@ class ToastHost(QWidget):
         if kind not in KINDS:
             raise ValueError(f"Unknown message kind {kind!r}; expected one of {KINDS}")
         for old in self.toasts()[: max(0, len(self.toasts()) - MAX_TOASTS + 1)]:
+            old.hide()  # Before un-parenting (see cci_ui.widgets).
             old.setParent(None)
             old.deleteLater()
         toast = _Toast(text, kind, duration_ms, self)

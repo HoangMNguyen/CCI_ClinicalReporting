@@ -1,8 +1,8 @@
 """Fixtures for tests of the shared design system (cci_ui) and whole windows."""
 
 import pytest
-from PySide6.QtCore import QElapsedTimer, QSettings
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QElapsedTimer, QEvent, QObject, QSettings
+from PySide6.QtWidgets import QApplication, QWidget
 
 from cci_ui.theme import manager as theme_manager
 
@@ -71,3 +71,34 @@ def settle(qapp):
         assert not runner.busy, "the task runner is still busy"
 
     return wait_until_idle
+
+
+class _ShownWindows(QObject):
+    """Records each widget shown as its own window, as (widget, label)."""
+
+    def __init__(self):
+        super().__init__()
+        self.shown = []
+
+    def eventFilter(self, watched, event):  # noqa: N802 (Qt override)
+        if (
+            event.type() == QEvent.Type.Show
+            and isinstance(watched, QWidget)
+            and watched.isWindow()
+        ):
+            text = getattr(watched, "text", lambda: "")() or watched.accessibleName()
+            self.shown.append((watched, f"{type(watched).__name__} {text!r}"))
+        return False
+
+
+@pytest.fixture
+def shown_windows(qapp):
+    """Widgets shown as their own window during the test, as (widget, label).
+
+    A widget shown before it has a parent becomes a window and flashes on
+    screen; see tests/ui/test_no_stray_windows.py.
+    """
+    watcher = _ShownWindows()
+    qapp.installEventFilter(watcher)
+    yield watcher.shown
+    qapp.removeEventFilter(watcher)
