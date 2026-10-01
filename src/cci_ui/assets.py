@@ -28,4 +28,12 @@ def asset(*parts: str) -> Path:
     return assets_root().joinpath(*parts)
 
 
-__all__ = ["asset", "assets_root"]
+def app_icon_path(app_id: str) -> Path:
+    """The ``.ico`` file of the tool *app_id* (it may not exist).
+
+    The icons are drawn by :mod:`cci_ui.app_icons`.
+    """
+    return asset("app-icons", f"{app_id}.ico")
+
+
+__all__ = ["app_icon_path", "asset", "assets_root"]

@@ -17,7 +17,7 @@ import sys
 # build_support.py lives.
 sys.path.insert(0, SPECPATH)
 
-from build_support import package_version, ui_datas, version_resource
+from build_support import app_icon, package_version, ui_datas, version_resource
 
 PACKAGE = "clinical_reporting"
 PRODUCT = "CCI Clinical Reporting"
@@ -61,4 +61,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version=version_resource(VERSION, PRODUCT, DESCRIPTION, EXE_NAME),
+    icon=app_icon("clinical-reporting"),
 )

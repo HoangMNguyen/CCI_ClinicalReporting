@@ -1,8 +1,8 @@
 """Shared start-up for every CCI tool.
 
 :func:`create_app` is the one place the style, font, theme, display-scaling
-policy, and crash reporting are set, so all four tools look and behave the
-same. Call it before creating any window.
+policy, window icon, and crash reporting are set, so every tool that starts
+with it looks and behaves the same. Call it before creating any window.
 """
 
 from __future__ import annotations
@@ -13,21 +13,22 @@ import os
 import sys
 import traceback
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple
 
 from PySide6.QtCore import QSettings, Qt, QThread, QTimer
-from PySide6.QtGui import QFontInfo, QGuiApplication
+from PySide6.QtGui import QFontInfo, QGuiApplication, QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 import cci_ui.widgets  # noqa: F401  (registers component styles before apply())
-from cci_ui.assets import assets_root
+from cci_ui.assets import app_icon_path, assets_root
 from cci_ui.theme.fonts import load_bundled, ui_font
 from cci_ui.theme.manager import SETTINGS_ORGANIZATION, ThemeManager
 
 logger = logging.getLogger(__name__)
 
 #: Set to a JSON file path to have the app report its setup there and quit;
-#: used to check a PyInstaller build finds its fonts and style.
+#: used to check a PyInstaller build finds its fonts, style, icon, and the
+#: tool's own bundled files.
 SELF_TEST_ENV = "CCI_UI_SELFTEST"
 
 
@@ -40,6 +41,7 @@ def create_app(
     settings: Optional[QSettings] = None,
     persist: bool = True,
     install_excepthook: bool = True,
+    self_test_extra: Optional[Callable[[], Dict[str, Any]]] = None,
 ) -> Tuple[QApplication, ThemeManager]:
     """Create (or reuse) the QApplication and apply the CCI look.
 
@@ -59,6 +61,9 @@ def create_app(
             appearance there never changes the user's saved choice.
         install_excepthook: Show unexpected errors in a dialog instead of
             losing them (the built executables have no console).
+        self_test_extra: The tool's own checks for the self-test report (see
+            :data:`SELF_TEST_ENV`), e.g. that it found its bundled files. Their
+            keys must differ from the shared ones, or the self-test fails.
     """
     app = QApplication.instance()
     if app is None:
@@ -79,6 +84,9 @@ def create_app(
     style_name = app.setStyle("Fusion").objectName()
     load_bundled()
     app.setFont(ui_font())
+    icon_file = app_icon_path(app_id)
+    if icon_file.is_file():  # Previews and the gallery have none of their own.
+        app.setWindowIcon(QIcon(str(icon_file)))
 
     theme = ThemeManager(app, settings=settings, persist=persist)
     theme.apply()
@@ -88,7 +96,10 @@ def create_app(
     self_test_path = os.environ.get(SELF_TEST_ENV)
     if self_test_path:
         QTimer.singleShot(
-            1000, lambda: _run_self_test(app, theme, style_name, Path(self_test_path))
+            1000,
+            lambda: _run_self_test(
+                app, theme, style_name, Path(self_test_path), self_test_extra
+            ),
         )
     return app, theme
 
@@ -157,7 +168,10 @@ def _install_excepthook() -> None:
 
 
 def _self_test_report(app: QApplication, theme: ThemeManager, style_name: str) -> dict:
-    """What the running app actually loaded: style, font, assets, theme."""
+    """What the running app loaded: style, font, assets, theme, window icon.
+
+    The tool's own checks are added by :func:`_run_self_test`.
+    """
     return {
         "style": style_name,
         "font_family": QFontInfo(app.font()).family(),
@@ -168,19 +182,40 @@ def _self_test_report(app: QApplication, theme: ThemeManager, style_name: str) -
         "platform": QGuiApplication.platformName(),
         # Component stylesheet rules made it into the applied stylesheet.
         "components_styled": 'QFrame[cciRole="segmented"]' in app.styleSheet(),
+        "window_icon": not app.windowIcon().isNull(),
     }
 
 
 def _run_self_test(
-    app: QApplication, theme: ThemeManager, style_name: str, path: Path
+    app: QApplication,
+    theme: ThemeManager,
+    style_name: str,
+    path: Path,
+    extra: Optional[Callable[[], Dict[str, Any]]] = None,
 ) -> None:
-    """Write the self-test report to *path* and quit (exit code 1 on failure)."""
+    """Write the self-test report to *path* and quit (exit code 1 on failure).
+
+    If the tool's own checks (*extra*) fail, the report still holds the
+    shared ones, plus an ``error`` saying what went wrong.
+    """
     exit_code = 1
     try:
         report = _self_test_report(app, theme, style_name)
-        path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-        exit_code = 0
+        try:
+            if extra is not None:
+                tool_checks = extra()
+                clashing = report.keys() & tool_checks.keys()
+                if clashing:
+                    raise ValueError(f"Self-test keys used twice: {sorted(clashing)}")
+                report.update(tool_checks)
+            exit_code = 0
+        except Exception as exc:
+            logger.exception("The tool's self-test checks failed")
+            report["error"] = f"{type(exc).__name__}: {exc}"
+        # default=str: a tool check's value JSON can't hold still gets written.
+        path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
     except Exception:  # Report through the exit code; never leave the app open.
+        exit_code = 1
         logger.exception("Self-test failed")
     finally:
         app.exit(exit_code)

@@ -141,15 +141,18 @@ $env:CCI_CLOCKIFY_API_KEY = "<api key>"
 $env:CCI_CLOCKIFY_WORKSPACE_ID = "<workspace id>"
 ```
 
-or as a git-ignored `src/cci_automation/clockify.json` next to `util.py`:
+or, when running from source, as a git-ignored
+`src/cci_automation/clockify.json` next to `util.py`:
 
 ```json
 {"api_key": "<api key>", "workspace_id": "<workspace id>"}
 ```
 
-Environment variables take precedence over the file. When neither is set, the
-app shows a clear error dialog instead of crashing. Never hardcode these
-values in source.
+Environment variables take precedence over the file. The built executable
+never includes the file (anyone with the executable could read the key out
+of it), so machines running it need the environment variables. When neither
+is set, the app shows a clear error dialog instead of crashing. Never
+hardcode these values in source.
 
 ## Safety Automation
 
@@ -381,7 +384,8 @@ python -m ruff format src tests
 VS Code will recommend the Ruff extension and apply the same fixes whenever a
 Python file is saved. Unsafe Ruff fixes remain disabled by default.
 
-Testing notes:
+### Testing notes
+
 - `tests/conftest.py` inserts both project root and `src/` into `sys.path`, runs
   Qt offscreen (no windows appear), and provides one shared `qapp` fixture.
 - Larger sample artifacts are stored in `tests/data/`.
@@ -406,15 +410,42 @@ Testing notes:
 - The sidebar's badges and the status bar summary refresh when control
   returns to the event loop; window tests call
   `QApplication.processEvents()` before checking them.
-- `tests/ui/test_no_stray_windows.py` builds the component gallery and the
-  Clinical Reporting window and fails if any widget opens as its own window
-  (a widget shown before it has a parent does, and flickers on screen). A
-  new component is only covered once it is in the gallery.
-- `tests/ui/test_theme_tokens.py` checks that the design tokens still match the
-  approved mockup in `docs/design/clinical-reporting-mockup.html`; change both
-  together.
+- The tests that guard the look and the pages (the tokens against the
+  mockup, no stray windows, the widget contract, resizing) are described in
+  [Updating the UI](#updating-the-ui).
 
-### Checking the look: component gallery
+## Updating the UI
+
+The design system is `src/cci_ui`: the colors, sizes and type (`theme/`),
+the components (`widgets/`), the icons, and the four tools' app icons. The
+Clinical Reporting pages are built from it in
+`src/clinical_reporting/ui/pages/`, in Python code (no Qt Designer files).
+The other three tools get their app icons from it now and move onto it next.
+
+### Colors, sizes, and type
+
+Edit `src/cci_ui/theme/tokens.py`: the light and dark colors, the
+Comfortable and Compact sizes, the type scale. The stylesheet is generated
+from it (`theme/qss.py`). The values match the approved mockup in
+`docs/design/clinical-reporting-mockup.html`, and
+`tests/ui/test_theme_tokens.py` keeps them in step: change both together.
+Check the result in the gallery (below), in both schemes and densities.
+
+### Components
+
+Each component is a module in `src/cci_ui/widgets/` (buttons, sections,
+pages, the sidebar, banners, ...). A new module goes in the import list in
+`widgets/__init__.py` (that registers its stylesheet rules) and on a gallery
+page (that puts it under `tests/ui/test_no_stray_windows.py`, which fails
+if building one opens a stray window). Show or hide a child widget only once
+it has a parent; the package docstring explains why.
+
+A new icon is a Lucide SVG copied into `src/cci_ui/assets/icons/` (from the
+version in `assets/icons/VERSION`) and a constant in `IconName`
+(`cci_ui/icons.py`); `tests/ui/test_icons.py` checks that every file has a
+name and every name a file.
+
+### Checking the look: the gallery
 
 The shared design system (`src/cci_ui`) has a gallery window showing every
 component: colors (with contrast), type, icons, buttons, inputs, toggles and
@@ -432,7 +463,7 @@ scheme (only the `--page` given, if any), which makes it easy to review a
 change to `cci_ui/theme/tokens.py` or a component. The gallery never changes
 the appearance saved for the real tools.
 
-### Changing the Clinical Reporting pages
+### Clinical Reporting pages
 
 The Clinical Reporting window's pages are built in Python code, one module
 per step in `src/clinical_reporting/ui/pages/`; `ui/main_ui.py` lists them in
@@ -492,6 +523,21 @@ pins the step order (update it when you reorder steps).
 The window reopens at the size and position it had when it was closed,
 with the sidebar as wide (and collapsed or not) as it was
 (`cci_ui.window_state.WindowState.remember`).
+
+### App icons
+
+Each tool's icon is a white line icon on a rounded square of the tool's
+color: `APP_ICONS` in `src/cci_ui/app_icons.py`. The `.ico` files in
+`src/cci_ui/assets/app-icons/` are drawn from it; after changing it, draw
+them again and commit them:
+
+```bash
+python -m cci_ui.app_icons
+```
+
+The builds use them as the executables' icons (`build_support.app_icon`),
+and `create_app` (so far only Clinical Reporting calls it) as the window
+icon.
 
 ## Project Structure
 
@@ -564,8 +610,10 @@ src/cci_ui/                    # shared design system for all four tools
   window_state.py              # remembered window size/position and sidebar per tool
   tasks.py                     # run_task/TaskRunner: slow work off the GUI thread
   gallery.py                   # python -m cci_ui.gallery (every component)
+  app_icons.py                 # the tools' app icons (python -m cci_ui.app_icons)
   assets/fonts/                # Inter 4.1 (SIL Open Font License)
   assets/icons/                # Lucide 1.49.0 line icons used by the apps (ISC)
+  assets/app-icons/            # each tool's .ico, drawn by app_icons.py
 
 src/cci_automation/            # Enrollment Log, DSMB, Clockify tools
   __main__.py                  # runtime entry: python -m cci_automation
@@ -605,7 +653,36 @@ python -m PyInstaller "Peer Review Automation.spec"
 ```
 
 Executables land in `dist/`. All four builds are one-file, windowed, and
-exclude PyQt5/matplotlib.
+exclude PyQt5/matplotlib. Each gets its tool's icon (see
+[App icons](#app-icons)) and the design system's fonts and icons.
+
+If the repository is in a Dropbox folder, mark `build/` and `dist/` as
+ignored by Dropbox first (once per clone and machine), or Dropbox locks the
+new executable while PyInstaller writes its icon and version resources and
+the build fails with `EndUpdateResourceW`:
+
+```powershell
+New-Item -ItemType Directory -Force build, dist | Out-Null
+Set-Content -Path build -Stream com.dropbox.ignored -Value 1
+Set-Content -Path dist -Stream com.dropbox.ignored -Value 1
+```
+
+To check a Clinical Reporting build without clicking through it, run it with
+`CCI_UI_SELFTEST` set to a file path: the app starts, writes what it loaded
+(style, font, assets, window icon, and whether it has its bundled
+`telemetry.json`) to that file as JSON, and quits with exit code 0 (1 if a
+check failed; the report then says why under `error`):
+
+```powershell
+$env:CCI_UI_SELFTEST = "$PWD\dist\selftest.json"
+$exe = Get-Item ".\dist\CCI Clinical Reporting V*.exe" | Sort-Object LastWriteTime | Select-Object -Last 1
+Remove-Item .\dist\selftest.json -ErrorAction SilentlyContinue
+$run = Start-Process -FilePath $exe -Wait -PassThru
+Remove-Item Env:CCI_UI_SELFTEST
+$run.ExitCode; Get-Content .\dist\selftest.json
+```
+
+(The other three tools take it up when they move onto the design system.)
 
 ### Versioning a release
 
@@ -642,13 +719,15 @@ $env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Automation.spec"
 APP_VERSION=2.01 python -m PyInstaller "CCI Automation.spec"
 ```
 
-Credential files bundled at build time (both are ignored by Git and must exist
-locally before building):
+Configuration bundled at build time:
 
-- **CCI Clinical Reporting** embeds `src/clinical_reporting/telemetry.json` so
-  users do not need to configure environment variables; use
-  `telemetry.example.json` as the schema when creating or rotating it.
-- **CCI Automation** embeds `src/cci_automation/clockify.json` (see
+- **CCI Clinical Reporting** embeds `src/clinical_reporting/telemetry.json`
+  (ignored by Git; it must exist locally before building) so usage counting
+  works without environment variables; use `telemetry.example.json` as the
+  schema when creating or rotating it. Its token can only add counts, not
+  read them.
+- **CCI Automation** embeds no credentials: Clockify needs the environment
+  variables on the machine that runs it (see
   [Clockify configuration](#clockify-configuration)).
 - Safety Automation and Peer Review Automation need no bundled data files.
 

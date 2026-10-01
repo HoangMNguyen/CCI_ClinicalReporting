@@ -80,7 +80,7 @@ class IconName:
     RUN = "play"
     DELETE = "trash-2"
     CHECK = "check"
-    # App icon glyphs
+    # App icon glyphs (see cci_ui.app_icons)
     APP_CLINICAL_REPORTING = "table-2"
     APP_CCI_AUTOMATION = "workflow"
     APP_SAFETY = "shield-check"

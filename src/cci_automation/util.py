@@ -11,9 +11,9 @@ from dateutil.relativedelta import relativedelta
 
 # TODO: implement type hints for all functions
 
-# Clockify credentials are read from the environment first, then from an
-# optional git-ignored clockify.json beside this module (same pattern as
-# clinical_reporting.telemetry).
+# Clockify credentials are read from the environment first, then (when running
+# from source) from an optional git-ignored clockify.json beside this module.
+# The built executable never bundles that file, so it needs the variables.
 CLOCKIFY_API_KEY_ENV = "CCI_CLOCKIFY_API_KEY"
 CLOCKIFY_WORKSPACE_ID_ENV = "CCI_CLOCKIFY_WORKSPACE_ID"
 _CLOCKIFY_CONFIG_PATH = Path(__file__).resolve().with_name("clockify.json")
@@ -136,7 +136,7 @@ def clockify_get_list_projects(api_key, workspace_id):
 
 
 def _bundled_clockify_configuration() -> dict:
-    """Read the optional clockify.json bundled beside this module."""
+    """Read the optional clockify.json beside this module (runs from source)."""
     try:
         configuration = json.loads(_CLOCKIFY_CONFIG_PATH.read_text(encoding="utf-8"))
         if isinstance(configuration, dict):
@@ -155,8 +155,8 @@ def _clockify_configuration_value(env_name: str, config_key: str) -> str:
         return bundled.strip()
     raise RuntimeError(
         f"Clockify is not configured: set the {env_name} environment variable "
-        f'or add "{config_key}" to {_CLOCKIFY_CONFIG_PATH.name} next to '
-        "cci_automation/util.py."
+        f'(running from source, "{config_key}" in {_CLOCKIFY_CONFIG_PATH.name} '
+        "next to cci_automation/util.py also works)."
     )
 
 

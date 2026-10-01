@@ -38,6 +38,19 @@ def ui_datas() -> list[tuple[str, str]]:
     return [(str(UI_ASSETS), "cci_ui/assets")]
 
 
+def app_icon(app_id: str) -> str:
+    """The ``.ico`` file for ``EXE(icon=...)`` of the tool *app_id*.
+
+    The same file is bundled with the assets, where the running app finds it
+    for its window icon (``cci_ui.app_icons``). Draw the icons again with
+    ``python -m cci_ui.app_icons``.
+    """
+    path = UI_ASSETS / "app-icons" / f"{app_id}.ico"
+    if not path.is_file():
+        raise SystemExit(f"build_support: no app icon {path}")
+    return str(path)
+
+
 _VERSION_RE = re.compile(r"^__version__\s*=\s*[\"']([^\"']+)[\"']", re.MULTILINE)
 
 
