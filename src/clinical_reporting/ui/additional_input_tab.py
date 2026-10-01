@@ -7,35 +7,80 @@ The banner on the page says what applying did (the wording is in
 :mod:`clinical_reporting.steps`), which files couldn't be read, and which
 form names clash; after a new Corelisting ZIP it asks to apply the files
 again.
+
+A saved setting keeps the form and column names given to its additional
+files (:mod:`clinical_reporting.additional_names`). While a loaded setting
+has such names, the Form names table shows a Saved names dropdown for each
+file. Files that match an entry, by file name or else by columns (and only
+when the match is unambiguous), get it picked and their names filled in,
+both when the setting is loaded and when files are added later; names the
+user typed are never replaced by a pick, nor cleared by picking None. A
+second banner, "Still to add", lists the setting's files that no listed
+file stands for yet. Nothing is applied until "Apply to report".
 """
 
 from __future__ import annotations
 
 import os
+from functools import partial
 from pathlib import Path
-from typing import Dict, Set, Tuple
+from typing import Collection, Dict, List, Optional, Sequence, Set, Tuple
 
 import pandas as pd
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QFileDialog,
     QListWidgetItem,
     QTableWidgetItem,
 )
 
 from cci_ui.tasks import defer_if_busy, run_task
+from cci_ui.widgets.tables import configure_columns
 from clinical_reporting import feedback, steps
+from clinical_reporting.additional_names import (
+    FileNames,
+    Match,
+    SavedFileNames,
+    current_names,
+    match,
+    names_from,
+)
 from clinical_reporting.data import (
     build_additional_data_map,
+    named_columns,
     strip_subject_prefix,
     try_load_tabular_files,
 )
 from clinical_reporting.report import CLReport
+from clinical_reporting.ui.pages.additional_input import (
+    FORM_NAME_COLUMNS,
+    FORM_NAME_COLUMNS_WITH_SAVED_NAMES,
+    SAVED_NAMES_COLUMN,
+)
 from clinical_reporting.ui.table_actions import (
     add_copy_original_name_action,
     copy_original_names_to_new_names,
 )
+
+
+class _SavedNamesComboBox(QComboBox):
+    """A Saved names dropdown that ignores the wheel unless it has focus.
+
+    Scrolling the table over it must not pick another entry, which would
+    replace the file's names.
+    """
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def wheelEvent(self, event) -> None:  # noqa: N802 (Qt override)
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
 
 
 class AdditionalInputTabMixin:
@@ -49,6 +94,14 @@ class AdditionalInputTabMixin:
         self._additional_form_keys: Set[str] = set()
         self._additional_input_signature: Dict[str, Tuple[str, ...]] = {}
         self._populating_additional_tables = False
+        # The loaded setting's saved names and each file's pick among them
+        # (the dropdowns are rebuilt with the table, so the picks live here).
+        self._saved_additional_names: List[SavedFileNames] = []
+        self._saved_names_choice: Dict[str, Match] = {}
+        self._saved_names_setting = ""
+        # The forms the loaded setting selects (None: count every saved form).
+        self._saved_names_forms: Optional[Set[str]] = None
+        self._saved_names_message: Optional[feedback.Message] = None
 
         add_button = getattr(self.ui, "pushButton_additional_file_add", None)
         remove_button = getattr(self.ui, "pushButton_additional_file_remove", None)
@@ -135,6 +188,7 @@ class AdditionalInputTabMixin:
         """List the files read by :meth:`click_add_additional_files`."""
         loaded, failures = result
         self.additional_inputs.update(loaded)
+        picked = self._pick_saved_names(list(loaded))
         self._refresh_additional_files_ui()
         self._refresh_additional_tables()
         self._update_additional_buttons_state()
@@ -150,6 +204,8 @@ class AdditionalInputTabMixin:
                 "\n".join(reasons),
             )
             self._set_label_text(banner, problem)
+        elif picked is not None:
+            self._show_saved_names_message(picked)
         elif banner.text() and banner.kind() == "warning":
             # What went wrong before (unreadable files, nothing to apply, a
             # name clash) is old news; a result or the "apply again" hint isn't.
@@ -166,10 +222,12 @@ class AdditionalInputTabMixin:
             return
 
         removed_paths = []
+        choices = getattr(self, "_saved_names_choice", {})
         for item in selected_items:
             file_path = item.data(Qt.UserRole) or item.text()
             self.additional_inputs.pop(file_path, None)
             self.additional_form_names.pop(file_path, None)
+            choices.pop(file_path, None)
             removed_paths.append(file_path)
             widget.takeItem(widget.row(item))
 
@@ -202,7 +260,7 @@ class AdditionalInputTabMixin:
             widget.addItem(item)
 
     def _refresh_additional_tables(self) -> None:
-        """Refresh the form/column rename tables."""
+        """Refresh the form/column rename tables and the "Still to add" banner."""
         self._populating_additional_tables = True
         try:
             self._populate_form_name_table()
@@ -210,6 +268,7 @@ class AdditionalInputTabMixin:
             self._populate_column_name_table()
         finally:
             self._populating_additional_tables = False
+        self._show_missing_saved_files()
 
     def _populate_form_name_table(self) -> None:
         """Populate tableWidget_update_form_name with file names and editable form names."""
@@ -231,6 +290,7 @@ class AdditionalInputTabMixin:
             item_updated = QTableWidgetItem(updated_name)
             item_updated.setData(Qt.UserRole, file_path)
             table.setItem(row, 1, item_updated)
+        self._show_saved_names_column(table, paths)
         table.blockSignals(False)
 
     def _populate_column_name_table(self) -> None:
@@ -245,11 +305,7 @@ class AdditionalInputTabMixin:
             df = self.additional_inputs.get(file_path)
             if df is None:
                 continue
-            for column_name in df.columns:
-                column_str = str(column_name)
-                if not column_str or column_str.lower().startswith("unnamed"):
-                    continue
-                rows.append((file_path, column_str))
+            rows.extend((file_path, column) for column in named_columns(df))
 
         table.setRowCount(len(rows))
         for row_index, (file_path, column_name) in enumerate(rows):
@@ -356,6 +412,328 @@ class AdditionalInputTabMixin:
     def click_apply_additional_forms(self) -> None:
         """Apply the additional inputs to the report when requested."""
         self._apply_additional_inputs_to_report()
+
+    # ------------------------------------------------------------------
+    # Saved names from a loaded setting
+
+    def _saved_names(self) -> List[SavedFileNames]:
+        """The loaded setting's saved names (none when no setting has any)."""
+        return getattr(self, "_saved_additional_names", None) or []
+
+    def _show_saved_names_column(self, table, paths: Sequence[str]) -> None:
+        """Give each row a Saved names dropdown while there are saved names.
+
+        Called while the Form names table is rebuilt (its signals blocked).
+        Rows are reused, so every row gets a new dropdown for its own file.
+        """
+        if table.columnCount() <= SAVED_NAMES_COLUMN:
+            return
+        entries = self._saved_names()
+        if table.isColumnHidden(SAVED_NAMES_COLUMN) == bool(entries):
+            columns = (
+                FORM_NAME_COLUMNS_WITH_SAVED_NAMES if entries else FORM_NAME_COLUMNS
+            )
+            configure_columns(table, columns)
+            table.setColumnHidden(SAVED_NAMES_COLUMN, not entries)
+        for row, file_path in enumerate(paths):
+            # Qt deletes a replaced dropdown later; hide it now so it isn't
+            # left drawn over the table until then.
+            old = table.cellWidget(row, SAVED_NAMES_COLUMN)
+            if old is not None:
+                old.hide()
+            if not entries:
+                table.removeCellWidget(row, SAVED_NAMES_COLUMN)
+                continue
+            # Under the dropdown, so the cell can't open a text editor.
+            cell = QTableWidgetItem("")
+            cell.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            table.setItem(row, SAVED_NAMES_COLUMN, cell)
+            table.setCellWidget(
+                row, SAVED_NAMES_COLUMN, self._saved_names_combo(file_path, entries)
+            )
+
+    def _saved_names_added(self) -> List[SavedFileNames]:
+        """The saved entries a listed file stands for.
+
+        A listed file stands for an entry when it has the entry picked, or
+        has the entry's file name.
+        """
+        if not hasattr(self, "additional_inputs"):
+            return []
+        picked = {
+            pick.index for pick in getattr(self, "_saved_names_choice", {}).values()
+        }
+        listed = {Path(path).name.casefold() for path in self.additional_inputs}
+        return [
+            entry
+            for index, entry in enumerate(self._saved_names())
+            if index in picked or entry.file_name.casefold() in listed
+        ]
+
+    def _show_missing_saved_files(self) -> None:
+        """List the loaded setting's files that aren't added yet.
+
+        Only entries for forms the setting selects count: names saved for a
+        file the setting doesn't use aren't missing.
+        """
+        banner = getattr(self.ui, "banner_saved_names", None)
+        if banner is None:
+            return
+        used_forms = getattr(self, "_saved_names_forms", None)
+        added = self._saved_names_added()
+        missing = [
+            entry
+            for entry in self._saved_names()
+            if entry.form_name
+            and (used_forms is None or entry.form_name in used_forms)
+            and entry not in added
+        ]
+        setting_name = getattr(self, "_saved_names_setting", "")
+        self._set_label_text(
+            banner,
+            steps.saved_names_missing_message(setting_name, missing) if missing else "",
+        )
+
+    def _saved_names_combo(
+        self, file_path: str, entries: Sequence[SavedFileNames]
+    ) -> QComboBox:
+        """The Saved names dropdown for *file_path*, showing its pick."""
+        combo = _SavedNamesComboBox()
+        combo.addItem(steps.SAVED_NAMES_NONE)
+        for entry in entries:
+            combo.addItem(steps.saved_names_label(entry))
+        # The list may be wider than the cell, so long entries read in full.
+        view = combo.view()
+        view.setMinimumWidth(view.sizeHintForColumn(0) + 24)
+        choice = self._saved_names_choice.get(file_path)
+        combo.setCurrentIndex(0 if choice is None else choice.index + 1)
+        combo.setToolTip(self._saved_names_tip(file_path))
+        combo.setAccessibleName(f"Saved names for {Path(file_path).name}")
+        # Bound to the file, not the row. activated fires only when the user
+        # picks, and also when they pick the entry already shown.
+        combo.activated.connect(partial(self._on_saved_names_activated, file_path))
+        return combo
+
+    def _saved_names_tip(self, file_path: str) -> str:
+        """The tooltip of *file_path*'s dropdown: its pick, and why."""
+        choice = self._saved_names_choice.get(file_path)
+        if choice is None:
+            return steps.saved_names_tip()
+        return steps.saved_names_tip(self._saved_names()[choice.index], choice.by)
+
+    def _current_names(self, file_path: str) -> Tuple[str, Dict[str, str]]:
+        """The form name and column names *file_path* has now."""
+        return current_names(
+            file_path, self.additional_form_names, self.additional_column_names
+        )
+
+    def _names_from_entry(self, file_path: str, index: int) -> FileNames:
+        """The names saved entry *index* gives *file_path*."""
+        df = self.additional_inputs.get(file_path)
+        columns = named_columns(df) if df is not None else []
+        return names_from(self._saved_names()[index], columns)
+
+    def _has_names_from(self, file_path: str, index: int) -> bool:
+        """Whether *file_path*'s names are exactly what entry *index* gives."""
+        names = self._names_from_entry(file_path, index)
+        return self._current_names(file_path) == (names.form_name, names.column_names)
+
+    def _use_saved_names(self, file_path: str, index: Optional[int]) -> List[str]:
+        """Give *file_path* the names of saved entry *index*, or none.
+
+        Replaces the file's form and column names (``None`` clears them).
+        Returns the entry's renamed columns that the file doesn't have.
+        """
+        self.additional_form_names.pop(file_path, None)
+        self.additional_column_names = {
+            key: value
+            for key, value in self.additional_column_names.items()
+            if key[0] != file_path
+        }
+        if index is None:
+            return []
+        names = self._names_from_entry(file_path, index)
+        if names.form_name:
+            self.additional_form_names[file_path] = names.form_name
+        for column, new_name in names.column_names.items():
+            self.additional_column_names[(file_path, column)] = new_name
+        return names.unmatched
+
+    def _fill_saved_names(
+        self, found: Dict[str, Match], paths: Collection[str]
+    ) -> Optional[feedback.Message]:
+        """Fill in the names *found* for *paths*, and say what was picked.
+
+        ``None`` when none of *paths* has a match.
+        """
+        picks, unmatched = [], {}
+        for file_path in sorted(paths, key=lambda path: Path(path).name.casefold()):
+            if file_path not in found:
+                continue
+            missing = self._use_saved_names(file_path, found[file_path].index)
+            self._saved_names_choice[file_path] = found[file_path]
+            file_name = Path(file_path).name
+            picks.append((file_name, found[file_path].by))
+            if missing:
+                unmatched[file_name] = missing
+        if not picks:
+            return None
+        return steps.saved_names_filled_message(
+            self._saved_names_setting, picks, unmatched
+        )
+
+    def _listed_columns(self) -> Dict[str, List[str]]:
+        """Each listed file's column headers, for matching."""
+        return {path: named_columns(df) for path, df in self.additional_inputs.items()}
+
+    def _pick_saved_names(self, new_paths: Sequence[str]) -> Optional[feedback.Message]:
+        """Pick saved names for files just added, and say what was picked.
+
+        Only added files without names are filled in, and only with entries
+        no listed file uses yet. ``None`` when nothing was picked.
+        """
+        if not self._saved_names():
+            return None
+        taken = {path: pick.index for path, pick in self._saved_names_choice.items()}
+        found = match(self._saved_names(), self._listed_columns(), taken)
+        unnamed = [path for path in new_paths if self._current_names(path) == ("", {})]
+        return self._fill_saved_names(found, unnamed)
+
+    def _offer_saved_additional_names(
+        self,
+        entries: Sequence[SavedFileNames],
+        setting_name: str,
+        used_forms: Optional[Collection[str]] = None,
+    ) -> None:
+        """Offer a loaded setting's saved names (*entries*) on this page.
+
+        The Saved names column shows while there are any. Listed files that
+        match an entry get it picked and their names filled in, unless that
+        would replace names the user typed: a file is filled in when it has
+        no names, when its names are still what the previous setting's pick
+        gave it, or when they already equal what the new pick gives.
+
+        *used_forms* are the forms the setting selects: the "Still to add"
+        banner lists only the files for those (``None``: every saved form).
+
+        The Source data page calls this when the user picks a saved setting,
+        not when it re-applies the setting after "Apply to report", so the
+        picks made in between stay.
+        """
+        if not hasattr(self, "additional_form_names"):
+            return  # A partial window (in tests) without this page's state.
+        old_choices = dict(getattr(self, "_saved_names_choice", {}))
+        replaceable = {
+            path
+            for path in self.additional_inputs
+            if self._current_names(path) == ("", {})
+            or (
+                path in old_choices
+                and self._has_names_from(path, old_choices[path].index)
+            )
+        }
+        self._saved_additional_names = list(entries)
+        self._saved_names_choice = {}
+        self._saved_names_setting = setting_name
+        self._saved_names_forms = None if used_forms is None else set(used_forms)
+        message = None
+        if entries and self.additional_inputs:
+            found = match(entries, self._listed_columns())
+            eligible = [
+                path
+                for path, pick in found.items()
+                if path in replaceable or self._has_names_from(path, pick.index)
+            ]
+            message = self._fill_saved_names(found, eligible)
+        # The "Still to add" banner says what isn't picked or added.
+        self._refresh_additional_tables()
+        if message is not None:
+            self._show_saved_names_message(message)
+        else:
+            self._clear_saved_names_message()
+
+    def _forget_saved_additional_names(self) -> None:
+        """Stop offering saved names: the Saved names column goes.
+
+        The names already filled in stay; they are the user's now.
+        """
+        if not self._saved_names():
+            return
+        self._saved_additional_names = []
+        self._saved_names_choice = {}
+        self._saved_names_setting = ""
+        self._saved_names_forms = None
+        self._clear_saved_names_message()
+        self._refresh_additional_tables()
+
+    def _show_saved_names_message(self, message: feedback.Message) -> None:
+        """Say *message* in the banner, remembered so it can go with the names."""
+        self._saved_names_message = message
+        self._set_label_text(self.ui.banner_additional, message)
+
+    def _clear_saved_names_message(self) -> None:
+        """Clear the banner if it still says something about saved names."""
+        shown = getattr(self, "_saved_names_message", None)
+        banner = self.ui.banner_additional
+        if shown is not None and banner.text() == shown:
+            self._set_label_text(banner, "")
+        self._saved_names_message = None
+
+    def _on_saved_names_activated(self, file_path: str, combo_index: int) -> None:
+        """Use the entry picked in *file_path*'s dropdown (the first: none).
+
+        Picking an entry gives the file its names. Picking None clears only
+        names a pick gave and the user didn't change since; names they typed
+        stay.
+        """
+        index = combo_index - 1 if combo_index > 0 else None
+        if index is not None and index >= len(self._saved_names()):
+            return  # A dropdown left from saved names that are gone.
+        previous = self._saved_names_choice.get(file_path)
+        file_name = Path(file_path).name
+        if index is not None:
+            unmatched = self._use_saved_names(file_path, index)
+            self._saved_names_choice[file_path] = Match(index)
+            entry = self._saved_names()[index]
+            message = steps.saved_names_picked_message(entry, file_name, unmatched)
+        elif previous is None:
+            return  # None again: nothing was picked, the names are the user's.
+        else:
+            del self._saved_names_choice[file_path]
+            if self._has_names_from(file_path, previous.index):
+                self._use_saved_names(file_path, None)
+                message = steps.saved_names_cleared_message(file_name)
+            else:
+                message = steps.saved_names_kept_message(file_name)
+
+        # Update the row in place: rebuilding the table would delete the
+        # dropdown that is emitting this signal.
+        table = self.ui.tableWidget_update_form_name
+        row = self._form_table_row(file_path)
+        if row >= 0:
+            self._populating_additional_tables = True
+            try:
+                new_name = self.additional_form_names.get(file_path, "")
+                table.item(row, 1).setText(new_name)
+            finally:
+                self._populating_additional_tables = False
+            combo = table.cellWidget(row, SAVED_NAMES_COLUMN)
+            if combo is not None:
+                combo.setToolTip(self._saved_names_tip(file_path))
+            table.selectRow(row)
+        # Selecting a row that was already selected refreshes nothing.
+        self._populate_column_name_table()
+        self._show_missing_saved_files()
+        self._show_saved_names_message(message)
+
+    def _form_table_row(self, file_path: str) -> int:
+        """The Form names row showing *file_path*, or -1."""
+        table = self.ui.tableWidget_update_form_name
+        for row in range(table.rowCount()):
+            item = table.item(row, 0)
+            if item is not None and item.data(Qt.UserRole) == file_path:
+                return row
+        return -1
 
     # ------------------------------------------------------------------
     # Report integration
