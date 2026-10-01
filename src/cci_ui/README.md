@@ -33,6 +33,19 @@ page (that puts it under `tests/ui/test_no_stray_windows.py`, which fails
 if building one opens a stray window). Show or hide a child widget only once
 it has a parent; the package docstring explains why.
 
+Text that may hold a path or a typed name needs a label that keeps it in
+bounds. A word-wrapped `QLabel` breaks at spaces, `-` and `/`, but not inside
+a Windows path or a name joined with `_` or `.`, so it can be as wide as the
+whole path; in a side panel that makes the panel scroll sideways. Use
+`ElidedLabel` when one line is enough (it shortens the middle). Use
+`WrappingLabel`, or `text_label(..., break_long_words=True)`, when the text must
+be read in full. Like CSS `overflow-wrap: anywhere`, it moves a word that fits
+on a line to the next line whole, and breaks only a word too wide for the
+label: after `\ / _ . -` (not inside a date), then where camelCase words or
+letters and digits meet, then anywhere. Copying its text leaves the invisible
+break marks out.
+`StatusBanner` messages and `Section` footnotes already wrap this way.
+
 The small tools are built from two pieces. `cci_ui.tool_window.ToolWindow` is
 the window (the shell, a task runner behind the busy overlay; `run_tool`
 starts the app and remembers the window's size). `WorkflowPage`
@@ -110,7 +123,7 @@ src/cci_ui/
   theme/glyphs.py              # renders icons; writes the stylesheet's arrow/tick images
   theme/manager.py             # System/Light/Dark and density, shared by all tools
   widgets/buttons.py           # make_button/icon_button: primary, secondary, plain…
-  widgets/labels.py            # type-scale labels; ElidedLabel shortens long paths
+  widgets/labels.py            # type-scale labels; ElidedLabel/WrappingLabel for long paths
   widgets/section.py           # Section: titled card of label/field rows
   widgets/page.py              # Page: title, body, footer, empty state; form/workspace/split
   widgets/responsive.py        # breakpoints; panel beside or below the main area
