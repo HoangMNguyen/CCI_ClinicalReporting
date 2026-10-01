@@ -363,7 +363,12 @@ Python file is saved. Unsafe Ruff fixes remain disabled by default.
 
 - `tests/conftest.py` inserts both project root and `src/` into `sys.path`, runs
   Qt offscreen (no windows appear), and provides one shared `qapp` fixture.
-- Larger sample artifacts are stored in `tests/data/`.
+- Tests build their own made-up data in code (Clinical Reporting's
+  `clinical_reporting/ui/sample_data.py`, small DataFrames, and tiny ZIPs
+  written to pytest's `tmp_path`) and never read real study exports. Keep
+  real exports outside the repository: Git ignores `tests/data/` and every
+  `.zip`, `.csv` and Excel file so one can't be committed by accident, but
+  the repository folder still syncs to Dropbox.
 - Keep logic tests in `tests/unit/`, workflow-level checks in
   `tests/integration/`, and tests of the shared design system (`cci_ui`) and
   of whole windows in `tests/ui/`.
@@ -545,7 +550,7 @@ src/clinical_reporting/
     contract.py                # widget names the mixins may use
     pages/                     # one module per step, built in code
     preview.py                 # python -m clinical_reporting.ui.preview
-    sample_data.py             # made-up DEMO01 data for previews
+    sample_data.py             # made-up DEMO01 data for previews and UI tests
     settings_tab.py            # inputs, cutoff, and saved settings
     additional_input_tab.py    # extra CSV/Excel inputs, form and column renames
     selection_tabs.py          # forms, common items, and form items
@@ -606,7 +611,7 @@ src/peer_review_automation/    # Medidata SDS peer review
 tests/
   unit/                        # fast logic-focused tests
   integration/                 # workflow/reporting behavior tests
-  data/                        # sample test inputs
+  ui/                          # design-system and whole-window tests
 ```
 
 ## Building the Executables

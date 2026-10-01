@@ -180,6 +180,14 @@ samconfig.toml
 # would hold an API key, so never commit it)
 /src/cci_automation/clockify.json
 
+# Study data (exports, generated reports, extra inputs) never belongs in
+# Git: tests use made-up data built in code. No data file is tracked; a
+# deliberate exception needs git add -f.
+/tests/data/
+*.zip
+*.csv
+*.xls*
+
 # Server-side infrastructure
 /infra/
 
