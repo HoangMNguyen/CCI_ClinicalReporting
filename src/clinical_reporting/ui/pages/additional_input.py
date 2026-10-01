@@ -1,4 +1,11 @@
-"""Additional input: extra CSV or Excel files, their form and column names."""
+"""Additional input: extra CSV or Excel files, their form and column names.
+
+While a loaded saved setting has names for additional files, the Form names
+table shows a third column, Saved names, with a dropdown of those names for
+each file, and a second banner lists the setting's files that aren't added
+yet (see
+:class:`clinical_reporting.ui.additional_input_tab.AdditionalInputTabMixin`).
+"""
 
 from __future__ import annotations
 
@@ -18,6 +25,17 @@ from clinical_reporting import steps
 from ._common import make_table
 
 _NAME_COLUMNS = (ColumnSpec("stretch"), ColumnSpec("stretch"))
+#: The Form names columns: like the Column names table's, plus Saved names.
+FORM_NAME_COLUMNS = (*_NAME_COLUMNS, ColumnSpec("stretch"))
+#: The Form names columns while Saved names shows: form names are short, so
+#: a narrower New name leaves the dropdowns room for their entries.
+FORM_NAME_COLUMNS_WITH_SAVED_NAMES = (
+    ColumnSpec("stretch"),
+    ColumnSpec("interactive", 100),
+    ColumnSpec("stretch"),
+)
+#: The Form names column holding each file's Saved names dropdown.
+SAVED_NAMES_COLUMN = 2
 
 
 class AdditionalInputPage(Page):
@@ -31,6 +49,7 @@ class AdditionalInputPage(Page):
         "pushButton_additional_file_remove",
         "pushButton_apply_additional_files",
         "banner_additional",
+        "banner_saved_names",
         "listWidget_additional_file",
         "tableWidget_update_form_name",
         "tableWidget_update_column_name",
@@ -58,6 +77,9 @@ class AdditionalInputPage(Page):
         toolbar.addWidget(self.pushButton_apply_additional_files)
         # What applying did, or why it couldn't.
         self.banner_additional = StatusBanner()
+        # The loaded setting's files not added yet: a standing list, so it
+        # stays until they are added and isn't repeated in the status bar.
+        self.banner_saved_names = StatusBanner(dismissible=False, announce=False)
 
         self.listWidget_additional_file = PlaceholderListWidget(
             "No files added. Add CSV or Excel files to use them as extra forms."
@@ -67,10 +89,12 @@ class AdditionalInputPage(Page):
         )
 
         self.tableWidget_update_form_name = make_table(
-            ["Original name", "New name"],
-            _NAME_COLUMNS,
+            ["Original name", "New name", "Saved names"],
+            FORM_NAME_COLUMNS,
             placeholder="Added files appear here.",
         )
+        # Shown while a loaded setting has saved names for additional files.
+        self.tableWidget_update_form_name.setColumnHidden(SAVED_NAMES_COLUMN, True)
         self.tableWidget_update_column_name = make_table(
             ["Original name", "New name"],
             _NAME_COLUMNS,
@@ -94,5 +118,6 @@ class AdditionalInputPage(Page):
 
         self.body.addLayout(toolbar)
         self.body.addWidget(self.banner_additional)
+        self.body.addWidget(self.banner_saved_names)
         self.body.addWidget(files_card)
         self.body.addLayout(names, 1)

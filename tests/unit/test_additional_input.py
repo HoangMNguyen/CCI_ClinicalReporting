@@ -2,9 +2,11 @@ import types
 
 import pandas as pd
 import pytest
-from PySide6.QtCore import QItemSelectionModel
+from PySide6.QtCore import QItemSelectionModel, QPoint, QPointF, Qt
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import (
     QApplication,
+    QHeaderView,
     QListWidget,
     QPushButton,
     QTableWidget,
@@ -12,10 +14,12 @@ from PySide6.QtWidgets import (
 from tests.unit.fakes import FakeBanner
 
 from clinical_reporting import data, steps
+from clinical_reporting.additional_names import SavedFileNames
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import additional_input_tab as additional_input_module
 from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
 from clinical_reporting.ui.base import WidgetBaseMixin
+from clinical_reporting.ui.pages.additional_input import SAVED_NAMES_COLUMN
 
 
 class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
@@ -363,3 +367,365 @@ def test_a_later_add_clears_the_nothing_to_apply_warning(qapp):
 
     assert warned == steps.ADD_FILES_FIRST
     assert widget.ui.banner_additional.value == ""
+
+
+# --------------------------------------------------------------------------
+# Saved names from a loaded setting
+
+LAB_PATH = "C:/exports/lab_results.csv"
+PK_PATH = "C:/exports/pk_2026-10.xlsx"
+NOTES_PATH = "C:/exports/notes.csv"
+SAVED_NAMES = [
+    SavedFileNames(
+        "lab_results.csv",
+        ("Subject ID", "Visit Dt", "ALT"),
+        "LAB",
+        {"Subject ID": "Subject", "Visit Dt": "Visit Date"},
+    ),
+    SavedFileNames(
+        "pk_conc.xlsx",
+        ("Subject ID", "Nominal Time", "Conc"),
+        "PK",
+        {"Subject ID": "Subject", "Conc": "CONC"},
+    ),
+]
+
+
+def _frame(*columns):
+    return pd.DataFrame({column: [1] for column in columns})
+
+
+FRAMES = {
+    LAB_PATH: _frame("Subject ID", "Visit Dt", "ALT"),
+    PK_PATH: _frame("Conc", "Subject ID", "Nominal Time"),
+    NOTES_PATH: _frame("Subject ID", "Note Date"),
+}
+
+
+class SavedNamesUiWidget(DummyAdditionalInputUiWidget):
+    """The Qt stand-in with the page's three-column Form names table."""
+
+    def __init__(self):
+        super().__init__()
+        form_table = self.ui.tableWidget_update_form_name
+        form_table.setColumnCount(3)
+        form_table.setColumnHidden(SAVED_NAMES_COLUMN, True)
+        self.ui.banner_saved_names = FakeBanner()
+
+    def add(self, *paths, frames=None):
+        frames = frames or FRAMES
+        self._add_loaded_additional_files(({path: frames[path] for path in paths}, {}))
+
+    def combo(self, file_path):
+        table = self.ui.tableWidget_update_form_name
+        return table.cellWidget(self._form_table_row(file_path), SAVED_NAMES_COLUMN)
+
+    def pick(self, file_path, combo_index):
+        combo = self.combo(file_path)
+        combo.setCurrentIndex(combo_index)
+        combo.activated.emit(combo_index)
+
+    def column_rows(self):
+        table = self.ui.tableWidget_update_column_name
+        return [
+            (table.item(row, 0).text(), table.item(row, 1).text())
+            for row in range(table.rowCount())
+        ]
+
+
+def test_loading_saved_names_picks_them_for_matching_files(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(LAB_PATH, NOTES_PATH, PK_PATH)
+
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+
+    table = widget.ui.tableWidget_update_form_name
+    assert not table.isColumnHidden(SAVED_NAMES_COLUMN)
+    assert widget.additional_form_names == {LAB_PATH: "LAB", PK_PATH: "PK"}
+    assert widget.additional_column_names == {
+        (LAB_PATH, "Subject ID"): "Subject",
+        (LAB_PATH, "Visit Dt"): "Visit Date",
+        (PK_PATH, "Subject ID"): "Subject",
+        (PK_PATH, "Conc"): "CONC",
+    }
+    assert widget.combo(LAB_PATH).currentText() == "LAB · lab_results.csv"
+    assert widget.combo(PK_PATH).currentText() == "PK · pk_conc.xlsx"
+    assert widget.combo(NOTES_PATH).currentText() == steps.SAVED_NAMES_NONE
+    assert "file name matches" in widget.combo(LAB_PATH).toolTip()
+    assert "columns match" in widget.combo(PK_PATH).toolTip()
+    assert table.item(widget._form_table_row(LAB_PATH), 1).text() == "LAB"
+    shown = widget.ui.banner_additional.value
+    assert shown.kind == "info"
+    assert shown.startswith("Saved names from “Monthly AE review” picked for 2")
+    assert "lab_results.csv by its file name" in shown
+    assert "pk_2026-10.xlsx by its columns" in shown
+
+
+def test_names_the_user_typed_are_not_replaced(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(LAB_PATH)
+    widget.additional_form_names[LAB_PATH] = "MYLAB"
+
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+
+    assert widget.additional_form_names == {LAB_PATH: "MYLAB"}
+    assert widget.additional_column_names == {}
+    assert widget.combo(LAB_PATH).currentIndex() == 0
+    assert widget.ui.banner_additional.value == ""  # Nothing was picked.
+
+
+def test_picking_none_keeps_names_the_user_typed(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH, LAB_PATH)
+    widget.additional_form_names[NOTES_PATH] = "MYNOTES"
+    widget.additional_column_names[(NOTES_PATH, "Note Date")] = "NDATE"
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget.ui.banner_additional.setText("")
+
+    widget.pick(NOTES_PATH, 0)  # None again, on a file nothing was picked for.
+    never_picked = (
+        dict(widget.additional_form_names),
+        widget.ui.banner_additional.value,
+    )
+    widget.additional_form_names[LAB_PATH] = "LAB_EDITED"  # Changed after its pick.
+    widget.pick(LAB_PATH, 0)
+
+    assert never_picked == ({NOTES_PATH: "MYNOTES", LAB_PATH: "LAB"}, "")
+    assert widget.additional_column_names[(NOTES_PATH, "Note Date")] == "NDATE"
+    assert widget.additional_form_names[LAB_PATH] == "LAB_EDITED"
+    assert (LAB_PATH, "Visit Dt") in widget.additional_column_names
+    assert LAB_PATH not in widget._saved_names_choice
+    assert widget.ui.banner_additional.value == (
+        "lab_results.csv no longer uses saved names. The names you changed stay."
+    )
+
+
+def test_picking_an_entry_fills_the_names_and_none_clears_them(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(LAB_PATH, NOTES_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES[1:], "Monthly AE review")
+
+    widget.pick(NOTES_PATH, 1)
+    picked = widget.ui.banner_additional.value
+    filled = (dict(widget.additional_form_names), widget.column_rows())
+    widget.pick(NOTES_PATH, 0)
+
+    assert filled == (
+        {NOTES_PATH: "PK"},
+        [("Subject ID", "Subject"), ("Note Date", "")],
+    )
+    assert picked.kind == "warning"
+    assert (
+        picked == "PK: 1 saved column name has no matching column in notes.csv: Conc."
+    )
+    assert widget.additional_form_names == {}
+    assert widget.column_rows() == [("Subject ID", ""), ("Note Date", "")]
+    assert widget.ui.banner_additional.value == "Saved names cleared for notes.csv."
+    table = widget.ui.tableWidget_update_form_name
+    assert table.item(widget._form_table_row(NOTES_PATH), 1).text() == ""
+
+
+def test_a_file_added_later_gets_its_saved_names(qapp):
+    widget = SavedNamesUiWidget()
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    quiet = widget.ui.banner_additional.value
+
+    widget.add(LAB_PATH)
+
+    assert quiet == ""
+    assert widget.additional_form_names == {LAB_PATH: "LAB"}
+    assert widget.combo(LAB_PATH).currentIndex() == 1
+    assert widget.ui.banner_additional.value.startswith(
+        "Saved names from “Monthly AE review” picked for 1 file: "
+        "lab_results.csv by its file name."
+    )
+
+
+def test_an_entry_in_use_is_not_picked_again_for_an_added_file(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(PK_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    copy = "C:/elsewhere/pk_copy.xlsx"
+
+    widget.add(copy, frames={copy: FRAMES[PK_PATH]})
+
+    assert widget.additional_form_names == {PK_PATH: "PK"}
+    assert widget.combo(copy).currentIndex() == 0
+
+
+def test_dropdowns_stay_with_their_files_when_rows_move(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget.pick(NOTES_PATH, 2)
+    first = "C:/exports/aaa.csv"
+
+    widget.add(first, frames={first: _frame("Other")})  # The notes row moves down.
+
+    assert widget._form_table_row(first) == 0
+    assert widget.combo(first).currentIndex() == 0
+    assert widget.combo(NOTES_PATH).currentIndex() == 2
+    widget.pick(first, 1)
+    assert widget.additional_form_names == {NOTES_PATH: "PK", first: "LAB"}
+
+
+def test_picks_survive_a_refresh_and_go_with_their_file(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(LAB_PATH, NOTES_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+
+    widget._refresh_additional_tables()
+    kept = widget.combo(LAB_PATH).currentIndex()
+    files = widget.ui.listWidget_additional_file
+    files.item(0).setSelected(True)  # lab_results.csv
+    widget.click_remove_additional_files()
+
+    assert kept == 1
+    assert LAB_PATH not in widget._saved_names_choice
+    assert list(widget.additional_inputs) == [NOTES_PATH]
+
+
+def test_another_setting_replaces_only_untouched_picks(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(LAB_PATH, PK_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget.additional_form_names[PK_PATH] = "PK_EDITED"  # Typed after the pick.
+    weekly = [
+        SavedFileNames("lab_results.csv", (), "LABS", {}),
+        SavedFileNames("pk_2026-10.xlsx", (), "PKS", {}),
+    ]
+
+    widget._offer_saved_additional_names(weekly, "Weekly")
+
+    assert widget.additional_form_names == {LAB_PATH: "LABS", PK_PATH: "PK_EDITED"}
+    assert (LAB_PATH, "Subject ID") not in widget.additional_column_names
+    assert widget.combo(LAB_PATH).currentText() == "LABS · lab_results.csv"
+    assert widget.combo(PK_PATH).currentIndex() == 0
+
+
+def test_without_saved_names_the_column_hides_and_the_names_stay(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(LAB_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+
+    widget._offer_saved_additional_names([], "Old setting")
+    table = widget.ui.tableWidget_update_form_name
+    hidden_by_load = table.isColumnHidden(SAVED_NAMES_COLUMN)
+    message_after_load = widget.ui.banner_additional.value
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget._forget_saved_additional_names()
+
+    assert hidden_by_load and table.isColumnHidden(SAVED_NAMES_COLUMN)
+    assert table.cellWidget(0, SAVED_NAMES_COLUMN) is None
+    assert widget.additional_form_names == {LAB_PATH: "LAB"}
+    assert widget._saved_names_choice == {}
+    # The saved-names message goes with the dropdowns.
+    assert message_after_load == ""
+    assert widget.ui.banner_additional.value == ""
+
+
+def test_the_saved_files_not_added_yet_are_listed(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    both_missing = widget.ui.banner_saved_names.value
+
+    widget.add(LAB_PATH)
+    pk_missing = widget.ui.banner_saved_names.value
+    widget.pick(NOTES_PATH, 2)  # notes.csv stands in for pk_conc.xlsx
+    none_missing = widget.ui.banner_saved_names.value
+    widget.pick(NOTES_PATH, 0)
+    missing_again = widget.ui.banner_saved_names.value
+    widget._forget_saved_additional_names()
+
+    assert both_missing == (
+        "Still to add for “Monthly AE review”: lab_results.csv (LAB), "
+        "pk_conc.xlsx (PK). Add them, and their saved names will be picked for "
+        "you, or pick them in Saved names for files already added."
+    )
+    assert both_missing.kind == "warning"
+    assert pk_missing.startswith(
+        "Still to add for “Monthly AE review”: pk_conc.xlsx (PK)."
+    )
+    assert none_missing == ""
+    assert missing_again == pk_missing
+    assert widget.ui.banner_saved_names.value == ""
+
+
+def test_only_files_for_forms_the_setting_uses_are_still_to_add(qapp):
+    widget = SavedNamesUiWidget()
+    column_only = SavedFileNames("extra.csv", ("A",), "", {"A": "B"})
+
+    widget._offer_saved_additional_names(
+        [*SAVED_NAMES, column_only], "Monthly AE review", used_forms={"DM", "PK"}
+    )
+
+    assert widget.ui.banner_saved_names.value.startswith(
+        "Still to add for “Monthly AE review”: pk_conc.xlsx (PK). Add them"
+    )
+
+
+def test_a_pick_is_said_even_when_some_files_could_not_be_read(qapp):
+    widget = SavedNamesUiWidget()
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+
+    widget._add_loaded_additional_files(
+        ({LAB_PATH: FRAMES[LAB_PATH]}, {"C:/exports/broken.csv": "Bad file"})
+    )
+
+    assert widget.ui.banner_additional.value.startswith(
+        "These files could not be read and were not added: broken.csv."
+    )
+    assert widget.additional_form_names == {LAB_PATH: "LAB"}
+    assert widget.combo(LAB_PATH).currentIndex() == 1
+
+
+def test_the_new_name_column_narrows_while_saved_names_show(qapp):
+    widget = SavedNamesUiWidget()
+    header = widget.ui.tableWidget_update_form_name.horizontalHeader()
+    widget.add(LAB_PATH)
+
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    with_saved_names = header.sectionResizeMode(1)
+    widget._forget_saved_additional_names()
+
+    assert with_saved_names == QHeaderView.ResizeMode.Interactive
+    assert header.sectionResizeMode(1) == QHeaderView.ResizeMode.Stretch
+
+
+def test_a_two_column_form_table_still_gets_the_names(qapp):
+    widget = DummyAdditionalInputUiWidget()
+    widget.additional_inputs[LAB_PATH] = FRAMES[LAB_PATH]
+
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+
+    assert widget.additional_form_names == {LAB_PATH: "LAB"}
+
+
+def test_a_window_without_this_page_ignores_saved_names():
+    AdditionalInputTabMixin._offer_saved_additional_names(
+        types.SimpleNamespace(), SAVED_NAMES, "Monthly AE review"
+    )
+
+    assert DummyWidget()._pick_saved_names([LAB_PATH]) is None
+
+
+def test_the_wheel_only_changes_a_focused_dropdown(qapp):
+    combo = additional_input_module._SavedNamesComboBox()
+    combo.addItems(["None", "LAB", "PK"])
+    wheel = QWheelEvent(
+        QPointF(5, 5),
+        QPointF(5, 5),
+        QPoint(0, 0),
+        QPoint(0, -120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+
+    combo.wheelEvent(wheel)
+
+    assert combo.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    assert combo.currentIndex() == 0
+    assert not wheel.isAccepted()

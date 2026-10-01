@@ -8,6 +8,14 @@ Source data page's controls from :class:`ui.window.Widget`.
 Reading the ZIP runs in the background (:func:`cci_ui.tasks.run_task`); the
 data it returns is applied to the report in the callbacks, back on the GUI
 thread.
+
+Picking a saved setting also hands the names it saved for additional input
+files to the Additional input page, which offers them in its Saved names
+dropdowns; when forms the setting needs are missing, the warning names the
+files that bring them (or, for files already added, says to check and apply
+them). Forgetting the loaded setting takes those dropdowns away again: a new
+ZIP, removing the ZIP, turning the toggle off, picking "Choose a setting…",
+or a setting that fails to load.
 """
 
 from __future__ import annotations
@@ -25,6 +33,7 @@ from PySide6.QtWidgets import QFileDialog
 
 from cci_ui.tasks import defer_if_busy, run_task
 from clinical_reporting import feedback, steps
+from clinical_reporting.additional_names import from_settings
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
 from clinical_reporting.session import new_report, replace_base_data, without_base_data
 from clinical_reporting.ui.dialogs import choose_settings_directory
@@ -112,8 +121,7 @@ class SettingsTabMixin:
         # A new report, so nothing from a previous load lingers.
         self.study_name = parse_study_name(file_path)
         self.report = new_report(self.study_name, data)
-        self._last_loaded_setting_path = None
-        self._pending_saved_setting_reapply = False
+        self._forget_loaded_setting()
         # Remember the source so the cut-off can be re-applied without re-picking.
         self._input_file_path = file_path
         self._applied_cut_off_date = cut_off_date
@@ -126,7 +134,6 @@ class SettingsTabMixin:
         self.update_all_ui()
         self._show_input_file()
         self._show_data_read(data)
-        self._set_label_text(self.label_setting, "")
 
         if self.ui.checkBox_saved_setting.isChecked():
             if self.settings_directory is None:
@@ -151,14 +158,12 @@ class SettingsTabMixin:
         self._input_file_path = None
         self._applied_cut_off_date = None
         self._failed_cut_off_reload = None
-        self._last_loaded_setting_path = None
-        self._pending_saved_setting_reapply = False
+        self._forget_loaded_setting()
         self._forget_export_results()
 
         self._show_input_file()
         self._show_data_read(None)
         self.ui.pushButton_remove_input.setEnabled(False)
-        self._set_label_text(self.label_setting, "")
 
         # Saved settings are study-specific; repopulate them after another ZIP
         # establishes the study name.
@@ -316,9 +321,7 @@ class SettingsTabMixin:
         else:
             self.ui.comboBox_saved_setting.clear()
             self.ui.comboBox_saved_setting.setEnabled(False)
-            self._set_label_text(self.label_setting, "")
-            self._last_loaded_setting_path = None
-            self._pending_saved_setting_reapply = False
+            self._forget_loaded_setting()
 
     def click_setting_location(self) -> None:
         """Let the user choose the directory that stores saved settings."""
@@ -344,11 +347,33 @@ class SettingsTabMixin:
             combo.addItem("No saved settings found for this study", None)
             combo.setEnabled(False)
 
-        combo.setCurrentIndex(0)
+        # Keep showing the setting that is loaded (the list is refreshed after
+        # a save, and the setting stays loaded).
+        loaded_path = getattr(self, "_last_loaded_setting_path", None)
+        loaded = combo.findData(loaded_path) if loaded_path else -1
+        combo.setCurrentIndex(max(loaded, 0))
         combo.blockSignals(False)
 
+    def _forget_loaded_setting(self) -> None:
+        """Forget the saved setting that was loaded, and its warning.
+
+        The Additional input page stops offering its saved names; the names
+        already filled in stay.
+        """
+        self._last_loaded_setting_path = None
+        self._pending_saved_setting_reapply = False
+        self._set_label_text(self.label_setting, "")
+        forget_saved_names = getattr(self, "_forget_saved_additional_names", None)
+        if forget_saved_names is not None:
+            forget_saved_names()
+
     def _update_saved_setting_warning(self, reconciliation: dict) -> None:
-        """Update the warning label and reapply flag for missing setting data."""
+        """Update the warning label and reapply flag for missing setting data.
+
+        When missing forms come from additional files whose names the setting
+        saved, the warning also says which files to add, or, for files
+        already added, to check their form names and apply them.
+        """
         missing_forms = reconciliation.get("forms", [])
         missing_items = reconciliation.get("items", [])
 
@@ -358,6 +383,14 @@ class SettingsTabMixin:
             message_parts = []
             if missing_forms:
                 message_parts.append("Missing forms: " + ", ".join(missing_forms))
+                added = getattr(self, "_saved_names_added", None)
+                hint = steps.saved_names_hint(
+                    missing_forms,
+                    getattr(self, "_saved_additional_names", ()),
+                    added() if added is not None else (),
+                )
+                if hint:
+                    message_parts.append(hint)
             if missing_items:
                 common_items = []
                 form_items: dict[str, list[str]] = {}
@@ -388,9 +421,19 @@ class SettingsTabMixin:
             self._set_label_text(self.label_setting, "")
 
     def _apply_saved_setting_from_path(
-        self, file_path: str, *, update_confirmation: bool = True
+        self,
+        file_path: str,
+        *,
+        update_confirmation: bool = True,
+        offer_saved_names: bool = False,
     ) -> bool:
-        """Load the saved setting at ``file_path`` and reconcile it with the data."""
+        """Load the saved setting at ``file_path`` and reconcile it with the data.
+
+        With *offer_saved_names* (the user picked the setting), the names it
+        saved for additional input files are handed to the Additional input
+        page. Re-applying the setting after "Apply to report" leaves them, so
+        the user's picks there stay.
+        """
         try:
             stored = self._settings_store().load(file_path)
             settings_data = self.report.load_setting_from_dict(stored)
@@ -405,6 +448,16 @@ class SettingsTabMixin:
             self._set_label_text(self.label_setting, "")
             self._pending_saved_setting_reapply = False
             return False
+
+        offer = getattr(self, "_offer_saved_additional_names", None)
+        if offer_saved_names and offer is not None:
+            setting_name = (
+                stored.get("setting_name")
+                or os.path.splitext(os.path.basename(file_path))[0]
+            )
+            # Only forms the setting selects need their files added.
+            used_forms = set(stored.get("selected_forms") or ())
+            offer(from_settings(stored), setting_name, used_forms)
 
         loaded_study_name = (
             settings_data.get("study_name") if isinstance(settings_data, dict) else None
@@ -431,14 +484,13 @@ class SettingsTabMixin:
 
         file_path: Optional[str] = self.ui.comboBox_saved_setting.itemData(index)
         if not file_path:
-            self._set_label_text(self.label_setting, "")
-            self._last_loaded_setting_path = None
-            self._pending_saved_setting_reapply = False
+            self._forget_loaded_setting()
             return
 
-        if not self._apply_saved_setting_from_path(file_path, update_confirmation=True):
-            self._last_loaded_setting_path = None
-            self._pending_saved_setting_reapply = False
+        if not self._apply_saved_setting_from_path(
+            file_path, update_confirmation=True, offer_saved_names=True
+        ):
+            self._forget_loaded_setting()
             return
 
         self._last_loaded_setting_path = file_path
