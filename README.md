@@ -126,19 +126,31 @@ Keyboard shortcuts:
 
 ## CCI Automation
 
-One window, three workflows, selected from a dropdown. Reports are written as
-styled `.xlsx` files to a chosen output folder.
+One window with a sidebar of its three workflows, one page each (the
+sidebar folds to icons on a narrow window). Each page builds its workbook in
+the background and saves it in the chosen folder as
+`<name> YYMMDD_HHMMSS.xlsx`, never over an existing file; the suggested names
+are below. (Before 1.35 a file was saved exactly as named, replacing any file
+of that name, and the suggested names began with the date, e.g.
+`260930-15420 DSMB Report`.)
 
-| Workflow | Input | Notes |
-| --- | --- | --- |
-| Enrollment Log | Corelisting ZIP | Studies 03325, 03821, 10325, 11823, 12423, 15122, 15420, 16321, 30425, 50425. Optional cut-off date. |
-| DSMB Report | Corelisting ZIP | Studies 03325, 03821, 10325, 11823, 12423, 15122, 15420, 16321. Optional cut-off date. |
-| Format for lab range issue and no leading 0 date | CSV or XLSX | Fixes scientific-notation lab ranges and strips leading zeros from dates. |
+| Page | Input | Suggested name | Notes |
+| --- | --- | --- | --- |
+| Enrollment log | Study + Corelisting ZIP | `<study> Enrollment Log` | Studies 03325, 03821, 10325, 11823, 12423, 15122, 15420, 16321, 30425, 50425. Optional cut-off date. |
+| DSMB report | Study + Corelisting ZIP | `<study> DSMB Report` | Studies 03325, 03821, 10325, 11823, 12423, 15122, 15420, 16321. Optional cut-off date. |
+| Format tools | CSV or XLSX file | `<file>_formatted` | Keeps lab ranges such as 10-20 as text, takes the leading zeros out of dates in columns whose name says "date" (as text: 03/05/2026 becomes 3/5/2026), and drops the ".1" pandas adds to a repeated column name. A CSV saved by Excel in Windows' own encoding is read too. |
 
-Enrollment Log and DSMB builders are per-study modules under
-`src/cci_automation/enrollment_log/` and `src/cci_automation/dsmb/`; adding a
-study means adding a module there and listing it in the dispatcher and the
-combo box in `src/cci_automation/app.py`.
+The study is picked from the list, or taken from the ZIP's file name when that
+names one (a ZIP named for another study than the one chosen is refused, with
+a message). Each workflow is a plain `run()` that returns the workbook as an
+`OutputFile`: `enrollment_log/EnrollmentLog.py`, `dsmb/DSMB.py` (the per-study
+DSMB modules still write a file, which `run()` reads back from a temporary
+folder, so the study's data sits there only during a run) and `format_tools/change_type.py`. A study without a module gets a
+message saying which studies are supported (the DSMB report used to make
+nothing, silently). Adding a study means adding its module under
+`src/cci_automation/enrollment_log/` or `src/cci_automation/dsmb/`, a branch
+for it in that workflow's dispatcher, and the study in its
+`SUPPORTED_STUDIES` (the page lists those).
 
 ## Safety Automation
 
@@ -446,8 +458,8 @@ The design system is `src/cci_ui`: the colors, sizes and type (`theme/`),
 the components (`widgets/`), the icons, and the four tools' app icons. The
 Clinical Reporting pages are built from it in
 `src/clinical_reporting/ui/pages/`, in Python code (no Qt Designer files).
-Safety Automation and Peer Review Automation are built on it too (CCI
-Automation follows).
+Safety Automation, Peer Review Automation and CCI Automation are built on it
+too.
 
 ### Colors, sizes, and type
 
@@ -662,8 +674,9 @@ src/cci_ui/                    # shared design system for all four tools
 
 src/cci_automation/            # Enrollment Log, DSMB, format tools
   __main__.py                  # runtime entry: python -m cci_automation
+  app.py                       # the window: a sidebar of three WorkflowPages
   util.py                      # shared stats, Corelisting and formatting helpers
-  enrollment_log/  dsmb/  format_tools/
+  enrollment_log/  dsmb/  format_tools/  # each workflow's run(), Qt-free
 
 src/safety_automation/         # Corelisting AE & DLT report
   __main__.py                  # runtime entry: python -m safety_automation
@@ -729,8 +742,7 @@ Remove-Item Env:CCI_UI_SELFTEST
 $run.ExitCode; Get-Content .\dist\selftest.json
 ```
 
-(Safety Automation and Peer Review Automation do this too; CCI Automation
-takes it up when it moves onto the design system.)
+(The other three tools do this too.)
 
 ### Versioning a release
 

@@ -17,12 +17,13 @@ in the middle of a sentence, e.g. "the AE & DLT listing".
 from __future__ import annotations
 
 import os
+import re
 import zipfile
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterable, Iterator, Optional, Tuple, Type
 
-from clinical_reporting.data import read_data_dict_zip_corelisting
+from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
 
 
 @dataclass(frozen=True)
@@ -121,6 +122,33 @@ def reading_input(
         ) from exc
 
 
+def study_named_by(source) -> Optional[str]:
+    """The five-digit study number in a Corelisting export's file name, if any.
+
+    ("Core_Listings_15420_….zip" and "Core_Listings_15420.zip" name 15420.)
+    """
+    token = os.path.splitext(parse_study_name(input_name(source)))[0]
+    return token if re.fullmatch(r"\d{5}", token) else None
+
+
+def check_study(source, study: str, workflow: str, supported: Iterable[str]) -> None:
+    """Raise :class:`WorkflowInputError` if *source*'s file name names another study.
+
+    When that study isn't one *workflow* supports, the message says so (rather
+    than suggesting a study it can't do).
+    """
+    supported = tuple(supported)
+    named = study_named_by(source)
+    if named and named not in supported:
+        raise UnsupportedStudyError(workflow, named, supported)
+    if named and named != study:
+        raise WorkflowInputError(
+            f"{file_name_of(source, 'The file')} is an export of study {named}, "
+            f"but study {study} is chosen. Choose study {named}, or study {study}'s "
+            "export."
+        )
+
+
 def read_corelisting(source, cut_off_date=None) -> dict:
     """Read a Corelisting export for a workflow: form name to its DataFrame.
 
@@ -137,9 +165,11 @@ __all__ = [
     "OutputFile",
     "UnsupportedStudyError",
     "WorkflowInputError",
+    "check_study",
     "file_name_of",
     "input_name",
     "missing_forms_error",
     "read_corelisting",
     "reading_input",
+    "study_named_by",
 ]

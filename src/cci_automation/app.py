@@ -1,277 +1,269 @@
-# This Python file uses the following encoding: utf-8
-import os
+"""CCI Automation's window: its three workflows, one page each.
+
+A sidebar holds the pages, each a
+:class:`cci_ui.widgets.workflow_page.WorkflowPage`: the enrollment log and
+the DSMB report (a study, its Corelisting ZIP, and an optional cut-off date)
+and the format tool (a CSV or Excel file). The work happens in each
+workflow's ``run()``, which returns the workbook; the page saves it.
+"""
+
+from __future__ import annotations
+
 import sys
-import traceback
-import warnings
-from datetime import date, datetime
+from datetime import date
+from functools import partial
+from typing import Callable, Optional, Sequence
 
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
+from PySide6.QtCore import QDate, QSettings, QTimer
+from PySide6.QtWidgets import QComboBox, QDateEdit, QWidget
 
-from cci_automation.ui_form import Ui_Widget
+import cci_automation.dsmb.DSMB as dsmb
+import cci_automation.enrollment_log.EnrollmentLog as enrollment
+import cci_automation.format_tools.change_type as format_tool
+from cci_automation import __version__
+from cci_ui.icons import IconName
+from cci_ui.theme.manager import ThemeManager
+from cci_ui.tool_window import ToolWindow, run_tool
+from cci_ui.widgets.path_picker import PathPicker
+from cci_ui.widgets.toggle import ToggleSwitch
+from cci_ui.widgets.workflow_page import WorkflowPage
+from clinical_reporting.filenames import output_file_name
+from clinical_reporting.workflow import (
+    UnsupportedStudyError,
+    WorkflowInputError,
+    study_named_by,
+)
 
-
-class Widget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.ui = Ui_Widget()
-        self.ui.setupUi(self)
-        self.load_ui()
-
-    def load_ui(self):
-        self.setWindowTitle("CCI Automation")
-        # Combo Box
-        comboBox_options = [
-            "",
-            "Enrollment Log",
-            "DSMB Report",
-            "Format for lab range issue and no leading 0 date",
-        ]
-        self.ui.comboBox.addItems(comboBox_options)
-
-        # Combo Box2
-        comboBox2_options = [""]
-        self.ui.comboBox_2.addItems(comboBox2_options)
-
-        # Date edit check box
-        self.ui.checkBox.stateChanged.connect(self.toggle_dateEdit)
-        self.ui.checkBox.setVisible(False)
-
-        # QDateEdit creation
-        self.ui.dateEdit.setVisible(False)  # Date picker hidden by default
-
-        # Choose input Directory
-        self.ui.pushButton.clicked.connect(self.clicker)
-
-        # Choose output Directory
-        self.ui.pushButton_2.clicked.connect(self.clicker_output_folder)
-
-        # Input text
-
-        # Run
-        self.ui.pushButton_3.clicked.connect(self.run)
-
-        ###link interaction afterdeclare variables
-        # Combo box 1
-        self.onComboBoxChanged()
-        self.ui.comboBox.currentIndexChanged.connect(self.onComboBoxChanged)
-
-        # Combo box 2
-        self.onComboBoxChanged2()
-        self.ui.comboBox_2.currentIndexChanged.connect(self.onComboBoxChanged2)
-        # Line edit for Input
-        self.on_lineEdit_changed()
-        self.ui.lineEdit.textChanged.connect(self.on_lineEdit_changed)
-        self.input_file_path = None
-
-    def clicker(self):
-        """Open a file dialog when the user clicks the button.
-        Options: DSMB Report, Enrollment Log, Format for lab range issue
-        """
-        if self.selected_option == "DSMB Report" or self.selected_option == "Enrollment Log":
-            # point to the default download directory
-            default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-            file_path, _ = QFileDialog.getOpenFileName(
-                self,
-                "Select the Corelisting ZIP",
-                default_dir,
-                "Zip files (*.zip)",
-            )
-            # output filename to screen
-            if file_path:
-                self.ui.label_2.setText(file_path)
-                self.input_file_path = file_path
-
-        elif self.selected_option == "Format for lab range issue and no leading 0 date":
-            default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-            file_path, _ = QFileDialog.getOpenFileName(
-                self,
-                "Select the raw .csv or .xlsx file",
-                default_dir,
-                "All files (*.csv *.xlsx)",
-            )
-            # output filename to screen
-            if file_path:
-                self.ui.label_2.setText(file_path)
-                self.input_file_path = file_path
-
-            # update the changed line edit to the new file name
-            self.ui.lineEdit.setText(os.path.basename(file_path).split(".")[0] + "_formatted")
-            # make it editable
-            self.ui.lineEdit.setEnabled(True)
-
-    def toggle_dateEdit(self, state):
-        """Change the state of the date picker based on the checkbox state.
-            If checkbox is checked (state == 2), show the date picker. Otherwise, hide it.
-        Args:
-            state (_type_): _description_
-        """
-
-        self.ui.dateEdit.setVisible(state == 2)
-
-    def clicker_output_folder(self):
-        # self.ui.label.setText("You Clicked")
-        default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-        output_folder_name = QFileDialog.getExistingDirectory(self, "Select Output Folder", default_dir)
-        # output filename to screen
-        if output_folder_name:
-            self.ui.label_3.setText(output_folder_name)
-            self.output_folder_name = output_folder_name
-
-    def onComboBoxChanged(self):
-        """Handle changes in comboBox and update comboBox_2 and other UI elements."""
-        self.selected_option = self.ui.comboBox.currentText()
-
-        # Clear comboBox_2 and update based on the selected option
-        self.ui.comboBox_2.clear()
-        if self.selected_option == "Enrollment Log":
-            self.ui.comboBox_2.addItems(
-                ["03325", "03821", "11823", "10325", "12423", "15122", "15420", "16321", "30425", "50425"]
-            )
-            self.ui.comboBox_2.setVisible(True)
-        elif self.selected_option == "DSMB Report":
-            self.ui.comboBox_2.addItems(["15420", "11823", "12423", "15122", "03821", "16321", "03325", "10325"])
-            self.ui.comboBox_2.setVisible(True)
-        elif self.selected_option == "Format for lab range issue and no leading 0 date":
-            # Hide comboBox_2
-            self.ui.comboBox_2.setVisible(False)
-
-        # Update other UI elements based on the selected option
-        if self.selected_option == "Enrollment Log":
-            self.ui.checkBox.setVisible(True)
-            self.ui.lineEdit.setText(
-                datetime.now().strftime("%y%m%d") + "-" + self.selected_option2 + " Enrollment Log"
-            )
-            self.ui.lineEdit.setEnabled(True)
-            self.ui.lineEdit.show()
-            self.ui.pushButton.setEnabled(True)
-            self.ui.pushButton_2.setEnabled(True)
-        elif self.selected_option == "DSMB Report":
-            self.ui.checkBox.setVisible(True)
-            self.ui.lineEdit.setText(datetime.now().strftime("%y%m%d") + "-" + self.selected_option2 + " DSMB Report")
-            self.ui.lineEdit.setEnabled(True)
-            self.ui.pushButton.setEnabled(True)
-            self.ui.pushButton_2.setEnabled(True)
-        elif self.selected_option == "Format for lab range issue and no leading 0 date":
-            self.ui.checkBox.setVisible(False)
-            self.ui.dateEdit.setVisible(False)
-            self.ui.pushButton.setEnabled(True)
-            self.ui.pushButton_2.setEnabled(True)
-            self.ui.lineEdit.setText("")
-            self.ui.lineEdit.setEnabled(True)
-
-    def onComboBoxChanged2(self):
-        """_summary_"""
-        # Get the selected item text
-        self.selected_option2 = self.ui.comboBox_2.currentText()
-        if self.selected_option == "Enrollment Log":
-            self.ui.lineEdit.setText(date.today().strftime("%y%m%d") + "-" + self.selected_option2 + " Enrollment Log")
-        elif self.selected_option == "DSMB Report":
-            self.ui.lineEdit.setText(datetime.now().strftime("%y%m%d") + "-" + self.selected_option2 + " DSMB Report")
-            self.ui.lineEdit.setEnabled(True)
-
-    def on_lineEdit_changed(self, text=None):
-        # update the changed line edit
-        self.output_file_name = text
-
-    def run(self):
-        cut_off_date = None
-        if self.ui.checkBox.isChecked():
-            cut_off_date = self.ui.dateEdit.date().toPython()
-        if self.selected_option == "Enrollment Log":
-            from cci_automation.enrollment_log.EnrollmentLog import EnrollmentLog
-
-            # option for enrollment log
-            if (
-                not self.selected_option2
-                or not self.input_file_path
-                or not self.output_folder_name
-                or not self.output_file_name
-            ):
-                QMessageBox.warning(
-                    self,
-                    "Warning",
-                    "Please make sure all those selections are entered correctly.",
-                )
-            else:
-                try:
-                    EnrollmentLog(
-                        self.selected_option2,
-                        self.input_file_path,
-                        self.output_folder_name,
-                        self.output_file_name,
-                        cut_off_date,
-                    )
-                    self.ui.label_5.setText(
-                        "Confirmed: Enrollment Log "
-                        + self.selected_option2
-                        + " study selected. Output file name is "
-                        + self.output_file_name
-                        + ".xlsx"
-                    )
-                except Exception as e:
-                    self.ui.label_5.setText("Error encountered.")
-                    QMessageBox.warning(self, "Error", str(e) + traceback.format_exc())
-        elif self.selected_option == "DSMB Report":
-            from cci_automation.dsmb.DSMB import DSMB
-
-            # option for enrollment log
-            if not self.selected_option2 or not self.input_file_path or not self.output_folder_name:
-                QMessageBox.warning(
-                    self,
-                    "Warning",
-                    "Please make sure all those selections are entered correctly.",
-                )
-            else:
-                try:
-                    DSMB(
-                        self.selected_option2,
-                        self.input_file_path,
-                        self.output_folder_name,
-                        self.ui.lineEdit.text(),
-                        cut_off_date,
-                    )
-                    self.ui.label_5.setText(
-                        "Confirmed: DSMB Report "
-                        + self.selected_option2
-                        + " study selected. Output file name is "
-                        + self.ui.lineEdit.text()
-                        + ".xlsx"
-                    )
-                except Exception as e:
-                    self.ui.label_5.setText("Error encountered.")
-                    QMessageBox.warning(self, "Error", str(e) + traceback.format_exc())
-        elif self.selected_option == "Format for lab range issue and no leading 0 date":
-            from cci_automation.format_tools.change_type import change_type
-
-            if not self.input_file_path or not self.output_folder_name or not self.output_file_name:
-                QMessageBox.warning(
-                    self,
-                    "Warning",
-                    "Please make sure all those selections are entered correctly.",
-                )
-            else:
-                try:
-                    change_type(
-                        self.input_file_path,
-                        self.output_folder_name,
-                        self.output_file_name,
-                    )
-                    self.ui.label_5.setText(
-                        "Confirmed: File has been formatted and saved as " + self.output_file_name + ".xlsx"
-                    )
-                except Exception as e:
-                    self.ui.label_5.setText("Error encountered.")
-                    QMessageBox.warning(self, "Error", str(e) + traceback.format_exc())
+#: Settings key and Windows taskbar id of this tool.
+APP_ID = "cci-automation"
+APP_NAME = "CCI Automation"
+#: Smallest window that keeps a page and the sidebar usable (the page
+#: scrolls, the sidebar folds to icons); size on first launch (wide enough for
+#: the sidebar with its titles, tall enough for a page and a message).
+MIN_SIZE = (860, 560)
+FIRST_SIZE = (1120, 700)
+#: Page keys.
+ENROLLMENT = "enrollment-log"
+DSMB = "dsmb-report"
+FORMAT = "format-tools"
 
 
-def main():
-    warnings.filterwarnings("ignore", category=RuntimeWarning)
-    app = QApplication(sys.argv)
+class StudyReportPage(WorkflowPage):
+    """A study's report from its Corelisting export, up to a cut-off date if set.
 
-    widget = Widget()
-    widget.show()
-    sys.exit(app.exec())
+    The study can be picked, or comes from the ZIP's file name when that
+    names one of *studies* (*workflow* says which report this is, for the
+    warning when it names another); *default_name* suggests the file name.
+    The output folder is the one all three pages remember: one picked on a
+    page shows on the others the next time the tool opens.
+    """
+
+    def __init__(
+        self,
+        title: str,
+        subtitle: str,
+        *,
+        workflow: str,
+        studies: Sequence[str],
+        default_name: Callable[[str], str],
+        settings: Optional[QSettings] = None,
+    ) -> None:
+        study = QComboBox()
+        study.addItems(list(studies))
+        corelisting = PathPicker(
+            "file",
+            dialog_title="Choose the Corelisting ZIP",
+            file_filter="Zip files (*.zip)",
+            settings_key="corelisting",
+            settings=settings,
+        )
+        use_cut_off = ToggleSwitch()
+        use_cut_off.setAccessibleName("Apply cut-off date")
+        cut_off = QDateEdit(QDate.currentDate())
+        cut_off.setCalendarPopup(True)
+        cut_off.setFixedWidth(150)
+        super().__init__(
+            title,
+            subtitle,
+            inputs=[("Study", study), ("Corelisting ZIP", corelisting)],
+            options=[("Apply cut-off date", use_cut_off), ("Cut-off date", cut_off)],
+            name_preview=output_file_name,
+            expected_errors=(WorkflowInputError,),
+            settings=settings,
+        )
+        #: The study the report is for.
+        self.study = study
+        #: The Corelisting export.
+        self.corelisting = corelisting
+        #: Whether rows after :attr:`cut_off` are left out.
+        self.use_cut_off = use_cut_off
+        self.cut_off = cut_off
+        self._workflow = workflow
+        self._studies = tuple(studies)
+        self._default_name = default_name
+        self.options.set_footnote(
+            "Only rows dated on or before the cut-off date are read from the export."
+        )
+        # Only after parenting (see cci_ui.widgets): the date shows when used.
+        self.rows["Cut-off date"].setVisible(False)
+        use_cut_off.toggled.connect(self._show_cut_off)
+        corelisting.pathChanged.connect(self._take_study_from)
+        study.currentTextChanged.connect(self._suggest_file_name)
+        self._suggest_file_name(study.currentText())
+
+    def cut_off_date(self) -> Optional[date]:
+        """The cut-off date, or None when it isn't applied."""
+        return self.cut_off.date().toPython() if self.use_cut_off.isChecked() else None
+
+    def _show_cut_off(self, shown: bool) -> None:
+        self.rows["Cut-off date"].setVisible(shown)
+        # On a short window the new row can push Run out of view.
+        QTimer.singleShot(0, self, self._keep_run_in_view)
+
+    def _take_study_from(self, path: str) -> None:
+        named = study_named_by(path) if path else None
+        if named is None or named in self._studies:
+            self.banner.clear()  # A warning about the ZIP chosen before.
+            if named is not None:
+                self.study.setCurrentText(named)
+        else:
+            self.warn(str(UnsupportedStudyError(self._workflow, named, self._studies)))
+
+    def _suggest_file_name(self, study: str) -> None:
+        self.suggest_file_name(self._default_name(study) if study else "")
+
+
+class Widget(ToolWindow):
+    """The CCI Automation window.
+
+    *settings* holds the folders it remembers (the tool's own settings by
+    default; tests pass a throwaway file).
+    """
+
+    def __init__(
+        self,
+        theme: Optional[ThemeManager] = None,
+        *,
+        settings: Optional[QSettings] = None,
+        parent: Optional[QWidget] = None,
+    ) -> None:
+        super().__init__(theme, title=APP_NAME, with_sidebar=True, parent=parent)
+        self.enrollment = StudyReportPage(
+            "Enrollment log",
+            "Build a study's enrollment log from its Corelisting export.",
+            workflow=enrollment.WORKFLOW,
+            studies=enrollment.SUPPORTED_STUDIES,
+            default_name=enrollment.default_file_name,
+            settings=settings,
+        )
+        self.dsmb = StudyReportPage(
+            "DSMB report",
+            "Build a study's DSMB report from its Corelisting export.",
+            workflow=dsmb.WORKFLOW,
+            studies=dsmb.SUPPORTED_STUDIES,
+            default_name=dsmb.default_file_name,
+            settings=settings,
+        )
+        #: The CSV or Excel file the format tool fixes.
+        self.format_source = PathPicker(
+            "file",
+            dialog_title="Choose the CSV or Excel file",
+            file_filter="CSV or Excel files (*.csv *.xlsx)",
+            settings_key="format-source",
+            settings=settings,
+        )
+        self.format = WorkflowPage(
+            "Format tools",
+            "Keep lab ranges such as 10-20 as text and take the leading zeros out "
+            "of dates (03/05/2026 becomes 3/5/2026) in a CSV or Excel file.",
+            inputs=[("CSV or Excel file", self.format_source)],
+            name_preview=output_file_name,
+            expected_errors=(WorkflowInputError,),
+            settings=settings,
+        )
+        self.shell.add_page(
+            ENROLLMENT,
+            self.enrollment,
+            title="Enrollment log",
+            icon_name=IconName.ENROLLMENT,
+            section="Reports",
+        )
+        self.shell.add_page(
+            DSMB,
+            self.dsmb,
+            title="DSMB report",
+            icon_name=IconName.DSMB,
+            section="Reports",
+        )
+        self.shell.add_page(
+            FORMAT,
+            self.format,
+            title="Format tools",
+            icon_name=IconName.FORMAT_TOOLS,
+            section="Tools",
+        )
+        self.enrollment.runRequested.connect(self.run_enrollment_log)
+        self.dsmb.runRequested.connect(self.run_dsmb_report)
+        self.format.runRequested.connect(self.run_format_tool)
+        self.format_source.pathChanged.connect(self._suggest_format_name)
+        self.enrollment.corelisting.setFocus()  # Where a keyboard user starts.
+
+    def _suggest_format_name(self, path: str) -> None:
+        self.format.suggest_file_name(
+            format_tool.default_file_name(path) if path else ""
+        )
+
+    def _run_study_report(self, page: StudyReportPage, run, message: str) -> None:
+        zip_path = page.corelisting.path()
+        if not zip_path:
+            page.warn("Choose a Corelisting ZIP first.")
+            return
+        page.start(
+            self,
+            partial(
+                run,
+                zip_path,
+                study=page.study.currentText(),
+                cut_off_date=page.cut_off_date(),
+                file_name=page.file_name_base(),
+            ),
+            message=message,
+        )
+
+    def run_enrollment_log(self) -> None:
+        """Build the chosen study's enrollment log and save it."""
+        self._run_study_report(
+            self.enrollment, enrollment.run, "Building the enrollment log…"
+        )
+
+    def run_dsmb_report(self) -> None:
+        """Build the chosen study's DSMB report and save it."""
+        self._run_study_report(self.dsmb, dsmb.run, "Building the DSMB report…")
+
+    def run_format_tool(self) -> None:
+        """Format the chosen file and save the result."""
+        source = self.format_source.path()
+        if not source:
+            self.format.warn("Choose a CSV or Excel file first.")
+            return
+        self.format.start(
+            self,
+            partial(format_tool.run, source, file_name=self.format.file_name_base()),
+            message="Formatting the file…",
+        )
+
+
+def main() -> int:
+    """Start CCI Automation and run it until its window closes."""
+    return run_tool(
+        Widget,
+        app_id=APP_ID,
+        name=APP_NAME,
+        version=__version__,
+        first_size=FIRST_SIZE,
+        min_size=MIN_SIZE,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

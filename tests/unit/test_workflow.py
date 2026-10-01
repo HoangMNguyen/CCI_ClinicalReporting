@@ -15,6 +15,7 @@ from clinical_reporting.workflow import (
     missing_forms_error,
     read_corelisting,
     reading_input,
+    study_named_by,
 )
 
 
@@ -100,3 +101,16 @@ def test_a_message_the_reading_raises_itself_passes_as_is():
     with pytest.raises(WorkflowInputError, match="^Pick another file.$"):
         with reading_input("x.zip", "a Corelisting export"):
             raise WorkflowInputError("Pick another file.")
+
+
+@pytest.mark.parametrize(
+    ("name", "study"),
+    [
+        ("C:/x/Core_Listings_15420_huCART_2026.zip", "15420"),
+        ("Core_Listings_03325.zip", "03325"),
+        ("Core_Listings_154201_x.zip", None),
+        ("export.zip", None),
+    ],
+)
+def test_the_study_a_file_name_names(name, study):
+    assert study_named_by(name) == study

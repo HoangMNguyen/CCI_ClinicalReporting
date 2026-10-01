@@ -5,7 +5,6 @@ src = ["src", "tests"]
 extend-exclude = [
     "build",
     "dist",
-    "src/cci_automation/ui_form.py",
 ]
 unsafe-fixes = false
 show-fixes = true

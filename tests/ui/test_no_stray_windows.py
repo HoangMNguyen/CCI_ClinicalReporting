@@ -12,6 +12,7 @@ import pytest
 import shiboken6
 from PySide6.QtWidgets import QApplication
 
+from cci_automation import app as cci_app
 from cci_ui import gallery
 from clinical_reporting.ui.window import Widget
 from peer_review_automation import app as review_app
@@ -36,7 +37,7 @@ def test_building_the_clinical_reporting_window_shows_no_window(shown_windows):
         shiboken6.delete(window)
 
 
-@pytest.mark.parametrize("tool", [safety_app, review_app])
+@pytest.mark.parametrize("tool", [safety_app, review_app, cci_app])
 def test_building_a_small_tools_window_shows_no_window(
     shown_windows, ini_settings, tool
 ):

@@ -49,10 +49,22 @@ CORE_MODULES = [
 ]
 
 
+def _tool_modules():
+    """Every module of the three tools but their windows (and entry points)."""
+    for package in ("cci_automation", "safety_automation", "peer_review_automation"):
+        for path in sorted((SRC_DIR / package).rglob("*.py")):
+            if path.name in ("app.py", "__main__.py"):
+                continue
+            parts = path.relative_to(SRC_DIR).with_suffix("").parts
+            if parts[-1] == "__init__":
+                parts = parts[:-1]
+            yield ".".join(parts)
+
+
 def test_core_modules_do_not_import_qt():
     script = (
         "import importlib, sys\n"
-        f"for name in {CORE_MODULES!r}:\n"
+        f"for name in {CORE_MODULES + sorted(set(_tool_modules()))!r}:\n"
         "    importlib.import_module(name)\n"
         "print(sorted(m for m in sys.modules if m.startswith('PySide6')))\n"
     )
