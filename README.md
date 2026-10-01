@@ -130,7 +130,7 @@ One window with a sidebar of its three workflows, one page each (the
 sidebar folds to icons on a narrow window). Each page builds its workbook in
 the background and saves it in the chosen folder as
 `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file; the suggested names
-are below. (Before 1.35 a file was saved exactly as named, replacing any file
+are below. (Before 1.26 a file was saved exactly as named, replacing any file
 of that name, and the suggested names began with the date, e.g.
 `260930-15420 DSMB Report`.)
 
@@ -159,7 +159,7 @@ comes from its file name) and an output folder, change the suggested file
 name if you like, and Run. The app builds the standardized Adverse Event /
 Dose-Limiting Toxicity workbook for the Safety Department in the background
 and saves it as `<name> YYMMDD_HHMMSS.xlsx`, never over an existing file
-(before 1.17 the file was named exactly as typed).
+(before 1.08 the file was named exactly as typed).
 
 The work is `run()` in `src/safety_automation/ae_corelisting/AECoreListing.py`:
 it takes the ZIP (a path or an open file) and returns the workbook as an
@@ -180,7 +180,7 @@ optionally Rave's validation report, switch on the naming-convention checks
 if you want them, choose an output folder, change the suggested file name
 if you like, and Run. Every finding goes to a workbook named, by default,
 after the SDS file (its name up to the first "-", usually the study):
-`<that name> Peer Review Automation Output YYMMDD_HHMMSS.xlsx` (before 1.11
+`<that name> Peer Review Automation Output YYMMDD_HHMMSS.xlsx` (before 1.02
 it had no date and time), never over an existing file.
 
 The review is `run()` in `src/peer_review_automation/sds.py`: it takes the
