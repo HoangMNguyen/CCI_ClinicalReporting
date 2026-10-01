@@ -8,7 +8,8 @@ enough for their text and not stretched (except the panel's full-width
 ones), the Source data page stays a centered column, the sidebar is an
 icon strip on narrow windows, and the Preview panel sits beside the grid
 when there is room and below it (with most of the height left to the
-grid) when there isn't.
+grid) when there isn't. Long paths in the panel's messages wrap instead of
+making it scroll sideways.
 """
 
 import pytest
@@ -22,11 +23,13 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QWidget,
 )
 
 from cci_ui.theme.manager import current
 from cci_ui.theme.tokens import LAYOUT, Density
+from clinical_reporting import feedback
 from clinical_reporting.ui.preview import build_preview_window
 
 #: 1080p at 100%, a laptop at 150% and 125%, maximized 1080p, 1440p.
@@ -129,6 +132,37 @@ def test_the_export_panel_moves_below_the_grid_when_narrow(window, width, stacke
 
     # Content width, not window width: at 1120 the full sidebar leaves too little.
     assert built.ui.shell.page("preview").split.is_stacked() is stacked
+
+
+@pytest.mark.parametrize(
+    ("size", "stacked"),
+    [((1280, 820), False), ((960, 600), True)],
+    ids=["beside", "below"],
+)
+def test_long_paths_never_push_the_export_panel_wider(window, settle, size, stacked):
+    built, _theme = window
+    built.resize(*size)
+    built.ui.shell.set_current("preview")
+    settle(built.task_runner)
+    page = built.ui.shell.page("preview")
+    folder = "C:\\Users\\analyst\\Dropbox\\Clinical Studies\\DEMO01\\Outputs\\DSMB_Q4"
+    page.lineEdit_file_name.setText(
+        "DEMO01_DSMB_Final_Report_For_The_Quarterly_Meeting"
+    )
+    built._set_label_text(
+        built.label_run_confirmation,
+        feedback.success(f"Report saved successfully to {folder}\\DEMO01.xlsx"),
+    )
+    built._set_label_text(
+        built.label_save_confirmation,
+        feedback.success(f"Settings saved to {folder}\\Settings\\DEMO01_monthly.json"),
+    )
+    QApplication.processEvents()
+    scroll = page.panel.findChild(QScrollArea)
+
+    assert page.split.is_stacked() is stacked
+    assert scroll.widget().width() <= scroll.viewport().width()
+    assert not scroll.horizontalScrollBar().isVisible()
 
 
 @pytest.mark.parametrize("density", list(Density), ids=lambda d: d.value)

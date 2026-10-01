@@ -2,7 +2,12 @@
 
 import pytest
 from PySide6.QtCore import QPoint, QSettings, Qt
-from PySide6.QtGui import QMouseEvent, QStandardItemModel
+from PySide6.QtGui import (
+    QContextMenuEvent,
+    QKeySequence,
+    QMouseEvent,
+    QStandardItemModel,
+)
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -10,6 +15,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QLabel,
     QLineEdit,
+    QMenu,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -21,7 +27,13 @@ from cci_ui.theme.manager import Theme, ThemeMode, current
 from cci_ui.theme.tokens import COMPACT, LAYOUT, LIGHT, Density, Scheme
 from cci_ui.widgets.buttons import icon_button, make_button, set_variant
 from cci_ui.widgets.display import DisplayPopover
-from cci_ui.widgets.labels import ElidedLabel, text_label
+from cci_ui.widgets.labels import (
+    BREAK_CHANCE,
+    ElidedLabel,
+    WrappingLabel,
+    add_break_chances,
+    text_label,
+)
 from cci_ui.widgets.page import Page, PageKind
 from cci_ui.widgets.path_picker import PathPicker
 from cci_ui.widgets.responsive import Breakpoint, ResponsiveSplit
@@ -107,6 +119,183 @@ def test_elided_label_shows_its_placeholder_when_empty(qapp):
     assert label.text() == ""
     assert QLabel.text(label) == "No file chosen"
     assert label.property("tone") == "tertiary"
+
+
+def _fits(characters):
+    """A stand-in for a label's width: words of up to *characters* fit."""
+    return lambda word: len(word) <= characters
+
+
+def test_a_path_too_wide_for_a_line_breaks_after_its_separators():
+    windows = r"Saved to C:\Users\analyst\Reports\DEMO01_DSMB 261001_120000.xlsx"
+    mixed = r"Saved to C:/Users/analyst/Reports\DEMO01-DSMB.xlsx"
+
+    broken = add_break_chances(windows, _fits(12))
+
+    assert broken.replace(BREAK_CHANCE, "") == windows
+    assert broken.split(BREAK_CHANCE) == [
+        "Saved to C:\\",
+        "Users\\",
+        "analyst\\",
+        "Reports\\",
+        "DEMO01_",
+        "DSMB 261001_",
+        "120000.",
+        "xlsx",
+    ]
+    assert add_break_chances(mixed, _fits(12)).split(BREAK_CHANCE) == [
+        "Saved to C:/",
+        "Users/",
+        "analyst/",
+        "Reports\\",
+        "DEMO01-",
+        "DSMB.",
+        "xlsx",
+    ]
+
+
+def test_words_that_fit_get_no_break_chances():
+    text = "Joined on SubjectIdentifierNumber,  SiteCode\tand C:\\Reports\\x.xlsx."
+
+    assert add_break_chances(text, _fits(30)) == text
+    assert add_break_chances("", _fits(0)) == ""
+
+
+def test_separator_runs_dates_and_punctuation_stay_together():
+    def pieces(word, characters):
+        return add_break_chances(word, _fits(characters)).split(BREAK_CHANCE)
+
+    assert pieces(r"\\server\share\folder", 8) == [
+        r"\\",
+        "server\\",
+        "share\\",
+        "folder",
+    ]
+    assert pieces("Listing_2026-09-29.xlsx", 11) == ["Listing_", "2026-09-29.", "xlsx"]
+    # Then where a camelCase name's words meet; quotes and commas stay on.
+    assert pieces("'PatientEnrollmentDateOfBirth',", 12) == [
+        "'Patient",
+        "Enrollment",
+        "Date",
+        "Of",
+        "Birth',",
+    ]
+
+
+def test_no_break_spaces_join_a_word():
+    nbsp = "\N{NO-BREAK SPACE}"
+    name = f"Final{nbsp}DSMB{nbsp}Listings"  # Word wrap won't break here.
+
+    broken = add_break_chances(f"Saved as {name}", _fits(8))
+
+    assert broken.startswith("Saved as ") and BREAK_CHANCE in broken
+    assert broken.replace(BREAK_CHANCE, "") == f"Saved as {name}"
+    assert add_break_chances(name, _fits(30)) == name
+
+
+def test_a_piece_with_no_boundaries_breaks_anywhere_but_keeps_accents():
+    accent = "\N{COMBINING ACUTE ACCENT}"
+    resume = f"Re{accent}sume{accent}"  # Résumé, as macOS writes file names.
+
+    assert add_break_chances("ABCDEF,", _fits(3)).split(BREAK_CHANCE) == [
+        *"ABCDE",
+        "F,",
+    ]
+    assert add_break_chances(resume, _fits(1)).split(BREAK_CHANCE) == [
+        "R",
+        f"e{accent}",
+        *"sum",
+        f"e{accent}",
+    ]
+
+
+def test_wrapping_label_breaks_only_words_too_wide_for_it(qapp):
+    text = f"Saved to {LONG_PATH}"
+    label = _shown(WrappingLabel(text), 160, 120)
+
+    assert label.text() == text and label.accessibleName() == text
+    assert label.wordWrap() and label.textFormat() == Qt.TextFormat.PlainText
+    assert BREAK_CHANCE in QLabel.text(label)
+    assert label.minimumSizeHint().width() == 0  # Never widens its layout.
+
+    label.resize(2000, 120)  # Now the whole path fits on a line.
+    QApplication.processEvents()
+    assert QLabel.text(label) == text
+
+    label.clear()
+    assert label.text() == "" and QLabel.text(label) == ""
+
+
+def _menu_for(label):
+    pos = QPoint(5, 5)
+    event = QContextMenuEvent(
+        QContextMenuEvent.Reason.Mouse, pos, label.mapToGlobal(pos)
+    )
+    QApplication.sendEvent(label, event)
+    # A closed menu deletes itself later; take the one that is open.
+    menus = [menu for menu in label.findChildren(QMenu) if menu.isVisible()]
+    return event, (menus[0] if menus else None)
+
+
+def test_wrapping_label_copies_the_text_without_break_chances(qapp):
+    text = f"{LONG_PATH} \N{GRINNING FACE}"  # Qt counts the emoji as 2.
+    label = _shown(WrappingLabel(text), 160, 120)
+    label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    QApplication.clipboard().clear()
+
+    event, menu = _menu_for(label)
+    copy, select_all = menu.actions()
+    assert event.isAccepted() and menu.isVisible()
+    assert not copy.isEnabled()  # Nothing selected yet.
+    select_all.trigger()
+    menu.close()
+    assert label.selectedText() == QLabel.text(label)  # Break chances included.
+
+    QTest.keySequence(label, QKeySequence.StandardKey.Copy)
+    assert QApplication.clipboard().text() == text
+
+    QApplication.clipboard().clear()
+    _event, menu = _menu_for(label)
+    menu.actions()[0].trigger()
+    menu.close()
+    assert QApplication.clipboard().text() == text
+
+
+def test_pressing_on_a_selection_starts_a_new_one(qapp):
+    label = _shown(WrappingLabel(LONG_PATH), 160, 120)
+    label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    label.setSelection(0, len(QLabel.text(label)))
+
+    # Shift extends the selection; a plain press can't drag it out.
+    QTest.mousePress(
+        label, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier
+    )
+    QTest.mouseRelease(
+        label, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier
+    )
+    assert label.hasSelectedText()
+    QTest.mousePress(label, Qt.MouseButton.LeftButton)
+    assert not label.hasSelectedText()
+    QTest.mouseRelease(label, Qt.MouseButton.LeftButton)
+
+
+def test_text_that_cant_be_selected_has_no_menu(qapp):
+    label = _shown(WrappingLabel(LONG_PATH), 160, 120)
+
+    event, menu = _menu_for(label)
+
+    assert not event.isAccepted() and menu is None
+
+
+def test_text_label_can_break_long_words(qapp):
+    caption = text_label(
+        LONG_PATH, style="caption", tone="secondary", break_long_words=True
+    )
+
+    assert isinstance(caption, WrappingLabel) and caption.wordWrap()
+    assert caption.property("textStyle") == "caption"
+    assert caption.property("tone") == "secondary"
+    assert type(text_label("Folder")) is QLabel
 
 
 # ---------------------------------------------------------------------------

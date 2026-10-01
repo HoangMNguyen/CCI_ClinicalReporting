@@ -115,7 +115,10 @@ class Section(QWidget):
         self._rows.setSpacing(0)
         layout.addWidget(self.card)
 
-        self.footnote_label = text_label(footnote, style="footnote", wrap=True)
+        # A footnote may name a file ("Saved as …"); a long name wraps.
+        self.footnote_label = text_label(
+            footnote, style="footnote", break_long_words=True
+        )
         self.footnote_label.setContentsMargins(4, 0, 4, 0)
         layout.addWidget(self.footnote_label)
         self.footnote_label.setVisible(bool(footnote))

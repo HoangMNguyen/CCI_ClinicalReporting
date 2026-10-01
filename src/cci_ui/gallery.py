@@ -429,6 +429,13 @@ def _panel_page(_shell: AppShell) -> Page:
     folder = PathPicker(button_text="Choose…")
     folder.set_path("C:\\Users\\analyst\\Reports")
     export.addLayout(labeled_field("Folder", folder))
+    saved = StatusBanner()  # A long path wraps inside the panel.
+    saved.show_message(
+        "Report saved to C:\\Users\\analyst\\Dropbox\\Clinical Studies\\DEMO01\\"
+        "Outputs\\DSMB_Q4\\Listings\\DEMO01_DSMB 260930_101500.xlsx",
+        "success",
+    )
+    export.addWidget(saved)
     export.addWidget(full_width(make_button("Export to Excel", variant="primary")))
     save = panel.add_section("Save setting")
     save.addLayout(labeled_field("Name", QLineEdit("DSMB monthly")))

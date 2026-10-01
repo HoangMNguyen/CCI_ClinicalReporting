@@ -234,6 +234,20 @@ def test_banner_dismiss_hides_it(qapp):
     assert banner.isHidden() and dismissed == [True]
 
 
+def test_a_banner_with_a_long_path_stays_inside_its_width(shown):
+    container, banner = _placed_banner()
+    shown(container, 320, 200)
+    path = "C:\\Users\\analyst\\" + "Folder\\" * 20 + "DSMB_report_261001_120000.xlsx"
+
+    banner.setText(feedback.success(f"Report saved to {path}"))
+    QApplication.processEvents()
+
+    assert banner.minimumSizeHint().width() <= 320
+    assert banner.width() <= 320 and banner._label.width() < 320
+    assert banner.text() == f"Report saved to {path}"
+    assert banner.dismiss_button.geometry().right() <= banner.width()
+
+
 def test_a_long_toast_stays_inside_the_window(shown):
     window = shown(QWidget(), 600, 400)
     text = "Settings saved to C:\\Users\\analyst\\" + "Folder\\" * 40 + "DSMB.json"
