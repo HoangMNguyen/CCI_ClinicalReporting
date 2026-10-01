@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from clinical_reporting import telemetry
 
 
@@ -190,3 +192,27 @@ def test_username_lookup_errors_are_suppressed(monkeypatch):
 
     monkeypatch.setattr(telemetry.getpass, "getuser", failed_username_lookup)
     telemetry.record_successful_export("monthly report.xlsx")
+
+
+def test_the_bundled_configuration_needs_an_endpoint_and_a_token(monkeypatch):
+    def bundled(*values):
+        monkeypatch.setattr(telemetry, "_bundled_configuration", lambda: values)
+        return telemetry.has_bundled_configuration()
+
+    # The environment doesn't count: the check is about the bundled file.
+    monkeypatch.setenv(telemetry.RUN_COUNTER_URL_ENV, "https://env.example/run")
+    monkeypatch.setenv(telemetry.RUN_COUNTER_TOKEN_ENV, "env-token")
+
+    assert bundled("", "") is False
+    assert bundled("https://x.example/run", "") is False
+    assert bundled("", "token") is False
+    assert bundled("https://x.example/run", "token") is True
+
+
+def test_the_clinical_reporting_self_test_reports_the_bundled_file(monkeypatch):
+    pytest.importorskip("PySide6")
+    from clinical_reporting.ui import app as cr_app
+
+    monkeypatch.setattr(telemetry, "has_bundled_configuration", lambda: True)
+
+    assert cr_app._self_test_extra() == {"telemetry_bundled": True}

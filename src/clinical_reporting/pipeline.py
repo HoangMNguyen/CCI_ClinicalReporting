@@ -241,19 +241,21 @@ class ReportEngine:
 
     def _merge_subsequent_form(self, result_df, form_df, form_name, form):
         """Prefix, align join dtypes, and merge a non-first form into ``result_df``."""
-        report = self.report
+        join_items = [item for item in form.get_join_items() if item]
 
-        # Prefix non-common, non-join columns.
+        # Prefix every column but the join keys, including a common item this
+        # form doesn't join on: its values are this form's own, so they go out
+        # as FORM.item and the plain column keeps the earlier forms' values
+        # (instead of pandas' _x/_y). See clinical_reporting.report_columns.
         rename_cols = {
             col: qualify(form_name, col)
             for col in form_df.columns
-            if col not in report.selected_common_items and col not in form.get_join_items()
+            if col not in join_items
         }
         if rename_cols:
             form_df = form_df.rename(columns=rename_cols)
 
         how = JoinHow.to_pandas(form.get_join_how())
-        join_items = [item for item in form.get_join_items() if item]
 
         form_df = form_df.reset_index(drop=True)
         form_df = form_df.drop_duplicates()

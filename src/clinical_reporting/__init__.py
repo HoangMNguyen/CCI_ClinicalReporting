@@ -9,6 +9,7 @@ from .data import (
     load_additional_inputs,
     load_tabular_file,
     read_data_dict_zip_corelisting,
+    try_load_tabular_files,
 )
 from .export import dataframe_to_xlsx_bytes, write_csv, write_xlsx
 from .models import CLForm, ReportConfig
@@ -22,7 +23,7 @@ from .validation import (
 # Single source of truth for the release version. ``build_support.py`` reads
 # this string when building the executable, so bumping a release means editing
 # it here and nowhere else.
-__version__ = "2.00"
+__version__ = "2.10"
 
 # ``Report`` is the preferred public name. ``CLReport`` remains available for
 # settings/scripts written against earlier releases.
@@ -40,6 +41,7 @@ __all__ = [
     "load_additional_inputs",
     "load_tabular_file",
     "read_data_dict_zip_corelisting",
+    "try_load_tabular_files",
     "validate_report",
     "write_csv",
     "write_xlsx",

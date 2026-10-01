@@ -2,7 +2,8 @@
 
 The report model is intentionally mutable because it is edited by the Qt UI.
 This module provides the boundary that turns that partially configured state
-into either a valid executable definition or a structured list of problems.
+into either a valid executable definition or a structured list of problems,
+and the "Cannot run:" messages that tell the user about them.
 """
 
 from __future__ import annotations
@@ -11,12 +12,14 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Optional
 
+from clinical_reporting import feedback
 from clinical_reporting.models import (
     FORM_ITEM_SEPARATOR,
     JoinHow,
     Operator,
-    qualify,
+    is_positive_integer,
 )
+from clinical_reporting.report_columns import forms_in_join_order, output_identifiers
 
 
 @dataclass(frozen=True)
@@ -56,10 +59,6 @@ def _add_issue(
     field: Optional[str] = None,
 ) -> None:
     issues.append(ReportValidationIssue(code=code, message=message, field=field))
-
-
-def _is_positive_integer(value: Any) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 def _columns_for(data: dict, form_name: str) -> set[str]:
@@ -152,9 +151,7 @@ def validate_report(report) -> list[ReportValidationIssue]:
 
     valid_orders = True
     form_orders: dict[str, int] = {}
-    qualified_items: set[str] = set()
     item_forms: dict[str, set[str]] = {}
-    logical_output: list[str] = list(selected_common)
 
     for form_name, form in selected_forms.items():
         if FORM_ITEM_SEPARATOR in form_name:
@@ -175,7 +172,7 @@ def validate_report(report) -> list[ReportValidationIssue]:
         columns = _columns_for(data, form_name)
 
         order = form.get_join_order()
-        if not _is_positive_integer(order):
+        if not is_positive_integer(order):
             valid_orders = False
             _add_issue(
                 issues,
@@ -195,10 +192,7 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 f"selected_forms.{form_name}.selected_form_items",
             )
         for item in selected_items:
-            identifier = qualify(form_name, item)
-            qualified_items.add(identifier)
             item_forms.setdefault(item, set()).add(form_name)
-            logical_output.append(identifier)
             if item not in columns:
                 _add_issue(
                     issues,
@@ -254,11 +248,7 @@ def validate_report(report) -> list[ReportValidationIssue]:
         )
 
     if selected_forms and valid_orders:
-        ordered_forms = sorted(
-            selected_forms,
-            key=lambda name: selected_forms[name].get_join_order(),
-        )
-        for form_name in ordered_forms[1:]:
+        for form_name in forms_in_join_order(selected_forms)[1:]:
             form = selected_forms[form_name]
             join_items = [item for item in form.get_join_items() if item]
             if not join_items:
@@ -276,7 +266,11 @@ def validate_report(report) -> list[ReportValidationIssue]:
                     f"selected_forms.{form_name}.join_how",
                 )
 
-    active_identifiers = selected_common_set | qualified_items
+    # The report's output columns (clinical_reporting.report_columns): what
+    # renames, filters and the order lists may refer to.
+    logical_output = output_identifiers(report)
+    active_identifiers = set(logical_output)
+    qualified_items = active_identifiers - selected_common_set
 
     for index, raw_filter in enumerate(getattr(report, "static_filter_items", None) or []):
         field = f"static_filter_items.{index}"
@@ -375,3 +369,36 @@ def raise_for_report(report) -> None:
     issues = validate_report(report)
     if issues:
         raise ReportValidationError(issues)
+
+
+# ---------------------------------------------------------------------------
+# Messages for the user (any front end)
+
+#: How the message listing what stops a report from running starts; the
+#: desktop app recognizes its own hint by it.
+CANNOT_RUN_PREFIX = "Cannot run:"
+#: Join problems that disable the export as soon as they appear; the others
+#: are reported when the user previews or exports.
+JOIN_BLOCKING_ISSUE_CODES = frozenset({"duplicate_join_order", "missing_join_items"})
+
+
+def cannot_run_message(issues: Iterable[ReportValidationIssue]) -> feedback.Message:
+    """*issues* as the "Cannot run:" bullet list, as a warning."""
+
+    return feedback.warning(f"{CANNOT_RUN_PREFIX}\n{format_issue_messages(issues)}")
+
+
+def report_issues_message(
+    report, issue_codes: Optional[Iterable[str]] = None
+) -> Optional[feedback.Message]:
+    """What stops *report* from running, or ``None`` when nothing does.
+
+    *issue_codes* limits the check to those codes (the export button reacts
+    only to :data:`JOIN_BLOCKING_ISSUE_CODES`); ``None`` checks everything.
+    """
+
+    issues = report.validate()
+    if issue_codes is not None:
+        codes = set(issue_codes)
+        issues = [issue for issue in issues if issue.code in codes]
+    return cannot_run_message(issues) if issues else None

@@ -1,9 +1,17 @@
-"""Join configuration table for the "Comparison and Order" tab.
+"""Join configuration table on the Joins page.
 
 This mixin owns the join table: per-form join item dropdowns, join order,
 join type, and the inline conflict highlighting.  The order/rename table
-that shares the tab lives in :mod:`ui.ordering_tab`; join changes trigger
-its refresh because the default column order follows the join order.
+on the Order & rename page lives in :mod:`ui.ordering_tab`; join changes trigger
+its refresh because the default column order follows the join order. When a
+join change adds or removes a form's own copy of a common item (``AE.Visit``,
+see :mod:`clinical_reporting.report_columns`), the filter tables are rebuilt
+too, since their item lists change.
+
+Conflicts are drawn in the theme's colors: a shared join order marks its
+dropdowns ``invalid`` (styled by the ``cci_ui`` stylesheet), and a form that
+needs a join item gets its name in the danger color. The banner above the
+table spells the problems out (:func:`clinical_reporting.steps.joins_message`).
 """
 
 from __future__ import annotations
@@ -14,11 +22,22 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush
 from PySide6.QtWidgets import QComboBox, QTableWidgetItem
 
+from cci_ui.theme.manager import current, set_invalid, theme_events
+from cci_ui.theme.palette import qcolor
+from clinical_reporting import report_columns, steps
 from clinical_reporting.models import JoinHow
 
 
 class JoinConfigMixin:
     """Behavior for the join configuration controls."""
+
+    def _init_join_table(self) -> None:
+        """Recolor forms missing a join item when the theme changes.
+
+        (The stylesheet restyles the invalid join orders by itself.)
+        """
+        # A bound method of the window, so Qt drops the connection with it.
+        theme_events().changed.connect(self._paint_missing_join_items)
 
     def update_join_table_ui(self) -> None:
         """Refresh join controls when selections change."""
@@ -56,7 +75,9 @@ class JoinConfigMixin:
             clamped_order = min(max(1, desired_order), max_order)
             join_order_combo.setCurrentText(str(clamped_order))
             join_order_combo.currentTextChanged.connect(self.update_join_list)
-            join_order_combo.currentTextChanged.connect(lambda value, r=row: self.on_join_order_changed(r, value))
+            join_order_combo.currentTextChanged.connect(
+                lambda value, r=row: self.on_join_order_changed(r, value)
+            )
             self.ui.tableWidget_join.setCellWidget(row, 4, join_order_combo)
 
             # If we had to clamp the value, persist it immediately to the model
@@ -80,7 +101,12 @@ class JoinConfigMixin:
 
         self._highlight_duplicate_join_orders()
         self._highlight_missing_join_items()
-        self._adjust_column_widths(self.ui.tableWidget_join)
+        self._refresh_joins_banner()
+
+    def _refresh_joins_banner(self) -> None:
+        """Say above the join table what stops the joins, or why there are none."""
+        message = steps.joins_message(self.report)
+        self._set_label_text(getattr(self.ui, "banner_joins", None), message or "")
 
     def on_join_order_changed(self, row: int, value: str) -> None:
         """Enable or disable join columns depending on the order selection."""
@@ -113,8 +139,9 @@ class JoinConfigMixin:
         """Flag join orders shared by two or more forms.
 
         When several forms are assigned the same join order the value is
-        ambiguous, so the number is shown in red and bold on every affected
-        row.  Rows with a unique order are reset to the default styling.
+        ambiguous, so the order dropdown of every affected row is marked
+        invalid (the stylesheet shows it in the danger color, semibold, with
+        a danger border). Rows with a unique order are cleared.
         """
         order_col = 4
         table = self.ui.tableWidget_join
@@ -130,10 +157,7 @@ class JoinConfigMixin:
             order_counts[value] = order_counts.get(value, 0) + 1
 
         for combo, value in combos:
-            if order_counts.get(value, 0) > 1:
-                combo.setStyleSheet("QComboBox { color: red; font-weight: bold; }")
-            else:
-                combo.setStyleSheet("")
+            set_invalid(combo, order_counts.get(value, 0) > 1)
 
         # Keep the Run button and its inline hint in sync with the conflict
         # state.  Guarded because this mixin is exercised in isolation by tests
@@ -143,8 +167,19 @@ class JoinConfigMixin:
             refresh_run()
 
     def _highlight_missing_join_items(self) -> None:
-        """Show non-first forms without a join item in red."""
+        """Flag non-first forms without a join item and update Export to Excel."""
+        self._paint_missing_join_items()
+
+        # Join-item dropdown changes can resolve or introduce this error without
+        # changing the join order, so refresh Export to Excel from here too.
+        refresh_run = getattr(self, "_refresh_run_availability", None)
+        if callable(refresh_run):
+            refresh_run()
+
+    def _paint_missing_join_items(self) -> None:
+        """Show non-first forms without a join item in the danger color."""
         table = self.ui.tableWidget_join
+        missing = QBrush(qcolor(current().colors.danger_text))
         for row in range(table.rowCount()):
             form_item = table.item(row, 0)
             order_combo = table.cellWidget(row, 4)
@@ -152,16 +187,12 @@ class JoinConfigMixin:
                 continue
 
             has_join_item = any(
-                (combo := table.cellWidget(row, col)) is not None and bool(combo.currentText()) for col in range(1, 4)
+                (combo := table.cellWidget(row, col)) is not None
+                and bool(combo.currentText())
+                for col in range(1, 4)
             )
             is_missing = order_combo.currentText() != "1" and not has_join_item
-            form_item.setForeground(QBrush(Qt.red) if is_missing else QBrush())
-
-        # Join-item dropdown changes can resolve or introduce this error without
-        # changing the join order, so refresh Save Output from this path too.
-        refresh_run = getattr(self, "_refresh_run_availability", None)
-        if callable(refresh_run):
-            refresh_run()
+            form_item.setForeground(missing if is_missing else QBrush())
 
     def _add_item_dropdown(
         self,
@@ -237,18 +268,31 @@ class JoinConfigMixin:
 
             join_list.append([form_name, deduped_items, join_order, join_type])
 
+        columns_before = set(report_columns.output_identifiers(self.report))
         self.report.update_join_list(join_list)
         self._highlight_missing_join_items()
+        self._refresh_joins_banner()
 
-        # The default column order follows the join order, so re-derive the
-        # combined order/rename table (owned by OrderRenameTabMixin) after join
-        # changes. Guarded because this mixin is exercised in isolation by
-        # tests that build only the join table, and skipped while
-        # update_all_ui coordinates a full refresh -- the coordinator rebuilds
-        # that table once at the end instead.
-        if hasattr(self.ui, "tableWidget_rename") and not getattr(
+        # The default column order follows the join order, so rebuild the
+        # order/rename table (owned by OrderRenameTabMixin) after join changes;
+        # when the report's columns changed too (a form's own copy of a common
+        # item came or went), rebuild the filter tables as well. Not on every
+        # change: rebuilding drops a filter row that is still half filled in.
+        # Guarded because this mixin is exercised in isolation by tests that
+        # build only the join table, and skipped while update_all_ui
+        # coordinates a full refresh -- the coordinator rebuilds those tables
+        # once at the end instead.
+        refresh_tables = hasattr(self.ui, "tableWidget_rename") and not getattr(
             self, "_in_coordinated_refresh", False
-        ):
+        )
+        columns_changed = (
+            set(report_columns.output_identifiers(self.report)) != columns_before
+        )
+        if refresh_tables and columns_changed:
+            self.update_items_dependent_ui()  # Reports the change too.
+            return
+        self._report_changed()
+        if refresh_tables:
             self.update_order_rename_table()
 
     @staticmethod

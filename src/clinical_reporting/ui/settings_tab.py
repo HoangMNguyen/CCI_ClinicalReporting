@@ -1,42 +1,54 @@
-"""Settings tab mixin for the Clinical Reporting widget.
+"""Source data page mixin for the Clinical Reporting widget.
 
 This module collects all of the logic that interacts with filesystem
 resources (input ZIP selection, saved setting folders, and saved setting
 management).  The mixin exposes slot methods that are bound to the
-settings tab controls from :class:`ui.window.Widget`.
+Source data page's controls from :class:`ui.window.Widget`.
+
+Reading the ZIP runs in the background (:func:`cci_ui.tasks.run_task`); the
+data it returns is applied to the report in the callbacks, back on the GUI
+thread.
 """
 
 from __future__ import annotations
 
-import json
+import datetime
 import logging
 import os
-from pathlib import Path
-from typing import Optional
+import traceback
+from functools import partial
+from typing import Dict, Optional
 
+import pandas as pd
 from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QFileDialog
 
+from cci_ui.tasks import defer_if_busy, run_task
+from clinical_reporting import feedback, steps
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
-from clinical_reporting.report import CLReport
+from clinical_reporting.session import new_report, replace_base_data, without_base_data
 from clinical_reporting.ui.dialogs import choose_settings_directory
 
 logger = logging.getLogger(__name__)
 
 
 class SettingsTabMixin:
-    """Behavior for the settings tab and saved-setting management."""
+    """Behavior for the Source data page and saved-setting management."""
 
     def _init_settings_tab(self) -> None:
-        """Wire up controls on the settings tab."""
+        """Wire up controls on the Source data page."""
         self.ui.pushButton_input_file.clicked.connect(self.click_input_file)
         self.ui.pushButton_remove_input.clicked.connect(self.click_remove_input)
         self.ui.pushButton_remove_input.setEnabled(bool(self._input_file_path))
         self.ui.pushButton_output_folder.clicked.connect(self.click_output_file)
-        self.ui.checkBox_saved_setting.stateChanged.connect(self.click_checkBox_saved_setting)
+        self.ui.checkBox_saved_setting.stateChanged.connect(
+            self.click_checkBox_saved_setting
+        )
         self.ui.comboBox_saved_setting.setEnabled(False)
         self.ui.comboBox_saved_setting.clear()
-        self.ui.comboBox_saved_setting.currentIndexChanged.connect(self.on_saved_setting_changed)
+        self.ui.comboBox_saved_setting.currentIndexChanged.connect(
+            self.on_saved_setting_changed
+        )
         self.ui.pushButton_setting_location.clicked.connect(self.click_setting_location)
 
         # Cut-off date is disabled until the user opts in via the checkbox, and
@@ -45,13 +57,22 @@ class SettingsTabMixin:
         self.ui.cutoff_dateEdit.setEnabled(False)
         self.ui.cutoff_dateEdit.setDate(QDate.currentDate())
         self.ui.cutoff_checkBox.stateChanged.connect(self.click_cutoff_checkBox)
-        self.ui.cutoff_dateEdit.editingFinished.connect(self._reload_with_current_cut_off)
+        self.ui.cutoff_dateEdit.editingFinished.connect(
+            self._reload_with_current_cut_off
+        )
+        # A date picked in the calendar popup commits nothing by itself.
+        calendar = self.ui.cutoff_dateEdit.calendarWidget()
+        if calendar is not None:
+            calendar.clicked.connect(self._reload_with_current_cut_off)
+            calendar.activated.connect(self._reload_with_current_cut_off)
 
     # ------------------------------------------------------------------
-    # Slots bound to settings tab buttons
+    # Slots bound to the Source data page's buttons
 
     def click_input_file(self) -> None:
         """Open a file dialog to choose the input Corelisting ZIP file."""
+        if defer_if_busy(self, self.click_input_file):
+            return
         default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -62,23 +83,49 @@ class SettingsTabMixin:
         if not file_path:
             return
 
-        # Reset the report to avoid stale state from a previous load.
-        self.report = CLReport()
+        cut_off_date = self._get_cut_off_date()
+        run_task(
+            self,
+            read_data_dict_zip_corelisting,
+            file_path,
+            cut_off_date=cut_off_date,
+            on_success=partial(self.open_input_data, file_path, cut_off_date),
+            on_error=partial(
+                self._show_input_file_error,
+                file_path,
+                "Nothing was loaded; the report is unchanged.",
+            ),
+            message="Reading Corelisting ZIP…",
+        )
+
+    def open_input_data(
+        self,
+        file_path: str,
+        cut_off_date: Optional[datetime.date],
+        data: Dict[str, pd.DataFrame],
+    ) -> None:
+        """Start a new report from Corelisting *data* read from *file_path*.
+
+        Called with what :meth:`click_input_file` read; previews call it with
+        sample data. Changing the cut-off date later re-reads *file_path*.
+        """
+        # A new report, so nothing from a previous load lingers.
+        self.study_name = parse_study_name(file_path)
+        self.report = new_report(self.study_name, data)
         self._last_loaded_setting_path = None
         self._pending_saved_setting_reapply = False
-        self.study_name = parse_study_name(file_path)
-        self.report.set_study_name(self.study_name)
-        cut_off_date = self._get_cut_off_date()
-        self.report.set_data(read_data_dict_zip_corelisting(file_path, cut_off_date=cut_off_date))
         # Remember the source so the cut-off can be re-applied without re-picking.
         self._input_file_path = file_path
         self._applied_cut_off_date = cut_off_date
+        self._failed_cut_off_reload = None
+        # The new report has none of the applied additional forms.
+        self._forget_applied_additional_forms()
+        self._forget_export_results()
         self.ui.pushButton_remove_input.setEnabled(True)
 
-        # Ensure "Subject" is selected by default and refresh all UI tabs.
-        self.report.set_common_item_state("Subject", selected=True)
         self.update_all_ui()
-        self.ui.label_input_file.setText("Input path: " + file_path)
+        self._show_input_file()
+        self._show_data_read(data)
         self._set_label_text(self.label_setting, "")
 
         if self.ui.checkBox_saved_setting.isChecked():
@@ -90,31 +137,26 @@ class SettingsTabMixin:
         """Remove the selected Corelisting ZIP and its forms from the report.
 
         Additional inputs are independent of the Corelisting ZIP, so forms
-        already applied from the additional-input tab remain available.
+        already applied from the Additional input page remain available.
         """
+        if defer_if_busy(self, self.click_remove_input):
+            return
         if not self._input_file_path:
             return
 
-        selection_state = self._capture_selection_state()
-        additional_keys = getattr(self, "_additional_form_keys", set())
-        additional_data = {
-            key: value for key, value in (getattr(self.report, "data", {}) or {}).items() if key in additional_keys
-        }
-
-        # Start with a clean report so filters, ordering, renames, and other
-        # configuration tied to the removed Corelisting forms cannot linger.
-        self.report = CLReport()
-        if additional_data:
-            self.report.set_data(additional_data)
-            self._restore_selection_state(selection_state)
-
+        self.report = without_base_data(
+            self.report, getattr(self, "_additional_form_keys", set())
+        )
         self.study_name = None
         self._input_file_path = None
         self._applied_cut_off_date = None
+        self._failed_cut_off_reload = None
         self._last_loaded_setting_path = None
         self._pending_saved_setting_reapply = False
+        self._forget_export_results()
 
-        self.ui.label_input_file.setText("")
+        self._show_input_file()
+        self._show_data_read(None)
         self.ui.pushButton_remove_input.setEnabled(False)
         self._set_label_text(self.label_setting, "")
 
@@ -138,8 +180,7 @@ class SettingsTabMixin:
         )
         if folder:
             self.output_folder_name = folder
-            if self.label_output_folder is not None:
-                self.label_output_folder.setText(f"Output folder: {folder}")
+            self.ui.pathPicker_output_folder.set_path(folder)
 
     def click_cutoff_checkBox(self, state: int) -> None:
         """Enable the date editor and re-apply the cut-off when toggled."""
@@ -164,30 +205,104 @@ class SettingsTabMixin:
         data. Existing form/item/common selections and any loaded additional
         inputs are preserved where they remain valid. This is a no-op when no
         input file is loaded yet or the effective cut-off has not changed.
+
+        The date field commits whenever it loses focus, which can happen while
+        other work runs (to another app, or to a dialog); the reload then
+        waits until that work is done. A reload that failed isn't retried for
+        the same file and date, so each focus change doesn't repeat the
+        error; picking the ZIP again or another date tries again.
         """
+        if defer_if_busy(self, self._reload_with_current_cut_off):
+            return
         input_path = self._input_file_path
         if not input_path:
             return
 
         cut_off_date = self._get_cut_off_date()
         if cut_off_date == self._applied_cut_off_date:
+            if self._failed_cut_off_reload is not None:
+                # Back to the applied date: the earlier failure no longer matters.
+                self._failed_cut_off_reload = None
+                self._show_input_file()
+            return
+        if (input_path, cut_off_date) == self._failed_cut_off_reload:
             return
 
-        selection_state = self._capture_selection_state()
+        run_task(
+            self,
+            read_data_dict_zip_corelisting,
+            input_path,
+            cut_off_date=cut_off_date,
+            on_success=partial(self._apply_cut_off_data, input_path, cut_off_date),
+            on_error=partial(self._show_cut_off_reload_error, input_path, cut_off_date),
+            message="Applying the cut-off date…",
+        )
 
-        base_data = read_data_dict_zip_corelisting(input_path, cut_off_date=cut_off_date)
-
-        # Preserve any additional-input forms currently merged into the report.
-        additional_keys = getattr(self, "_additional_form_keys", set())
-        preserved_additional = {
-            key: value for key, value in (getattr(self.report, "data", {}) or {}).items() if key in additional_keys
-        }
-
-        self.report.set_data({**base_data, **preserved_additional})
-        self._restore_selection_state(selection_state)
+    def _apply_cut_off_data(
+        self,
+        input_path: str,
+        cut_off_date: Optional[datetime.date],
+        base_data: Dict[str, pd.DataFrame],
+    ) -> None:
+        """Swap in the ZIP data re-read by :meth:`_reload_with_current_cut_off`."""
+        if input_path != self._input_file_path:
+            return  # The ZIP was removed or replaced meanwhile; this data is stale.
+        replace_base_data(
+            self.report, base_data, getattr(self, "_additional_form_keys", set())
+        )
         self._applied_cut_off_date = cut_off_date
-
+        self._failed_cut_off_reload = None
         self.update_all_ui()
+        self._show_input_file()
+        self._show_data_read(base_data)
+
+    def _show_cut_off_reload_error(
+        self,
+        input_path: str,
+        cut_off_date: Optional[datetime.date],
+        exc: BaseException,
+        details: str,
+    ) -> None:
+        """Say why the reload failed, and remember it so it isn't retried.
+
+        See :meth:`_reload_with_current_cut_off`.
+        """
+        self._failed_cut_off_reload = (input_path, cut_off_date)
+        self._show_input_file_error(
+            input_path,
+            "The cut-off date was not applied; the report still uses the data "
+            "loaded before.",
+            exc,
+            details,
+        )
+
+    def _show_input_file_error(
+        self, file_path: str, outcome: str, exc: BaseException, details: str
+    ) -> None:
+        """Say the ZIP couldn't be read, and what that means (*outcome*).
+
+        The problem stays on the Source data page, with the traceback behind
+        "Show details"; the status bar repeats it, as a toast if the user is
+        on another page (see :mod:`ui.navigation`).
+        """
+        logger.error("Could not read %s", file_path, exc_info=exc)
+        problem = feedback.error(
+            f"Could not read {os.path.basename(file_path)}: {exc}\n{outcome}", details
+        )
+        self._show_input_file(problem)
+
+    def _show_data_read(self, data: Optional[Dict[str, pd.DataFrame]]) -> None:
+        """Under the ZIP: how many forms and rows were read, and when."""
+        if data is None:
+            summary = ""
+        else:
+            summary = steps.source_summary(data, datetime.datetime.now())
+        self.ui.section_input_file.set_footnote(summary)
+
+    def _show_input_file(self, problem: Optional[feedback.Message] = None) -> None:
+        """Show the loaded ZIP on the Source data page, and *problem* if any."""
+        self.ui.pathPicker_input_file.set_path(self._input_file_path)
+        self._set_label_text(self.ui.banner_input_file, problem or "")
 
     def click_checkBox_saved_setting(self, state: int) -> None:
         """Enable or disable saved setting controls based on the checkbox."""
@@ -205,12 +320,6 @@ class SettingsTabMixin:
             self._last_loaded_setting_path = None
             self._pending_saved_setting_reapply = False
 
-    def _get_default_settings_directory(self) -> str:
-        """Return the default folder used to store saved settings."""
-        home = Path.home()
-        default_dir = home / "Documents"
-        return str(default_dir)
-
     def click_setting_location(self) -> None:
         """Let the user choose the directory that stores saved settings."""
         choose_settings_directory(self)
@@ -224,33 +333,12 @@ class SettingsTabMixin:
         combo.blockSignals(True)
         combo.clear()
 
-        settings_dir = self.settings_directory or self._get_default_settings_directory()
-        settings_path = Path(settings_dir)
-        if not settings_path.exists():
-            combo.addItem("No saved settings found for this study", None)
-            combo.blockSignals(False)
-            combo.setEnabled(False)
-            return
+        saved_settings = self._settings_store().list(self.study_name)
+        for saved in saved_settings:
+            combo.addItem(saved.name, saved.key)
 
-        saved_any = False
-        study_name = self.study_name
-        for settings_file in settings_path.glob("*.json"):
-            try:
-                with settings_file.open("r", encoding="utf-8") as handle:
-                    data = json.load(handle)
-            except (OSError, json.JSONDecodeError) as exc:
-                logger.warning("Skipping invalid settings file %s: %s", settings_file, exc)
-                continue
-
-            if study_name and data.get("study_name") != study_name:
-                continue
-
-            display_name = data.get("setting_name") or settings_file.stem
-            combo.addItem(display_name, str(settings_file))
-            saved_any = True
-
-        if saved_any:
-            combo.insertItem(0, "Select a saved setting", None)
+        if saved_settings:
+            combo.insertItem(0, combo.placeholderText(), None)
             combo.setEnabled(True)
         else:
             combo.addItem("No saved settings found for this study", None)
@@ -285,28 +373,42 @@ class SettingsTabMixin:
                         common_items.append(item_str)
 
                 if common_items:
-                    message_parts.append("Missing common items: " + ", ".join(sorted(common_items)))
+                    message_parts.append(
+                        "Missing common items: " + ", ".join(sorted(common_items))
+                    )
                 for form_name in sorted(form_items):
-                    message_parts.append(f"Missing items in {form_name}: " + ", ".join(sorted(form_items[form_name])))
-            self._set_label_text(self.label_setting, "\n".join(message_parts))
+                    message_parts.append(
+                        f"Missing items in {form_name}: "
+                        + ", ".join(sorted(form_items[form_name]))
+                    )
+            self._set_label_text(
+                self.label_setting, feedback.warning("\n".join(message_parts))
+            )
         else:
             self._set_label_text(self.label_setting, "")
 
-    def _apply_saved_setting_from_path(self, file_path: str, *, update_confirmation: bool = True) -> bool:
-        """Load saved settings from ``file_path`` and reconcile with current data."""
+    def _apply_saved_setting_from_path(
+        self, file_path: str, *, update_confirmation: bool = True
+    ) -> bool:
+        """Load the saved setting at ``file_path`` and reconcile it with the data."""
         try:
-            settings_data = self.report.load_setting_from_json(file_path)
+            stored = self._settings_store().load(file_path)
+            settings_data = self.report.load_setting_from_dict(stored)
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Failed to load settings from %s", file_path)
             self._set_label_text(
                 self.label_save_confirmation,
-                f"Failed to load settings: {exc}",
+                feedback.error(
+                    f"Failed to load settings: {exc}", traceback.format_exc()
+                ),
             )
             self._set_label_text(self.label_setting, "")
             self._pending_saved_setting_reapply = False
             return False
 
-        loaded_study_name = settings_data.get("study_name") if isinstance(settings_data, dict) else None
+        loaded_study_name = (
+            settings_data.get("study_name") if isinstance(settings_data, dict) else None
+        )
         if loaded_study_name:
             self.study_name = loaded_study_name
         self.report.set_study_name(self.study_name)
@@ -318,7 +420,7 @@ class SettingsTabMixin:
         if update_confirmation:
             self._set_label_text(
                 self.label_save_confirmation,
-                f"Loaded settings from {os.path.basename(file_path)}",
+                feedback.success(f"Loaded settings from {os.path.basename(file_path)}"),
             )
         return True
 

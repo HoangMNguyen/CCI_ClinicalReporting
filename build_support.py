@@ -28,6 +28,29 @@ SRC = Path(__file__).resolve().parent / "src"
 # entity name if these binaries are ever distributed outside the department.
 COMPANY_NAME = "CCI"
 
+# Fonts and icons of the shared design system, copied into every executable at
+# the path cci_ui.assets.assets_root() looks for when frozen.
+UI_ASSETS = SRC / "cci_ui" / "assets"
+
+
+def ui_datas() -> list[tuple[str, str]]:
+    """PyInstaller ``datas`` entries that bundle the shared design-system assets."""
+    return [(str(UI_ASSETS), "cci_ui/assets")]
+
+
+def app_icon(app_id: str) -> str:
+    """The ``.ico`` file for ``EXE(icon=...)`` of the tool *app_id*.
+
+    The same file is bundled with the assets, where the running app finds it
+    for its window icon (``cci_ui.app_icons``). Draw the icons again with
+    ``python -m cci_ui.app_icons``.
+    """
+    path = UI_ASSETS / "app-icons" / f"{app_id}.ico"
+    if not path.is_file():
+        raise SystemExit(f"build_support: no app icon {path}")
+    return str(path)
+
+
 _VERSION_RE = re.compile(r"^__version__\s*=\s*[\"']([^\"']+)[\"']", re.MULTILINE)
 
 
