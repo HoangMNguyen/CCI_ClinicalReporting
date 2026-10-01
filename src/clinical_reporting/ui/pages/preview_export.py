@@ -90,7 +90,8 @@ class PreviewExportPage(Page):
         self.lineEdit_file_name = QLineEdit()
         self.lineEdit_file_name.setPlaceholderText("Optional, e.g. DEMO01 DSMB")
         self.lineEdit_file_name.textChanged.connect(self._show_file_name)
-        self.file_name_caption = text_label(style="caption", wrap=True)
+        # A typed name can be one long word; it wraps instead of widening the panel.
+        self.file_name_caption = text_label(style="caption", break_long_words=True)
         self.label_run_confirmation = StatusBanner()
         self.pushButton_run = full_width(
             make_button("Export to Excel", variant="primary", icon_name=IconName.EXPORT)

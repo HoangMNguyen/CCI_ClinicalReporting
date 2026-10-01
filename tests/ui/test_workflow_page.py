@@ -4,9 +4,10 @@ import errno
 
 import pytest
 import shiboken6
-from PySide6.QtWidgets import QApplication, QLineEdit
+from PySide6.QtWidgets import QApplication, QLineEdit, QScrollArea
 
 from cci_ui.files import save_output
+from cci_ui.theme.tokens import LAYOUT
 from cci_ui.tool_window import ToolWindow, show_tool
 from cci_ui.widgets import workflow_page
 from cci_ui.widgets.toggle import ToggleSwitch
@@ -40,6 +41,16 @@ def tool(make_manager, ini_settings, settle):
     window.close()
     settle(window.task_runner)
     shiboken6.delete(window)
+
+
+def test_a_long_file_name_wraps_instead_of_widening_the_page(tool):
+    tool.resize(LAYOUT.small_min_window[0], 540)  # The narrowest window.
+    tool.page.file_name.setText("Weekly_DSMB_Final_Listings_For_The_Quarterly_Meeting")
+    QApplication.processEvents()
+    scroll = tool.page.findChild(QScrollArea)
+
+    assert scroll.widget().width() <= scroll.viewport().width()
+    assert not scroll.horizontalScrollBar().isVisible()
 
 
 def test_every_row_is_kept_by_its_label(tool):

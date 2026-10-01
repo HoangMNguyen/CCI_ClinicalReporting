@@ -28,7 +28,6 @@ from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect,
     QGraphicsOpacityEffect,
     QHBoxLayout,
-    QLabel,
     QMessageBox,
     QPlainTextEdit,
     QVBoxLayout,
@@ -41,7 +40,7 @@ from cci_ui.theme.manager import current, repolish
 from cci_ui.theme.palette import qcolor
 from cci_ui.theme.qss import register_qss
 from cci_ui.widgets.buttons import icon_button, make_button
-from cci_ui.widgets.labels import ElidedLabel, IconLabel
+from cci_ui.widgets.labels import ElidedLabel, IconLabel, WrappingLabel
 
 KINDS = ("info", "success", "warning", "error")
 #: Kind -> (icon, icon role).
@@ -117,9 +116,8 @@ class StatusBanner(QFrame):
         self._action_callback: Optional[Callable[[], None]] = None
 
         self._icon = IconLabel(IconName.INFO, "info")
-        self._label = QLabel()
-        self._label.setWordWrap(True)
-        self._label.setTextFormat(Qt.TextFormat.PlainText)
+        # Wraps a long path too, so the banner never widens what holds it.
+        self._label = WrappingLabel()
         self._label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
