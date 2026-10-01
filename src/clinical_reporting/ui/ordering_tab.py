@@ -1,11 +1,10 @@
-"""Column order and rename table for the "Comparison and Order" tab.
+"""Column order and rename table on the Order & rename page.
 
 This mixin owns the combined order/rename table: rename mapping
-management, item ordering controls, and the original-name search.  The
-join-configuration table that shares the tab lives in
-:mod:`ui.join_config`; its :meth:`JoinConfigMixin.update_join_list`
-re-derives this table because the default column order follows the join
-order.
+management, item ordering controls, and the original-name search. The
+join table lives in :mod:`ui.join_config`; its
+:meth:`JoinConfigMixin.update_join_list` re-derives this table because the
+default column order follows the join order.
 """
 
 from __future__ import annotations
@@ -13,11 +12,7 @@ from __future__ import annotations
 from typing import List, Literal
 
 from PySide6.QtCore import QItemSelectionModel, Qt
-from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QHeaderView,
-    QTableWidgetItem,
-)
+from PySide6.QtWidgets import QAbstractItemView, QTableWidgetItem
 
 from clinical_reporting.ui.table_actions import (
     add_copy_original_name_action,
@@ -33,7 +28,6 @@ class OrderRenameTabMixin:
         table = self.ui.tableWidget_rename
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.copy_original_name_action = add_copy_original_name_action(
             table, self.copy_selected_original_names_to_rename
         )
@@ -65,7 +59,9 @@ class OrderRenameTabMixin:
     def update_order_rename_table(self) -> None:
         """Populate the table in output order while preserving its selection."""
         table = self.ui.tableWidget_rename
-        selected_identifiers = {self._order_identifier_for_row(row) for row in self._selected_order_rows()}
+        selected_identifiers = {
+            self._order_identifier_for_row(row) for row in self._selected_order_rows()
+        }
         selected_identifiers.discard(None)
         current_identifier = self._order_identifier_for_row(table.currentRow())
 
@@ -74,7 +70,9 @@ class OrderRenameTabMixin:
         signals_were_blocked = table.blockSignals(True)
         try:
             table.setRowCount(0)
-            for row, identifier in enumerate(self.report.get_selected_items_order_list()):
+            for row, identifier in enumerate(
+                self.report.get_selected_items_order_list()
+            ):
                 table.insertRow(row)
                 orig_item = QTableWidgetItem(identifier)
                 orig_item.setFlags(orig_item.flags() & ~Qt.ItemIsEditable)
@@ -90,7 +88,8 @@ class OrderRenameTabMixin:
                 if identifier in selected_identifiers:
                     selection_model.select(
                         table.model().index(row, 0),
-                        QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows,
+                        QItemSelectionModel.SelectionFlag.Select
+                        | QItemSelectionModel.SelectionFlag.Rows,
                     )
                 if identifier == current_identifier:
                     table.setCurrentCell(
@@ -100,10 +99,6 @@ class OrderRenameTabMixin:
                     )
         finally:
             table.blockSignals(signals_were_blocked)
-
-        adjust_columns = getattr(self, "_adjust_column_widths", None)
-        if callable(adjust_columns):
-            adjust_columns(table)
 
         search_edit = getattr(self.ui, "lineEdit_order_search", None)
         if search_edit is not None:
@@ -181,7 +176,10 @@ class OrderRenameTabMixin:
         matching_rows = []
         for row in range(table.rowCount()):
             original_item = table.item(row, 0)
-            if original_item is not None and normalized_query in original_item.text().casefold():
+            if (
+                original_item is not None
+                and normalized_query in original_item.text().casefold()
+            ):
                 matching_rows.append(row)
         return matching_rows
 
@@ -196,12 +194,14 @@ class OrderRenameTabMixin:
         first_row = rows[0]
         selection_model.setCurrentIndex(
             table.model().index(first_row, 0),
-            QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows,
+            QItemSelectionModel.SelectionFlag.ClearAndSelect
+            | QItemSelectionModel.SelectionFlag.Rows,
         )
         for row in rows[1:]:
             selection_model.select(
                 table.model().index(row, 0),
-                QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows,
+                QItemSelectionModel.SelectionFlag.Select
+                | QItemSelectionModel.SelectionFlag.Rows,
             )
         table.scrollToItem(
             table.item(first_row, 0),
@@ -231,6 +231,7 @@ class OrderRenameTabMixin:
             self.report.set_rename_item(original_name, new_name)
         else:
             self.report.remove_rename_item(original_name)
+        self._report_changed()
 
     def copy_selected_original_names_to_rename(self) -> None:
         """Copy each selected row's original name into its editable name cell."""
@@ -240,6 +241,7 @@ class OrderRenameTabMixin:
             self.report.set_rename_item(original_name, original_item.text())
 
         copy_original_names_to_new_names(self.ui.tableWidget_rename, persist)
+        self._report_changed()
 
     # ------------------------------------------------------------------
     # Item ordering controls
@@ -276,7 +278,9 @@ class OrderRenameTabMixin:
             return None
         return item.data(Qt.UserRole) or item.text()
 
-    def _move_selected_order_items(self, destination: Literal["top", "up", "down", "bottom"]) -> None:
+    def _move_selected_order_items(
+        self, destination: Literal["top", "up", "down", "bottom"]
+    ) -> None:
         """Reorder selected table rows and retain the complete selection."""
         table = self.ui.tableWidget_rename
         count = table.rowCount()
@@ -288,19 +292,29 @@ class OrderRenameTabMixin:
         new_order = list(range(count))
 
         if destination == "top":
-            new_order = selected_rows + [row for row in range(count) if row not in selected_positions]
+            new_order = selected_rows + [
+                row for row in range(count) if row not in selected_positions
+            ]
         elif destination == "bottom":
-            new_order = [row for row in range(count) if row not in selected_positions] + selected_rows
+            new_order = [
+                row for row in range(count) if row not in selected_positions
+            ] + selected_rows
         elif destination == "up":
             for row in selected_rows:
                 if row > 0 and row - 1 not in selected_positions:
-                    new_order[row - 1], new_order[row] = new_order[row], new_order[row - 1]
+                    new_order[row - 1], new_order[row] = (
+                        new_order[row],
+                        new_order[row - 1],
+                    )
                     selected_positions.remove(row)
                     selected_positions.add(row - 1)
         elif destination == "down":
             for row in reversed(selected_rows):
                 if row < count - 1 and row + 1 not in selected_positions:
-                    new_order[row], new_order[row + 1] = new_order[row + 1], new_order[row]
+                    new_order[row], new_order[row + 1] = (
+                        new_order[row + 1],
+                        new_order[row],
+                    )
                     selected_positions.remove(row)
                     selected_positions.add(row + 1)
         else:
@@ -313,7 +327,9 @@ class OrderRenameTabMixin:
         identifiers = [self._order_identifier_for_row(row) for row in range(count)]
         if any(identifier is None for identifier in identifiers):
             return
-        self.report.set_selected_items_order_list([identifiers[original_row] for original_row in new_order])
+        self.report.set_selected_items_order_list(
+            [identifiers[original_row] for original_row in new_order]
+        )
         self.update_order_rename_table()
 
     def _update_order_button_states(self) -> None:
@@ -322,7 +338,10 @@ class OrderRenameTabMixin:
         selected_rows = self._selected_order_rows()
         selected = set(selected_rows)
         can_move_up = any(row > 0 and row - 1 not in selected for row in selected_rows)
-        can_move_down = any(row < table.rowCount() - 1 and row + 1 not in selected for row in selected_rows)
+        can_move_down = any(
+            row < table.rowCount() - 1 and row + 1 not in selected
+            for row in selected_rows
+        )
 
         self.ui.pushButton_order_top.setEnabled(can_move_up)
         self.ui.pushButton_order_up.setEnabled(can_move_up)

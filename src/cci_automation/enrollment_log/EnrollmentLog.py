@@ -1,32 +1,89 @@
-#!/usr/bin/env python3
+"""The enrollment log: one of CCI Automation's workflows.
+
+:func:`run` reads a Corelisting export and returns the study's enrollment
+log (:class:`clinical_reporting.workflow.OutputFile`); :class:`EnrollmentLog`
+builds it with the study's own module (``EnrollmentLog<study>.py``). Nothing
+here touches Qt or a folder.
+"""
+
+import io
+from datetime import date
+from typing import Optional
+
 import pandas as pd
 
-from clinical_reporting.data import read_data_dict_zip_corelisting
+from clinical_reporting.filenames import output_file_name
+from clinical_reporting.workflow import (
+    OutputFile,
+    UnsupportedStudyError,
+    check_study,
+    missing_forms_error,
+    read_corelisting,
+)
+
+#: What the messages call this workflow (in the middle of a sentence).
+WORKFLOW = "the enrollment log"
+#: Studies with an enrollment log module.
+SUPPORTED_STUDIES = (
+    "03325",
+    "03821",
+    "10325",
+    "11823",
+    "12423",
+    "15122",
+    "15420",
+    "16321",
+    "30425",
+    "50425",
+)
+
+
+def default_file_name(study: str) -> str:
+    """The file name to suggest for *study*'s log (the run adds the time)."""
+    return f"{study} Enrollment Log"
+
+
+def run(
+    corelisting,
+    *,
+    study: str,
+    cut_off_date: Optional[date] = None,
+    file_name: str = "",
+) -> OutputFile:
+    """Build *study*'s enrollment log from a Corelisting export.
+
+    *corelisting* is the ZIP: its path, or a file-like object (an upload).
+    With *cut_off_date*, rows dated after it are left out. The workbook is
+    named *file_name* (or :func:`default_file_name`) plus the date and time.
+    Raises :class:`~clinical_reporting.workflow.WorkflowInputError` for a
+    study without a log, an export whose file name names another study, or
+    one that is gone or can't be read.
+    """
+    if study not in SUPPORTED_STUDIES:
+        raise UnsupportedStudyError(WORKFLOW, study, SUPPORTED_STUDIES)
+    check_study(corelisting, study, WORKFLOW, SUPPORTED_STUDIES)
+    data = read_corelisting(corelisting, cut_off_date)
+    if "DM" not in data:  # Every study's log starts from the Demographics form.
+        raise missing_forms_error(WORKFLOW, ["DM"])
+    workbook = EnrollmentLog(data, study).to_excel_bytes()
+    name = (file_name or "").strip() or default_file_name(study)
+    return OutputFile(output_file_name(name), workbook)
 
 
 class EnrollmentLog:
-    def __init__(self, study_name, input_dir, output_dir, output_file_name, cut_off_date=None):
-        if input_dir is None:
-            print("No dir selected!")
-            return
-        else:
-            self.study_name = study_name
-            self.input_dir = input_dir
-            self.output_dir = output_dir
-            self.output_file_name = output_file_name
-            self.data = read_data_dict_zip_corelisting(self.input_dir, cut_off_date)
-            # self.read_data_dict()
-            self.error_message = False
-            self.output_df = self.collect_data()
-            self.output()
+    """A study's enrollment log, worked out from its Corelisting forms."""
 
-    def get_study_name(self):
-        folder_name = self.input_dir.split("/")[-1]
-        study_name = folder_name.split("_")[2]
-        if not study_name.isdigit():
-            print("It's not a study name: %s")
-        else:
-            return study_name
+    def __init__(self, data, study_name):
+        """Work out the log from *data* (form name to its DataFrame)."""
+        self.study_name = study_name
+        self.data = data
+        self.output_df = self.collect_data()
+
+    def to_excel_bytes(self) -> bytes:
+        """The log as a workbook."""
+        buffer = io.BytesIO()
+        self.output(buffer)
+        return buffer.getvalue()
 
     def collect_data(self):
         if self.study_name == "12423":
@@ -69,10 +126,12 @@ class EnrollmentLog:
             from .EnrollmentLog30425 import EnrollmentLog30425
 
             output_df = EnrollmentLog30425(self.data)
+        else:
+            raise UnsupportedStudyError(WORKFLOW, self.study_name, SUPPORTED_STUDIES)
         return output_df
 
-    def output(self):
-        output_path = f"{self.output_dir}/{self.output_file_name}.xlsx"
+    def output(self, target):
+        """Write the log's workbook to *target* (a path or a binary file)."""
         sheet_name = "Enrollment Log " + self.study_name
         subject_id_columns = [col for col in self.output_df.columns if str(col).strip().lower().startswith("subject")]
         for col in subject_id_columns:
@@ -93,7 +152,7 @@ class EnrollmentLog:
                 # coerce to NaT) — same result as before but without pandas' format-inference warning.
                 self.output_df[col] = pd.to_datetime(self.output_df[col], errors="coerce", format="mixed")
 
-        with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
+        with pd.ExcelWriter(target, engine="xlsxwriter") as writer:
             # Write once
             self.output_df.to_excel(writer, index=False, sheet_name=sheet_name)
 

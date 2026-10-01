@@ -3,10 +3,17 @@
 import pandas as pd
 import pytest
 
+from clinical_reporting import feedback
 from clinical_reporting.models import JoinHow
 from clinical_reporting.pipeline import ReportEngine
 from clinical_reporting.report import CLReport
-from clinical_reporting.validation import ReportValidationError
+from clinical_reporting.validation import (
+    CANNOT_RUN_PREFIX,
+    JOIN_BLOCKING_ISSUE_CODES,
+    ReportValidationError,
+    cannot_run_message,
+    report_issues_message,
+)
 
 
 def _valid_two_form_report() -> CLReport:
@@ -93,3 +100,20 @@ def test_validation_issues_are_serialization_friendly():
 
     assert {item["code"] for item in payload} == {"no_data", "no_selected_forms"}
     assert all(set(item) == {"code", "message", "field"} for item in payload)
+
+
+def test_cannot_run_messages_list_what_blocks_the_report():
+    report = _valid_two_form_report()
+    assert report_issues_message(report) is None
+
+    report.selected_forms["VS"].set_join_items([])  # VS needs a join item.
+    report.selected_forms["DM"].set_form_item_state("Missing", selected=True)
+    message = report_issues_message(report)
+    joins_only = report_issues_message(report, JOIN_BLOCKING_ISSUE_CODES)
+
+    assert message.kind == "warning" and message.startswith(f"{CANNOT_RUN_PREFIX}\n- ")
+    assert len(message.splitlines()) == 1 + len(report.validate())
+    assert joins_only == cannot_run_message(
+        [i for i in report.validate() if i.code == "missing_join_items"]
+    )
+    assert feedback.kind_of(joins_only) == "warning"

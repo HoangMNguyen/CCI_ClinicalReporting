@@ -1,8 +1,9 @@
 """Silent, best-effort reporting of successful UI save actions.
 
 Usage reporting is deliberately isolated from the reporting workflow.  It is
-disabled unless both environment variables below are configured, performs its
-request on a daemon thread, and suppresses every delivery error.
+disabled unless an endpoint and a token are configured (by the environment
+variables below, or the ``telemetry.json`` bundled into the executable),
+performs its request on a daemon thread, and suppresses every delivery error.
 """
 
 from __future__ import annotations
@@ -47,6 +48,16 @@ def _configuration() -> tuple[str, str]:
     endpoint = os.environ.get(RUN_COUNTER_URL_ENV, bundled_endpoint).strip()
     token = os.environ.get(RUN_COUNTER_TOKEN_ENV, bundled_token).strip()
     return endpoint, token
+
+
+def has_bundled_configuration() -> bool:
+    """Whether the bundled ``telemetry.json`` gives an endpoint and a token.
+
+    The built executable's self-test reports it: it shows the file was
+    bundled without sending an event (environment variables don't count).
+    """
+
+    return all(_bundled_configuration())
 
 
 def record_successful_export(report_name: str) -> None:
@@ -138,4 +149,8 @@ def _post_event(
         return
 
 
-__all__ = ["record_successful_export", "record_successful_setting_save"]
+__all__ = [
+    "has_bundled_configuration",
+    "record_successful_export",
+    "record_successful_setting_save",
+]

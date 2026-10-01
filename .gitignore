@@ -125,7 +125,7 @@ celerybeat.pid
 .env
 .venv
 
-# Local env shortcut scripts (machine-specific, see README "Environment setup")
+# Local env shortcut scripts (machine-specific; README "Setup" has the commands)
 /dev.sh
 /dev.ps1
 /dev.bat
@@ -176,8 +176,17 @@ samconfig.toml
 # Local desktop telemetry credentials (bundled into release executables)
 /src/clinical_reporting/telemetry.json
 
-# Local Clockify credentials for CCI Automation (never commit)
+# Old CCI Automation Clockify credentials (feature removed; a leftover copy
+# would hold an API key, so never commit it)
 /src/cci_automation/clockify.json
+
+# Study data (exports, generated reports, extra inputs) never belongs in
+# Git: tests use made-up data built in code. No data file is tracked; a
+# deliberate exception needs git add -f.
+/tests/data/
+*.zip
+*.csv
+*.xls*
 
 # Server-side infrastructure
 /infra/

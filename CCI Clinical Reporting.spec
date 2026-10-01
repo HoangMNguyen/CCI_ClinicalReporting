@@ -7,6 +7,7 @@ The version is deliberately NOT part of this file's name. It comes from
 
     python -m PyInstaller "CCI Clinical Reporting.spec"
     $env:APP_VERSION = "2.01"; python -m PyInstaller "CCI Clinical Reporting.spec"
+    Remove-Item Env:APP_VERSION  # or every later build gets 2.01 too
 
 Requires a local ``src/clinical_reporting/telemetry.json`` (git-ignored).
 """
@@ -17,7 +18,7 @@ import sys
 # build_support.py lives.
 sys.path.insert(0, SPECPATH)
 
-from build_support import package_version, version_resource
+from build_support import app_icon, package_version, ui_datas, version_resource
 
 PACKAGE = "clinical_reporting"
 PRODUCT = "CCI Clinical Reporting"
@@ -30,7 +31,7 @@ a = Analysis(
     ['src\\clinical_reporting\\__main__.py'],
     pathex=['src'],
     binaries=[],
-    datas=[('src/clinical_reporting/telemetry.json', 'clinical_reporting')],
+    datas=[('src/clinical_reporting/telemetry.json', 'clinical_reporting'), *ui_datas()],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -61,4 +62,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     version=version_resource(VERSION, PRODUCT, DESCRIPTION, EXE_NAME),
+    icon=app_icon("clinical-reporting"),
 )

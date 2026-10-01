@@ -6,15 +6,38 @@ import types
 
 import pandas as pd
 
+from clinical_reporting import feedback, session
 from clinical_reporting.ui import run_save_tab
+from clinical_reporting.ui.base import WidgetBaseMixin
 
 
 class _Report:
+    def __init__(self):
+        self.builds = 0
+
     def validate(self):
         return []
 
     def create_report(self):
+        self.builds += 1
         return pd.DataFrame({"Subject": ["001"]})
+
+    def settings_to_dict(self, setting_name):
+        return {"setting_name": setting_name}
+
+
+class _Store:
+    """Settings store that records writes, or fails with *error*."""
+
+    def __init__(self, operations=None, error=None):
+        self.operations = operations if operations is not None else []
+        self.error = error
+
+    def save(self, name, settings):
+        if self.error is not None:
+            raise self.error
+        self.operations.append("write_setting")
+        return f"settings/{name}.json"
 
 
 class _LineEdit:
@@ -38,7 +61,7 @@ class _Label:
         self.value = ""
 
 
-class _RunWidget(run_save_tab.RunAndSaveMixin):
+class _RunWidget(WidgetBaseMixin, run_save_tab.RunAndSaveMixin):
     def __init__(self, output_folder):
         self.report = _Report()
         self.output_folder_name = str(output_folder)
@@ -59,7 +82,9 @@ class _RunWidget(run_save_tab.RunAndSaveMixin):
 
 def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
     operations = []
-    monkeypatch.setattr(run_save_tab, "write_xlsx", lambda *_args: operations.append("write"))
+    monkeypatch.setattr(
+        session, "write_xlsx", lambda *_args: operations.append("write")
+    )
     monkeypatch.setattr(
         run_save_tab,
         "record_successful_export",
@@ -74,10 +99,11 @@ def test_successful_export_records_one_run_after_writing(monkeypatch, tmp_path):
     assert operations[1][1].startswith("report ")
     assert operations[1][1].endswith(".xlsx")
     assert widget.label_run_confirmation.value.startswith("Report saved successfully")
+    assert feedback.kind_of(widget.label_run_confirmation.value) == "success"
 
 
 def test_telemetry_failure_does_not_change_successful_save(monkeypatch, tmp_path):
-    monkeypatch.setattr(run_save_tab, "write_xlsx", lambda *_args: None)
+    monkeypatch.setattr(session, "write_xlsx", lambda *_args: None)
 
     def fail_to_count(_report_name):
         raise RuntimeError("telemetry unavailable")
@@ -96,7 +122,7 @@ def test_failed_export_is_not_counted(monkeypatch, tmp_path):
     def fail_to_write(*_args):
         raise OSError("disk full")
 
-    monkeypatch.setattr(run_save_tab, "write_xlsx", fail_to_write)
+    monkeypatch.setattr(session, "write_xlsx", fail_to_write)
     monkeypatch.setattr(
         run_save_tab,
         "record_successful_export",
@@ -108,14 +134,42 @@ def test_failed_export_is_not_counted(monkeypatch, tmp_path):
 
     assert counted == []
     assert widget.label_run_confirmation.value.startswith("Error saving report")
+    assert feedback.kind_of(widget.label_run_confirmation.value) == "error"
+    assert "disk full" in widget.label_run_confirmation.value.details
+
+
+def test_export_without_an_output_folder_builds_nothing(monkeypatch, tmp_path):
+    written = []
+    monkeypatch.setattr(session, "write_xlsx", lambda *args: written.append(args))
+    widget = _RunWidget(tmp_path)
+    widget.output_folder_name = None
+
+    widget.click_run()
+
+    assert widget.report.builds == 0 and written == []
+    assert (
+        widget.label_run_confirmation.value == "Please select an output folder first."
+    )
+    assert feedback.kind_of(widget.label_run_confirmation.value) == "warning"
+
+
+def test_export_with_no_matching_rows_writes_nothing(monkeypatch, tmp_path):
+    written = []
+    monkeypatch.setattr(session, "write_xlsx", lambda *args: written.append(args))
+    widget = _RunWidget(tmp_path)
+    widget.report.create_report = lambda: pd.DataFrame()
+
+    widget.click_run()
+
+    assert written == []
+    assert widget.label_run_confirmation.value.startswith("No data to save")
+    assert feedback.kind_of(widget.label_run_confirmation.value) == "warning"
 
 
 def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path):
     operations = []
     widget = _RunWidget(tmp_path)
-    widget.report.save_setting_to_json = (
-        lambda *_args, **_kwargs: operations.append("write_setting")
-    )
+    widget._settings_store = lambda: _Store(operations)
     monkeypatch.setattr(
         run_save_tab,
         "record_successful_setting_save",
@@ -126,11 +180,13 @@ def test_successful_setting_save_is_counted_after_writing(monkeypatch, tmp_path)
 
     assert operations == ["write_setting", ("count_setting", "baseline")]
     assert widget.label_save_confirmation.value.startswith("Settings saved to")
+    assert feedback.kind_of(widget.label_save_confirmation.value) == "success"
 
 
-def test_setting_telemetry_failure_does_not_change_successful_save(monkeypatch, tmp_path):
+def test_setting_telemetry_failure_does_not_change_successful_save(
+    monkeypatch, tmp_path
+):
     widget = _RunWidget(tmp_path)
-    widget.report.save_setting_to_json = lambda *_args, **_kwargs: None
 
     def fail_to_count(_setting_name):
         raise RuntimeError("telemetry unavailable")
@@ -144,11 +200,7 @@ def test_setting_telemetry_failure_does_not_change_successful_save(monkeypatch, 
 
 def test_failed_setting_save_is_not_counted(monkeypatch, tmp_path):
     widget = _RunWidget(tmp_path)
-
-    def fail_to_write(*_args, **_kwargs):
-        raise OSError("disk full")
-
-    widget.report.save_setting_to_json = fail_to_write
+    widget._settings_store = lambda: _Store(error=OSError("disk full"))
     counted = []
     monkeypatch.setattr(
         run_save_tab,
@@ -160,3 +212,5 @@ def test_failed_setting_save_is_not_counted(monkeypatch, tmp_path):
 
     assert counted == []
     assert widget.label_save_confirmation.value.startswith("Failed to save settings")
+    assert feedback.kind_of(widget.label_save_confirmation.value) == "error"
+    assert "OSError: disk full" in widget.label_save_confirmation.value.details

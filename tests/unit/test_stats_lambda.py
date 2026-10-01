@@ -21,6 +21,8 @@ def stats_app(monkeypatch):
         / "stats_function"
         / "app.py"
     )
+    if not path.is_file():  # infra/ is ignored by Git, so a clone has none
+        pytest.skip("infra/run_counter is not in this checkout")
     spec = importlib.util.spec_from_file_location("stats_lambda", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -80,12 +82,18 @@ def test_stats_page_is_served_without_authentication(stats_app):
 def test_data_requires_the_read_token(stats_app):
     stats_app._dynamodb_client = FakeDynamoDB({})
 
-    assert stats_app.lambda_handler(_request("/stats/data", token=None), None)[
-        "statusCode"
-    ] == 401
-    assert stats_app.lambda_handler(_request("/stats/data", token="wrong"), None)[
-        "statusCode"
-    ] == 401
+    assert (
+        stats_app.lambda_handler(_request("/stats/data", token=None), None)[
+            "statusCode"
+        ]
+        == 401
+    )
+    assert (
+        stats_app.lambda_handler(_request("/stats/data", token="wrong"), None)[
+            "statusCode"
+        ]
+        == 401
+    )
     assert stats_app._dynamodb_client.queries == []
 
 
@@ -159,9 +167,7 @@ def test_data_aggregates_counters_and_recent_events(stats_app):
 
     assert statistics["report_saved"]["total"] == 12
     # Daily rows outside the 90-day window are dropped.
-    assert statistics["report_saved"]["daily"] == [
-        {"date": recent_date, "count": 3}
-    ]
+    assert statistics["report_saved"]["daily"] == [{"date": recent_date, "count": 3}]
     # Users are sorted by descending count.
     assert statistics["report_saved"]["users"] == [
         {"username": "hmn39", "count": 8},

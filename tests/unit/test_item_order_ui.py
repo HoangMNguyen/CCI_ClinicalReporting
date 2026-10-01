@@ -7,7 +7,6 @@ from PySide6.QtCore import QItemSelectionModel
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -15,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from clinical_reporting.report import CLReport
+from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.ordering_tab import OrderRenameTabMixin
 
 
@@ -26,8 +26,8 @@ def qapp():
     return app
 
 
-class DummyOrderWidget(OrderRenameTabMixin):
-    """Minimal order/rename-tab host used to exercise the mixin."""
+class DummyOrderWidget(OrderRenameTabMixin, WidgetBaseMixin):
+    """Minimal Order & rename page host used to exercise the mixin."""
 
     def __init__(self, items, renames=None):
         self.report = CLReport()
@@ -92,10 +92,6 @@ def test_order_table_supports_extended_row_selection(qapp):
 
     assert table.selectionMode() == QAbstractItemView.ExtendedSelection
     assert table.selectionBehavior() == QAbstractItemView.SelectRows
-    assert (
-        table.horizontalHeader().sectionResizeMode(0)
-        == QHeaderView.ResizeMode.Stretch
-    )
 
 
 def test_search_counts_original_name_matches_and_selects_first(qapp):

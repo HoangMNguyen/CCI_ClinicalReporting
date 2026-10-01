@@ -1,12 +1,16 @@
-"""Additional input tab mixin for loading external files.
+"""Additional input page mixin for loading external files.
 
-This mixin wires the buttons on the "Additional input" tab to allow users
+This mixin wires the buttons on the "Additional input" page to allow users
 to load CSV/Excel files, manage the selected list, and rename forms/columns.
+Reading the files runs in the background (:func:`cci_ui.tasks.run_task`).
+The banner on the page says what applying did (the wording is in
+:mod:`clinical_reporting.steps`), which files couldn't be read, and which
+form names clash; after a new Corelisting ZIP it asks to apply the files
+again.
 """
 
 from __future__ import annotations
 
-import logging
 import os
 from pathlib import Path
 from typing import Dict, Set, Tuple
@@ -17,14 +21,15 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
     QListWidgetItem,
-    QMessageBox,
     QTableWidgetItem,
 )
 
+from cci_ui.tasks import defer_if_busy, run_task
+from clinical_reporting import feedback, steps
 from clinical_reporting.data import (
     build_additional_data_map,
-    load_tabular_file,
     strip_subject_prefix,
+    try_load_tabular_files,
 )
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.table_actions import (
@@ -32,14 +37,12 @@ from clinical_reporting.ui.table_actions import (
     copy_original_names_to_new_names,
 )
 
-logger = logging.getLogger(__name__)
-
 
 class AdditionalInputTabMixin:
-    """Behavior for the additional input tab."""
+    """Behavior for the Additional input page."""
 
     def _init_additional_input_tab(self) -> None:
-        """Attach handlers and prepare state for the additional input tab."""
+        """Attach handlers and prepare state for the Additional input page."""
         self.additional_inputs: Dict[str, pd.DataFrame] = {}
         self.additional_form_names: Dict[str, str] = {}
         self.additional_column_names: Dict[Tuple[str, str], str] = {}
@@ -49,17 +52,7 @@ class AdditionalInputTabMixin:
 
         add_button = getattr(self.ui, "pushButton_additional_file_add", None)
         remove_button = getattr(self.ui, "pushButton_additional_file_remove", None)
-        if remove_button is None:
-            remove_button = getattr(self.ui, "pushButton_additional_file_2", None)
-            if remove_button is not None:
-                self.ui.pushButton_additional_file_remove = remove_button
-        apply_button = getattr(self.ui, "pushButton_additional_file_add_2", None)
-
-        # Alias the generated table names to clearer attributes if needed.
-        if not hasattr(self.ui, "tableWidget_update_form_name"):
-            self.ui.tableWidget_update_form_name = getattr(self.ui, "tableWidget_2", None)
-        if not hasattr(self.ui, "tableWidget_update_column_name"):
-            self.ui.tableWidget_update_column_name = getattr(self.ui, "tableWidget_", None)
+        apply_button = getattr(self.ui, "pushButton_apply_additional_files", None)
 
         if add_button is not None:
             add_button.clicked.connect(self.click_add_additional_files)
@@ -69,7 +62,9 @@ class AdditionalInputTabMixin:
             apply_button.clicked.connect(self.click_apply_additional_forms)
 
         if hasattr(self.ui, "listWidget_additional_file"):
-            self.ui.listWidget_additional_file.itemSelectionChanged.connect(self._update_additional_buttons_state)
+            self.ui.listWidget_additional_file.itemSelectionChanged.connect(
+                self._update_additional_buttons_state
+            )
 
         form_table = getattr(self.ui, "tableWidget_update_form_name", None)
         column_table = getattr(self.ui, "tableWidget_update_column_name", None)
@@ -77,7 +72,9 @@ class AdditionalInputTabMixin:
             form_table.setSelectionBehavior(QAbstractItemView.SelectRows)
             form_table.setSelectionMode(QAbstractItemView.SingleSelection)
             form_table.itemChanged.connect(self._on_form_name_changed)
-            form_table.itemSelectionChanged.connect(self._on_form_table_selection_changed)
+            form_table.itemSelectionChanged.connect(
+                self._on_form_table_selection_changed
+            )
         if column_table is not None:
             column_table.setSelectionBehavior(QAbstractItemView.SelectRows)
             column_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -95,10 +92,11 @@ class AdditionalInputTabMixin:
 
     def click_add_additional_files(self) -> None:
         """Open a dialog and load user-selected additional input files."""
-        initial_dir = (
-            getattr(self, "_additional_input_directory", None)
-            or os.path.join(os.path.expanduser("~"), "Downloads")
-        )
+        if defer_if_busy(self, self.click_add_additional_files):
+            return
+        initial_dir = getattr(
+            self, "_additional_input_directory", None
+        ) or os.path.join(os.path.expanduser("~"), "Downloads")
         file_paths, _ = QFileDialog.getOpenFileNames(
             self,
             "Select Additional Input Files",
@@ -112,18 +110,50 @@ class AdditionalInputTabMixin:
             Path(file_paths[0]).expanduser().resolve().parent
         )
 
+        new_paths = []
         for file_path in file_paths:
             resolved_path = str(Path(file_path).expanduser().resolve())
-            if resolved_path in self.additional_inputs:
-                continue
-            try:
-                self.additional_inputs[resolved_path] = load_tabular_file(resolved_path)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("Failed to load additional input '%s'", file_path)
+            if (
+                resolved_path not in self.additional_inputs
+                and resolved_path not in new_paths
+            ):
+                new_paths.append(resolved_path)
+        if not new_paths:
+            return
 
+        run_task(
+            self,
+            try_load_tabular_files,
+            new_paths,
+            on_success=self._add_loaded_additional_files,
+            message="Reading additional files…",
+        )
+
+    def _add_loaded_additional_files(
+        self, result: Tuple[Dict[str, pd.DataFrame], Dict[str, str]]
+    ) -> None:
+        """List the files read by :meth:`click_add_additional_files`."""
+        loaded, failures = result
+        self.additional_inputs.update(loaded)
         self._refresh_additional_files_ui()
         self._refresh_additional_tables()
         self._update_additional_buttons_state()
+        banner = self.ui.banner_additional
+        if failures:
+            names = [Path(path).name for path in failures]
+            reasons = [f"{Path(path).name}: {why}" for path, why in failures.items()]
+            # One line on the page (it doesn't scroll); the reasons per file
+            # are behind "Show details".
+            problem = feedback.warning(
+                f"These files could not be read and were not added: "
+                f"{feedback.short_list(names)}.",
+                "\n".join(reasons),
+            )
+            self._set_label_text(banner, problem)
+        elif banner.text() and banner.kind() == "warning":
+            # What went wrong before (unreadable files, nothing to apply, a
+            # name clash) is old news; a result or the "apply again" hint isn't.
+            self._set_label_text(banner, "")
 
     def click_remove_additional_files(self) -> None:
         """Remove selected additional input files from the list."""
@@ -146,7 +176,9 @@ class AdditionalInputTabMixin:
         if removed_paths:
             # Drop any column rename entries tied to removed files.
             self.additional_column_names = {
-                key: val for key, val in self.additional_column_names.items() if key[0] not in removed_paths
+                key: val
+                for key, val in self.additional_column_names.items()
+                if key[0] not in removed_paths
             }
 
         self._refresh_additional_tables()
@@ -227,7 +259,9 @@ class AdditionalInputTabMixin:
             item_new_column.setData(Qt.UserRole, (file_path, column_name))
             table.setItem(row_index, 0, item_new_column)
 
-            updated_column_name = self.additional_column_names.get((file_path, column_name), "")
+            updated_column_name = self.additional_column_names.get(
+                (file_path, column_name), ""
+            )
             item_updated = QTableWidgetItem(updated_column_name)
             item_updated.setData(Qt.UserRole, (file_path, column_name))
             table.setItem(row_index, 1, item_updated)
@@ -326,6 +360,19 @@ class AdditionalInputTabMixin:
     # ------------------------------------------------------------------
     # Report integration
 
+    def _forget_applied_additional_forms(self) -> None:
+        """Note that the report no longer has the applied additional forms.
+
+        (A new Corelisting ZIP starts a new report.) The files stay listed;
+        the banner says to apply them again.
+        """
+        if self._additional_form_keys:
+            self._set_label_text(
+                self.ui.banner_additional, steps.APPLY_ADDITIONAL_AGAIN
+            )
+        self._additional_form_keys = set()
+        self._additional_input_signature = {}
+
     def _build_additional_data_map(self) -> Dict[str, pd.DataFrame]:
         """Construct a dict of form_name -> dataframe with applied renames.
 
@@ -339,7 +386,9 @@ class AdditionalInputTabMixin:
         )
 
     @staticmethod
-    def _build_additional_input_signature(data_map: Dict[str, pd.DataFrame]) -> Dict[str, Tuple[str, ...]]:
+    def _build_additional_input_signature(
+        data_map: Dict[str, pd.DataFrame],
+    ) -> Dict[str, Tuple[str, ...]]:
         """Summarize additional inputs by form name and column names."""
         signature: Dict[str, Tuple[str, ...]] = {}
         for form_name, df in data_map.items():
@@ -350,12 +399,14 @@ class AdditionalInputTabMixin:
         """Return a mapping of file path -> form name for additional inputs."""
         form_names = {}
         for file_path in self.additional_inputs:
-            form_name = self.additional_form_names.get(file_path) or Path(file_path).name
+            form_name = (
+                self.additional_form_names.get(file_path) or Path(file_path).name
+            )
             form_names[file_path] = form_name
         return form_names
 
     def _warn_on_additional_form_conflicts(self, existing_forms: Set[str]) -> bool:
-        """Warn when additional forms would overwrite existing form names."""
+        """Say (in the banner) if additional forms' names clash; True if they do."""
         name_map = self._collect_additional_form_names()
         if not name_map:
             return False
@@ -365,29 +416,51 @@ class AdditionalInputTabMixin:
         for file_path, form_name in name_map.items():
             name_to_paths.setdefault(form_name, []).append(file_path)
 
-        duplicates = {form_name: paths for form_name, paths in name_to_paths.items() if len(paths) > 1}
-        conflicts = {form_name: paths for form_name, paths in name_to_paths.items() if form_name in existing_forms}
+        duplicates = {
+            form_name: paths
+            for form_name, paths in name_to_paths.items()
+            if len(paths) > 1
+        }
+        conflicts = {
+            form_name: paths
+            for form_name, paths in name_to_paths.items()
+            if form_name in existing_forms
+        }
 
         if not dotted_names and not duplicates and not conflicts:
             return False
 
-        message_parts = ["Cannot add forms because some form names are invalid or conflict with existing data."]
+        clashing = sorted(set(dotted_names) | set(duplicates) | set(conflicts))
+        message_parts = [
+            "Cannot add forms because some form names are invalid or conflict "
+            "with existing data."
+        ]
         if dotted_names:
             message_parts.append("Form names cannot include '.':")
             message_parts.append("  - " + ", ".join(dotted_names))
         if duplicates:
             message_parts.append("Duplicate names in additional forms:")
             for form_name in sorted(duplicates):
-                file_list = ", ".join(sorted(Path(path).name for path in duplicates[form_name]))
+                file_list = ", ".join(
+                    sorted(Path(path).name for path in duplicates[form_name])
+                )
                 message_parts.append(f"  - {form_name}: {file_list}")
         if conflicts:
             message_parts.append("Conflicts with existing report forms:")
             for form_name in sorted(conflicts):
-                file_list = ", ".join(sorted(Path(path).name for path in conflicts[form_name]))
+                file_list = ", ".join(
+                    sorted(Path(path).name for path in conflicts[form_name])
+                )
                 message_parts.append(f"  - {form_name}: {file_list}")
-        message_parts.append("Rename the forms in the table and try again.")
 
-        QMessageBox.warning(self, "Form Name Conflict", "\n".join(message_parts))
+        # One line on the page (it doesn't scroll); the reasons per file are
+        # behind "Show details".
+        conflict = feedback.warning(
+            f"These form names can't be used: {feedback.short_list(clashing)}. "
+            "Rename them in the table and try again.",
+            "\n".join(message_parts),
+        )
+        self._set_label_text(self.ui.banner_additional, conflict)
         return True
 
     def _apply_additional_inputs_to_report(self) -> None:
@@ -411,6 +484,12 @@ class AdditionalInputTabMixin:
             return
 
         additional_data = self._build_additional_data_map()
+        if not additional_data and not self._additional_form_keys:
+            self._set_label_text(
+                self.ui.banner_additional,
+                steps.ADD_FILES_FIRST,
+            )
+            return
         new_signature = self._build_additional_input_signature(additional_data)
         signature_changed = new_signature != previous_signature
 
@@ -419,6 +498,10 @@ class AdditionalInputTabMixin:
         self.report.set_data(combined_data)
         self._additional_form_keys = set(additional_data.keys())
         self._additional_input_signature = new_signature
+        self._set_label_text(
+            self.ui.banner_additional,
+            steps.additional_applied_message(additional_data),
+        )
 
         if (
             signature_changed

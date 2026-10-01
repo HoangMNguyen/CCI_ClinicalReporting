@@ -9,6 +9,7 @@ fakes, so no Qt event loop / display is required.
 import pandas as pd
 
 from clinical_reporting.report import CLReport
+from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.filters_tab import FiltersTabMixin
 
 
@@ -67,7 +68,7 @@ class _UI:
     pass
 
 
-class _FilterWidget(FiltersTabMixin):
+class _FilterWidget(FiltersTabMixin, WidgetBaseMixin):
     """Minimal stand-in exercising the mixin's sync logic without Qt widgets."""
 
     def __init__(self, report, *, static_rows=None, dynamic_rows=None):

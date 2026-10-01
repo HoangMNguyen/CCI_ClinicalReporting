@@ -1,4 +1,4 @@
-"""Form, common-item, and per-form-item selection tabs.
+"""Form, common-item, and per-form-item selection pages.
 
 The three mixins here are the same dual-list picker pattern applied to
 three collections: whole forms, common items shared across forms, and the
@@ -14,18 +14,14 @@ from PySide6.QtWidgets import QListWidgetItem
 
 
 class FormsTabMixin:
-    """Behavior for the form selection tab."""
+    """Behavior for the Forms page."""
 
     def _init_form_tab(self) -> None:
         """Attach handlers used to manage form selection widgets."""
         self.ui.pushButton_select_form.clicked.connect(self.click_select_form)
         self.ui.pushButton_remove_form.clicked.connect(self.click_remove_form)
-        self.ui.pushButton_select_all_form.clicked.connect(
-            self.click_select_all_form
-        )
-        self.ui.pushButton_remove_all_form.clicked.connect(
-            self.click_remove_all_form
-        )
+        self.ui.pushButton_select_all_form.clicked.connect(self.click_select_all_form)
+        self.ui.pushButton_remove_all_form.clicked.connect(self.click_remove_all_form)
 
         self.ui.listWidget_form_available.itemDoubleClicked.connect(
             self.on_form_available_double_clicked
@@ -51,9 +47,7 @@ class FormsTabMixin:
     def add_listWidget_form_available(self) -> None:
         """Populate the available forms list widget."""
         self.ui.listWidget_form_available.clear()
-        pattern = self._compile_search_pattern(
-            self.ui.lineEdit_form_search.text()
-        )
+        pattern = self._compile_search_pattern(self.ui.lineEdit_form_search.text())
         available_forms = sorted(self.report.get_available_forms_list())
         for form in available_forms:
             if pattern is not None and not pattern.search(form):
@@ -101,10 +95,10 @@ class FormsTabMixin:
 
 
 class CommonItemsTabMixin:
-    """Behavior for the common items tab."""
+    """Behavior for the Common items page."""
 
     def _init_common_items_tab(self) -> None:
-        """Connect signals for the common items tab."""
+        """Connect signals for the Common items page."""
         self.ui.pushButton_select_common_item.clicked.connect(
             self.click_select_common_item
         )
@@ -183,7 +177,7 @@ class CommonItemsTabMixin:
 
 
 class FormItemsTabMixin:
-    """Behavior for the per-form items tab.
+    """Behavior for the Form items page.
 
     Mirrors the common-item behavior but keeps the form name prefix to
     disambiguate items originating from different forms.
@@ -191,12 +185,8 @@ class FormItemsTabMixin:
 
     def _init_form_items_tab(self) -> None:
         """Connect signals for selecting items that belong to specific forms."""
-        self.ui.pushButton_select_form_item.clicked.connect(
-            self.click_select_form_item
-        )
-        self.ui.pushButton_remove_form_item.clicked.connect(
-            self.click_remove_form_item
-        )
+        self.ui.pushButton_select_form_item.clicked.connect(self.click_select_form_item)
+        self.ui.pushButton_remove_form_item.clicked.connect(self.click_remove_form_item)
         self.ui.pushButton_select_all_form_item.clicked.connect(
             self.click_select_all_form_item
         )
@@ -226,13 +216,13 @@ class FormItemsTabMixin:
         if not selected_forms:
             return
 
-        pattern = self._compile_search_pattern(
-            self.ui.lineEdit_form_item_search.text()
-        )
+        pattern = self._compile_search_pattern(self.ui.lineEdit_form_item_search.text())
         available_entries = []
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
-                form_items = self.report.selected_forms[form_name].get_available_form_items()
+                form_items = self.report.selected_forms[
+                    form_name
+                ].get_available_form_items()
                 for item in form_items:
                     display_text = f"{form_name}.{item}"
                     if pattern is not None and not pattern.search(display_text):
@@ -255,7 +245,9 @@ class FormItemsTabMixin:
         combined_items = []
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
-                form_items = self.report.selected_forms[form_name].get_selected_form_items()
+                form_items = self.report.selected_forms[
+                    form_name
+                ].get_selected_form_items()
                 for item in form_items:
                     combined_items.append((f"{form_name}.{item}", form_name, item))
 

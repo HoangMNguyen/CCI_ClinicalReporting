@@ -1,0 +1,3 @@
+# Building the Windows executables (see "Building the executables" in README.md).
+-r requirements.txt
+pyinstaller>=6.19,<7
