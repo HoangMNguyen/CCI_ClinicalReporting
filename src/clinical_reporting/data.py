@@ -7,7 +7,7 @@ import os
 import re
 import zipfile
 from pathlib import Path
-from typing import BinaryIO, Dict, Iterable, Optional, Tuple, Union
+from typing import BinaryIO, Dict, Iterable, List, Optional, Tuple, Union
 
 import pandas as pd
 
@@ -175,6 +175,22 @@ def strip_subject_prefix(value):
     return value
 
 
+def is_named_column(column) -> bool:
+    """Whether an additional input column has a header of its own.
+
+    Blank headers don't, nor does any header starting with "unnamed" in any
+    case (pandas names blank Excel/CSV headers "Unnamed: 0" and so on). Such
+    columns are dropped and can't be renamed.
+    """
+    text = str(column)
+    return bool(text) and not text.lower().startswith("unnamed")
+
+
+def named_columns(df: pd.DataFrame) -> List[str]:
+    """The headers of *df*'s named columns (see :func:`is_named_column`)."""
+    return [str(column) for column in df.columns if is_named_column(column)]
+
+
 def build_additional_data_map(
     additional_inputs: Dict[str, pd.DataFrame],
     form_names: Dict[str, str],
@@ -189,10 +205,10 @@ def build_additional_data_map(
         rename_map = {}
 
         for column in df_clean.columns:
-            column_str = str(column)
-            if not column_str or column_str.lower().startswith("unnamed"):
+            if not is_named_column(column):
                 drop_cols.append(column)
                 continue
+            column_str = str(column)
             updated_name = column_names.get((file_path, column_str))
             if updated_name and updated_name != column:
                 rename_map[column] = updated_name
@@ -211,8 +227,10 @@ def build_additional_data_map(
 
 __all__ = [
     "build_additional_data_map",
+    "is_named_column",
     "load_additional_inputs",
     "load_tabular_file",
+    "named_columns",
     "parse_study_name",
     "read_data_dict_zip_corelisting",
     "strip_subject_prefix",
