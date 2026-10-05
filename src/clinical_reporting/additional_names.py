@@ -22,7 +22,9 @@ setting still holds no local paths and works on any machine. ``columns``
 keeps the file's original headers, so a file saved under one name and
 exported next time under another (a dated export, say) can still be
 recognised: :func:`match` pairs listed files with entries by file name
-first, then by the same column headers.
+first, then by the same column headers. An entry's column names for headers
+a file doesn't have can't be used, unless another of its columns already
+ends up with that name; :func:`ignored_names` lists them.
 
 The key is optional. Settings saved before it existed have none, and
 :func:`from_settings` then finds no entries; versions that predate it
@@ -88,14 +90,23 @@ class Match(NamedTuple):
     by: Optional[str] = None
 
 
+class IgnoredName(NamedTuple):
+    """A saved column name a listed file can't use (see :func:`ignored_names`)."""
+
+    #: The file's name, without its folder.
+    file_name: str
+    #: The saved original header the file doesn't have.
+    column: str
+    #: The name it was to get.
+    new_name: str
+
+
 class FileNames(NamedTuple):
     """The names a saved entry gives one file (see :func:`names_from`)."""
 
     form_name: str
     #: New column names for the columns the file has, keyed by header.
     column_names: Dict[str, str]
-    #: Renamed columns in the entry that the file doesn't have.
-    unmatched: List[str]
 
 
 def file_name_of(path: str) -> str:
@@ -278,8 +289,8 @@ def match(
 def names_from(entry: SavedFileNames, columns: Iterable[str]) -> FileNames:
     """The names *entry* gives a file with these column headers.
 
-    Column names for headers the file doesn't have are left out and listed
-    in :attr:`FileNames.unmatched`.
+    Column names for headers the file doesn't have are left out (see
+    :func:`ignored_names`).
     """
     present = set(columns)
     renames = {
@@ -287,14 +298,38 @@ def names_from(entry: SavedFileNames, columns: Iterable[str]) -> FileNames:
         for column, new_name in entry.column_names.items()
         if column in present
     }
-    unmatched = [column for column in entry.column_names if column not in present]
-    return FileNames(entry.form_name, renames, unmatched)
+    return FileNames(entry.form_name, renames)
+
+
+def ignored_names(
+    entry: SavedFileNames,
+    path: str,
+    columns: Iterable[str],
+    column_names: Mapping[str, str],
+) -> List[IgnoredName]:
+    """The column names *entry* saved that the file at *path* can't use.
+
+    *columns* are the file's headers and *column_names* the new names it has
+    now, by header. A saved name is ignored when the file has no column with
+    its header, unless one of the file's columns already ends up with that
+    name (renamed by hand, say): then nothing is lost.
+    """
+    columns = list(columns)
+    present = set(columns)
+    names = {column_names.get(column) or column for column in columns}
+    file_name = file_name_of(path)
+    return [
+        IgnoredName(file_name, column, new_name)
+        for column, new_name in entry.column_names.items()
+        if column not in present and new_name not in names
+    ]
 
 
 __all__ = [
     "BY_COLUMNS",
     "BY_FILE_NAME",
     "FileNames",
+    "IgnoredName",
     "Match",
     "SETTINGS_KEY",
     "SavedFileNames",
@@ -302,6 +337,7 @@ __all__ = [
     "current_names",
     "file_name_of",
     "from_settings",
+    "ignored_names",
     "match",
     "names_from",
     "to_settings",

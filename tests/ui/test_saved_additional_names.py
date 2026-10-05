@@ -32,8 +32,8 @@ def _start_again(window):
     window._refresh_additional_tables()
 
 
-def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_path):
-    window = sample_window
+def _save_monthly_setting(window, tmp_path):
+    """Save "Monthly AE review", with LAB from lab_results.csv; its JSON."""
     first = str(tmp_path / "first" / "lab_results.csv")
     window.additional_inputs[first] = _lab_results()
     window.additional_form_names[first] = "LAB"
@@ -48,13 +48,23 @@ def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_pat
     window.ui.lineEdit_setting_name.setText("Monthly AE review")
     window.click_save_setting()
     (saved,) = (tmp_path / "settings").glob("*.json")
-    text = saved.read_text(encoding="utf-8")
+    return saved.read_text(encoding="utf-8")
 
+
+def _load_monthly_setting(window):
+    """A new run, starting from "Monthly AE review"."""
     _start_again(window)
     window.ui.checkBox_saved_setting.setChecked(True)
     combo = window.ui.comboBox_saved_setting
     combo.setCurrentIndex(combo.findText("Monthly AE review"))
     QApplication.processEvents()
+
+
+def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_path):
+    window = sample_window
+    text = _save_monthly_setting(window, tmp_path)
+
+    _load_monthly_setting(window)
     missing = window.ui.label_setting.text()
     still_to_add = window.ui.banner_saved_names.text()
     table = window.ui.tableWidget_update_form_name
@@ -100,6 +110,48 @@ def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_pat
 
     assert not table.cellWidget(0, SAVED_NAMES_COLUMN).isEnabled()
     assert window.additional_form_names == {again: "LAB"}
+
+
+def test_saved_names_a_new_export_cant_use_are_ignored_with_a_warning(
+    sample_window, tmp_path
+):
+    window = sample_window
+    _save_monthly_setting(window, tmp_path)
+    _load_monthly_setting(window)
+    dated = str(tmp_path / "second" / "lab_results.csv")
+    export = _lab_results().rename(columns={"Visit Dt": "Visit Date (dd)"})
+
+    window._add_loaded_additional_files(({dated: export}, {}))
+    standing = window.ui.banner_ignored_names.text()
+    window.click_apply_additional_forms()
+    QApplication.processEvents()
+    applied = window.ui.banner_additional.text()
+    missing = window.ui.label_setting.text()
+    columns = window.ui.tableWidget_update_column_name
+    rows = [columns.item(row, 0).text() for row in range(columns.rowCount())]
+    columns.item(rows.index("Visit Date (dd)"), 1).setText("Visit Date")
+    fixed = window.ui.banner_ignored_names.text()
+    window.click_apply_additional_forms()
+    QApplication.processEvents()
+
+    assert standing.kind == "warning"
+    assert "lab_results.csv has no Visit Dt." in standing
+    assert "the form still applies" in standing
+    # The form is added all the same; the setting misses the item it lacks.
+    assert "LAB" in window.report.data
+    assert applied.kind == "warning"
+    assert applied == (
+        "1 file applied. New forms: LAB. Saved column names ignored: "
+        "lab_results.csv has no Visit Dt."
+    )
+    assert missing == "Missing items in LAB: Visit Date"
+    # Renamed by hand, the column is back, and so is the setting's item.
+    assert fixed == ""
+    assert window.ui.banner_additional.text().kind == "success"
+    assert window.ui.label_setting.text() == ""
+    assert window.report.selected_forms["LAB"].get_selected_form_items() == [
+        "Visit Date"
+    ]
 
 
 def test_removing_the_zip_takes_the_saved_names_away(sample_window, tmp_path):
