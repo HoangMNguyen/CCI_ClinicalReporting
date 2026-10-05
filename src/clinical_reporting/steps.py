@@ -35,6 +35,7 @@ from clinical_reporting import feedback, report_columns
 from clinical_reporting.additional_names import (
     BY_COLUMNS,
     BY_FILE_NAME,
+    IgnoredName,
     SavedFileNames,
 )
 from clinical_reporting.models import qualify
@@ -318,14 +319,25 @@ def joins_message(report) -> Optional[feedback.Message]:
     return None
 
 
-def additional_applied_message(forms: Collection[str]) -> feedback.Message:
-    """What applying the additional files did: the forms added (one per file)."""
+def additional_applied_message(
+    forms: Collection[str], ignored: Sequence[IgnoredName] = ()
+) -> feedback.Message:
+    """What applying the additional files did: the forms added (one per file).
+
+    *ignored* are saved column names the files couldn't use (see
+    :func:`clinical_reporting.additional_names.ignored_names`). They make
+    the message a warning, though the forms were added all the same.
+    """
     if not forms:
         return feedback.success("The additional forms were removed from the report.")
     added = ", ".join(sorted(forms))
-    return feedback.success(
-        f"{_plural(len(forms), 'file')} applied. New forms: {added}."
-    )
+    text = f"{_plural(len(forms), 'file')} applied. New forms: {added}."
+    if ignored:
+        return feedback.warning(
+            f"{text} Saved column names ignored: {_lacking(ignored)}.",
+            _ignored_details(ignored),
+        )
+    return feedback.success(text)
 
 
 _MATCHED_BY = {BY_FILE_NAME: "by its file name", BY_COLUMNS: "by its columns"}
@@ -336,6 +348,41 @@ def _and_list(names: Sequence[str]) -> str:
     if len(names) <= 1:
         return "".join(names)
     return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _or_list(names: Sequence[str], shown: int = 5) -> str:
+    """*names* as alternatives: "a", "a or b", "a, b or c", "…, e or 3 more"."""
+    names = list(names)
+    if len(names) > shown:
+        names = [*names[:shown], f"{len(names) - shown} more"]
+    if len(names) <= 1:
+        return "".join(names)
+    return f"{', '.join(names[:-1])} or {names[-1]}"
+
+
+def _lacking(ignored: Sequence[IgnoredName], shown: int = 3) -> str:
+    """The columns *ignored* names were saved for, by file.
+
+    For example "lab.csv has no Visit Dt or ALT; pk.csv has no Conc", at
+    most *shown* files of them.
+    """
+    # Files listed from two folders share a name; say each column once.
+    by_file: Dict[str, Dict[str, None]] = {}
+    for name in ignored:
+        by_file.setdefault(name.file_name, {})[name.column] = None
+    parts = [
+        f"{file_name} has no {_or_list(list(columns))}"
+        for file_name, columns in by_file.items()
+    ]
+    if len(parts) > shown:
+        parts = [*parts[:shown], f"and {_plural(len(parts) - shown, 'more file')}"]
+    return "; ".join(parts)
+
+
+def _ignored_details(ignored: Sequence[IgnoredName]) -> str:
+    """One line per ignored name: "lab.csv: Visit Dt → Visit Date"."""
+    lines = (f"{name.file_name}: {name.column} → {name.new_name}" for name in ignored)
+    return "\n".join(dict.fromkeys(lines))
 
 
 def saved_names_label(entry: SavedFileNames) -> str:
@@ -393,12 +440,13 @@ def saved_names_tip(
 def saved_names_filled_message(
     setting_name: str,
     picks: Sequence[Tuple[str, Optional[str]]],
-    unmatched: Optional[Mapping[str, Sequence[str]]] = None,
+    ignored: Sequence[IgnoredName] = (),
 ) -> feedback.Message:
     """What picking a loaded setting's saved names for the listed files did.
 
-    *picks* are ``(file name, how it was matched)`` pairs; *unmatched* maps
-    a file name to saved column names that file doesn't have, which makes
+    *picks* are ``(file name, how it was matched)`` pairs. *ignored* are
+    saved column names the files can't use (see
+    :func:`clinical_reporting.additional_names.ignored_names`), which make
     the message a warning.
     """
     parts = [f"{name} {_MATCHED_BY.get(by, '')}".rstrip() for name, by in picks]
@@ -406,39 +454,36 @@ def saved_names_filled_message(
         f"Saved names from “{setting_name}” picked for "
         f"{_plural(len(picks), 'file')}: {feedback.short_list(parts)}."
     )
-    if unmatched:
-        missing = [
-            f"{name}: {', '.join(columns)}" for name, columns in unmatched.items()
-        ]
+    if ignored:
         return feedback.warning(
-            f"{text} Some saved column names aren't in "
-            f"{feedback.short_list(list(unmatched))}. Check them, then Apply to "
-            "report.",
-            "\n".join(missing),
+            f"{text} Some saved column names can't be used and will be ignored: "
+            f"{_lacking(ignored)}. Check them, then Apply to report.",
+            _ignored_details(ignored),
         )
     details = "\n".join(parts) if len(parts) > 5 else None
     return feedback.info(f"{text} Check them, then Apply to report.", details)
 
 
 def saved_names_picked_message(
-    entry: SavedFileNames, file_name: str, unmatched: Sequence[str]
+    entry: SavedFileNames, file_name: str, ignored: Sequence[IgnoredName] = ()
 ) -> feedback.Message:
     """What picking *entry* in *file_name*'s Saved names dropdown did.
 
-    A warning when some of the entry's renamed columns aren't in the file
-    (*unmatched*).
+    A warning when the file can't use some of the entry's column names
+    (*ignored*).
     """
     name = saved_names_label(entry)
-    if unmatched:
+    if ignored:
         count = (
-            "1 saved column name has"
-            if len(unmatched) == 1
-            else f"{len(unmatched):,} saved column names have"
+            "1 saved column name"
+            if len(ignored) == 1
+            else f"{len(ignored):,} saved column names"
         )
         return feedback.warning(
-            f"{name}: {count} no matching column in {file_name}: "
-            f"{feedback.short_list(unmatched)}.",
-            "\n".join(unmatched) if len(unmatched) > 5 else None,
+            f"Names from {name} filled in for {file_name}. {count} can't be "
+            f"used and will be ignored: {_lacking(ignored)}. Check them, then "
+            "Apply to report.",
+            _ignored_details(ignored),
         )
     return feedback.info(
         f"Names from {name} filled in for {file_name}. Check them, then Apply "
@@ -459,6 +504,27 @@ def saved_names_missing_message(
         "Add them, and their saved names will be picked for you, or pick them in "
         "Saved names for files already added.",
         "\n".join(names) if len(names) > 5 else None,
+    )
+
+
+def saved_names_ignored_message(ignored: Sequence[IgnoredName]) -> feedback.Message:
+    """The saved column names the listed files can't use (*ignored*).
+
+    A standing warning: applying still adds the forms, without those names.
+    """
+    if len({(name.file_name, name.column) for name in ignored}) == 1:
+        names, they, them = "A saved column name", "It's", "it"
+    else:
+        names, they, them = "Some saved column names", "They're", "them"
+    forms = (
+        "the form still applies"
+        if len({name.file_name for name in ignored}) == 1
+        else "the forms still apply"
+    )
+    return feedback.warning(
+        f"{names} can't be used: {_lacking(ignored)}. {they} ignored; {forms} "
+        f"without {them}.",
+        _ignored_details(ignored),
     )
 
 
@@ -556,6 +622,7 @@ __all__ = [
     "saved_names_entry_tip",
     "saved_names_filled_message",
     "saved_names_hint",
+    "saved_names_ignored_message",
     "saved_names_kept_message",
     "saved_names_label",
     "saved_names_labels",

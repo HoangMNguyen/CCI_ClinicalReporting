@@ -294,7 +294,24 @@ def test_an_entry_gives_only_the_columns_the_file_has():
 
     assert given.form_name == "LAB"
     assert given.column_names == {"Subject ID": "Subject"}
-    assert given.unmatched == ["Visit Dt", "AST"]
+
+
+def test_names_a_file_cant_use_are_ignored_unless_it_has_their_column():
+    entry = _entry(
+        "lab.csv",
+        form_name="LAB",
+        column_names={"Subject ID": "Subject", "Visit Dt": "Visit Date", "AST": "AST"},
+    )
+    path = "C:/exports/2026-10/lab.csv"
+    columns = ["Subject ID", "Visit Date (dd)", "AST"]
+
+    as_picked = names.ignored_names(entry, path, columns, {"Subject ID": "Subject"})
+    fixed = names.ignored_names(entry, path, columns, {"Visit Date (dd)": "Visit Date"})
+    already = names.ignored_names(entry, path, ["Subject ID", "Visit Date"], {})
+
+    assert as_picked == [names.IgnoredName("lab.csv", "Visit Dt", "Visit Date")]
+    assert fixed == []
+    assert already == [names.IgnoredName("lab.csv", "AST", "AST")]
 
 
 def test_current_names_are_one_files_form_and_column_names():

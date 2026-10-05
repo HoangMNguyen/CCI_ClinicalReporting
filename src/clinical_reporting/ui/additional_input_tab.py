@@ -18,8 +18,10 @@ columns (and only when the match is unambiguous), get it picked and their
 names filled in, both when the setting is loaded and when files are added
 later; names the user typed are never replaced by a pick, nor cleared by
 picking None. A second banner, "Still to add", lists the setting's files
-that no listed file stands for yet. Nothing is applied until "Apply to
-report".
+that no listed file stands for yet. A third lists the picked names a file
+can't use: column names saved for headers it doesn't have. Applying never
+stops for those; it adds the forms without them, and its result says so.
+Nothing is applied until "Apply to report".
 """
 
 from __future__ import annotations
@@ -43,9 +45,11 @@ from cci_ui.tasks import defer_if_busy, run_task
 from clinical_reporting import feedback, steps
 from clinical_reporting.additional_names import (
     FileNames,
+    IgnoredName,
     Match,
     SavedFileNames,
     current_names,
+    ignored_names,
     match,
     names_from,
 )
@@ -100,6 +104,9 @@ class AdditionalInputTabMixin:
         # The forms the loaded setting selects (None: count every saved form).
         self._saved_names_forms: Optional[Set[str]] = None
         self._saved_names_message: Optional[feedback.Message] = None
+        # The last "Apply to report" result, which a later add keeps even
+        # when it is a warning.
+        self._additional_applied_message: Optional[feedback.Message] = None
 
         add_button = getattr(self.ui, "pushButton_additional_file_add", None)
         remove_button = getattr(self.ui, "pushButton_additional_file_remove", None)
@@ -204,7 +211,11 @@ class AdditionalInputTabMixin:
             self._set_label_text(banner, problem)
         elif picked is not None:
             self._show_saved_names_message(picked)
-        elif banner.text() and banner.kind() == "warning":
+        elif (
+            banner.text()
+            and banner.kind() == "warning"
+            and banner.text() != getattr(self, "_additional_applied_message", None)
+        ):
             # What went wrong before (unreadable files, nothing to apply, a
             # name clash) is old news; a result or the "apply again" hint isn't.
             self._set_label_text(banner, "")
@@ -258,7 +269,7 @@ class AdditionalInputTabMixin:
             widget.addItem(item)
 
     def _refresh_additional_tables(self) -> None:
-        """Refresh the form/column rename tables and the "Still to add" banner."""
+        """Refresh the form/column rename tables and the saved names banners."""
         self._populating_additional_tables = True
         try:
             self._populate_form_name_table()
@@ -266,7 +277,7 @@ class AdditionalInputTabMixin:
             self._populate_column_name_table()
         finally:
             self._populating_additional_tables = False
-        self._show_missing_saved_files()
+        self._show_saved_names_banners()
 
     def _populate_form_name_table(self) -> None:
         """Populate tableWidget_update_form_name with file names and editable form names."""
@@ -394,6 +405,8 @@ class AdditionalInputTabMixin:
             self.additional_column_names[key] = new_name
         else:
             self.additional_column_names.pop(key, None)
+        # A column renamed to a saved name stands in for the one it lacks.
+        self._show_ignored_saved_names()
 
     def copy_selected_new_column_names_to_updated(self) -> None:
         """Copy selected new-column values into their updated-name cells."""
@@ -406,6 +419,7 @@ class AdditionalInputTabMixin:
         copy_original_names_to_new_names(
             getattr(self.ui, "tableWidget_update_column_name", None), persist
         )
+        self._show_ignored_saved_names()
 
     def click_apply_additional_forms(self) -> None:
         """Apply the additional inputs to the report when requested."""
@@ -460,6 +474,11 @@ class AdditionalInputTabMixin:
             if index in picked or entry.file_name.casefold() in listed
         ]
 
+    def _show_saved_names_banners(self) -> None:
+        """Refresh the "Still to add" and ignored names banners."""
+        self._show_missing_saved_files()
+        self._show_ignored_saved_names()
+
     def _show_missing_saved_files(self) -> None:
         """List the loaded setting's files that aren't added yet.
 
@@ -482,6 +501,47 @@ class AdditionalInputTabMixin:
         self._set_label_text(
             banner,
             steps.saved_names_missing_message(setting_name, missing) if missing else "",
+        )
+
+    def _show_ignored_saved_names(self) -> None:
+        """List the picked names the listed files can't use, if any.
+
+        They stay listed until the files or their names change: another
+        pick or None, the file removed, a column renamed to the saved name,
+        or the setting forgotten.
+        """
+        banner = getattr(self.ui, "banner_ignored_names", None)
+        if banner is None:
+            return
+        ignored = self._ignored_saved_names()
+        self._set_label_text(
+            banner, steps.saved_names_ignored_message(ignored) if ignored else ""
+        )
+
+    def _ignored_saved_names(self) -> List[IgnoredName]:
+        """The picked names the listed files can't use, by file name.
+
+        Only a file with a pick has saved names; applying adds its form
+        without the column names saved for headers it doesn't have.
+        """
+        choices = getattr(self, "_saved_names_choice", {})
+        count = len(self._saved_names())
+        ignored: List[IgnoredName] = []
+        for path in sorted(
+            self.additional_inputs, key=lambda p: Path(p).name.casefold()
+        ):
+            choice = choices.get(path)
+            if choice is not None and choice.index < count:
+                ignored.extend(self._ignored_names_of(path, choice.index))
+        return ignored
+
+    def _ignored_names_of(self, file_path: str, index: int) -> List[IgnoredName]:
+        """The names saved entry *index* has that *file_path* can't use."""
+        return ignored_names(
+            self._saved_names()[index],
+            file_path,
+            self._file_columns(file_path),
+            self._current_names(file_path)[1],
         )
 
     def _saved_names_combo(
@@ -528,22 +588,27 @@ class AdditionalInputTabMixin:
             file_path, self.additional_form_names, self.additional_column_names
         )
 
+    def _file_columns(self, file_path: str) -> List[str]:
+        """*file_path*'s column headers (none if it isn't listed)."""
+        df = self.additional_inputs.get(file_path)
+        return named_columns(df) if df is not None else []
+
     def _names_from_entry(self, file_path: str, index: int) -> FileNames:
         """The names saved entry *index* gives *file_path*."""
-        df = self.additional_inputs.get(file_path)
-        columns = named_columns(df) if df is not None else []
-        return names_from(self._saved_names()[index], columns)
+        return names_from(self._saved_names()[index], self._file_columns(file_path))
 
     def _has_names_from(self, file_path: str, index: int) -> bool:
         """Whether *file_path*'s names are exactly what entry *index* gives."""
         names = self._names_from_entry(file_path, index)
         return self._current_names(file_path) == (names.form_name, names.column_names)
 
-    def _use_saved_names(self, file_path: str, index: Optional[int]) -> List[str]:
+    def _use_saved_names(
+        self, file_path: str, index: Optional[int]
+    ) -> List[IgnoredName]:
         """Give *file_path* the names of saved entry *index*, or none.
 
         Replaces the file's form and column names (``None`` clears them).
-        Returns the entry's renamed columns that the file doesn't have.
+        Returns the entry's names the file can't use.
         """
         self.additional_form_names.pop(file_path, None)
         self.additional_column_names = {
@@ -558,7 +623,7 @@ class AdditionalInputTabMixin:
             self.additional_form_names[file_path] = names.form_name
         for column, new_name in names.column_names.items():
             self.additional_column_names[(file_path, column)] = new_name
-        return names.unmatched
+        return self._ignored_names_of(file_path, index)
 
     def _fill_saved_names(
         self, found: Dict[str, Match], paths: Collection[str]
@@ -567,20 +632,17 @@ class AdditionalInputTabMixin:
 
         ``None`` when none of *paths* has a match.
         """
-        picks, unmatched = [], {}
+        picks, ignored = [], []
         for file_path in sorted(paths, key=lambda path: Path(path).name.casefold()):
             if file_path not in found:
                 continue
-            missing = self._use_saved_names(file_path, found[file_path].index)
+            ignored.extend(self._use_saved_names(file_path, found[file_path].index))
             self._saved_names_choice[file_path] = found[file_path]
-            file_name = Path(file_path).name
-            picks.append((file_name, found[file_path].by))
-            if missing:
-                unmatched[file_name] = missing
+            picks.append((Path(file_path).name, found[file_path].by))
         if not picks:
             return None
         return steps.saved_names_filled_message(
-            self._saved_names_setting, picks, unmatched
+            self._saved_names_setting, picks, ignored
         )
 
     def _listed_columns(self) -> Dict[str, List[str]]:
@@ -694,10 +756,10 @@ class AdditionalInputTabMixin:
         previous = self._saved_names_choice.get(file_path)
         file_name = Path(file_path).name
         if index is not None:
-            unmatched = self._use_saved_names(file_path, index)
+            ignored = self._use_saved_names(file_path, index)
             self._saved_names_choice[file_path] = Match(index)
             entry = self._saved_names()[index]
-            message = steps.saved_names_picked_message(entry, file_name, unmatched)
+            message = steps.saved_names_picked_message(entry, file_name, ignored)
         elif previous is None:
             return  # None again: nothing was picked, the names are the user's.
         else:
@@ -725,7 +787,7 @@ class AdditionalInputTabMixin:
             table.selectRow(row)
         # Selecting a row that was already selected refreshes nothing.
         self._populate_column_name_table()
-        self._show_missing_saved_files()
+        self._show_saved_names_banners()
         self._show_saved_names_message(message)
 
     def _form_table_row(self, file_path: str) -> int:
@@ -878,9 +940,12 @@ class AdditionalInputTabMixin:
         self.report.set_data(combined_data)
         self._additional_form_keys = set(additional_data.keys())
         self._additional_input_signature = new_signature
+        # The forms are added even when some picked names can't be used.
+        self._additional_applied_message = steps.additional_applied_message(
+            additional_data, self._ignored_saved_names()
+        )
         self._set_label_text(
-            self.ui.banner_additional,
-            steps.additional_applied_message(additional_data),
+            self.ui.banner_additional, self._additional_applied_message
         )
 
         if (

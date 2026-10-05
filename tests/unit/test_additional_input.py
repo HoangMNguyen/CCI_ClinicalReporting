@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 from tests.unit.fakes import FakeBanner
 
 from clinical_reporting import data, steps
-from clinical_reporting.additional_names import SavedFileNames
+from clinical_reporting.additional_names import Match, SavedFileNames
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import additional_input_tab as additional_input_module
 from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
@@ -408,6 +408,10 @@ class SavedNamesUiWidget(DummyAdditionalInputUiWidget):
         super().__init__()
         self.ui.tableWidget_update_form_name.setColumnCount(3)
         self.ui.banner_saved_names = FakeBanner()
+        self.ui.banner_ignored_names = FakeBanner()
+
+    def update_all_ui(self):
+        pass  # Applying refreshes the other pages, which aren't here.
 
     def add(self, *paths, frames=None):
         frames = frames or FRAMES
@@ -512,9 +516,12 @@ def test_picking_an_entry_fills_the_names_and_none_clears_them(qapp):
         [("Subject ID", "Subject"), ("Note Date", "")],
     )
     assert picked.kind == "warning"
-    assert (
-        picked == "PK: 1 saved column name has no matching column in notes.csv: Conc."
+    assert picked == (
+        "Names from PK filled in for notes.csv. 1 saved column name can't be used "
+        "and will be ignored: notes.csv has no Conc. Check them, then Apply to "
+        "report."
     )
+    assert picked.details == "notes.csv: Conc → CONC"
     assert widget.additional_form_names == {}
     assert widget.column_rows() == [("Subject ID", ""), ("Note Date", "")]
     assert widget.ui.banner_additional.value == "Saved names cleared for notes.csv."
@@ -720,6 +727,128 @@ def test_files_get_a_greyed_out_dropdown_without_saved_names(qapp):
         # The cell under the dropdown can't open a text editor.
         cell = table.item(widget._form_table_row(path), SAVED_NAMES_COLUMN)
         assert not cell.flags() & Qt.ItemIsEditable
+
+
+def test_names_a_file_cant_use_are_listed_until_it_can(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH, LAB_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    banner = widget.ui.banner_ignored_names
+    nothing_yet = banner.value  # lab_results.csv has all its saved columns.
+
+    widget.pick(NOTES_PATH, 2)  # PK's names, but notes.csv has no Conc.
+    listed = banner.value
+    columns = widget.ui.tableWidget_update_column_name
+    rows = [columns.item(row, 0).text() for row in range(columns.rowCount())]
+    note_date = columns.item(rows.index("Note Date"), 1)
+    note_date.setText("CONC")  # Renamed by hand: nothing is lost.
+    fixed = banner.value
+    note_date.setText("")
+    unfixed = banner.value
+    widget.pick(NOTES_PATH, 0)
+
+    assert nothing_yet == ""
+    assert listed == (
+        "A saved column name can't be used: notes.csv has no Conc. It's "
+        "ignored; the form still applies without it."
+    )
+    assert listed.kind == "warning"
+    assert listed.details == "notes.csv: Conc → CONC"
+    assert fixed == "" and unfixed == listed
+    assert banner.value == ""
+
+
+def test_the_names_a_file_cant_use_go_with_the_file_or_the_setting(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget.pick(NOTES_PATH, 1)  # LAB's names, but notes.csv has no Visit Dt.
+    listed = widget.ui.banner_ignored_names.value
+
+    widget._forget_saved_additional_names()
+    forgotten = widget.ui.banner_ignored_names.value
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget.pick(NOTES_PATH, 1)
+    widget.ui.listWidget_additional_file.item(0).setSelected(True)
+    widget.click_remove_additional_files()
+
+    assert listed.startswith(
+        "A saved column name can't be used: notes.csv has no Visit Dt."
+    )
+    assert forgotten == ""
+    assert widget.ui.banner_ignored_names.value == ""
+
+
+def test_picks_for_files_or_entries_that_are_gone_are_left_out(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+
+    widget._saved_names_choice["C:/exports/gone.csv"] = Match(1)
+    widget._saved_names_choice[NOTES_PATH] = Match(7)
+
+    assert widget._ignored_saved_names() == []
+
+
+def test_applying_adds_the_forms_and_says_which_names_were_ignored(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH, LAB_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget.pick(NOTES_PATH, 2)  # PK's names, but notes.csv has no Conc.
+
+    widget.click_apply_additional_forms()
+    applied = widget.ui.banner_additional.value
+    widget.add(PK_PATH)  # A later add leaves the result.
+
+    assert set(widget.report.data) == {"LAB", "PK"}
+    assert applied.kind == "warning"
+    assert applied == (
+        "2 files applied. New forms: LAB, PK. Saved column names ignored: "
+        "notes.csv has no Conc."
+    )
+    assert applied.details == "notes.csv: Conc → CONC"
+    assert widget.ui.banner_additional.value == applied
+    assert widget.ui.banner_ignored_names.value.startswith(
+        "A saved column name can't be used: notes.csv has no Conc."
+    )
+
+
+def test_a_later_add_still_clears_other_warnings_after_an_apply(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget.pick(NOTES_PATH, 2)
+    widget.click_apply_additional_forms()
+    widget.ui.banner_additional.setText(steps.ADD_FILES_FIRST)
+    other = "C:/exports/other.csv"
+
+    widget.add(other, frames={other: _frame("Other")})  # Nothing to pick.
+
+    assert widget.ui.banner_additional.value == ""
+
+
+def test_copying_original_names_back_can_lose_a_saved_name_again(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH)
+    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
+    widget.pick(NOTES_PATH, 2)  # PK's names, but notes.csv has no Conc.
+    columns = widget.ui.tableWidget_update_column_name
+    rows = [columns.item(row, 0).text() for row in range(columns.rowCount())]
+    note_date = rows.index("Note Date")
+    columns.item(note_date, 1).setText("CONC")  # Renamed by hand.
+    fixed = widget.ui.banner_ignored_names.value
+
+    columns.selectionModel().select(
+        columns.model().index(note_date, 0),
+        QItemSelectionModel.SelectionFlag.ClearAndSelect
+        | QItemSelectionModel.SelectionFlag.Rows,
+    )
+    widget.copy_selected_new_column_names_to_updated()  # Back to "Note Date".
+
+    assert fixed == ""
+    assert widget.ui.banner_ignored_names.value.startswith(
+        "A saved column name can't be used: notes.csv has no Conc."
+    )
 
 
 def test_a_two_column_form_table_still_gets_the_names(qapp):
