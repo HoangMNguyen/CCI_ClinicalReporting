@@ -25,8 +25,11 @@ python -m clinical_reporting
   separator. Additional inputs default to the file name and must be renamed
   to remove dots.
 - A saved setting also keeps the form and column names given to its
-  additional input files. Load it, and the Additional input page shows a
-  Saved names dropdown for each file you add.
+  additional input files. On the Additional input page, each file you add
+  has a Saved names dropdown: greyed out with None until you load a setting
+  that has such names (and again once it is forgotten, by a new ZIP for
+  example), then listing them by form name, or by file name for names that
+  only rename columns (hover an entry to see the file it was saved for).
   - A file with the same name (from any folder), or else the same column
     headers, gets its names picked and filled in, as long as the match is
     unambiguous.
@@ -38,6 +41,11 @@ python -m clinical_reporting
     that aren't added yet. When the setting is loaded, its "Missing forms"
     warning on Source data says which files to add, or which added files to
     check and apply.
+  - Saved column names a file can't use, because its export renamed or
+    dropped the column, are ignored and never stop Apply to report. The
+    message after the pick, a standing banner, and the Apply result list
+    them ("lab.csv has no Visit Dt"); renaming a column to the saved name
+    by hand clears them.
 - The steps sit in a sidebar with status badges. Reading the ZIP, building
   the preview, and exporting run in the background, and a ZIP or additional
   file that can't be read, or clashing form names, are explained on the page.
@@ -178,6 +186,7 @@ report.set_data({**base, **extra})
 from clinical_reporting.additional_names import (
     add_to_settings,
     from_settings,
+    ignored_names,
     match,
     names_from,
 )
@@ -191,7 +200,9 @@ next_inputs = load_additional_inputs(["2026-10/LABS.csv"])
 files = {path: named_columns(df) for path, df in next_inputs.items()}
 for path, found in match(saved, files).items():  # by file name, then columns
     given = names_from(saved[found.index], files[path])
-    # given.form_name, given.column_names ({original: new}), given.unmatched
+    # given.form_name, given.column_names ({original: new})
+    lost = ignored_names(saved[found.index], path, files[path], given.column_names)
+    # [IgnoredName(file_name, column, new_name)]: saved names it can't use
 
 # Export options
 write_csv(df, "report.csv")  # CSV on disk
