@@ -445,8 +445,8 @@ def test_loading_saved_names_picks_them_for_matching_files(qapp):
         (PK_PATH, "Subject ID"): "Subject",
         (PK_PATH, "Conc"): "CONC",
     }
-    assert widget.combo(LAB_PATH).currentText() == "LAB · lab_results.csv"
-    assert widget.combo(PK_PATH).currentText() == "PK · pk_conc.xlsx"
+    assert widget.combo(LAB_PATH).currentText() == "LAB"
+    assert widget.combo(PK_PATH).currentText() == "PK"
     assert widget.combo(NOTES_PATH).currentText() == steps.SAVED_NAMES_NONE
     assert "file name matches" in widget.combo(LAB_PATH).toolTip()
     assert "columns match" in widget.combo(PK_PATH).toolTip()
@@ -596,7 +596,7 @@ def test_another_setting_replaces_only_untouched_picks(qapp):
 
     assert widget.additional_form_names == {LAB_PATH: "LABS", PK_PATH: "PK_EDITED"}
     assert (LAB_PATH, "Subject ID") not in widget.additional_column_names
-    assert widget.combo(LAB_PATH).currentText() == "LABS · lab_results.csv"
+    assert widget.combo(LAB_PATH).currentText() == "LABS"
     assert widget.combo(PK_PATH).currentIndex() == 0
 
 
@@ -676,6 +676,34 @@ def test_a_pick_is_said_even_when_some_files_could_not_be_read(qapp):
     )
     assert widget.additional_form_names == {LAB_PATH: "LAB"}
     assert widget.combo(LAB_PATH).currentIndex() == 1
+
+
+def test_dropdown_entries_show_form_names_and_say_their_file(qapp):
+    widget = SavedNamesUiWidget()
+    widget.add(NOTES_PATH)
+    lab_copy = SavedFileNames("lab_old.csv", ("A",), "LAB", {})
+    column_only = SavedFileNames("extra.csv", ("A",), "", {"A": "B"})
+
+    widget._offer_saved_additional_names(
+        [*SAVED_NAMES, lab_copy, column_only], "Monthly AE review"
+    )
+
+    combo = widget.combo(NOTES_PATH)
+    assert [combo.itemText(i) for i in range(combo.count())] == [
+        steps.SAVED_NAMES_NONE,
+        "LAB (lab_results.csv)",
+        "PK",
+        "LAB (lab_old.csv)",
+        "extra.csv",
+    ]
+    tips = [combo.itemData(i, Qt.ItemDataRole.ToolTipRole) for i in range(5)]
+    assert tips == [
+        None,
+        "Saved for lab_results.csv",
+        "Saved for pk_conc.xlsx",
+        "Saved for lab_old.csv",
+        "Saved for extra.csv",
+    ]
 
 
 def test_files_get_a_greyed_out_dropdown_without_saved_names(qapp):

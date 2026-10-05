@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from clinical_reporting import steps, validation
+from clinical_reporting.additional_names import SavedFileNames
 from clinical_reporting.models import JoinHow
 from clinical_reporting.report import CLReport
 from clinical_reporting.steps import StepStatus
@@ -173,6 +174,31 @@ def test_the_additional_input_step_says_what_applying_did():
     assert removed.kind == "success" and "removed" in removed
     assert steps.ADD_FILES_FIRST.kind == "warning"
     assert steps.APPLY_ADDITIONAL_AGAIN.kind == "info"
+
+
+def test_saved_names_entries_read_as_their_form_names():
+    lab = SavedFileNames("lab_results.csv", (), "LAB", {})
+    old_lab = SavedFileNames("lab_old.csv", (), "LAB", {})
+    columns_only = SavedFileNames("extra.csv", (), "", {"A": "B"})
+    twin = SavedFileNames("extra.csv", (), "", {"C": "D"})
+
+    assert steps.saved_names_label(lab) == "LAB"
+    assert steps.saved_names_label(columns_only) == "extra.csv"
+    assert steps.saved_names_labels([lab, columns_only]) == ["LAB", "extra.csv"]
+    assert steps.saved_names_labels([lab, old_lab, columns_only, twin]) == [
+        "LAB (lab_results.csv)",
+        "LAB (lab_old.csv)",
+        "extra.csv",
+        "extra.csv",
+    ]
+    # A form name that is another entry's file name: only the form name gets
+    # the file name added.
+    named_like_a_file = SavedFileNames("x.csv", (), "extra.csv", {})
+    assert steps.saved_names_labels([named_like_a_file, columns_only]) == [
+        "extra.csv (x.csv)",
+        "extra.csv",
+    ]
+    assert steps.saved_names_entry_tip(lab) == "Saved for lab_results.csv"
 
 
 def test_the_preview_caption_says_its_size():
