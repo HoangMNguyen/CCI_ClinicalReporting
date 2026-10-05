@@ -193,3 +193,8 @@ samconfig.toml
 
 # Copied AWS CLI login session (never commit)
 /.aws/
+
+# Local Claude Code scratch: visual drafts and agent worktrees. The shared
+# .claude/settings.json stays tracked.
+/.claude/drafts/
+/.claude/worktrees/
