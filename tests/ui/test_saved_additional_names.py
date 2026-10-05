@@ -3,8 +3,9 @@
 import json
 
 import pandas as pd
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QHeaderView
 
+from clinical_reporting import steps
 from clinical_reporting.additional_names import SETTINGS_KEY, SavedFileNames
 from clinical_reporting.ui.pages.additional_input import SAVED_NAMES_COLUMN
 from clinical_reporting.ui.sample_data import STUDY, sample_forms
@@ -57,11 +58,11 @@ def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_pat
     missing = window.ui.label_setting.text()
     still_to_add = window.ui.banner_saved_names.text()
     table = window.ui.tableWidget_update_form_name
-    column_shown = not table.isColumnHidden(SAVED_NAMES_COLUMN)
 
     again = str(tmp_path / "second" / "LAB_RESULTS.csv")
     window._add_loaded_additional_files(({again: _lab_results()}, {}))
-    dropdown = table.cellWidget(0, SAVED_NAMES_COLUMN).currentText()
+    picker = table.cellWidget(0, SAVED_NAMES_COLUMN)
+    dropdown = (picker.isEnabled(), picker.currentText())
     all_added = window.ui.banner_saved_names.text()
     names = (dict(window.additional_form_names), dict(window.additional_column_names))
     window.click_apply_additional_forms()
@@ -82,8 +83,7 @@ def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_pat
         "Still to add for “Monthly AE review”: lab_results.csv (LAB)."
     )
     assert all_added == ""
-    assert column_shown
-    assert dropdown == "LAB · lab_results.csv"
+    assert dropdown == (True, "LAB · lab_results.csv")
     assert names == (
         {again: "LAB"},
         {(again, "Subject ID"): "Subject", (again, "Visit Dt"): "Visit Date"},
@@ -98,7 +98,7 @@ def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_pat
 
     window.ui.checkBox_saved_setting.setChecked(False)
 
-    assert table.isColumnHidden(SAVED_NAMES_COLUMN)
+    assert not table.cellWidget(0, SAVED_NAMES_COLUMN).isEnabled()
     assert window.additional_form_names == {again: "LAB"}
 
 
@@ -110,18 +110,33 @@ def test_removing_the_zip_takes_the_saved_names_away(sample_window, tmp_path):
         [SavedFileNames("lab_results.csv", (), "LAB", {})], "Monthly AE review"
     )
     table = window.ui.tableWidget_update_form_name
-    shown = not table.isColumnHidden(SAVED_NAMES_COLUMN)
+    offered = table.cellWidget(0, SAVED_NAMES_COLUMN).isEnabled()
 
     window.click_remove_input()
 
-    assert shown and table.isColumnHidden(SAVED_NAMES_COLUMN)
+    assert offered and not table.cellWidget(0, SAVED_NAMES_COLUMN).isEnabled()
     assert window.additional_form_names == {lab: "LAB"}
     assert window.ui.banner_saved_names.text() == ""
 
 
-def test_the_saved_names_column_is_hidden_without_a_setting(empty_window):
-    table = empty_window.ui.tableWidget_update_form_name
+def test_the_saved_names_column_shows_without_a_setting(empty_window):
+    window = empty_window
+    table = window.ui.tableWidget_update_form_name
+    header = table.horizontalHeader()
+    lab = "C:/exports/lab_results.csv"
+
+    window._add_loaded_additional_files(({lab: _lab_results()}, {}))
+    picker = table.cellWidget(0, SAVED_NAMES_COLUMN)
 
     assert table.columnCount() == 3
     assert table.horizontalHeaderItem(SAVED_NAMES_COLUMN).text() == "Saved names"
-    assert table.isColumnHidden(SAVED_NAMES_COLUMN)
+    assert not table.isColumnHidden(SAVED_NAMES_COLUMN)
+    assert [header.sectionResizeMode(column) for column in range(3)] == [
+        QHeaderView.ResizeMode.Stretch,
+        QHeaderView.ResizeMode.Interactive,
+        QHeaderView.ResizeMode.Interactive,
+    ]
+    assert (header.sectionSize(1), header.sectionSize(2)) == (110, 130)
+    assert not picker.isEnabled()
+    assert picker.currentText() == steps.SAVED_NAMES_NONE
+    assert picker.toolTip() == steps.SAVED_NAMES_UNAVAILABLE_TIP

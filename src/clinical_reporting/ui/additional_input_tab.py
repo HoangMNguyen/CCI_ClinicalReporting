@@ -9,14 +9,15 @@ form names clash; after a new Corelisting ZIP it asks to apply the files
 again.
 
 A saved setting keeps the form and column names given to its additional
-files (:mod:`clinical_reporting.additional_names`). While a loaded setting
-has such names, the Form names table shows a Saved names dropdown for each
-file. Files that match an entry, by file name or else by columns (and only
-when the match is unambiguous), get it picked and their names filled in,
-both when the setting is loaded and when files are added later; names the
-user typed are never replaced by a pick, nor cleared by picking None. A
-second banner, "Still to add", lists the setting's files that no listed
-file stands for yet. Nothing is applied until "Apply to report".
+files (:mod:`clinical_reporting.additional_names`). The Form names table
+has a Saved names dropdown for each file: greyed out with only None until a
+loaded setting has such names, then listing them. Files that match an
+entry, by file name or else by columns (and only when the match is
+unambiguous), get it picked and their names filled in, both when the
+setting is loaded and when files are added later; names the user typed are
+never replaced by a pick, nor cleared by picking None. A second banner,
+"Still to add", lists the setting's files that no listed file stands for
+yet. Nothing is applied until "Apply to report".
 """
 
 from __future__ import annotations
@@ -37,7 +38,6 @@ from PySide6.QtWidgets import (
 )
 
 from cci_ui.tasks import defer_if_busy, run_task
-from cci_ui.widgets.tables import configure_columns
 from clinical_reporting import feedback, steps
 from clinical_reporting.additional_names import (
     FileNames,
@@ -54,11 +54,7 @@ from clinical_reporting.data import (
     try_load_tabular_files,
 )
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui.pages.additional_input import (
-    FORM_NAME_COLUMNS,
-    FORM_NAME_COLUMNS_WITH_SAVED_NAMES,
-    SAVED_NAMES_COLUMN,
-)
+from clinical_reporting.ui.pages.additional_input import SAVED_NAMES_COLUMN
 from clinical_reporting.ui.table_actions import (
     add_copy_original_name_action,
     copy_original_names_to_new_names,
@@ -290,7 +286,7 @@ class AdditionalInputTabMixin:
             item_updated = QTableWidgetItem(updated_name)
             item_updated.setData(Qt.UserRole, file_path)
             table.setItem(row, 1, item_updated)
-        self._show_saved_names_column(table, paths)
+        self._fill_saved_names_column(table, paths)
         table.blockSignals(False)
 
     def _populate_column_name_table(self) -> None:
@@ -420,8 +416,8 @@ class AdditionalInputTabMixin:
         """The loaded setting's saved names (none when no setting has any)."""
         return getattr(self, "_saved_additional_names", None) or []
 
-    def _show_saved_names_column(self, table, paths: Sequence[str]) -> None:
-        """Give each row a Saved names dropdown while there are saved names.
+    def _fill_saved_names_column(self, table, paths: Sequence[str]) -> None:
+        """Give each row a Saved names dropdown (greyed out without saved names).
 
         Called while the Form names table is rebuilt (its signals blocked).
         Rows are reused, so every row gets a new dropdown for its own file.
@@ -429,22 +425,14 @@ class AdditionalInputTabMixin:
         if table.columnCount() <= SAVED_NAMES_COLUMN:
             return
         entries = self._saved_names()
-        if table.isColumnHidden(SAVED_NAMES_COLUMN) == bool(entries):
-            columns = (
-                FORM_NAME_COLUMNS_WITH_SAVED_NAMES if entries else FORM_NAME_COLUMNS
-            )
-            configure_columns(table, columns)
-            table.setColumnHidden(SAVED_NAMES_COLUMN, not entries)
         for row, file_path in enumerate(paths):
             # Qt deletes a replaced dropdown later; hide it now so it isn't
             # left drawn over the table until then.
             old = table.cellWidget(row, SAVED_NAMES_COLUMN)
             if old is not None:
                 old.hide()
-            if not entries:
-                table.removeCellWidget(row, SAVED_NAMES_COLUMN)
-                continue
-            # Under the dropdown, so the cell can't open a text editor.
+            # Under the dropdown, so the cell can't open a text editor (a
+            # greyed-out dropdown lets double-clicks through to the table).
             cell = QTableWidgetItem("")
             cell.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             table.setItem(row, SAVED_NAMES_COLUMN, cell)
@@ -497,11 +485,15 @@ class AdditionalInputTabMixin:
     def _saved_names_combo(
         self, file_path: str, entries: Sequence[SavedFileNames]
     ) -> QComboBox:
-        """The Saved names dropdown for *file_path*, showing its pick."""
+        """The Saved names dropdown for *file_path*, showing its pick.
+
+        Greyed out, with only None, when there are no *entries*.
+        """
         combo = _SavedNamesComboBox()
         combo.addItem(steps.SAVED_NAMES_NONE)
         for entry in entries:
             combo.addItem(steps.saved_names_label(entry))
+        combo.setEnabled(bool(entries))
         # The list may be wider than the cell, so long entries read in full.
         view = combo.view()
         view.setMinimumWidth(view.sizeHintForColumn(0) + 24)
@@ -516,6 +508,8 @@ class AdditionalInputTabMixin:
 
     def _saved_names_tip(self, file_path: str) -> str:
         """The tooltip of *file_path*'s dropdown: its pick, and why."""
+        if not self._saved_names():
+            return steps.SAVED_NAMES_UNAVAILABLE_TIP
         choice = self._saved_names_choice.get(file_path)
         if choice is None:
             return steps.saved_names_tip()
@@ -607,11 +601,12 @@ class AdditionalInputTabMixin:
     ) -> None:
         """Offer a loaded setting's saved names (*entries*) on this page.
 
-        The Saved names column shows while there are any. Listed files that
-        match an entry get it picked and their names filled in, unless that
-        would replace names the user typed: a file is filled in when it has
-        no names, when its names are still what the previous setting's pick
-        gave it, or when they already equal what the new pick gives.
+        The Saved names dropdowns offer them while there are any. Listed
+        files that match an entry get it picked and their names filled in,
+        unless that would replace names the user typed: a file is filled in
+        when it has no names, when its names are still what the previous
+        setting's pick gave it, or when they already equal what the new pick
+        gives.
 
         *used_forms* are the forms the setting selects: the "Still to add"
         banner lists only the files for those (``None``: every saved form).
@@ -653,7 +648,7 @@ class AdditionalInputTabMixin:
             self._clear_saved_names_message()
 
     def _forget_saved_additional_names(self) -> None:
-        """Stop offering saved names: the Saved names column goes.
+        """Stop offering saved names: the dropdowns go back to None, greyed out.
 
         The names already filled in stay; they are the user's now.
         """
