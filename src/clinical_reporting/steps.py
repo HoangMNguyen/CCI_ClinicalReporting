@@ -94,6 +94,11 @@ APPLY_ADDITIONAL_AGAIN = feedback.info(
 )
 #: The first entry of a file's Saved names dropdown: no saved names used.
 SAVED_NAMES_NONE = "None"
+#: The tooltip of a Saved names dropdown while there are none to pick.
+SAVED_NAMES_UNAVAILABLE_TIP = (
+    "No saved names to pick from. Start from a saved setting that has names "
+    f"for additional files on {TITLES[SOURCE]}."
+)
 
 # What a badge shows (the values of cci_ui's StepState).
 NONE = "none"
@@ -511,6 +516,7 @@ __all__ = [
     "ORDER",
     "PREVIEW",
     "SAVED_NAMES_NONE",
+    "SAVED_NAMES_UNAVAILABLE_TIP",
     "SOURCE",
     "STEP_KEYS",
     "TITLES",

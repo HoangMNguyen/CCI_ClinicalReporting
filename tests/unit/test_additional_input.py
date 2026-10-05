@@ -6,7 +6,6 @@ from PySide6.QtCore import QItemSelectionModel, QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import (
     QApplication,
-    QHeaderView,
     QListWidget,
     QPushButton,
     QTableWidget,
@@ -407,9 +406,7 @@ class SavedNamesUiWidget(DummyAdditionalInputUiWidget):
 
     def __init__(self):
         super().__init__()
-        form_table = self.ui.tableWidget_update_form_name
-        form_table.setColumnCount(3)
-        form_table.setColumnHidden(SAVED_NAMES_COLUMN, True)
+        self.ui.tableWidget_update_form_name.setColumnCount(3)
         self.ui.banner_saved_names = FakeBanner()
 
     def add(self, *paths, frames=None):
@@ -440,7 +437,7 @@ def test_loading_saved_names_picks_them_for_matching_files(qapp):
     widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
 
     table = widget.ui.tableWidget_update_form_name
-    assert not table.isColumnHidden(SAVED_NAMES_COLUMN)
+    assert widget.combo(LAB_PATH).isEnabled()
     assert widget.additional_form_names == {LAB_PATH: "LAB", PK_PATH: "PK"}
     assert widget.additional_column_names == {
         (LAB_PATH, "Subject ID"): "Subject",
@@ -603,20 +600,21 @@ def test_another_setting_replaces_only_untouched_picks(qapp):
     assert widget.combo(PK_PATH).currentIndex() == 0
 
 
-def test_without_saved_names_the_column_hides_and_the_names_stay(qapp):
+def test_without_saved_names_the_dropdowns_grey_out_and_the_names_stay(qapp):
     widget = SavedNamesUiWidget()
     widget.add(LAB_PATH)
     widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
 
     widget._offer_saved_additional_names([], "Old setting")
-    table = widget.ui.tableWidget_update_form_name
-    hidden_by_load = table.isColumnHidden(SAVED_NAMES_COLUMN)
+    greyed_by_load = not widget.combo(LAB_PATH).isEnabled()
     message_after_load = widget.ui.banner_additional.value
     widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
     widget._forget_saved_additional_names()
 
-    assert hidden_by_load and table.isColumnHidden(SAVED_NAMES_COLUMN)
-    assert table.cellWidget(0, SAVED_NAMES_COLUMN) is None
+    combo = widget.combo(LAB_PATH)
+    assert greyed_by_load and not combo.isEnabled()
+    assert combo.count() == 1 and combo.currentText() == steps.SAVED_NAMES_NONE
+    assert combo.toolTip() == steps.SAVED_NAMES_UNAVAILABLE_TIP
     assert widget.additional_form_names == {LAB_PATH: "LAB"}
     assert widget._saved_names_choice == {}
     # The saved-names message goes with the dropdowns.
@@ -680,17 +678,20 @@ def test_a_pick_is_said_even_when_some_files_could_not_be_read(qapp):
     assert widget.combo(LAB_PATH).currentIndex() == 1
 
 
-def test_the_new_name_column_narrows_while_saved_names_show(qapp):
+def test_files_get_a_greyed_out_dropdown_without_saved_names(qapp):
     widget = SavedNamesUiWidget()
-    header = widget.ui.tableWidget_update_form_name.horizontalHeader()
-    widget.add(LAB_PATH)
 
-    widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
-    with_saved_names = header.sectionResizeMode(1)
-    widget._forget_saved_additional_names()
+    widget.add(LAB_PATH, NOTES_PATH)
 
-    assert with_saved_names == QHeaderView.ResizeMode.Interactive
-    assert header.sectionResizeMode(1) == QHeaderView.ResizeMode.Stretch
+    table = widget.ui.tableWidget_update_form_name
+    for path in (LAB_PATH, NOTES_PATH):
+        combo = widget.combo(path)
+        assert not combo.isEnabled()
+        assert combo.count() == 1 and combo.currentText() == steps.SAVED_NAMES_NONE
+        assert combo.toolTip() == steps.SAVED_NAMES_UNAVAILABLE_TIP
+        # The cell under the dropdown can't open a text editor.
+        cell = table.item(widget._form_table_row(path), SAVED_NAMES_COLUMN)
+        assert not cell.flags() & Qt.ItemIsEditable
 
 
 def test_a_two_column_form_table_still_gets_the_names(qapp):
