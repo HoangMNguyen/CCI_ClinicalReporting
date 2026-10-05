@@ -7,7 +7,11 @@ from pathlib import Path
 import pandas as pd
 
 from clinical_reporting import steps, validation
-from clinical_reporting.additional_names import SavedFileNames
+from clinical_reporting.additional_names import (
+    BY_FILE_NAME,
+    IgnoredName,
+    SavedFileNames,
+)
 from clinical_reporting.models import JoinHow
 from clinical_reporting.report import CLReport
 from clinical_reporting.steps import StepStatus
@@ -199,6 +203,67 @@ def test_saved_names_entries_read_as_their_form_names():
         "extra.csv",
     ]
     assert steps.saved_names_entry_tip(lab) == "Saved for lab_results.csv"
+
+
+def test_saved_names_a_file_cant_use_are_said_by_file():
+    ignored = [
+        IgnoredName("lab.csv", "Visit Dt", "Visit Date"),
+        IgnoredName("lab.csv", "ALT (U/L)", "ALT"),
+        IgnoredName("pk.csv", "Conc", "CONC"),
+    ]
+    lab_entry = SavedFileNames("lab_results.csv", (), "LAB", {})
+
+    applied = steps.additional_applied_message({"LAB", "PK"}, ignored)
+    standing = steps.saved_names_ignored_message(ignored[:1])
+    filled = steps.saved_names_filled_message(
+        "Monthly", [("lab.csv", BY_FILE_NAME)], ignored[:2]
+    )
+    picked = steps.saved_names_picked_message(lab_entry, "lab.csv", ignored[:2])
+    columns = [IgnoredName("lab.csv", f"C{i}", f"N{i}") for i in range(7)]
+    files = [IgnoredName(f"f{i}.csv", "C", "N") for i in range(5)]
+
+    assert applied.kind == "warning"
+    assert applied == (
+        "2 files applied. New forms: LAB, PK. Saved column names ignored: "
+        "lab.csv has no Visit Dt or ALT (U/L); pk.csv has no Conc."
+    )
+    assert applied.details == (
+        "lab.csv: Visit Dt → Visit Date\nlab.csv: ALT (U/L) → ALT\npk.csv: Conc → CONC"
+    )
+    assert standing.kind == "warning"
+    assert standing == (
+        "A saved column name can't be used: lab.csv has no Visit Dt. It's "
+        "ignored; the form still applies without it."
+    )
+    assert steps.saved_names_ignored_message(ignored).endswith(
+        "They're ignored; the forms still apply without them."
+    )
+    assert filled.kind == "warning"
+    assert filled == (
+        "Saved names from “Monthly” picked for 1 file: lab.csv by its file name. "
+        "Some saved column names can't be used and will be ignored: lab.csv has "
+        "no Visit Dt or ALT (U/L). Check them, then Apply to report."
+    )
+    assert picked == (
+        "Names from LAB filled in for lab.csv. 2 saved column names can't be used "
+        "and will be ignored: lab.csv has no Visit Dt or ALT (U/L). Check them, "
+        "then Apply to report."
+    )
+    many_columns = steps.saved_names_ignored_message(columns)
+    assert "lab.csv has no C0, C1, C2, C3, C4 or 2 more." in many_columns
+    assert len(many_columns.details.splitlines()) == 7
+    assert "f2.csv has no C; and 2 more files." in steps.saved_names_ignored_message(
+        files
+    )
+    assert "f2.csv has no C; and 1 more file." in steps.saved_names_ignored_message(
+        files[:4]
+    )
+    # Two listed files with the same name, both lacking the column.
+    twice = steps.saved_names_ignored_message([ignored[0], ignored[0]])
+    assert twice.startswith("A saved column name can't be used: lab.csv has no")
+    assert "lab.csv has no Visit Dt. It's ignored" in twice
+    assert twice.details == "lab.csv: Visit Dt → Visit Date"
+    assert steps.additional_applied_message({"LB"}, ()).kind == "success"
 
 
 def test_the_preview_caption_says_its_size():

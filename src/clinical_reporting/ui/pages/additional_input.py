@@ -3,7 +3,8 @@
 The Form names table's third column, Saved names, holds a dropdown for each
 file. It offers the names a loaded saved setting keeps for additional files,
 and shows None, greyed out, while no loaded setting has any. A second banner
-lists the setting's files that aren't added yet (see
+lists the setting's files that aren't added yet, and a third the saved
+column names the files can't use (see
 :class:`clinical_reporting.ui.additional_input_tab.AdditionalInputTabMixin`).
 """
 
@@ -48,6 +49,7 @@ class AdditionalInputPage(Page):
         "pushButton_apply_additional_files",
         "banner_additional",
         "banner_saved_names",
+        "banner_ignored_names",
         "listWidget_additional_file",
         "tableWidget_update_form_name",
         "tableWidget_update_column_name",
@@ -78,6 +80,9 @@ class AdditionalInputPage(Page):
         # The loaded setting's files not added yet: a standing list, so it
         # stays until they are added and isn't repeated in the status bar.
         self.banner_saved_names = StatusBanner(dismissible=False, announce=False)
+        # Saved column names the files can't use: standing too, until the
+        # files or their names change.
+        self.banner_ignored_names = StatusBanner(dismissible=False, announce=False)
 
         self.listWidget_additional_file = PlaceholderListWidget(
             "No files added. Add CSV or Excel files to use them as extra forms."
@@ -115,5 +120,6 @@ class AdditionalInputPage(Page):
         self.body.addLayout(toolbar)
         self.body.addWidget(self.banner_additional)
         self.body.addWidget(self.banner_saved_names)
+        self.body.addWidget(self.banner_ignored_names)
         self.body.addWidget(files_card)
         self.body.addLayout(names, 1)
