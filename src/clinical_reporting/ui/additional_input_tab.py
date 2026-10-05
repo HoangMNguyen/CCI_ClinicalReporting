@@ -11,13 +11,15 @@ again.
 A saved setting keeps the form and column names given to its additional
 files (:mod:`clinical_reporting.additional_names`). The Form names table
 has a Saved names dropdown for each file: greyed out with only None until a
-loaded setting has such names, then listing them. Files that match an
-entry, by file name or else by columns (and only when the match is
-unambiguous), get it picked and their names filled in, both when the
-setting is loaded and when files are added later; names the user typed are
-never replaced by a pick, nor cleared by picking None. A second banner,
-"Still to add", lists the setting's files that no listed file stands for
-yet. Nothing is applied until "Apply to report".
+loaded setting has such names, then listing them by form name, or by file
+name for an entry that only renames columns (each one's tooltip names the
+file it was saved for). Files that match an entry, by file name or else by
+columns (and only when the match is unambiguous), get it picked and their
+names filled in, both when the setting is loaded and when files are added
+later; names the user typed are never replaced by a pick, nor cleared by
+picking None. A second banner, "Still to add", lists the setting's files
+that no listed file stands for yet. Nothing is applied until "Apply to
+report".
 """
 
 from __future__ import annotations
@@ -491,8 +493,13 @@ class AdditionalInputTabMixin:
         """
         combo = _SavedNamesComboBox()
         combo.addItem(steps.SAVED_NAMES_NONE)
-        for entry in entries:
-            combo.addItem(steps.saved_names_label(entry))
+        for entry, label in zip(entries, steps.saved_names_labels(entries)):
+            combo.addItem(label)
+            combo.setItemData(
+                combo.count() - 1,
+                steps.saved_names_entry_tip(entry),
+                Qt.ItemDataRole.ToolTipRole,
+            )
         combo.setEnabled(bool(entries))
         # The list may be wider than the cell, so long entries read in full.
         view = combo.view()

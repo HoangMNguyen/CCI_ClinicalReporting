@@ -83,7 +83,7 @@ def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_pat
         "Still to add for “Monthly AE review”: lab_results.csv (LAB)."
     )
     assert all_added == ""
-    assert dropdown == (True, "LAB · lab_results.csv")
+    assert dropdown == (True, "LAB")
     assert names == (
         {again: "LAB"},
         {(again, "Subject ID"): "Subject", (again, "Visit Dt"): "Visit Date"},
