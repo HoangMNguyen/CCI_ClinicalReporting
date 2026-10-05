@@ -13,9 +13,9 @@ Picking a saved setting also hands the names it saved for additional input
 files to the Additional input page, which offers them in its Saved names
 dropdowns; when forms the setting needs are missing, the warning names the
 files that bring them (or, for files already added, says to check and apply
-them). Forgetting the loaded setting takes those dropdowns away again: a new
-ZIP, removing the ZIP, turning the toggle off, picking "Choose a setting…",
-or a setting that fails to load.
+them). Forgetting the loaded setting greys those dropdowns out again, back
+to None: a new ZIP, removing the ZIP, turning the toggle off, picking
+"Choose a setting…", or a setting that fails to load.
 """
 
 from __future__ import annotations

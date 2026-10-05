@@ -1,9 +1,9 @@
 """Additional input: extra CSV or Excel files, their form and column names.
 
-While a loaded saved setting has names for additional files, the Form names
-table shows a third column, Saved names, with a dropdown of those names for
-each file, and a second banner lists the setting's files that aren't added
-yet (see
+The Form names table's third column, Saved names, holds a dropdown for each
+file. It offers the names a loaded saved setting keeps for additional files,
+and shows None, greyed out, while no loaded setting has any. A second banner
+lists the setting's files that aren't added yet (see
 :class:`clinical_reporting.ui.additional_input_tab.AdditionalInputTabMixin`).
 """
 
@@ -25,14 +25,12 @@ from clinical_reporting import steps
 from ._common import make_table
 
 _NAME_COLUMNS = (ColumnSpec("stretch"), ColumnSpec("stretch"))
-#: The Form names columns: like the Column names table's, plus Saved names.
-FORM_NAME_COLUMNS = (*_NAME_COLUMNS, ColumnSpec("stretch"))
-#: The Form names columns while Saved names shows: form names are short, so
-#: a narrower New name leaves the dropdowns room for their entries.
-FORM_NAME_COLUMNS_WITH_SAVED_NAMES = (
+#: The Form names columns: file names are long, form names are short, and
+#: the Saved names dropdowns list wider entries when they open.
+_FORM_NAME_COLUMNS = (
     ColumnSpec("stretch"),
-    ColumnSpec("interactive", 100),
-    ColumnSpec("stretch"),
+    ColumnSpec("interactive", 110),
+    ColumnSpec("interactive", 130),
 )
 #: The Form names column holding each file's Saved names dropdown.
 SAVED_NAMES_COLUMN = 2
@@ -90,11 +88,9 @@ class AdditionalInputPage(Page):
 
         self.tableWidget_update_form_name = make_table(
             ["Original name", "New name", "Saved names"],
-            FORM_NAME_COLUMNS,
+            _FORM_NAME_COLUMNS,
             placeholder="Added files appear here.",
         )
-        # Shown while a loaded setting has saved names for additional files.
-        self.tableWidget_update_form_name.setColumnHidden(SAVED_NAMES_COLUMN, True)
         self.tableWidget_update_column_name = make_table(
             ["Original name", "New name"],
             _NAME_COLUMNS,
