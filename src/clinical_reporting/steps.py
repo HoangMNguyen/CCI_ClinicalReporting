@@ -16,6 +16,7 @@ additional files; see :mod:`clinical_reporting.additional_names`).
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime
 from typing import (
     Collection,
@@ -338,10 +339,34 @@ def _and_list(names: Sequence[str]) -> str:
 
 
 def saved_names_label(entry: SavedFileNames) -> str:
-    """A saved entry as a Saved names dropdown lists it: "LAB · lab_results.csv"."""
-    if entry.form_name:
-        return f"{entry.form_name} · {entry.file_name}"
-    return entry.file_name
+    """A saved entry as a Saved names dropdown lists it: its form name, "LAB".
+
+    An entry that only renames columns has no form name; its file name
+    stands in. (A form name several entries share also gets the file name;
+    see :func:`saved_names_labels`.)
+    """
+    return entry.form_name or entry.file_name
+
+
+def saved_names_labels(entries: Sequence[SavedFileNames]) -> List[str]:
+    """The Saved names dropdown's entries (see :func:`saved_names_label`).
+
+    Entries with the same form name also show their file name, "LAB
+    (lab_results.csv)", so entries saved for different files read apart.
+    """
+    labels = [saved_names_label(entry) for entry in entries]
+    counts = Counter(labels)
+    return [
+        f"{label} ({entry.file_name})"
+        if counts[label] > 1 and label != entry.file_name
+        else label
+        for label, entry in zip(labels, entries)
+    ]
+
+
+def saved_names_entry_tip(entry: SavedFileNames) -> str:
+    """The tooltip of an entry in a Saved names dropdown: the file it was saved for."""
+    return f"Saved for {entry.file_name}"
 
 
 def saved_names_tip(
@@ -403,7 +428,7 @@ def saved_names_picked_message(
     A warning when some of the entry's renamed columns aren't in the file
     (*unmatched*).
     """
-    name = entry.form_name or entry.file_name
+    name = saved_names_label(entry)
     if unmatched:
         count = (
             "1 saved column name has"
@@ -528,10 +553,12 @@ __all__ = [
     "preview_caption",
     "report_summary",
     "saved_names_cleared_message",
+    "saved_names_entry_tip",
     "saved_names_filled_message",
     "saved_names_hint",
-    "saved_names_label",
     "saved_names_kept_message",
+    "saved_names_label",
+    "saved_names_labels",
     "saved_names_missing_message",
     "saved_names_picked_message",
     "saved_names_tip",
