@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 from typing import Any, Dict
 
 from cci_ui.app import create_app
@@ -47,7 +46,3 @@ def main() -> int:
     )
     widget.show()
     return app.exec()
-
-
-if __name__ == "__main__":
-    sys.exit(main())
