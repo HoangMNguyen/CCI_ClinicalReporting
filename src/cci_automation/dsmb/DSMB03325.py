@@ -822,7 +822,6 @@ class DSMB03325:
     def status_listing(self, enrollment_listing_df):
         data = self.data
         # AE and SAE data
-        #    if not data["AE"].empty:
         AE_df = data["AE"][
             [
                 "Subject",
@@ -1067,7 +1066,6 @@ class DSMB03325:
     def TXSUB_status_listing(self, data):
         data = self.data
         # AE and SAE data
-        #    if not data["AE"].empty:
         AE_df = data["AE"][
             [
                 "Subject",

@@ -254,13 +254,12 @@ def DSMB03821(
         )
         enrollment_df["Reason for Screen FailureIE"] = (
             enrollment_df["SF1"].fillna("")
-            #      + " "
             + enrollment_df["SF2"].fillna("")
             + enrollment_df["SF3"].fillna("")
             + enrollment_df["SF4"].fillna("")
         )
         enrollment_df["Reason for Screen FailureIE"].fillna(
-            enrollment_df["Reason for Screen FailureIE"]  # , inplace=True
+            enrollment_df["Reason for Screen FailureIE"]
         )
         enrollment_df = enrollment_df.drop(columns=["SF1", "SF2", "SF3", "SF4"])
 
@@ -452,7 +451,6 @@ def DSMB03821(
                     "Screen Failed": SF,
                     "Eligible": EL,
                     "Treated": INFV,
-                    #     "huCART-meso Infusion": INFM,
                 }
             )
 
@@ -2229,7 +2227,6 @@ def DSMB03821(
         subject_ARMAB_primR_count = len(responseRAB_df["Subject"].unique())
 
         # AE and SAE data
-        #    if not data["AE"].empty:
         AE_df = data["AE"][
             [
                 "Subject",
@@ -2245,11 +2242,11 @@ def DSMB03821(
             enrollment_df["Subject meets all study eligibility?"].str.strip() == "Yes"
         ][["Subject", "Study Assignment"]]
 
-        # Check filtered_AE_df if the subject of status_df is in the filtered_AE dataframe. If yes, then add 'Y' to the column 'AE' in infusion_df, else add 'N'
+        # Check AE_df if the subject of status_df is in the AE dataframe. If yes, then add 'Y' to the column 'AE' in status_df, else add 'N'
         status_df["AE"] = status_df["Subject"].apply(
             lambda x: "Y" if x in AE_df["Subject"].values else "N"
         )
-        # Check filtered_AE_df if the subject of infusion_df has SAE in column 'AE or SAE?' . If yes, then add 'Y' to the column 'SAE', else add 'N'
+        # Check AE_df if the subject of status_df has SAE in column 'AE or SAE?' . If yes, then add 'Y' to the column 'SAE', else add 'N'
         status_df["SAE"] = status_df["Subject"].apply(
             lambda x: (
                 "Y"

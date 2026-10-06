@@ -272,7 +272,6 @@ def DSMB15122(
         )
 
         # get study treatment administered data from EXINF for subjects did not end of study before infusion
-    #    if not data["EXINF"].empty:
     EXINF_df = data["EXINF"][
         [
             "Subject",
@@ -396,7 +395,6 @@ def DSMB15122(
     enrollment_df = enrollment_df.drop(
         columns=[
             "Last Study Visit",
-            #   "End of Study Date",
         ]
     )
     enrollment_df = enrollment_df.replace([np.nan, np.inf, -np.inf], "")
@@ -482,7 +480,6 @@ def DSMB15122(
         columns=[
             "Consent Date",
             "Date of Birth",
-            #   "Main Consent Date",
             "Form Sequence Number",
             "Race",
         ]
@@ -663,7 +660,6 @@ def DSMB15122(
     infusion_df = infusion_df[infusion_df["Event Label"] != ""]
 
     # AE and SAE data
-    #    if not data["AE"].empty:
     AE_df = data["AE"][
         [
             "Subject",
@@ -677,11 +673,11 @@ def DSMB15122(
     }
     AE_df = AE_df.rename(columns=AE_new_col_name)
     status_df = EL_df[["Subject", "Cohort Assignment"]]
-    # Check filtered_AE_df if the subject of status_df is in the filtered_AE dataframe. If yes, then add 'Y' to the column 'AE' in infusion_df, else add 'N'
+    # Check AE_df if the subject of status_df is in the AE dataframe. If yes, then add 'Y' to the column 'AE' in status_df, else add 'N'
     status_df["AE"] = status_df["Subject"].apply(
         lambda x: "Y" if x in AE_df["Subject"].values else "N"
     )
-    # Check filtered_AE_df if the subject of infusion_df has SAE in column 'AE or SAE?' . If yes, then add 'Y' to the column 'SAE', else add 'N'
+    # Check AE_df if the subject of status_df has SAE in column 'AE or SAE?' . If yes, then add 'Y' to the column 'SAE', else add 'N'
     status_df["SAE"] = status_df["Subject"].apply(
         lambda x: (
             "Y" if x in AE_df[AE_df["AE or SAE?"] == "SAE"]["Subject"].values else "N"
@@ -694,7 +690,6 @@ def DSMB15122(
     event_1_dict = {
         "Primary Treatment and Follow Up": "Primary Follow-up",
         "Pre-Treatment Safety Visit": "Pre-Treatment",
-        #   "Long-Term Follow-up (Ongoing Persistence)": "LTFU (Ongoing Persistence)",
         "LTFU (Ongoing Persistence)": "LTFU (Ongoing Persistence)",
         "LTFU (Loss of Persistence)": "LTFU (Loss of Persistence)",
     }
@@ -793,7 +788,6 @@ def DSMB15122(
     ]
     filteredDSEOS_df = DSEOS_df[
         (DSEOS_df["Last Study Visit"] != "Pre-Screening")
-        #  & (DSEOS_df["Last Study Visit"] != "Screening/Eligibility Confirmation")
         & (DSEOS_df["Subject"].isin(filteredemrollment_df["Subject"].values))
     ].copy()
 

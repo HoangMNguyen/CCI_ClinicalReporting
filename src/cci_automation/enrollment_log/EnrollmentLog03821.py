@@ -336,6 +336,6 @@ def EnrollmentLog03821(final_data):
         merged_df["End of Study Date"] = pd.to_datetime(
             merged_df["End of Study Date"]
         ).dt.strftime("%m/%d/%Y")
-        # update headers and fill N/A
+        # update headers
         merged_df = merged_df.rename(columns={"Subject": "Subject ID#"})
         return merged_df

@@ -334,6 +334,6 @@ def EnrollmentLog11823(final_data):
 
     # Remove all duplicates
     merged_df = merged_df.drop_duplicates(subset=["Subject"])
-    # update headers and fill N/A
+    # update headers
     merged_df = merged_df.rename(columns={"Subject": "Subject ID#"})
     return merged_df

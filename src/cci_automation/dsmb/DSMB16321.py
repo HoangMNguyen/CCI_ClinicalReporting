@@ -1040,7 +1040,6 @@ class DSMB16321:
     def status_listing(self, infusion_listing):
         data = self.data
         # AE and SAE data
-        #    if not data["AE"].empty:
         AE_df = data["AE"][
             [
                 "Subject",
@@ -1322,7 +1321,6 @@ class DSMB16321:
     def TXSUB_status_listing(self, data):
         data = self.data
         # AE and SAE data
-        #    if not data["AE"].empty:
         AE_df = data["AE"][
             [
                 "Subject",
