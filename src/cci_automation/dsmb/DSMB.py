@@ -133,7 +133,6 @@ class DSMB:
 
             DSMB15122(
                 data,
-                export=True,
                 output_dir=self.output_dir,
                 output_file_name=self.output_file_name,
             )
@@ -142,10 +141,8 @@ class DSMB:
 
             DSMB03821(
                 data,
-                export=True,
                 output_dir=self.output_dir,
                 output_file_name=self.output_file_name,
-                #   debug=self.debug,
             )
 
         if study_name == "15420":

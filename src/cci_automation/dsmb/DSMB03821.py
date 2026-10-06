@@ -16,10 +16,8 @@ from cci_automation.util import (
 
 def DSMB03821(
     data,
-    export,
     output_dir,
     output_file_name,
-    # debug,
 ):
     # DEMO ENROLLMENT LISTING
     if not data["DM"].empty:
@@ -2441,516 +2439,496 @@ def DSMB03821(
             ]
         )
 
-    if export:
-        with pd.ExcelWriter(
-            output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
-        ) as writer:
-            ## * FORMATING AND COLORING
-            bold_11_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            bold_12_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": False,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 12,
-                    "border": 1,
-                }
-            )
-            bold_12_wrap_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 12,
-                    "border": 1,
-                }
-            )
-            bold_11_wrap_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            normal_data_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": False,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": False,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            # Create a format for a black cell
-            if data["DM"]["Subject"].count() > 0:
-                # DSMB-Demo Stats Table
-                if enrollment_df["Subject"].count() > 0:
-                    # * WRITING DATA: LegalSex_list, Age_at_Consent_list, Race_list, Ethnicity_list
-                    worksheet1 = writer.book.add_worksheet("DSMB-Demo Stats Table")
+    with pd.ExcelWriter(
+        output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
+    ) as writer:
+        ## * FORMATING AND COLORING
+        bold_11_format = writer.book.add_format(
+            {
+                "bg_color": "#FFFFFF",
+                "text_wrap": True,
+                "valign": "vcenter",
+                "align": "center",
+                "bold": True,
+                "font_name": "Calibri",
+                "font_size": 11,
+                "border": 1,
+            }
+        )
+        bold_12_format = writer.book.add_format(
+            {
+                "bg_color": "#FFFFFF",
+                "text_wrap": False,
+                "valign": "vcenter",
+                "align": "center",
+                "bold": True,
+                "font_name": "Calibri",
+                "font_size": 12,
+                "border": 1,
+            }
+        )
+        bold_12_wrap_format = writer.book.add_format(
+            {
+                "bg_color": "#FFFFFF",
+                "text_wrap": True,
+                "valign": "vcenter",
+                "align": "center",
+                "bold": True,
+                "font_name": "Calibri",
+                "font_size": 12,
+                "border": 1,
+            }
+        )
+        bold_11_wrap_format = writer.book.add_format(
+            {
+                "bg_color": "#FFFFFF",
+                "text_wrap": True,
+                "valign": "vcenter",
+                "align": "center",
+                "bold": True,
+                "font_name": "Calibri",
+                "font_size": 11,
+                "border": 1,
+            }
+        )
+        normal_data_format = writer.book.add_format(
+            {
+                "bg_color": "#FFFFFF",
+                "text_wrap": False,
+                "valign": "vcenter",
+                "align": "center",
+                "bold": False,
+                "font_name": "Calibri",
+                "font_size": 11,
+                "border": 1,
+            }
+        )
+        # Create a format for a black cell
+        if data["DM"]["Subject"].count() > 0:
+            # DSMB-Demo Stats Table
+            if enrollment_df["Subject"].count() > 0:
+                # * WRITING DATA: LegalSex_list, Age_at_Consent_list, Race_list, Ethnicity_list
+                worksheet1 = writer.book.add_worksheet("DSMB-Demo Stats Table")
 
-                    # * FORMAT DATA
-                    for i in range(0, len(status_list)):
-                        for j in range(0, len(LegalSex_list[i])):
-                            for k in range(0, len(LegalSex_list[i].columns)):
-                                worksheet1.write(
-                                    j + 4,
-                                    k + 1 + i * 4,
-                                    LegalSex_list[i].iloc[j, k],
-                                    normal_data_format,
-                                )
-                        for j in range(0, len(Age_at_Consent_list[i])):
-                            for k in range(0, len(Age_at_Consent_list[i].columns)):
-                                worksheet1.write(
-                                    j + 9,
-                                    k + 1 + i * 4,
-                                    Age_at_Consent_list[i].iloc[j, k],
-                                    normal_data_format,
-                                )
-                        for j in range(0, len(Race_list[i])):
-                            for k in range(0, len(Race_list[i].columns)):
-                                worksheet1.write(
-                                    j + 13,
-                                    k + 1 + i * 4,
-                                    Race_list[i].iloc[j, k],
-                                    normal_data_format,
-                                )
-                        for j in range(0, len(Ethnicity_list[i])):
-                            for k in range(0, len(Ethnicity_list[i].columns)):
-                                worksheet1.write(
-                                    j + 23,
-                                    k + 1 + i * 4,
-                                    Ethnicity_list[i].iloc[j, k],
-                                    normal_data_format,
-                                )
-
-                    # * WRITING HEADER AND FORMATTING
-                    Sex_order = ["Male", "Female", "X (Nonbinary)", "Not Reported"]
-                    Age_order = ["Mean SD", "Median", "Range"]
-                    Race_order = [
-                        "African American",
-                        "Alaska Native",
-                        "American Indian",
-                        "Asian",
-                        "Caucasian",
-                        "Multiple Races",
-                        "Pacific Islander",
-                        "Other",
-                        "Unknown",
-                    ]
-                    Ethnicity_order = ["Hispanic", "Non-Hispanic", "Unknown"]
-
-                    for i in range(0, len(Sex_order)):
-                        worksheet1.write(i + 4, 0, Sex_order[i], bold_11_format)
-                    for i in range(0, len(Age_order)):
-                        worksheet1.write(i + 9, 0, Age_order[i], bold_11_format)
-                    for i in range(0, len(Race_order)):
-                        worksheet1.write(i + 13, 0, Race_order[i], bold_11_format)
-                    for i in range(0, len(Ethnicity_order)):
-                        worksheet1.write(i + 23, 0, Ethnicity_order[i], bold_11_format)
-
-                    worksheet1.merge_range(
-                        "F1:M1", "Dose Finding Phase", bold_12_format
-                    )
-                    worksheet1.merge_range("N1:U1", "Expansion Phase", bold_12_format)
-                    worksheet1.merge_range(
-                        "B2:E2", "Overall Study Enrollment", bold_12_format
-                    )
-                    worksheet1.merge_range(
-                        "F2:I2", "Cohort 1 Enrollment", bold_12_format
-                    )
-                    worksheet1.merge_range(
-                        "J2:M2", "Cohort 2 Enrollment", bold_12_format
-                    )
-                    worksheet1.merge_range(
-                        "N2:Q2", "Treatment Arm A Enrollment", bold_12_format
-                    )
-                    worksheet1.merge_range(
-                        "R2:U2", "Treatment Arm B Enrollment", bold_12_format
-                    )
-                    worksheet1.write(2, 0, "Status", bold_11_format)
-                    for i in range(len(status_list)):
-                        worksheet1.write(
-                            2,
-                            1 + i * 4,
-                            "Total Consented\nN="
-                            + str(status_list[i]["Total Consented"]),
-                            bold_11_wrap_format,
-                        )
-                        worksheet1.write(
-                            2,
-                            2 + i * 4,
-                            "Screen Failed\nN=" + str(status_list[i]["Screen Failed"]),
-                            bold_11_wrap_format,
-                        )
-                        worksheet1.write(
-                            2,
-                            3 + i * 4,
-                            "Eligible\nN=" + str(status_list[i]["Eligible"]),
-                            bold_11_wrap_format,
-                        )
-                        worksheet1.write(
-                            2,
-                            4 + i * 4,
-                            "Treated\nN=" + str(status_list[i]["Treated"]),
-                            bold_11_wrap_format,
-                        )
-
-                    worksheet1.merge_range("A4:U4", "Legal Sex", bold_11_format)
-                    worksheet1.merge_range("A9:U9", "Age at Consent", bold_11_format)
-                    worksheet1.merge_range("A13:U13", "Race", bold_11_format)
-                    worksheet1.merge_range("A23:U23", "Ethnicity", bold_11_format)
-                    worksheet1.autofit()
-
-                    # Enrollment Listing
-                    # * WRITING DATA: enrollment_df
-                    worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
-                    enrollment_df = enrollment_df.drop(columns=["Treated"])
-                    # * WRITING HEADER AND FORMATTING
-                    # Assuming 'enrollment_df' is your DataFrame
-                    enrollment_df.replace(
-                        [np.inf, -np.inf], np.nan, inplace=True
-                    )  # Replace INF with NaN
-                    enrollment_df = enrollment_df.fillna(
-                        "N/A"
-                    )  # Replace NaN with a placeholder
-                    for i in range(0, len(enrollment_df.columns)):
-                        worksheet2.write(0, i, enrollment_df.columns[i], bold_11_format)
-                    # * FORMAT DATA
-                    for i in range(0, len(enrollment_df)):
-                        for j in range(0, len(enrollment_df.columns)):
-                            worksheet2.write(
-                                i + 1, j, enrollment_df.iloc[i, j], normal_data_format
+                # * FORMAT DATA
+                for i in range(0, len(status_list)):
+                    for j in range(0, len(LegalSex_list[i])):
+                        for k in range(0, len(LegalSex_list[i].columns)):
+                            worksheet1.write(
+                                j + 4,
+                                k + 1 + i * 4,
+                                LegalSex_list[i].iloc[j, k],
+                                normal_data_format,
                             )
-                    # Autofit
-                    worksheet2.autofit()
-
-                    # DSMB-Infusion Listing
-                    worksheet3 = writer.book.add_worksheet("DSMB-Infusion Listing")
-                    # * WRITING AND FORMATING DATA
-                    infusion_df = infusion_df.drop(columns=["Event Group Label"])
-                    infusionR_df = infusionR_df.drop(columns=["Event Group Label"])
-                    for i in range(0, len(infusion_df)):
-                        for j in range(0, len(infusion_df.columns)):
-                            worksheet3.write(
-                                i + 1, j, infusion_df.iloc[i, j], normal_data_format
+                    for j in range(0, len(Age_at_Consent_list[i])):
+                        for k in range(0, len(Age_at_Consent_list[i].columns)):
+                            worksheet1.write(
+                                j + 9,
+                                k + 1 + i * 4,
+                                Age_at_Consent_list[i].iloc[j, k],
+                                normal_data_format,
                             )
-                    for i in range(0, len(infusionR_df)):
-                        for j in range(0, len(infusionR_df.columns)):
-                            worksheet3.write(
-                                i + 1,
+                    for j in range(0, len(Race_list[i])):
+                        for k in range(0, len(Race_list[i].columns)):
+                            worksheet1.write(
                                 j + 13,
-                                infusionR_df.iloc[i, j],
+                                k + 1 + i * 4,
+                                Race_list[i].iloc[j, k],
                                 normal_data_format,
                             )
-                    # * WRITING HEADER AND FORMATTING
-                    worksheet3.write("A1", "Subject ID", bold_12_wrap_format)
-                    worksheet3.write("B1", "Study Phase", bold_12_wrap_format)
-                    worksheet3.write("C1", "Study Assignment", bold_12_wrap_format)
-                    worksheet3.write(
-                        "D1", "VCN-01 Infusion Complete (Y/N)", bold_12_wrap_format
-                    )
-                    worksheet3.write(
-                        "E1",
-                        "Date of VCN-01 Infusion",
-                        bold_12_wrap_format,
-                    )
-                    worksheet3.write("F1", "VCN-01 Dose Received", bold_12_wrap_format)
-                    worksheet3.write(
-                        "G1", "HuCART-meso Infusion Complete (Y/N)", bold_12_wrap_format
-                    )
-                    worksheet3.write(
-                        "H1", "Date of HuCART-meso Infusion", bold_12_wrap_format
-                    )
-                    worksheet3.write(
-                        "I1",
-                        "Total huCART-meso Cell Dose Administered",
-                        bold_12_wrap_format,
-                    )
-                    worksheet3.write(
-                        "J1", "Total Cell Dose Administered", bold_12_wrap_format
-                    )
-
-                    worksheet3.write("N1", "Subject ID", bold_12_wrap_format)
-                    worksheet3.write("O1", "Study Phase", bold_12_wrap_format)
-                    worksheet3.write("P1", "Study Assignment", bold_12_wrap_format)
-                    worksheet3.write(
-                        "Q1",
-                        "Lymphodepleting Chemotherapy Regimen",
-                        bold_12_wrap_format,
-                    )
-                    worksheet3.write(
-                        "R1",
-                        "Date of HuCART-meso Retreatment Infusion",
-                        bold_12_wrap_format,
-                    )
-                    worksheet3.write(
-                        "S1",
-                        "Total huCART-meso Cell Dose Administered",
-                        bold_12_wrap_format,
-                    )
-                    worksheet3.write(
-                        "T1", "Total Cell Dose Administered", bold_12_wrap_format
-                    )
-
-                    # Autofit
-                    worksheet3.autofit()
-
-                    # Response Listing for Cohorts 1&2
-                    worksheet4 = writer.book.add_worksheet(
-                        "Cohorts 1 & 2 Response Listing"
-                    )
-                    # Primary follow-up
-                    worksheet4.merge_range(
-                        "A1:I1",
-                        "Dose Finding Phase (Primary Follow-up) \nN="
-                        + str(subject_ACH12_prim_count),
-                        bold_12_format,
-                    )
-                    worksheet4.merge_range("A2:A3", "Subject ID", bold_11_format)
-                    worksheet4.merge_range("B2:B3", "Study Assignment", bold_11_format)
-                    worksheet4.merge_range(
-                        "C2:I2", "Overall Tumor Response", bold_11_format
-                    )
-                    worksheet4.write(
-                        "C3",
-                        "Pre-Infusion Safety (Baseline Disease Status)",
-                        bold_11_format,
-                    )
-                    worksheet4.write("D3", "Day +10 Post Infusion #2", bold_11_format)
-                    worksheet4.write("E3", "Month 3", bold_11_format)
-                    worksheet4.write("F3", "Month 6", bold_11_format)
-                    worksheet4.write("G3", "Month 9", bold_11_format)
-                    worksheet4.write("H3", "Month 12", bold_11_format)
-                    worksheet4.write("I3", "Unscheduled", bold_11_format)
-
-                    for i in range(0, len(response_df)):
-                        for j in range(0, len(response_df.columns)):
-                            worksheet4.write(
-                                i + 3,
-                                j,
-                                response_df.iloc[i, j],
+                    for j in range(0, len(Ethnicity_list[i])):
+                        for k in range(0, len(Ethnicity_list[i].columns)):
+                            worksheet1.write(
+                                j + 23,
+                                k + 1 + i * 4,
+                                Ethnicity_list[i].iloc[j, k],
                                 normal_data_format,
                             )
 
-                    # Retreatment follow-up
-                    worksheet4.merge_range(
-                        "L1:T1",
-                        "Dose Finding Phase (Retreatment Follow-up) \nN="
-                        + str(subject_ACH12_primR_count),
-                        bold_12_format,
-                    )
-                    worksheet4.merge_range("L2:L3", "Subject ID", bold_11_format)
-                    worksheet4.merge_range("M2:M3", "Study Assignment", bold_11_format)
-                    worksheet4.merge_range(
-                        "N2:T2", "Overall Tumor Response", bold_11_format
-                    )
-                    worksheet4.write(
-                        "N3",
-                        "Pre-Retreatment Safety (Baseline Retreatment Disease Status)",
-                        bold_11_format,
-                    )
-                    worksheet4.write("O3", "Day 28-R", bold_11_format)
-                    worksheet4.write("P3", "Month 3-R", bold_11_format)
-                    worksheet4.write("Q3", "Month 6-R", bold_11_format)
-                    worksheet4.write("R3", "Month 9-R", bold_11_format)
-                    worksheet4.write("S3", "Month 12-R", bold_11_format)
-                    worksheet4.write("T3", "Unscheduled", bold_11_format)
+                # * WRITING HEADER AND FORMATTING
+                Sex_order = ["Male", "Female", "X (Nonbinary)", "Not Reported"]
+                Age_order = ["Mean SD", "Median", "Range"]
+                Race_order = [
+                    "African American",
+                    "Alaska Native",
+                    "American Indian",
+                    "Asian",
+                    "Caucasian",
+                    "Multiple Races",
+                    "Pacific Islander",
+                    "Other",
+                    "Unknown",
+                ]
+                Ethnicity_order = ["Hispanic", "Non-Hispanic", "Unknown"]
 
-                    for i in range(0, len(responseR_df)):
-                        for j in range(0, len(responseR_df.columns)):
-                            worksheet4.write(
-                                i + 3,
-                                j + 11,
-                                responseR_df.iloc[i, j],
-                                normal_data_format,
-                            )
-                    worksheet4.autofit()
+                for i in range(0, len(Sex_order)):
+                    worksheet1.write(i + 4, 0, Sex_order[i], bold_11_format)
+                for i in range(0, len(Age_order)):
+                    worksheet1.write(i + 9, 0, Age_order[i], bold_11_format)
+                for i in range(0, len(Race_order)):
+                    worksheet1.write(i + 13, 0, Race_order[i], bold_11_format)
+                for i in range(0, len(Ethnicity_order)):
+                    worksheet1.write(i + 23, 0, Ethnicity_order[i], bold_11_format)
 
-                    # Response Listing for Arms A & B
-                    worksheet5 = writer.book.add_worksheet(
-                        "Arms A & B Response Listing"
+                worksheet1.merge_range("F1:M1", "Dose Finding Phase", bold_12_format)
+                worksheet1.merge_range("N1:U1", "Expansion Phase", bold_12_format)
+                worksheet1.merge_range(
+                    "B2:E2", "Overall Study Enrollment", bold_12_format
+                )
+                worksheet1.merge_range("F2:I2", "Cohort 1 Enrollment", bold_12_format)
+                worksheet1.merge_range("J2:M2", "Cohort 2 Enrollment", bold_12_format)
+                worksheet1.merge_range(
+                    "N2:Q2", "Treatment Arm A Enrollment", bold_12_format
+                )
+                worksheet1.merge_range(
+                    "R2:U2", "Treatment Arm B Enrollment", bold_12_format
+                )
+                worksheet1.write(2, 0, "Status", bold_11_format)
+                for i in range(len(status_list)):
+                    worksheet1.write(
+                        2,
+                        1 + i * 4,
+                        "Total Consented\nN=" + str(status_list[i]["Total Consented"]),
+                        bold_11_wrap_format,
                     )
-                    # Primary follow-up
-                    worksheet5.merge_range(
-                        "A1:I1",
-                        "Expansion Phase (Primary Follow-up) \nN="
-                        + str(subject_ARMAB_prim_count),
-                        bold_12_format,
+                    worksheet1.write(
+                        2,
+                        2 + i * 4,
+                        "Screen Failed\nN=" + str(status_list[i]["Screen Failed"]),
+                        bold_11_wrap_format,
                     )
-                    worksheet5.merge_range("A2:A3", "Subject ID", bold_11_format)
-                    worksheet5.merge_range("B2:B3", "Study Assignment", bold_11_format)
-                    worksheet5.merge_range(
-                        "C2:I2", "Overall Tumor Response", bold_11_format
+                    worksheet1.write(
+                        2,
+                        3 + i * 4,
+                        "Eligible\nN=" + str(status_list[i]["Eligible"]),
+                        bold_11_wrap_format,
                     )
-                    worksheet5.write(
-                        "C3",
-                        "Pre-Infusion Safety (Baseline Disease Status)",
-                        bold_11_format,
-                    )
-                    worksheet5.write("D3", "Day 28", bold_11_format)
-                    worksheet5.write("E3", "Month 3", bold_11_format)
-                    worksheet5.write("F3", "Month 6", bold_11_format)
-                    worksheet5.write("G3", "Month 9", bold_11_format)
-                    worksheet5.write("H3", "Month 12", bold_11_format)
-                    worksheet5.write("I3", "Unscheduled", bold_11_format)
-
-                    for i in range(0, len(responseAB_df)):
-                        for j in range(0, len(responseAB_df.columns)):
-                            worksheet5.write(
-                                i + 3,
-                                j,
-                                responseAB_df.iloc[i, j],
-                                normal_data_format,
-                            )
-
-                    # Retreatment follow-up
-                    worksheet5.merge_range(
-                        "L1:T1",
-                        "Expansion Phase (Retreatment Follow-up) \nN="
-                        + str(subject_ARMAB_primR_count),
-                        bold_12_format,
-                    )
-                    worksheet5.merge_range("L2:L3", "Subject ID", bold_11_format)
-                    worksheet5.merge_range("M2:M3", "Study Assignment", bold_11_format)
-                    worksheet5.merge_range(
-                        "N2:T2", "Overall Tumor Response", bold_11_format
-                    )
-                    worksheet5.write(
-                        "N3",
-                        "Pre-Retreatment Safety (Baseline Retreatment Disease Status)",
-                        bold_11_format,
-                    )
-                    worksheet5.write("O3", "Day 28-R", bold_11_format)
-                    worksheet5.write("P3", "Month 3-R", bold_11_format)
-                    worksheet5.write("Q3", "Month 6-R", bold_11_format)
-                    worksheet5.write("R3", "Month 9-R", bold_11_format)
-                    worksheet5.write("S3", "Month 12-R", bold_11_format)
-                    worksheet5.write("T3", "Unscheduled", bold_11_format)
-
-                    for i in range(0, len(responseRAB_df)):
-                        for j in range(0, len(responseRAB_df.columns)):
-                            worksheet5.write(
-                                i + 3,
-                                j + 11,
-                                responseRAB_df.iloc[i, j],
-                                normal_data_format,
-                            )
-                    worksheet5.autofit()
-
-                    # Summary of Protocol Status
-                    worksheet6 = writer.book.add_worksheet(
-                        "Status for Eligible Subjects"
-                    )
-                    # * WRITING AND FORMATING DATA
-                    for i in range(0, len(status_df)):
-                        for j in range(0, len(status_df.columns)):
-                            worksheet6.write(
-                                i + 2, j, status_df.iloc[i, j], normal_data_format
-                            )
-
-                    # * WRITING HEADER AND FORMATTING
-                    worksheet6.merge_range("A1:A2", "Subject ID", bold_12_wrap_format)
-                    worksheet6.merge_range(
-                        "B1:B2", "Study Assignment", bold_12_wrap_format
-                    )
-                    worksheet6.merge_range(
-                        "C1:C2", "Adverse Events (Y/N)", bold_12_wrap_format
-                    )
-                    worksheet6.merge_range(
-                        "D1:D2", "Serious Adverse Events (Y/N)", bold_12_wrap_format
-                    )
-                    worksheet6.merge_range("E1:E2", "Study Status", bold_12_wrap_format)
-                    worksheet6.merge_range(
-                        "F1:F2", "Off-Study Reason", bold_12_wrap_format
-                    )
-                    worksheet6.merge_range(
-                        "G1:G2",
-                        "Last Study Visit Performed for Off-Study Subject",
-                        bold_12_wrap_format,
+                    worksheet1.write(
+                        2,
+                        4 + i * 4,
+                        "Treated\nN=" + str(status_list[i]["Treated"]),
+                        bold_11_wrap_format,
                     )
 
-                    # Safety Headers
-                    # number of subject of safety_total_df
-                    safety_total_df_subject_count = len(status_df["Subject"].unique())
-                    worksheet6.merge_range(
-                        "K1:N1",
-                        "Safety Statistics (N="
-                        + str(safety_total_df_subject_count)
-                        + ")",
-                        bold_12_wrap_format,
-                    )
-                    worksheet6.merge_range("K2:L2", "Adverse Events", bold_11_format)
-                    worksheet6.merge_range(
-                        "M2:N2", "Serious Adverse Events ", bold_11_format
-                    )
-                    worksheet6.write("K3", "Yes", bold_11_format)
-                    worksheet6.write("L3", "No", bold_11_format)
-                    worksheet6.write("M3", "Yes", bold_11_format)
-                    worksheet6.write("N3", "No", bold_11_format)
-                    worksheet6.write("J4", "Cohort 1", bold_11_format)
-                    worksheet6.write("J5", "Cohort 2", bold_11_format)
-                    worksheet6.write("J6", "Treatment Arm A", bold_11_format)
-                    worksheet6.write("J7", "Treatment Arm B", bold_11_format)
-                    # Safety Data
-                    # Cohort 1
-                    for i in range(0, len(safetyCH1_total_df)):
-                        for j in range(0, len(safetyCH1_total_df.columns)):
-                            worksheet6.write(
-                                i + 3,
-                                j + 10,
-                                safetyCH1_total_df.iloc[i, j],
-                                normal_data_format,
-                            )
-                    # Cohort 2
-                    for i in range(0, len(safetyCH2_total_df)):
-                        for j in range(0, len(safetyCH2_total_df.columns)):
-                            worksheet6.write(
-                                i + 4,
-                                j + 10,
-                                safetyCH2_total_df.iloc[i, j],
-                                normal_data_format,
-                            )
-                    # ARM A
-                    for i in range(0, len(safetyARMA_total_df)):
-                        for j in range(0, len(safetyARMA_total_df.columns)):
-                            worksheet6.write(
-                                i + 5,
-                                j + 10,
-                                safetyARMA_total_df.iloc[i, j],
-                                normal_data_format,
-                            )
-                    # ARM B
-                    for i in range(0, len(safetyARMB_total_df)):
-                        for j in range(0, len(safetyARMB_total_df.columns)):
-                            worksheet6.write(
-                                i + 6,
-                                j + 10,
-                                safetyARMB_total_df.iloc[i, j],
-                                normal_data_format,
-                            )
-                    worksheet6.autofit()
+                worksheet1.merge_range("A4:U4", "Legal Sex", bold_11_format)
+                worksheet1.merge_range("A9:U9", "Age at Consent", bold_11_format)
+                worksheet1.merge_range("A13:U13", "Race", bold_11_format)
+                worksheet1.merge_range("A23:U23", "Ethnicity", bold_11_format)
+                worksheet1.autofit()
+
+                # Enrollment Listing
+                # * WRITING DATA: enrollment_df
+                worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
+                enrollment_df = enrollment_df.drop(columns=["Treated"])
+                # * WRITING HEADER AND FORMATTING
+                # Assuming 'enrollment_df' is your DataFrame
+                enrollment_df.replace(
+                    [np.inf, -np.inf], np.nan, inplace=True
+                )  # Replace INF with NaN
+                enrollment_df = enrollment_df.fillna(
+                    "N/A"
+                )  # Replace NaN with a placeholder
+                for i in range(0, len(enrollment_df.columns)):
+                    worksheet2.write(0, i, enrollment_df.columns[i], bold_11_format)
+                # * FORMAT DATA
+                for i in range(0, len(enrollment_df)):
+                    for j in range(0, len(enrollment_df.columns)):
+                        worksheet2.write(
+                            i + 1, j, enrollment_df.iloc[i, j], normal_data_format
+                        )
+                # Autofit
+                worksheet2.autofit()
+
+                # DSMB-Infusion Listing
+                worksheet3 = writer.book.add_worksheet("DSMB-Infusion Listing")
+                # * WRITING AND FORMATING DATA
+                infusion_df = infusion_df.drop(columns=["Event Group Label"])
+                infusionR_df = infusionR_df.drop(columns=["Event Group Label"])
+                for i in range(0, len(infusion_df)):
+                    for j in range(0, len(infusion_df.columns)):
+                        worksheet3.write(
+                            i + 1, j, infusion_df.iloc[i, j], normal_data_format
+                        )
+                for i in range(0, len(infusionR_df)):
+                    for j in range(0, len(infusionR_df.columns)):
+                        worksheet3.write(
+                            i + 1,
+                            j + 13,
+                            infusionR_df.iloc[i, j],
+                            normal_data_format,
+                        )
+                # * WRITING HEADER AND FORMATTING
+                worksheet3.write("A1", "Subject ID", bold_12_wrap_format)
+                worksheet3.write("B1", "Study Phase", bold_12_wrap_format)
+                worksheet3.write("C1", "Study Assignment", bold_12_wrap_format)
+                worksheet3.write(
+                    "D1", "VCN-01 Infusion Complete (Y/N)", bold_12_wrap_format
+                )
+                worksheet3.write(
+                    "E1",
+                    "Date of VCN-01 Infusion",
+                    bold_12_wrap_format,
+                )
+                worksheet3.write("F1", "VCN-01 Dose Received", bold_12_wrap_format)
+                worksheet3.write(
+                    "G1", "HuCART-meso Infusion Complete (Y/N)", bold_12_wrap_format
+                )
+                worksheet3.write(
+                    "H1", "Date of HuCART-meso Infusion", bold_12_wrap_format
+                )
+                worksheet3.write(
+                    "I1",
+                    "Total huCART-meso Cell Dose Administered",
+                    bold_12_wrap_format,
+                )
+                worksheet3.write(
+                    "J1", "Total Cell Dose Administered", bold_12_wrap_format
+                )
+
+                worksheet3.write("N1", "Subject ID", bold_12_wrap_format)
+                worksheet3.write("O1", "Study Phase", bold_12_wrap_format)
+                worksheet3.write("P1", "Study Assignment", bold_12_wrap_format)
+                worksheet3.write(
+                    "Q1",
+                    "Lymphodepleting Chemotherapy Regimen",
+                    bold_12_wrap_format,
+                )
+                worksheet3.write(
+                    "R1",
+                    "Date of HuCART-meso Retreatment Infusion",
+                    bold_12_wrap_format,
+                )
+                worksheet3.write(
+                    "S1",
+                    "Total huCART-meso Cell Dose Administered",
+                    bold_12_wrap_format,
+                )
+                worksheet3.write(
+                    "T1", "Total Cell Dose Administered", bold_12_wrap_format
+                )
+
+                # Autofit
+                worksheet3.autofit()
+
+                # Response Listing for Cohorts 1&2
+                worksheet4 = writer.book.add_worksheet("Cohorts 1 & 2 Response Listing")
+                # Primary follow-up
+                worksheet4.merge_range(
+                    "A1:I1",
+                    "Dose Finding Phase (Primary Follow-up) \nN="
+                    + str(subject_ACH12_prim_count),
+                    bold_12_format,
+                )
+                worksheet4.merge_range("A2:A3", "Subject ID", bold_11_format)
+                worksheet4.merge_range("B2:B3", "Study Assignment", bold_11_format)
+                worksheet4.merge_range(
+                    "C2:I2", "Overall Tumor Response", bold_11_format
+                )
+                worksheet4.write(
+                    "C3",
+                    "Pre-Infusion Safety (Baseline Disease Status)",
+                    bold_11_format,
+                )
+                worksheet4.write("D3", "Day +10 Post Infusion #2", bold_11_format)
+                worksheet4.write("E3", "Month 3", bold_11_format)
+                worksheet4.write("F3", "Month 6", bold_11_format)
+                worksheet4.write("G3", "Month 9", bold_11_format)
+                worksheet4.write("H3", "Month 12", bold_11_format)
+                worksheet4.write("I3", "Unscheduled", bold_11_format)
+
+                for i in range(0, len(response_df)):
+                    for j in range(0, len(response_df.columns)):
+                        worksheet4.write(
+                            i + 3,
+                            j,
+                            response_df.iloc[i, j],
+                            normal_data_format,
+                        )
+
+                # Retreatment follow-up
+                worksheet4.merge_range(
+                    "L1:T1",
+                    "Dose Finding Phase (Retreatment Follow-up) \nN="
+                    + str(subject_ACH12_primR_count),
+                    bold_12_format,
+                )
+                worksheet4.merge_range("L2:L3", "Subject ID", bold_11_format)
+                worksheet4.merge_range("M2:M3", "Study Assignment", bold_11_format)
+                worksheet4.merge_range(
+                    "N2:T2", "Overall Tumor Response", bold_11_format
+                )
+                worksheet4.write(
+                    "N3",
+                    "Pre-Retreatment Safety (Baseline Retreatment Disease Status)",
+                    bold_11_format,
+                )
+                worksheet4.write("O3", "Day 28-R", bold_11_format)
+                worksheet4.write("P3", "Month 3-R", bold_11_format)
+                worksheet4.write("Q3", "Month 6-R", bold_11_format)
+                worksheet4.write("R3", "Month 9-R", bold_11_format)
+                worksheet4.write("S3", "Month 12-R", bold_11_format)
+                worksheet4.write("T3", "Unscheduled", bold_11_format)
+
+                for i in range(0, len(responseR_df)):
+                    for j in range(0, len(responseR_df.columns)):
+                        worksheet4.write(
+                            i + 3,
+                            j + 11,
+                            responseR_df.iloc[i, j],
+                            normal_data_format,
+                        )
+                worksheet4.autofit()
+
+                # Response Listing for Arms A & B
+                worksheet5 = writer.book.add_worksheet("Arms A & B Response Listing")
+                # Primary follow-up
+                worksheet5.merge_range(
+                    "A1:I1",
+                    "Expansion Phase (Primary Follow-up) \nN="
+                    + str(subject_ARMAB_prim_count),
+                    bold_12_format,
+                )
+                worksheet5.merge_range("A2:A3", "Subject ID", bold_11_format)
+                worksheet5.merge_range("B2:B3", "Study Assignment", bold_11_format)
+                worksheet5.merge_range(
+                    "C2:I2", "Overall Tumor Response", bold_11_format
+                )
+                worksheet5.write(
+                    "C3",
+                    "Pre-Infusion Safety (Baseline Disease Status)",
+                    bold_11_format,
+                )
+                worksheet5.write("D3", "Day 28", bold_11_format)
+                worksheet5.write("E3", "Month 3", bold_11_format)
+                worksheet5.write("F3", "Month 6", bold_11_format)
+                worksheet5.write("G3", "Month 9", bold_11_format)
+                worksheet5.write("H3", "Month 12", bold_11_format)
+                worksheet5.write("I3", "Unscheduled", bold_11_format)
+
+                for i in range(0, len(responseAB_df)):
+                    for j in range(0, len(responseAB_df.columns)):
+                        worksheet5.write(
+                            i + 3,
+                            j,
+                            responseAB_df.iloc[i, j],
+                            normal_data_format,
+                        )
+
+                # Retreatment follow-up
+                worksheet5.merge_range(
+                    "L1:T1",
+                    "Expansion Phase (Retreatment Follow-up) \nN="
+                    + str(subject_ARMAB_primR_count),
+                    bold_12_format,
+                )
+                worksheet5.merge_range("L2:L3", "Subject ID", bold_11_format)
+                worksheet5.merge_range("M2:M3", "Study Assignment", bold_11_format)
+                worksheet5.merge_range(
+                    "N2:T2", "Overall Tumor Response", bold_11_format
+                )
+                worksheet5.write(
+                    "N3",
+                    "Pre-Retreatment Safety (Baseline Retreatment Disease Status)",
+                    bold_11_format,
+                )
+                worksheet5.write("O3", "Day 28-R", bold_11_format)
+                worksheet5.write("P3", "Month 3-R", bold_11_format)
+                worksheet5.write("Q3", "Month 6-R", bold_11_format)
+                worksheet5.write("R3", "Month 9-R", bold_11_format)
+                worksheet5.write("S3", "Month 12-R", bold_11_format)
+                worksheet5.write("T3", "Unscheduled", bold_11_format)
+
+                for i in range(0, len(responseRAB_df)):
+                    for j in range(0, len(responseRAB_df.columns)):
+                        worksheet5.write(
+                            i + 3,
+                            j + 11,
+                            responseRAB_df.iloc[i, j],
+                            normal_data_format,
+                        )
+                worksheet5.autofit()
+
+                # Summary of Protocol Status
+                worksheet6 = writer.book.add_worksheet("Status for Eligible Subjects")
+                # * WRITING AND FORMATING DATA
+                for i in range(0, len(status_df)):
+                    for j in range(0, len(status_df.columns)):
+                        worksheet6.write(
+                            i + 2, j, status_df.iloc[i, j], normal_data_format
+                        )
+
+                # * WRITING HEADER AND FORMATTING
+                worksheet6.merge_range("A1:A2", "Subject ID", bold_12_wrap_format)
+                worksheet6.merge_range("B1:B2", "Study Assignment", bold_12_wrap_format)
+                worksheet6.merge_range(
+                    "C1:C2", "Adverse Events (Y/N)", bold_12_wrap_format
+                )
+                worksheet6.merge_range(
+                    "D1:D2", "Serious Adverse Events (Y/N)", bold_12_wrap_format
+                )
+                worksheet6.merge_range("E1:E2", "Study Status", bold_12_wrap_format)
+                worksheet6.merge_range("F1:F2", "Off-Study Reason", bold_12_wrap_format)
+                worksheet6.merge_range(
+                    "G1:G2",
+                    "Last Study Visit Performed for Off-Study Subject",
+                    bold_12_wrap_format,
+                )
+
+                # Safety Headers
+                # number of subject of safety_total_df
+                safety_total_df_subject_count = len(status_df["Subject"].unique())
+                worksheet6.merge_range(
+                    "K1:N1",
+                    "Safety Statistics (N=" + str(safety_total_df_subject_count) + ")",
+                    bold_12_wrap_format,
+                )
+                worksheet6.merge_range("K2:L2", "Adverse Events", bold_11_format)
+                worksheet6.merge_range(
+                    "M2:N2", "Serious Adverse Events ", bold_11_format
+                )
+                worksheet6.write("K3", "Yes", bold_11_format)
+                worksheet6.write("L3", "No", bold_11_format)
+                worksheet6.write("M3", "Yes", bold_11_format)
+                worksheet6.write("N3", "No", bold_11_format)
+                worksheet6.write("J4", "Cohort 1", bold_11_format)
+                worksheet6.write("J5", "Cohort 2", bold_11_format)
+                worksheet6.write("J6", "Treatment Arm A", bold_11_format)
+                worksheet6.write("J7", "Treatment Arm B", bold_11_format)
+                # Safety Data
+                # Cohort 1
+                for i in range(0, len(safetyCH1_total_df)):
+                    for j in range(0, len(safetyCH1_total_df.columns)):
+                        worksheet6.write(
+                            i + 3,
+                            j + 10,
+                            safetyCH1_total_df.iloc[i, j],
+                            normal_data_format,
+                        )
+                # Cohort 2
+                for i in range(0, len(safetyCH2_total_df)):
+                    for j in range(0, len(safetyCH2_total_df.columns)):
+                        worksheet6.write(
+                            i + 4,
+                            j + 10,
+                            safetyCH2_total_df.iloc[i, j],
+                            normal_data_format,
+                        )
+                # ARM A
+                for i in range(0, len(safetyARMA_total_df)):
+                    for j in range(0, len(safetyARMA_total_df.columns)):
+                        worksheet6.write(
+                            i + 5,
+                            j + 10,
+                            safetyARMA_total_df.iloc[i, j],
+                            normal_data_format,
+                        )
+                # ARM B
+                for i in range(0, len(safetyARMB_total_df)):
+                    for j in range(0, len(safetyARMB_total_df.columns)):
+                        worksheet6.write(
+                            i + 6,
+                            j + 10,
+                            safetyARMB_total_df.iloc[i, j],
+                            normal_data_format,
+                        )
+                worksheet6.autofit()
