@@ -14,6 +14,10 @@ import pytest
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ.pop("QT_QPA_PLATFORMTHEME", None)
 
+# The tests must never count runs on the production usage endpoint.
+os.environ["CLINICAL_REPORTING_RUN_COUNTER_URL"] = ""
+os.environ["CLINICAL_REPORTING_RUN_COUNTER_TOKEN"] = ""
+
 # Make the project root importable for all tests without duplicating path hacks.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"

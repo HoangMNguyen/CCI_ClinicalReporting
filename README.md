@@ -193,7 +193,9 @@ Python file is saved. Unsafe Ruff fixes remain disabled by default.
 Testing notes:
 
 - `tests/conftest.py` inserts both project root and `src/` into `sys.path`, runs
-  Qt offscreen (no windows appear), and provides one shared `qapp` fixture.
+  Qt offscreen (no windows appear), blanks the usage counter's endpoint so no
+  test counts a run (even with a local `telemetry.json`), and provides one
+  shared `qapp` fixture.
 - Tests build their own made-up data in code (Clinical Reporting's
   `clinical_reporting/ui/sample_data.py`, small DataFrames, and tiny ZIPs
   written to pytest's `tmp_path`) and never read real study exports. Keep
