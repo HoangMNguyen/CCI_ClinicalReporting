@@ -190,6 +190,10 @@ python -m ruff format src tests        # an intentional repository-wide format p
 VS Code will recommend the Ruff extension and apply the same fixes whenever a
 Python file is saved. Unsafe Ruff fixes remain disabled by default.
 
+GitHub Actions (`.github/workflows/tests.yml`) runs the lint check and the
+full suite on Linux and Windows for every push and pull request, and
+`tests/unit` and `tests/integration` on `requirements-core.txt` alone.
+
 Testing notes:
 
 - `tests/conftest.py` inserts both project root and `src/` into `sys.path`, runs
