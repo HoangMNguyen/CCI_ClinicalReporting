@@ -5,8 +5,14 @@ from pathlib import Path
 import pytest
 
 # Qt tests never need a visible screen; this must be set before any QApplication
-# exists so the suite behaves the same on a desktop, a server, or CI.
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# exists so the suite behaves the same on a desktop, a server, or CI. The
+# desktop session's values are overruled rather than respected: a shell that
+# exports QT_QPA_PLATFORM (some desktops set `wayland;xcb`) would otherwise put
+# every test window on the user's screen and make sizes, focus and the colour
+# scheme depend on the compositor, and the gtk3 platform theme aborts the
+# process part-way through an offscreen run.
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+os.environ.pop("QT_QPA_PLATFORMTHEME", None)
 
 # Make the project root importable for all tests without duplicating path hacks.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
