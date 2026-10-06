@@ -111,7 +111,7 @@ class WidgetBaseMixin:
         so must anything else that changes the report (filters, joins,
         renames, exports). Changes made together refresh once, when control
         returns to the event loop (see :mod:`ui.navigation`). Does nothing in
-        windows without the navigation (the unit tests' partial windows).
+        windows without the navigation (the tests' partial windows).
         """
         refresh = getattr(self, "_shell_refresh", None)
         if refresh is not None:

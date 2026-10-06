@@ -36,10 +36,17 @@ class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
         self.update_all_ui_calls += 1
 
 
+# The Qt stand-ins below live for the whole session. One left to the garbage
+# collector between tests gets destroyed at an unpredictable point, often in a
+# later window test's event processing, which crashes in QObject::~QObject.
+_ALIVE = []
+
+
 class DummyAdditionalInputUiWidget(AdditionalInputTabMixin, WidgetBaseMixin):
     """Qt-backed stand-in for additional-input table interactions."""
 
     def __init__(self):
+        _ALIVE.append(self)
         self.report = CLReport()
         column_table = QTableWidget()
         column_table.setColumnCount(2)

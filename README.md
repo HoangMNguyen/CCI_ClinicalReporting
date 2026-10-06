@@ -156,9 +156,9 @@ src/
   safety_automation/           # Corelisting AE & DLT report
   peer_review_automation/      # Medidata SDS peer review
 tests/
-  unit/                        # fast logic-focused tests
+  unit/                        # fast Qt-free logic tests
   integration/                 # Clinical Reporting end-to-end report/settings/API tests
-  ui/                          # design-system and whole-window tests
+  ui/                          # design-system, window and page tests (need Qt)
 docs/design/clinical-reporting-mockup.html  # the approved mockup the design follows
 *.spec, build_support.py       # PyInstaller builds (see Building the executables)
 ```
@@ -173,8 +173,9 @@ Each package's README describes its own files.
 python -m pytest -q                    # the full suite
 python -m pytest -q tests/unit         # unit tests only
 python -m pytest -q tests/integration  # integration tests only
-python -m pytest -q tests/ui           # design-system and window tests only
-python -m pytest -q tests/unit/test_join_deduplication.py  # one file
+python -m pytest -q tests/ui           # design-system, window and page tests only
+python -m pytest -q tests/unit tests/integration   # no Qt needed (requirements-core.txt + pytest)
+python -m pytest -q tests/ui/test_join_deduplication.py  # one file
 python -m pytest -x -vv                # stop at the first failure, verbose
 ```
 
@@ -199,10 +200,12 @@ Testing notes:
   real exports outside the repository: Git ignores `tests/data/` and every
   `.zip`, `.csv` and Excel file so one can't be committed by accident, but
   the repository folder still syncs to Dropbox.
-- Keep logic tests in `tests/unit/` (the automation workflows' `run()` tests
-  are there too), Clinical Reporting's end-to-end report, settings and API
-  tests in `tests/integration/`, and tests of the shared design system
-  (`cci_ui`) and of whole windows in `tests/ui/`.
+- `tests/unit/` holds Qt-free logic (the automation workflows' `run()` tests
+  are there too) and `tests/integration/` Clinical Reporting's end-to-end
+  report, settings and API tests; both run on `requirements-core.txt` alone,
+  and `tests/unit/test_suites_are_qt_free.py` fails on a Qt import there.
+  Desktop behaviour (the shared design system `cci_ui`, whole windows and the
+  window's pages) goes in `tests/ui/`.
 - Slow work (reading inputs, previews, exports, the tools' workflows) runs on
   a background thread. Tests that wait for it use the `settle` fixture in
   `tests/ui/conftest.py`, which blocks in `TaskRunner.wait()` so the worker
