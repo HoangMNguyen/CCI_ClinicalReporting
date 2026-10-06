@@ -28,7 +28,6 @@ class DSMB12423:
         self.data = data
         self.output_dir = output_dir
         self.output_file_name = output_file_name
-        self.data_loaded = False
 
     def run(self):
         """
@@ -245,7 +244,7 @@ class DSMB12423:
         self.Race_list = []
         self.Ethnicity_list = []
 
-        for filter_index, filter_option in enumerate(filter_options):
+        for filter_option in filter_options:
             # Apply the filter to the dataframe
             filtered_df = enrollment_df[filter_option].copy()
             filtered_df = filtered_df[
@@ -378,7 +377,6 @@ class DSMB12423:
         infusion_df = add_rename_column_df(
             infusion_df,
             EXCHMO_df[EXCHMO_df["Event Group Label"] == "Day 0"],
-            "EXCHMO",
             "Medication (IG_NS_NA_EXCHMO2.CL_NS_NH_EXCCAT_cl_NS_EXCCAT1)",
             "Lymphodepleting Chemotherapy Regimen",
         )
@@ -476,7 +474,6 @@ class DSMB12423:
         infusionR_df = add_rename_column_df(
             infusionR_df,
             EXCHMO_df[EXCHMO_df["Event Group Label"] == "Day 0-R"],
-            "EXCHMO",
             "Medication (IG_NS_NA_EXCHMO2.CL_NS_NH_EXCCAT_cl_NS_EXCCAT1)",
             "Lymphodepleting Chemotherapy Regimen",
         )

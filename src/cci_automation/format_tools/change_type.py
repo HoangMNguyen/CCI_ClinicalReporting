@@ -165,7 +165,7 @@ def write_formatted(all_data, target):
         text_format = workbook.add_format({"num_format": "@"})
 
         # Apply formatting to columns based on their content
-        for col_num, col_name in enumerate(df.columns):
+        for col_num in range(len(df.columns)):
             if has_range_pattern(df.iloc[:, col_num]):
                 worksheet.set_column(col_num, col_num, None, text_format)
 

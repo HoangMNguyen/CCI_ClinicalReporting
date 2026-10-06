@@ -247,7 +247,7 @@ class DSMB11823:
         self.Age_at_Consent_list = []
         self.Race_list = []
         self.Ethnicity_list = []
-        for filter_index, filter_option in enumerate(filter_options):
+        for filter_option in filter_options:
             # Apply the filter to the dataframe
             filtered_df = enrollment_df[filter_option].copy()
             filtered_df = filtered_df[
@@ -837,8 +837,6 @@ class DSMB11823:
             "Confirmed PSA Progression": 5,
             "Not Reported": 6,  # Lowest rank
         }
-        # Dictionary to store best response for each subject by response type
-        best_responses = {}
         # Get all unique subjects
         subjects = self.response_df["Subject"].unique()
         # Initialize the response counts dictionaries
@@ -972,12 +970,6 @@ class DSMB11823:
                         ):
                             best_psa = extracted_response
                             best_psa_rank = psa_ranking[extracted_response]
-            # Store best responses for this subject
-            best_responses[subject] = {
-                "RECIST 1.1": best_recist,
-                "PCWG3": best_bone_scan,
-                "PSA Response": best_psa,
-            }
             # Update counts
             recist_counts[best_recist] += 1
             bone_scan_counts[best_bone_scan] += 1
@@ -1032,9 +1024,6 @@ class DSMB11823:
         self.bone_scan_stats = bone_scan_stats
         self.psa_stats = psa_stats
         self.total_response_subjects = total_subjects
-        self.best_responses = (
-            best_responses  # Store individual subject responses for reference
-        )
 
     def PET_Imaging(self):
         """

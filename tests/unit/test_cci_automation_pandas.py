@@ -61,7 +61,7 @@ def test_add_rename_column_df_left_merges_on_compound_key():
     )
 
     result = add_rename_column_df(
-        current_df, input_df, "FORM", "Dose", "Dose Level", key2="Visit"
+        current_df, input_df, "Dose", "Dose Level", key2="Visit"
     )
 
     expected = pd.DataFrame(

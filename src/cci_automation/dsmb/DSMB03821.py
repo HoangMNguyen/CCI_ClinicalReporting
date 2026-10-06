@@ -410,7 +410,7 @@ def DSMB03821(
         Race_list = []
         Ethnicity_list = []
 
-        for filter_index, filter_option in enumerate(filter_options):
+        for filter_option in filter_options:
             # Apply the filter to the dataframe
             filtered_df = enrollment_df[filter_option].copy()
             filtered_df = filtered_df[
@@ -627,7 +627,6 @@ def DSMB03821(
         infusionR_df = add_rename_column_df(
             infusionR_df,
             EXCHMO_df[EXCHMO_df["Event Group Label"] == "Day 0-R"],
-            "EXCHMO",
             "Medication (IG_NS_NA_EXCHMO2.CL_NS_NH_EXCCAT_cl_NS_EXCCAT1)",
             "Lymphodepleting Chemotherapy Regimen",
         )

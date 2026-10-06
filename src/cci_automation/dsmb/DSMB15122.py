@@ -412,7 +412,7 @@ def DSMB15122(
     Race_list = []
     Ethnicity_list = []
 
-    for filter_index, filter_option in enumerate(filter_options):
+    for filter_option in filter_options:
         # Apply the filter to the dataframe
         filtered_df = enrollment_df[filter_option].copy()
         filtered_df = filtered_df[
@@ -887,20 +887,6 @@ def DSMB15122(
         lambda row: str(x) + "%" if pd.notna(x := row["%scFv Flow"]) else x, axis=1
     )
     infusion_df = infusion_df.drop(columns=["Target Cell Dose"])
-
-    # SAFETY STATS
-
-    # Gather all stats of each cohort (currently only has cohort 1)
-    total_infused_df = infusion_df.copy()
-    total_infused_df = total_infused_df[
-        total_infused_df["Cohort Assignment"] == "Cohort 1"
-    ]
-
-    # Gather all stats of each cohort (currently only has cohort 1)
-    total_status_df = status_df.copy()
-    total_status_df = total_status_df[
-        total_status_df["Cohort Assignment"] == "Cohort 1"
-    ]
 
     if export:
         with pd.ExcelWriter(

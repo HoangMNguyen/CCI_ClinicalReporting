@@ -27,7 +27,6 @@ class DSMB03325:
         self.data = data
         self.output_dir = output_dir
         self.output_file_name = output_file_name
-        self.data_loaded = False
 
     def run(self):
         """
@@ -53,13 +52,11 @@ class DSMB03325:
             # process the Treatment Statistics
             self.infusion_stats(self.infusion_df, self.infusionR_df)
             # process EGFR MGMT Listing
-            self.EGFR_listing_df_output, self.EGFR_listing_df = self.EGFR_listing()
+            self.EGFR_listing_df_output, _ = self.EGFR_listing()
             # process the Status of Eligible Subjects and Cohort A Safety Statistics
-            self.AE_df, self.status_df, self.safetyCH1_total_df = self.status_listing(
-                self.enrollment_listing_df
-            )
+            _, self.status_df, self.safetyCH1_total_df = self.status_listing()
             # process Status of Treated Subjects
-            self.TXSUB_status_df = self.TXSUB_status_listing(self.infusion_listing)
+            self.TXSUB_status_df = self.TXSUB_status_listing()
             # generate Excel export
             self.export(self.output_dir, self.output_file_name)
 
@@ -335,7 +332,7 @@ class DSMB03325:
         self.Race_list = []
         self.Ethnicity_list = []
 
-        for filter_index, filter_option in enumerate(filter_options):
+        for filter_option in filter_options:
             # Apply the filter to the dataframe
             filtered_df = enrollment_df[filter_option].copy()
             filtered_df = filtered_df[(filtered_df["Main Consent Date"].notna())]
@@ -819,7 +816,7 @@ class DSMB03325:
             axis=1,
         )
 
-    def status_listing(self, enrollment_listing_df):
+    def status_listing(self):
         data = self.data
         # AE and SAE data
         AE_df = data["AE"][
@@ -1063,7 +1060,7 @@ class DSMB03325:
             safetyCH1_total_df,
         )
 
-    def TXSUB_status_listing(self, data):
+    def TXSUB_status_listing(self):
         data = self.data
         # AE and SAE data
         AE_df = data["AE"][

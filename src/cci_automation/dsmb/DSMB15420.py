@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -21,9 +19,8 @@ from clinical_reporting.export import get_named_excel_formats
 
 def DSMB15420(
     data,
-    output_dir="C:/Users/Hoang Nguyen/Dropbox/Current Work/Download",
-    output_file_name=datetime.now().strftime("%Y%m%d%H%M%S") + "-15420-DSMB Report",
-    debug=False,
+    output_dir,
+    output_file_name,
 ):
     # Subject
     enrollment_df = data["DM"][["Subject"]].copy()
@@ -491,7 +488,6 @@ def DSMB15420(
     infusion_df = add_rename_column_df(
         infusion_df,
         EXCHMO_df[EXCHMO_df["Event Group Label"] == "Day 0"],
-        "EXCHMO",
         "Medication (ig_EXCHMO2.EXCCAT)",
         "Lymphodepleting Chemotherapy Regimen",
     )
@@ -635,7 +631,6 @@ def DSMB15420(
     infusionR_df = add_rename_column_df(
         infusionR_df,
         EXCHMO_df[EXCHMO_df["Event Group Label"] != "Day 0"],
-        "EXCHMO",
         "Medication (ig_EXCHMO2.EXCCAT)",
         "Lymphodepleting Chemotherapy Regimen",
     )
@@ -737,7 +732,7 @@ def DSMB15420(
     infusionR_df = infusionR_df[infusionR_df["Event Group Label"] != ""]
 
     # INFUSION STATISTICS
-    def calculate_cohort_infusion_stats(infusion_df, cohort_filter, cohort_name=None):
+    def calculate_cohort_infusion_stats(infusion_df, cohort_filter):
         """
         Calculate infusion statistics for a specific cohort.
 
@@ -747,8 +742,6 @@ def DSMB15420(
             The main infusion dataframe
         cohort_filter : str or callable
             Either a string to match "Cohort Assignment" column or a callable filter function
-        cohort_name : str, optional
-            Name for logging/debugging purposes
 
         Returns:
         --------
@@ -824,7 +817,7 @@ def DSMB15420(
     # Process each cohort
     for cohort_key, cohort_filter in cohort_mappings.items():
         stats_df, subject_count = calculate_cohort_infusion_stats(
-            infusion_df, cohort_filter, cohort_name=f"Cohort {cohort_key}"
+            infusion_df, cohort_filter
         )
 
         # Store results using the naming convention from original code
@@ -836,12 +829,6 @@ def DSMB15420(
     final_infusion_statB = infusion_stats.get("infusion_statB", pd.DataFrame())
     final_infusion_statC = infusion_stats.get("infusion_statC", pd.DataFrame())
     final_infusion_statD = infusion_stats.get("infusion_statD", pd.DataFrame())
-
-    # For backward compatibility with original variable names
-    infusion_statA = final_infusion_statA
-    infusion_statB = final_infusion_statB
-    infusion_statC = final_infusion_statC
-    infusion_statD = final_infusion_statD
 
     # FORMATTING THE DATAFRAME
     # Day 0
@@ -902,10 +889,6 @@ def DSMB15420(
     # ASSIGNING THE DATAFRAME TO THE CLASS VARIABLE
     final_infusion_df = infusion_df
     final_infusionR_df = infusionR_df
-    final_infusion_statA = infusion_statA
-    final_infusion_statB = infusion_statB
-    final_infusion_statC = infusion_statC
-    final_infusion_statD = infusion_statD
 
     # RESPONSE LISTING
     # PREPARE

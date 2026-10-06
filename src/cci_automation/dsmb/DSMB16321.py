@@ -25,7 +25,6 @@ class DSMB16321:
         self.data = data
         self.output_dir = output_dir
         self.output_file_name = output_file_name
-        self.data_loaded = False
 
     def run(self):
         """
@@ -44,18 +43,18 @@ class DSMB16321:
                 self.enrollment_listing()
             )
             self.enrollment_stat_table(self.enrollment_listing_df)
-            self.EGFR_listing_df_output, self.EGFR_listing_df = self.EGFR_listing()
+            self.EGFR_listing_df_output, _ = self.EGFR_listing()
             self.infusion_df, self.infusionR_df = self.infusion_listing()
             self.infusion_stats(self.infusion_df, self.infusionR_df)
             (
-                self.AE_df,
+                _,
                 self.status_df,
                 self.safetyCH1_total_df,
                 self.safetyCH2_total_df,
                 self.safetyCHN1_total_df,
                 self.safetyCH4_total_df,
-            ) = self.status_listing(self.enrollment_listing_df)
-            self.TXSUB_status_df = self.TXSUB_status_listing(self.infusion_listing)
+            ) = self.status_listing()
+            self.TXSUB_status_df = self.TXSUB_status_listing()
 
             self.export(self.output_dir, self.output_file_name)
 
@@ -286,7 +285,7 @@ class DSMB16321:
         self.Race_list = []
         self.Ethnicity_list = []
 
-        for filter_index, filter_option in enumerate(filter_options):
+        for filter_option in filter_options:
             # Apply the filter to the dataframe
             filtered_df = enrollment_df[filter_option].copy()
             filtered_df = filtered_df[
@@ -369,16 +368,6 @@ class DSMB16321:
         )
 
         # *: Get latest date from Sugery in Initial Study Enrollment/Apheresis event
-        MHSG_subject_df = Eligible_df["Subject"].copy()
-        MHSG1_df = MHSG_subject_df
-        MHSG1_df = add_rename_column_corelisting(
-            MHSG1_df, data, "MHSG", "Event Group Label", "Event Group Label"
-        )
-
-        MHSG1_df = MHSG1_df[
-            (MHSG1_df["Event Group Label"] == "Initial Study Enrollment/Apheresis")
-        ].copy()
-
         MHSG_collectionDT_df = data["MHSG"][
             [
                 "Subject",
@@ -1037,7 +1026,7 @@ class DSMB16321:
             axis=1,
         )
 
-    def status_listing(self, infusion_listing):
+    def status_listing(self):
         data = self.data
         # AE and SAE data
         AE_df = data["AE"][
@@ -1318,7 +1307,7 @@ class DSMB16321:
             safetyCH4_total_df,
         )
 
-    def TXSUB_status_listing(self, data):
+    def TXSUB_status_listing(self):
         data = self.data
         # AE and SAE data
         AE_df = data["AE"][

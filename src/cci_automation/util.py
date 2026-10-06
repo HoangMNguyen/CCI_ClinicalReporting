@@ -48,7 +48,6 @@ def add_rename_column_corelisting(
 def add_rename_column_df(
     current_df,
     input_df,
-    form_name,
     column_name,
     new_column_name,
     key1="Subject",
@@ -59,7 +58,6 @@ def add_rename_column_df(
     Args:
         current_df (dataframe): current dataframe with subject ID list
         input_df (dataframe):dataframe, with keys are form names
-        form_name (string): form name
         column_name (string): exact column name in corelisting
         new_column_name (string): the name of the column that would be updated
         key (string): usually it's subject ID of the
