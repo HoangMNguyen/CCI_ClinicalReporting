@@ -291,11 +291,14 @@ class _Toast(QWidget):
         super().__init__(parent)
         pill = QFrame()
         pill.setProperty("cciRole", "toast")
-        shadow = QGraphicsDropShadowEffect(pill)
-        shadow.setBlurRadius(24)
-        shadow.setOffset(0, 6)
-        shadow.setColor(qcolor(current().colors.shadow_toast))
-        pill.setGraphicsEffect(shadow)
+        # Both effects are built without a parent: parented to their widgets as
+        # well, they crashed PySide now and then when toasts were torn down. The
+        # attributes keep them alive, since setGraphicsEffect doesn't.
+        self._shadow = QGraphicsDropShadowEffect()
+        self._shadow.setBlurRadius(24)
+        self._shadow.setOffset(0, 6)
+        self._shadow.setColor(qcolor(current().colors.shadow_toast))
+        pill.setGraphicsEffect(self._shadow)
         row = QHBoxLayout(pill)
         row.setContentsMargins(14, 8, 16, 8)
         row.setSpacing(8)
@@ -310,7 +313,7 @@ class _Toast(QWidget):
         )
         self.setAccessibleName(text)
 
-        self._opacity = QGraphicsOpacityEffect(self)
+        self._opacity = QGraphicsOpacityEffect()
         self._opacity.setOpacity(0.0)
         self.setGraphicsEffect(self._opacity)
         self._fade = QPropertyAnimation(self._opacity, b"opacity", self)

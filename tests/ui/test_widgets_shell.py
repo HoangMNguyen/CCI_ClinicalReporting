@@ -1,12 +1,17 @@
 """Tests for the second batch of components (step 1.4)."""
 
+import gc
+
 import pytest
 import shiboken6
-from PySide6.QtCore import QByteArray, QElapsedTimer, QRect, QSettings, Qt
+from PySide6.QtCore import QByteArray, QElapsedTimer, QPointF, QRect, QSettings, Qt
 from PySide6.QtGui import QInputMethodEvent, QKeySequence, QShortcut
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QGraphicsOpacityEffect,
     QLineEdit,
     QListWidget,
     QMainWindow,
@@ -259,6 +264,22 @@ def test_a_long_toast_stays_inside_the_window(shown):
     assert toast.accessibleName() == text and toast.label.text() == text
     shown_text = super(type(toast.label), toast.label).text()
     assert shown_text != text and shown_text.endswith("DSMB.json")
+
+
+def test_a_toast_keeps_its_fade_and_shadow(shown):
+    window = shown(QWidget(), 600, 400)
+
+    toast = show_toast(window, "Saved", duration_ms=60)
+    QApplication.processEvents()
+    # PySide keeps no reference to an installed effect, so the toast must:
+    # collect any effect that only a local held.
+    gc.collect()
+    pill = toast.findChild(QFrame, options=Qt.FindChildOption.FindDirectChildrenOnly)
+    shadow = pill.graphicsEffect()
+
+    assert isinstance(toast.graphicsEffect(), QGraphicsOpacityEffect)
+    assert isinstance(shadow, QGraphicsDropShadowEffect)
+    assert shadow.blurRadius() == 24 and shadow.offset() == QPointF(0, 6)
 
 
 def test_toasts_stack_up_to_a_limit_and_go_away(shown, shown_windows):
