@@ -524,4 +524,3 @@ class EnrollmentLog:
             for col_name in subject_id_columns:
                 col_idx = self.output_df.columns.get_loc(col_name)
                 worksheet.set_column(col_idx, col_idx, 15, text_fmt)
-        # writer.save()

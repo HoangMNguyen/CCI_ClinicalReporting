@@ -1,8 +1,11 @@
+import logging
 import math
 
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
+
+logger = logging.getLogger(__name__)
 
 # TODO: implement type hints for all functions
 
@@ -70,137 +73,13 @@ def add_rename_column_df(
         df = input_df[[key1, column_name]].copy()
     else:
         df = input_df[[key1, key2, column_name]].copy()
-    # df = df[df['Form ILB Status'] == False]
-    # df = df[df['Form Status'] != 'Blank']
     new_col_name = {column_name: new_column_name}
     df = df.rename(columns=new_col_name)
-    # df = df.drop(columns = ['Form ILB Status'])
     if key2 is None:
         new_df = pd.merge(current_df, df, on=key1, how="left")
     else:
         new_df = pd.merge(current_df, df, on=[key1, key2], how="left")
     return new_df
-
-
-def get_stats_df(column, *dfs):
-    """
-    Compute and aggregate statistical measures for a specified column across multiple DataFrames.
-
-    This function calculates various statistical measures for a given column name that is present
-    across multiple pandas DataFrames. The statistics are calculated for each DataFrame and then aggregated.
-
-    Args:
-        column (str): The name of the column for which statistical measures are to be calculated.
-        *dfs (tuple of DataFrame): Variable number of DataFrame objects on which statistics are to be computed.
-
-    Returns:
-        DataFrame: A pandas DataFrame aggregating the calculated statistical measures from each input DataFrame.
-    """
-    # Initialize an empty DataFrame
-    main_df = pd.DataFrame()
-
-    for i, df in enumerate(dfs):
-        # Calculate the mean, standard deviation, median, and range of 'Age at Consent'
-        numeric_column = pd.to_numeric(df[column], errors="coerce")
-        mean = numeric_column.mean()
-        std = numeric_column.std()
-        median = numeric_column.median()
-        minimum = numeric_column.min()
-        maximum = numeric_column.max()
-
-        if np.isnan(std):
-            std = 0
-
-        # Create a DataFrame for the current stats if non of the stats are NaN
-        if (
-            not np.isnan(mean)
-            and not np.isnan(median)
-            and not np.isnan(minimum)
-            and not np.isnan(maximum)
-        ):
-            # Format the mean and standard deviation
-            if mean < 100:
-                mean_std = f"{mean:.2f} ({std:.2f})"
-            else:
-                mean_std = f"{convert_float_2_sci_notation(int(mean))} ({convert_float_2_sci_notation(int(std))})"
-            if median > 100:
-                median = f"{convert_float_2_sci_notation(int(median))}"
-            if minimum < 100 and maximum < 100:
-                range = f"{minimum:.2f} - {maximum:.2f}"
-            else:
-                range = f"{convert_float_2_sci_notation(int(minimum))} - {convert_float_2_sci_notation(int(maximum))}"
-            stats_df = pd.DataFrame(
-                {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
-            )
-        else:
-            stats_df = pd.DataFrame(index=[i])
-        # Append the stats DataFrame to the main DataFrame if it is not empty
-        main_df = pd.concat([main_df, stats_df])
-    # Transpose the DataFrame to switch the axes
-    main_df = main_df.T
-    return main_df
-
-
-def get_stats_perc_df(column, *dfs):
-    """
-    Compute and aggregate percentage-based statistical measures for a specified column across multiple DataFrames.
-
-    This function calculates statistics related to the percentage distribution of values for a given column
-    that exists across multiple pandas DataFrames. It computes these statistics for each DataFrame individually
-    and then aggregates the results.
-
-    Args:
-        column (str): The name of the column for which percentage-based statistical measures are to be calculated.
-        *dfs (tuple of DataFrame): A variable number of DataFrame objects for which the statistics are to be computed.
-
-    Returns:
-        DataFrame: A pandas DataFrame aggregating the percentage-based statistical measures from each input DataFrame.
-    """
-    # Initialize an empty DataFrame
-    main_df = pd.DataFrame()
-
-    for i, df in enumerate(dfs):
-        # Calculate the mean, standard deviation, median, and range of 'Age at Consent'
-        numeric_column = pd.to_numeric(df[column], errors="coerce")
-        mean = numeric_column.mean()
-        std = numeric_column.std()
-        median = numeric_column.median()
-        minimum = numeric_column.min()
-        maximum = numeric_column.max()
-
-        if np.isnan(std):
-            std = 0
-
-        # Create a DataFrame for the current stats if non of the stats are NaN
-        if (
-            not np.isnan(mean)
-            and not np.isnan(median)
-            and not np.isnan(minimum)
-            and not np.isnan(maximum)
-        ):
-            # Format the mean and standard deviation
-            if mean < 100:
-                mean_std = f"{mean:.2f}% ({std:.2f}%)"
-            else:
-                mean_std = f"{convert_float_2_sci_notation(int(mean))}% ({convert_float_2_sci_notation(int(std))}%)"
-            if median > 100:
-                median = f"{convert_float_2_sci_notation(int(median))}%"
-            else:
-                median = f"{median:.2f}%"
-            if minimum < 100 and maximum < 100:
-                range = f"{minimum:.2f}% - {maximum:.2f}%"
-            else:
-                range = f"{convert_float_2_sci_notation(int(minimum))}% - {convert_float_2_sci_notation(int(maximum))}%"
-            stats_df = pd.DataFrame(
-                {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
-            )
-        else:
-            stats_df = pd.DataFrame(index=[i])
-        # Append the stats DataFrame to the main DataFrame if it is not empty
-        main_df = pd.concat([main_df, stats_df])
-    # Transpose the DataFrame to switch the axes
-    main_df = main_df.T
-    return main_df
 
 
 def convert_float_2_sci_notation(n):
@@ -228,33 +107,6 @@ def convert_float_2_sci_notation(n):
             return f"{mantissa}x10^{exponent}"
         else:
             return f"{mantissa:.2f}x10^{exponent}"
-
-
-def convert_sci_notation_2_float(s):
-    """
-    Convert a string representing a number in scientific notation to a floating-point number.
-
-    This function takes a string in the format 'mantissax10^exponent', where the mantissa and exponent are
-    separated by 'x10^', and converts it into a floating-point number. If the string is not in the correct format
-    or contains values that cannot be converted to floats, the function handles the error and returns NaN.
-
-    Args:
-        s (str): A string representing a number in scientific notation.
-
-    Returns:
-        float: The floating-point equivalent of the input string. If the string is not properly formatted or
-               contains invalid values, NaN (Not a Number) is returned.
-    """
-    try:
-        parts = s.split("x10^")
-        if len(parts) != 2:
-            return np.nan
-        mantissa = float(parts[0])
-        exponent = float(parts[1])
-        return mantissa * 10**exponent
-
-    except ValueError:
-        return np.nan
 
 
 def convert_integers_to_strings(df, column_name):
@@ -451,7 +303,9 @@ def remove_leading_zeros_from_dates(df):
                 )
             except Exception as e:
                 # If conversion fails, keep original data
-                print(f"Could not process date column '{col_name}': {e}")
+                logger.warning(
+                    "Could not process date column %r (%s)", col_name, type(e).__name__
+                )
 
     return df_copy
 

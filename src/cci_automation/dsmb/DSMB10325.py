@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import re
 
 import numpy as np
@@ -15,9 +14,6 @@ from cci_automation.util import (
     age_calculation,
     get_data_from_dict,
 )
-
-# Opt-in to the future behavior
-pd.set_option("future.no_silent_downcasting", True)
 
 
 class DSMB10325:
@@ -96,7 +92,6 @@ class DSMB10325:
             "IE": {
                 "Main Consent Date (IG_NS_NA_IE1.DT_NS_NH_MAINCDAT)": "Main Consent Date",
                 "Event Group Label": "Last Eligibility Step Completed",
-                # "Event Date": "IE Event Date",
                 "Subject Meets All Study Eligibility (IG_NS_NA_IE3.CL_NS_YH_ELIGYN_cl_YS_YN1)": "Subject meets all study eligibility?",
                 "Other Screen Fail Reason (IG_NS_NA_IE4.TX_NS_YH_OTHRSFREAS)": "SF3",
                 "Screen Failure Reason (IG_NS_NA_IE4.CL_NS_YH_IECAT_cl_NS_IEREASSF1)": "Reason for Screen Fail",
@@ -113,21 +108,6 @@ class DSMB10325:
                 "Provide Supportive Information (IG_NS_NA_DSEOS2.TX_NS_YH_EOSTERM)": "Supportive Information",
             },
         }
-
-        # print(f"input_dict: {input_dict}")
-        for key, val in data.items():
-            if key == "IE":
-                # print key within data
-                print(f"Printing key from, data: {key} , {type(val)}")
-
-                # print("Printing columns first!")
-                # import json
-                # print(val.to_dict(orient="list"))
-                for column in val.columns:
-                    if column in ["Event Group Label", "Event Date"]:
-                        print(column, ":", val[column].tolist())
-
-        # print(f"data type: {type(data)}")
 
         enrollment_df = get_data_from_dict(data, input_dict)
         # Replace missing values in the "Assigned Treatment Arm" and "Dose Level Assignment" columns with "Pending"
@@ -243,7 +223,6 @@ class DSMB10325:
                 "SF2",
                 "SF3",
                 "Supportive Information",
-                # "End of Study Reason",
             ]
         )
 
@@ -285,7 +264,6 @@ class DSMB10325:
         enrollment_df = enrollment_df.drop(
             columns=["End of Study Reason"], errors="ignore"
         )
-        # enrollment_df = enrollment_df.drop(columns=["End of Study Date"])
 
         # Sort
         enrollment_df = enrollment_df.sort_values(["Subject"])
@@ -579,7 +557,6 @@ class DSMB10325:
             },
         }
 
-        # raw_infusion_df1 = get_data_from_dict_first(data, input_dict1)
         raw_infusion_df1 = get_data_from_dict(data, input_dict1, "EXINF")
         raw_infusion_df2 = get_data_from_dict(data, input_dict2)
         raw_infusion_df3 = get_data_from_dict(data, input_dict3)
@@ -599,14 +576,12 @@ class DSMB10325:
         ).reset_index(drop=True)
         raw_infusion_df = raw_infusion_df.drop(columns=["Study Treatment Date (sort)"])
 
-        # print(raw_infusion_df)
         # TODO: TREATMENT LISTING Day 0
 
         infusion_df = raw_infusion_df[
             (raw_infusion_df["Event Label"] == "Day 0")
             | (raw_infusion_df["Event Label"] == "Injection #2")
         ]
-        # print(infusion_df)
 
         # adding Target Dose using TCD_dict
         infusion_df["Target Dose"] = infusion_df["Dose Level Assignment"].map(TCD_dict)
@@ -664,7 +639,7 @@ class DSMB10325:
         # fill NaN with empty string
         infusion_df = infusion_df.fillna(
             "",
-        ).infer_objects(copy=False)
+        ).infer_objects()
 
         # Only keep the rows that have Event Label
         infusion_df = infusion_df[infusion_df["Event Label"] != ""]
@@ -723,7 +698,6 @@ class DSMB10325:
 
         # TODO: Treatment Listing Day 0-R
 
-        # raw_infusionR_df1 = get_data_from_dict(data, input_dict1)
         raw_infusionR_df1 = get_data_from_dict(data, input_dict1, "EXINF")
         raw_infusionR_df2 = get_data_from_dict(data, input_dict2)
         raw_infusionR_df3 = get_data_from_dict(data, input_dict3)
@@ -782,7 +756,7 @@ class DSMB10325:
         # fill NaN with empty string
         infusionR_df = infusionR_df.fillna(
             "",
-        ).infer_objects(copy=False)
+        ).infer_objects()
 
         # Only keep the rows that have Event Label
         infusionR_df = infusionR_df[infusionR_df["Event Label"] != ""]
@@ -899,7 +873,6 @@ class DSMB10325:
         infusion_statB2 = get_stats_df("CART-EGFR-IL13Ra2 Cell Dose", infusion2_df)
 
         # Count the number of subjects that met the target dose
-        # infusion_statB3 = get_stats_df("CART-EGFR-IL13Rα2 Cell Dose", infusion2_df)
         met_targetDose_count = infusion2_df[
             infusion2_df["Met Target Dose (Y/N)"] == "Y"
         ].count()["Subject"]
@@ -948,7 +921,6 @@ class DSMB10325:
         infusion_statC2 = get_stats_df("CART-EGFR-IL13Ra2 Cell Dose", infusion3_df)
 
         # Count the number of subjects that met the target dose
-        # infusion_statC3 = get_stats_df("CART-EGFR-IL13Rα2 Cell Dose", infusion3_df)
         met_targetDose_count = infusion3_df[
             infusion3_df["Met Target Dose (Y/N)"] == "Y"
         ].count()["Subject"]
@@ -1059,8 +1031,6 @@ class DSMB10325:
         }
         AE_df = AE_df.rename(columns=AE_new_col_name)
 
-        # # replaces all occurrences of NaN, positive infinity, and negative infinity in the infusion_df dataframe with empty strings.
-        # infusion_df = infusion_df.replace([np.nan, np.inf, -np.inf], "N/A")
         status_df = self.enrollment_listing_df[
             self.enrollment_listing_df["Screen Fail"].str.strip() == "No"
         ][["Subject", "Assigned Treatment Arm", "Dose Level Assignment"]]
@@ -1122,12 +1092,8 @@ class DSMB10325:
                 "Subject",
                 "Event Group Name",
                 "Event Date",
-                # "Did the protocol-specified study visit occur? (IG_NS_NA_DSSV1.CL_YS_NH_SVOCCUR_cl_YS_YN1)",
             ]
         ]
-        # status_SV_df = status_SV_df[
-        #     status_SV_df["Did the protocol-specified study visit occur? (IG_NS_NA_DSSV1.CL_YS_NH_SVOCCUR_cl_YS_YN1)"] == "Yes"
-        # ]
 
         # Getting Study Status dataframe from DSSVLTFU, column Subject, Event Label and Event Date
         status_DSSVLTFU_df = data["DSSVLTFU"][
@@ -1135,14 +1101,8 @@ class DSMB10325:
                 "Subject",
                 "Event Group Name",
                 "Event Date",
-                # "Did the protocol-specified study visit occur? (IG_NS_NA_DSSVLTFU1.CL_YS_NH_SVOCCUR_cl_YS_YN1)",
             ]
         ]
-        # status_DSSVLTFU_df = status_DSSVLTFU_df[
-        #     status_DSSVLTFU_df["Did the protocol-specified study visit occur? (IG_NS_NA_DSSVLTFU1.CL_YS_NH_SVOCCUR_cl_YS_YN1)"] == "Yes"
-        # ]
-
-        # status_DSSVLTFU_df["Event Group Label"] = status_DSSVLTFU_df["Event Label"].apply(map_event)
 
         # Combine DSSVLTFU with SV dataframe vertically
         status_SV_df = pd.concat([status_SV_df, status_DSSVLTFU_df])
@@ -1162,7 +1122,6 @@ class DSMB10325:
 
         # Rename the column Event Label to Event Group Name (Study Status)
         status_df["Event Group Name"] = status_df["Event Group Name"].map(event_1_dict)
-        # print(status_df)
 
         status_df["Event Group Name3"] = status_df.apply(
             lambda row: (
@@ -1181,7 +1140,6 @@ class DSMB10325:
             ),
             axis=1,
         )
-        # print(status_df)
         status_df["Event Group Name4"] = status_df["Subject"].apply(
             lambda x: (
                 "Withdrawn Prior to Study Treatment"
@@ -1223,7 +1181,6 @@ class DSMB10325:
                 "Event Group Name4",
             ]
         )
-        # print(status_df)
 
         # filter the data frame to only include subjects whose end of study date is later than or equal to main consent date
         filteredemrollment_df = self.enrollment_listing_df[
@@ -1422,8 +1379,6 @@ class DSMB10325:
             ]
             == "Yes"
         ]
-        # Combine DSSVLTFU with SV dataframe vertically
-        # TXSUB_status_SV_df = pd.concat([TXSUB_status_SV_df, TXSUB_status_DSSVLTFU_df])
         # Sort the dataframe by Subject and Event Date
         TXSUB_status_SV_df = TXSUB_status_SV_df.sort_values(
             by=["Subject", "Event Date"]
@@ -1926,7 +1881,6 @@ class DSMB10325:
                     ## TODO: Enrollment Listing
                     # * WRITING DATA: enrollment_listing_df_output
                     worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
-                    # self.enrollment_df = self.enrollment_df.drop(columns=["End of Study Date"])
 
                     # * WRITING HEADER AND FORMATTING
                     # Assuming 'enrollment_listing_df_output' is your DataFrame
@@ -2021,7 +1975,6 @@ class DSMB10325:
 
                     # Safety Data
                     # Treatment Arm C
-                    # safety_df = getattr(self, "safetyTX_total_df", self.safetyCH1_total_df)
                     for i in range(0, len(self.safetyCH3_total_df)):
                         for j in range(0, len(self.safetyCH3_total_df.columns)):
                             worksheet8.write(
@@ -2032,7 +1985,6 @@ class DSMB10325:
                             )
 
                     # Treatment Arm A
-                    # safety_df = getattr(self, "safetyTX_total_df", self.safetyCH2_total_df)
                     for i in range(0, len(self.safetyCH1_total_df)):
                         for j in range(0, len(self.safetyCH1_total_df.columns)):
                             worksheet8.write(
@@ -2043,7 +1995,6 @@ class DSMB10325:
                             )
 
                     # Treatment Arm B
-                    # safety_df = getattr(self, "safetyTX_total_df", self.safetyCH3_total_df)
                     for i in range(0, len(self.safetyCH2_total_df)):
                         for j in range(0, len(self.safetyCH2_total_df.columns)):
                             worksheet8.write(

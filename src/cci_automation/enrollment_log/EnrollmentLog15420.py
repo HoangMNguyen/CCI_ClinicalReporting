@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
@@ -26,8 +25,6 @@ def EnrollmentLog15420(final_data):
         }
         DM_df = DM_df.rename(columns=DM_new_col_name)
         sorted_DM_df = DM_df.sort_values(["Subject"])
-    else:
-        print("Missing DM")
 
     # DSCA
     if "DSCA" in final_data:
@@ -44,7 +41,6 @@ def EnrollmentLog15420(final_data):
         merged_df = pd.merge(sorted_DM_df, DSCA_df, on="Subject", how="left")
         index_reference = merged_df.columns.get_loc("Race")
         merged_df.insert(index_reference, "Cohort", merged_df.pop("Cohort"))
-        # print(merged_df)
     elif "PRDIAG" in final_data:
         PRDIAG_df = final_data["PRDIAG"][
             ["Subject", "Disease Type (ig_PRDIAG1.RSCAT)"]
@@ -54,7 +50,6 @@ def EnrollmentLog15420(final_data):
         merged_df = pd.merge(sorted_DM_df, PRDIAG_df, on="Subject", how="left")
         index_reference = merged_df.columns.get_loc("Race")
         merged_df.insert(index_reference, "Cohort", merged_df.pop("Cohort"))
-        # print(merged_df)
     else:
         merged_df = sorted_DM_df
 
@@ -114,7 +109,6 @@ def EnrollmentLog15420(final_data):
     merged_df["Consent Date"] = pd.to_datetime(merged_df["Consent Date"]).dt.strftime(
         "%m/%d/%Y"
     )
-    # print(merged_df)
     merged_df = merged_df.drop("Date of Birth", axis=1)
 
     # move the column
@@ -183,7 +177,6 @@ def EnrollmentLog15420(final_data):
     merged_df["CAR T cell Infusion Date [Day 0]"] = pd.to_datetime(
         merged_df["CAR T cell Infusion Date [Day 0]"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # INITLF
     INITLF_df = final_data["INITLF"][
@@ -213,7 +206,6 @@ def EnrollmentLog15420(final_data):
     merged_df["Initiation of LTFU Date"] = pd.to_datetime(
         merged_df["Initiation of LTFU Date"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # DSINITRT
     DSINITRT_df = final_data["DSINITRT"][
@@ -294,7 +286,6 @@ def EnrollmentLog15420(final_data):
     merged_df["CAR T cell Retreatment Date [Day 0-R]"] = pd.to_datetime(
         merged_df["CAR T cell Retreatment Date [Day 0-R]"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # INITLF Retx
     INITLF_df = final_data["INITLF"][
@@ -336,22 +327,4 @@ def EnrollmentLog15420(final_data):
 
     # update headers and fill N/A
     merged_df = merged_df.rename(columns={"Subject": "Subject ID#"})
-    # merged_df.loc[
-    #     (
-    #         merged_df["End of Study Date"].notna()
-    #         & merged_df["CAR T cell Infusion Date [Day 0]"].notna()
-    #     ),
-    #     ["Retreatment?"],
-    # ] = merged_df.loc[
-    #     (
-    #         merged_df["End of Study Date"].notna()
-    #         & merged_df["CAR T cell Infusion Date [Day 0]"].notna()
-    #     ),
-    #     ["Retreatment?"],
-    # ].fillna("Missing Data")
-    # merged_df.loc[
-    #     merged_df["End of Study Date"].notna(), merged_df.columns.tolist()
-    # ] = merged_df.loc[
-    #     merged_df["End of Study Date"].notna(), merged_df.columns.tolist()
-    # ].fillna("N/A")
     return merged_df

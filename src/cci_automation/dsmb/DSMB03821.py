@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -421,10 +419,6 @@ def DSMB03821(
                 | (filtered_df["Main Consent Date"].notna())
             ]
             # Calculate the stats
-            # Fill blank age at consent with 0
-
-            # filtered_df["Age at Consent"] = filtered_df["Age at Consent"].fillna(0).astype(int)
-
             ## Total Consented
             TT_df = filtered_df.copy()
             TT = TT_df["Subject"].count()
@@ -450,8 +444,6 @@ def DSMB03821(
             ## Infused
             INFV_df = filtered_df[filtered_df["Treated"] == "Yes"].copy()
             INFV = INFV_df["Subject"].count()
-            # INFM_df = filtered_df[filtered_df["huCART-meso Infusion"] == "Yes"].copy()
-            # INFM = INFM_df["Subject"].count()
 
             # Define a dictionary containing the status of each variable
             status_list.append(
@@ -477,7 +469,6 @@ def DSMB03821(
             )
 
         # *: remove after calculating the stats
-        # enrollment_df = enrollment_df.drop(columns=["Consent Date", "Date of Birth", "Main Consent Date", "Race"])
         enrollment_df = enrollment_df.drop(
             columns=["Consent Date", "Date of Birth", "Race"]
         )
@@ -606,11 +597,7 @@ def DSMB03821(
             infusion_df = pd.merge(infusion_df, infusionM_df, on="Subject", how="outer")
 
         # fill NaN with empty string
-        pd.set_option("future.no_silent_downcasting", True)
-        infusion_df = infusion_df.fillna("").infer_objects(copy=False)
-
-        # Only keep the rows that have Event Group Label
-        #  infusion_df = infusion_df[infusion_df["Event Group Label"] != ""]
+        infusion_df = infusion_df.fillna("").infer_objects()
 
         # # TODO: Infusion Listing Day 0-R
 
@@ -721,8 +708,7 @@ def DSMB03821(
         )
 
         # fill NaN with empty string
-        pd.set_option("future.no_silent_downcasting", True)
-        infusionR_df = infusionR_df.fillna("").infer_objects(copy=False)
+        infusionR_df = infusionR_df.fillna("").infer_objects()
 
         # Only keep the rows that have Event Group Label
         infusionR_df = infusionR_df[infusionR_df["Event Group Label"] != ""]
@@ -820,13 +806,7 @@ def DSMB03821(
         response_df = response_df.sort_values()
 
         # Find subjects that infusion #2 did not occur
-        INF2_df = infusion_df[
-            (infusion_df["Event Group Label"] == "Infusion 2")
-            # & (
-            #     (infusion_df["VCN-01 Infusion Complete (Y/N)"].strip() == "N")
-            #     | (infusion_df["HuCART-meso Infusion Complete (Y/N)"].strip() == "N")
-            # )
-        ].copy()
+        INF2_df = infusion_df[(infusion_df["Event Group Label"] == "Infusion 2")].copy()
         DSEOS_df = data["DSEOS"][
             [
                 "Subject",
@@ -885,8 +865,7 @@ def DSMB03821(
             ]
         )
 
-        pd.set_option("future.no_silent_downcasting", True)
-        EOS_df = EOS_df.fillna("").infer_objects(copy=False)
+        EOS_df = EOS_df.fillna("").infer_objects()
 
         # End of study on retreatment
         EOSR_df = DSEOS_df[
@@ -933,11 +912,7 @@ def DSMB03821(
             ]
         )
 
-        pd.set_option("future.no_silent_downcasting", True)
-        EOSR_df = EOSR_df.fillna("").infer_objects(copy=False)
-
-        # # Combine Last Visit from EOS_df and EOSR_df
-        # DSEOS_df["Last Visit"] = EOS_df["Last Visit"].fillna("") + EOSR_df["Last Visit"].fillna("")
+        EOSR_df = EOSR_df.fillna("").infer_objects()
 
         response_df = add_rename_column_corelisting(
             response_df,
@@ -987,10 +962,7 @@ def DSMB03821(
                 ]
             )
 
-            pd.set_option("future.no_silent_downcasting", True)
-            initRetxLastVisit_df = initRetxLastVisit_df.fillna("").infer_objects(
-                copy=False
-            )
+            initRetxLastVisit_df = initRetxLastVisit_df.fillna("").infer_objects()
 
         if not data["RS"].empty:
             # Primary FUP Response
@@ -1257,8 +1229,7 @@ def DSMB03821(
                 response_df, UNS_df, on="Subject", how="left", suffixes=("", "_UNS")
             )
 
-            pd.set_option("future.no_silent_downcasting", True)
-            response_df = response_df.fillna("").infer_objects(copy=False)
+            response_df = response_df.fillna("").infer_objects()
             # replace "-" for blank unscheduled response
             response_df["Overall Tumor Response_UNS"] = response_df[
                 "Overall Tumor Response_UNS"
@@ -1445,8 +1416,7 @@ def DSMB03821(
             )
         ].copy()
 
-        pd.set_option("future.no_silent_downcasting", True)
-        UNSR_df = UNSR_df.fillna("").infer_objects(copy=False)
+        UNSR_df = UNSR_df.fillna("").infer_objects()
 
         UNSR_df["Primary Retreatment FUP Timepoint"] = UNSR_df[
             UNSR_df["Primary Retreatment FUP Timepoint"].notna()
@@ -1491,8 +1461,7 @@ def DSMB03821(
             responseR_df, UNSR_df, on="Subject", how="left", suffixes=("", "_UNSR")
         )
 
-        pd.set_option("future.no_silent_downcasting", True)
-        responseR_df = responseR_df.fillna("").infer_objects(copy=False)
+        responseR_df = responseR_df.fillna("").infer_objects()
         # replace "-" for blank unscheduled response
         responseR_df["Overall Tumor Response_UNSR"] = responseR_df[
             "Overall Tumor Response_UNSR"
@@ -1567,8 +1536,7 @@ def DSMB03821(
             ]
         )
 
-        pd.set_option("future.no_silent_downcasting", True)
-        EOSAB_df = EOSAB_df.fillna("").infer_objects(copy=False)
+        EOSAB_df = EOSAB_df.fillna("").infer_objects()
 
         # End of study on retreatment
         EOSRAB_df = DSEOSAB_df[
@@ -1615,8 +1583,7 @@ def DSMB03821(
             ]
         )
 
-        pd.set_option("future.no_silent_downcasting", True)
-        EOSRAB_df = EOSRAB_df.fillna("").infer_objects(copy=False)
+        EOSRAB_df = EOSRAB_df.fillna("").infer_objects()
 
         # Combine Last Visit from EOS_df and EOSR_df
         DSEOS_df["Last Visit"] = EOS_df["Last Visit"].fillna("") + EOSR_df[
@@ -1675,10 +1642,7 @@ def DSMB03821(
                 ]
             )
 
-            pd.set_option("future.no_silent_downcasting", True)
-            initRetxLastVisitAB_df = initRetxLastVisitAB_df.fillna("").infer_objects(
-                copy=False
-            )
+            initRetxLastVisitAB_df = initRetxLastVisitAB_df.fillna("").infer_objects()
 
         if not data["RS"].empty:
             # Primary FUP Response
@@ -1940,8 +1904,7 @@ def DSMB03821(
                 )
             ].copy()
 
-            pd.set_option("future.no_silent_downcasting", True)
-            UNSAB_df = UNSAB_df.fillna("").infer_objects(copy=False)
+            UNSAB_df = UNSAB_df.fillna("").infer_objects()
 
             UNSAB_df["Primary Follow-Up Specific Study Timepoint"] = UNSAB_df[
                 UNSAB_df["Primary Follow-Up Specific Study Timepoint"].notna()
@@ -1984,8 +1947,7 @@ def DSMB03821(
                 suffixes=("", "_UNSAB"),
             )
 
-            pd.set_option("future.no_silent_downcasting", True)
-            responseAB_df = responseAB_df.fillna("").infer_objects(copy=False)
+            responseAB_df = responseAB_df.fillna("").infer_objects()
             # replace "-" for blank unscheduled response
             responseAB_df["Overall Tumor Response_UNSAB"] = responseAB_df[
                 "Overall Tumor Response_UNSAB"
@@ -2196,8 +2158,7 @@ def DSMB03821(
             )
         ].copy()
 
-        pd.set_option("future.no_silent_downcasting", True)
-        UNSRAB_df = UNSRAB_df.fillna("").infer_objects(copy=False)
+        UNSRAB_df = UNSRAB_df.fillna("").infer_objects()
 
         UNSRAB_df["Retreatment Specific Study Timepoint"] = UNSRAB_df[
             UNSRAB_df["Retreatment Specific Study Timepoint"].notna()
@@ -2253,8 +2214,7 @@ def DSMB03821(
             suffixes=("", "_UNSRAB"),
         )
 
-        pd.set_option("future.no_silent_downcasting", True)
-        responseRAB_df = responseRAB_df.fillna("").infer_objects(copy=False)
+        responseRAB_df = responseRAB_df.fillna("").infer_objects()
         # replace "-" for blank unscheduled response
         responseRAB_df["Overall Tumor Response_UNSRAB"] = responseRAB_df[
             "Overall Tumor Response_UNSRAB"
@@ -2281,8 +2241,6 @@ def DSMB03821(
         }
         AE_df = AE_df.rename(columns=AE_new_col_name)
 
-        # # replaces all occurrences of NaN, positive infinity, and negative infinity in the infusion_df dataframe with empty strings.
-        # infusion_df = infusion_df.replace([np.nan, np.inf, -np.inf], "N/A")
         status_df = enrollment_df[
             enrollment_df["Subject meets all study eligibility?"].str.strip() == "Yes"
         ][["Subject", "Study Assignment"]]
@@ -2323,8 +2281,6 @@ def DSMB03821(
         status_SV_df = data["DSSV"][["Subject", "Event Label", "Event Date"]]
         # Getting Study Status dataframe from DSSVLTFU, column Subject, Event Label and Event Date
         status_DSSVLTFU_df = data["DSSVLTFU"][["Subject", "Event Label", "Event Date"]]
-
-        # status_DSSVLTFU_df["Event Group Label"] = status_DSSVLTFU_df["Event Label"].apply(map_event)
 
         # Combine DSSVLTFU with SV dataframe vertically
         status_SV_df = pd.concat([status_SV_df, status_DSSVLTFU_df])
@@ -2705,8 +2661,6 @@ def DSMB03821(
                     # * WRITING AND FORMATING DATA
                     infusion_df = infusion_df.drop(columns=["Event Group Label"])
                     infusionR_df = infusionR_df.drop(columns=["Event Group Label"])
-                    # # replace "N/A" for blank coulumns
-                    # infusion_df = infusion_df.fillna("N/A")
                     for i in range(0, len(infusion_df)):
                         for j in range(0, len(infusion_df.columns)):
                             worksheet3.write(
@@ -2722,9 +2676,6 @@ def DSMB03821(
                             )
                     # * WRITING HEADER AND FORMATTING
                     worksheet3.write("A1", "Subject ID", bold_12_wrap_format)
-                    # worksheet3.merge_range(
-                    #     "B1:B2", "Study Day (Primary)", bold_12_wrap_format
-                    # )
                     worksheet3.write("B1", "Study Phase", bold_12_wrap_format)
                     worksheet3.write("C1", "Study Assignment", bold_12_wrap_format)
                     worksheet3.write(

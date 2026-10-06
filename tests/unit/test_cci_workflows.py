@@ -2,6 +2,7 @@
 
 import importlib.util
 import io
+import logging
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -256,6 +257,22 @@ def test_only_pandas_suffixes_are_dropped_from_column_names():
     sheet = load_workbook(io.BytesIO(format_tool.run(source).data))["Sheet1"]
 
     assert [cell.value for cell in sheet[1]] == ["pH 7.4", "Visit", "Visit"]
+
+
+def test_a_date_column_the_format_tool_cant_convert_is_logged_without_its_values(
+    caplog, capsys
+):
+    # Mixed UTC offsets make pandas raise even with errors="coerce".
+    source = _csv(b"Visit Date\n01/05/2024 08:00+01:00\n01/06/2024 09:00+05:00\n")
+
+    with caplog.at_level(logging.WARNING, logger="cci_automation"):
+        format_tool.run(source)
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "Could not process date column 'Visit Date' (ValueError)"
+    ]
+    assert "2024" not in caplog.text
+    assert capsys.readouterr().out == ""
 
 
 def _renamed(export: io.BytesIO, study: str) -> io.BytesIO:

@@ -319,10 +319,8 @@ def get_stats_perc_df(column, *dfs):
             if mean < 100:
                 mean_std = f"{mean:.2f}% ({std:.2f}%)"
             else:
-                # mean_std = f"{convert_float_2_sci_notation(int(mean))}% ({convert_float_2_sci_notation(int(std))}%)"
                 mean_std = f"{convert_float_2_sci_notation(mean)}% ({convert_float_2_sci_notation(std)}%)"
             if median > 100:
-                # median = f"{convert_float_2_sci_notation(int(median))}%"
                 median = f"{convert_float_2_sci_notation(median)}%"
             else:
                 median = f"{median:.2f}%"
@@ -340,35 +338,6 @@ def get_stats_perc_df(column, *dfs):
     # Transpose the DataFrame to switch the axes
     main_df = main_df.T
     return main_df
-
-
-# Hoang's original function which uses round half to even, Python’s built-in round() and :.2f formatting use banker’s rounding (also called “round half to even”)
-# def convert_float_2_sci_notation(n):
-#     """
-#     Convert a floating-point number to its scientific notation as a string.
-
-#     This function takes a floating-point number and converts it into a string that represents its scientific notation.
-#     Scientific notation expresses the number as a mantissa multiplied by 10 raised to an exponent. The mantissa is
-#     rounded to two decimal places unless it is an integer. If the input number is 0, it simply returns '0'.
-
-#     Args:
-#         n (float): The floating-point number to be converted into scientific notation.
-
-#     Returns:
-#         string: A string representing the scientific notation of the input number. The mantissa is formatted to
-#                 have two decimal places unless it is an integer, followed by 'x10' and the exponent.
-#     """
-#     if n == 0:
-#         return "0"
-#     else:
-#         exponent = int(math.floor(math.log10(abs(n))))
-#         mantissa = round(n / 10**exponent, 2)
-
-#         if mantissa.is_integer():
-#             mantissa = int(mantissa)
-#             return f"{mantissa}x10^{exponent}"
-#         else:
-#             return f"{mantissa:.2f}x10^{exponent}"
 
 
 # If you want round half up behavior (the usual "schoolbook rounding"), you should use the decimal module with ROUND_HALF_UP.
@@ -395,28 +364,3 @@ def convert_float_2_sci_notation(n):
         )
 
         return f"{mantissa_str}x10^{exponent}"
-
-
-def convert_sci_notation_2_float(s):
-    """
-    Convert a string representing a number in scientific notation to a floating-point number.
-
-    This function takes a string in the format 'mantissax10^exponent', where the mantissa and exponent are
-    separated by 'x10^', and converts it into a floating-point number. If the string is not in the correct format
-    or contains values that cannot be converted to floats, the function handles the error and returns NaN.
-
-    Args:
-        s (str): A string representing a number in scientific notation.
-
-    Returns:
-        float: The floating-point equivalent of the input string. If the string is not properly formatted or
-               contains invalid values, NaN (Not a Number) is returned.
-    """
-    try:
-        parts = s.split("x10^")
-        mantissa = float(parts[0])
-        exponent = float(parts[1])
-        return mantissa * 10**exponent
-
-    except ValueError:
-        return np.nan

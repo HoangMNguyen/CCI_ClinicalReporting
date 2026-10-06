@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -64,7 +63,6 @@ def EnrollmentLog10325(final_data):
             "Assigned Treatment Arm",
             merged_df.pop("Assigned Treatment Arm"),
         )
-        # print(merged_df)
 
         # IE
         IE_df = final_data["IE"][
@@ -156,7 +154,6 @@ def EnrollmentLog10325(final_data):
         merged_df["Date of Apheresis Collection"] = pd.to_datetime(
             merged_df["Date of Apheresis Collection"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
 
         # MHSG Arms A/B
         MHSG_df = final_data["MHSG"][
@@ -179,7 +176,6 @@ def EnrollmentLog10325(final_data):
         merged_df["Routine Care Surgical Intervention (Arm A/B)"] = pd.to_datetime(
             merged_df["Routine Care Surgical Intervention (Arm A/B)"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
 
         # EXCHMO
         EXCHMO_df = final_data["EXCHMO"][
@@ -225,7 +221,6 @@ def EnrollmentLog10325(final_data):
         merged_df["CART T cell Administration Date (Day 0)"] = pd.to_datetime(
             merged_df["CART T cell Administration Date (Day 0)"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
 
         # MHSG Arm C
         MHSG_df = final_data["MHSG"][
@@ -248,7 +243,6 @@ def EnrollmentLog10325(final_data):
         merged_df["Routine Care Surgical Intervention (Arm C)"] = pd.to_datetime(
             merged_df["Routine Care Surgical Intervention (Arm C)"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
 
         # DSINITLF
         INITLF_df = final_data["DSINITLF"][
@@ -278,7 +272,6 @@ def EnrollmentLog10325(final_data):
         merged_df["Initiation of LTFU Date"] = pd.to_datetime(
             merged_df["Initiation of LTFU Date"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
 
         # DSINITRT
         DSINITRT_df = final_data["DSINITRT"][
@@ -381,7 +374,6 @@ def EnrollmentLog10325(final_data):
         merged_df["CAR T cell Retreatment Date (Day 0-R)"] = pd.to_datetime(
             merged_df["CAR T cell Retreatment Date (Day 0-R)"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
 
         # DSINITLF Retx
         INITLF_df = final_data["DSINITLF"][

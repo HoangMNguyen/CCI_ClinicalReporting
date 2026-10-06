@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import re
 
 import numpy as np
@@ -16,9 +15,6 @@ from cci_automation.util import (
     get_data_from_dict,
     get_data_from_dict_first,
 )
-
-# Opt-in to the future behavior
-pd.set_option("future.no_silent_downcasting", True)
 
 
 class DSMB03325:
@@ -92,7 +88,6 @@ class DSMB03325:
             },
             "IE": {
                 "Event Group Label": "Last Eligibility Step Completed",
-                # "Event Date": "IE Event Date",
                 "Subject Meets All Study Eligibility (IG_NS_NA_IE3.CL_NS_YH_ELIGYN_cl_YS_YN1)": "Subject meets all study eligibility?",
                 "Other Screen Fail Reason (IG_NS_NA_IE4.TX_NS_YH_OTHRSFREAS)": "SF3",
                 "Screen Failure Reason (IG_NS_NA_IE4.CL_NS_YH_IECAT_cl_NS_IEREASSF1)": "Reason for Screen Fail",
@@ -109,21 +104,6 @@ class DSMB03325:
                 "Provide Supportive Information (IG_NS_NA_DSEOS2.TX_NS_YH_EOSTERM)": "Supportive Information",
             },
         }
-
-        # print(f"input_dict: {input_dict}")
-        for key, val in data.items():
-            if key == "IE":
-                # print key within data
-                print(f"Printing key from, data: {key} , {type(val)}")
-
-                # print("Printing columns first!")
-                # import json
-                # print(val.to_dict(orient="list"))
-                for column in val.columns:
-                    if column in ["Event Group Label", "Event Date"]:
-                        print(column, ":", val[column].tolist())
-
-        # print(f"data type: {type(data)}")
 
         enrollment_df = get_data_from_dict(data, input_dict)
         # Replace missing values in the "Cohort Assignment" and "Dose Level Assignment" columns with "Pending"
@@ -258,7 +238,6 @@ class DSMB03325:
                 "SF2",
                 "SF3",
                 "Supportive Information",
-                # "End of Study Reason",
             ]
         )
 
@@ -300,7 +279,6 @@ class DSMB03325:
         enrollment_df = enrollment_df.drop(
             columns=["End of Study Reason"], errors="ignore"
         )
-        # enrollment_df = enrollment_df.drop(columns=["End of Study Date"])
 
         # Sort
         enrollment_df = enrollment_df.sort_values(["Subject"])
@@ -340,7 +318,6 @@ class DSMB03325:
                 "Reason for Screen Fail",
                 "Treated",
                 "Reason for Withdrawal Prior to Study Treatment",
-                # "Last Eligibility Step Completed",
             ]
         ]
         return enrollment_output_df, enrollment_df
@@ -549,11 +526,9 @@ class DSMB03325:
             raw_infusion_df_TEMP, raw_infusion_df3, on="Subject", how="left"
         )
 
-        # print(raw_infusion_df)
         # TODO: TREATMENT LISTING Day 0
 
         infusion_df = raw_infusion_df[(raw_infusion_df["Event Label"] == "Day 0")]
-        # print(infusion_df)
 
         # adding Target Dose using TCD_dict
         infusion_df["Target Dose"] = infusion_df["Dose Level Assignment"].map(TCD_dict)
@@ -611,7 +586,7 @@ class DSMB03325:
         # fill NaN with empty string
         infusion_df = infusion_df.fillna(
             "",
-        ).infer_objects(copy=False)
+        ).infer_objects()
 
         # Only keep the rows that have Event Label
         infusion_df = infusion_df[infusion_df["Event Label"] != ""]
@@ -684,7 +659,7 @@ class DSMB03325:
         # fill NaN with empty string
         infusionR_df = infusionR_df.fillna(
             "",
-        ).infer_objects(copy=False)
+        ).infer_objects()
 
         # Only keep the rows that have Event Label
         infusionR_df = infusionR_df[infusionR_df["Event Label"] != ""]
@@ -859,8 +834,6 @@ class DSMB03325:
         }
         AE_df = AE_df.rename(columns=AE_new_col_name)
 
-        # # replaces all occurrences of NaN, positive infinity, and negative infinity in the infusion_df dataframe with empty strings.
-        # infusion_df = infusion_df.replace([np.nan, np.inf, -np.inf], "N/A")
         status_df = self.enrollment_listing_df[
             self.enrollment_listing_df["Screen Fail"].str.strip() == "No"
         ][["Subject", "Cohort Assignment", "Dose Level Assignment"]]
@@ -909,12 +882,8 @@ class DSMB03325:
                 "Subject",
                 "Event Group Name",
                 "Event Date",
-                # "Did the protocol-specified study visit occur? (IG_NS_NA_DSSV1.CL_YS_NH_SVOCCUR_cl_YS_YN1)",
             ]
         ]
-        # status_SV_df = status_SV_df[
-        #     status_SV_df["Did the protocol-specified study visit occur? (IG_NS_NA_DSSV1.CL_YS_NH_SVOCCUR_cl_YS_YN1)"] == "Yes"
-        # ]
 
         # Getting Study Status dataframe from DSSVLTFU, column Subject, Event Label and Event Date
         status_DSSVLTFU_df = data["DSSVLTFU"][
@@ -922,14 +891,8 @@ class DSMB03325:
                 "Subject",
                 "Event Group Name",
                 "Event Date",
-                # "Did the protocol-specified study visit occur? (IG_NS_NA_DSSVLTFU1.CL_YS_NH_SVOCCUR_cl_YS_YN1)",
             ]
         ]
-        # status_DSSVLTFU_df = status_DSSVLTFU_df[
-        #     status_DSSVLTFU_df["Did the protocol-specified study visit occur? (IG_NS_NA_DSSVLTFU1.CL_YS_NH_SVOCCUR_cl_YS_YN1)"] == "Yes"
-        # ]
-
-        # status_DSSVLTFU_df["Event Group Label"] = status_DSSVLTFU_df["Event Label"].apply(map_event)
 
         # Combine DSSVLTFU with SV dataframe vertically
         status_SV_df = pd.concat([status_SV_df, status_DSSVLTFU_df])
@@ -949,7 +912,6 @@ class DSMB03325:
 
         # Rename the column Event Label to Event Group Name (Study Status)
         status_df["Event Group Name"] = status_df["Event Group Name"].map(event_1_dict)
-        # print(status_df)
 
         status_df["Event Group Name3"] = status_df.apply(
             lambda row: (
@@ -968,7 +930,6 @@ class DSMB03325:
             ),
             axis=1,
         )
-        # print(status_df)
         status_df["Event Group Name4"] = status_df["Subject"].apply(
             lambda x: (
                 "Withdrawn Prior to Study Treatment"
@@ -1010,7 +971,6 @@ class DSMB03325:
                 "Event Group Name4",
             ]
         )
-        # print(status_df)
 
         # filter the data frame to only include subjects whose end of study date is later than or equal to main consent date
         filteredemrollment_df = self.enrollment_listing_df[
@@ -1181,8 +1141,6 @@ class DSMB03325:
             ]
             == "Yes"
         ]
-        # Combine DSSVLTFU with SV dataframe vertically
-        # TXSUB_status_SV_df = pd.concat([TXSUB_status_SV_df, TXSUB_status_DSSVLTFU_df])
         # Sort the dataframe by Subject and Event Date
         TXSUB_status_SV_df = TXSUB_status_SV_df.sort_values(
             by=["Subject", "Event Date"]
@@ -1659,7 +1617,6 @@ class DSMB03325:
                     ## TODO: Enrollment Listing
                     # * WRITING DATA: enrollment_listing_df_output
                     worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
-                    # self.enrollment_df = self.enrollment_df.drop(columns=["End of Study Date"])
 
                     # * WRITING HEADER AND FORMATTING
                     # Assuming 'enrollment_listing_df_output' is your DataFrame
@@ -1765,27 +1722,6 @@ class DSMB03325:
 
                     worksheet8.autofit()
 
-                    # DSMB-Status.Eligible Subjects (disabled; code retained)
-                    # worksheet3 = writer.book.add_worksheet("DSMB-Status.Eligible Subjects")
-                    # # * WRITING AND FORMATING DATA
-                    # status_df_output = self.status_df.drop(columns=["Event Group Name"], errors="ignore")
-                    #
-                    # for i in range(0, len(status_df_output)):
-                    #     for j in range(0, len(status_df_output.columns)):
-                    #         worksheet3.write(i + 2, j, status_df_output.iloc[i, j], normal_data_format)
-                    #
-                    # # * WRITING HEADER AND FORMATTING
-                    # worksheet3.merge_range("A1:A2", "Subject ID", bold_12_wrap_format)
-                    # worksheet3.merge_range("B1:B2", "Cohort Assignment", bold_12_wrap_format)
-                    # worksheet3.merge_range("C1:C2", "Dose Level Assignment", bold_12_wrap_format)
-                    # worksheet3.merge_range("D1:D2", "Adverse Events (Y/N)", bold_12_wrap_format)
-                    # worksheet3.merge_range("E1:E2", "Serious Adverse Events (Y/N)", bold_12_wrap_format)
-                    # worksheet3.merge_range("F1:F2", "Off-Study Reason", bold_12_wrap_format)
-                    # worksheet3.merge_range("G1:G2", "Last Study Visit Performed for Off-Study Subject", bold_12_wrap_format)
-                    #
-                    # # Autofit
-                    # worksheet3.autofit()
-
                     ## TODO: Study Tx Statistics
                     worksheet4 = writer.book.add_worksheet("DSMB-Treatment Statistics")
 
@@ -1802,18 +1738,6 @@ class DSMB03325:
 
                     # * WRITING HEADER AND FORMATTING
                     stat_order = ["Mean SD", "Median", "Range"]
-                    # worksheet4.merge_range(
-                    #     "B1:G1",
-                    #     "Study Treatment Statistics (N="
-                    #     + str(
-                    #         self.infusion_count[0]
-                    #         + self.infusion_count[1]
-                    #         + self.infusion_count[2]
-                    #         + self.infusion_count[3]
-                    #     )
-                    #     + ")",
-                    #     bold_12_wrap_format,
-                    # )
 
                     worksheet4.merge_range(
                         "B1:D1", "Cells Administered", bold_12_wrap_format
@@ -1995,40 +1919,3 @@ class DSMB03325:
                             )
                     # Autofit
                     worksheet7.autofit()
-
-                    # Duplicate treated subjects sheet disabled (already created above after Enrollment Listing)
-                    # worksheet8 = writer.book.add_worksheet("DSMB-Status_Treated Subjects")
-                    # txsub_display = self.TXSUB_status_df.drop(columns=["AE", "SAE"], errors="ignore")
-                    # for i in range(0, len(txsub_display)):
-                    #     for j in range(0, len(txsub_display.columns)):
-                    #         worksheet8.write(i + 2, j, txsub_display.iloc[i, j], normal_data_format)
-                    #
-                    # worksheet8.merge_range("A1:A2", "Subject ID", bold_12_wrap_format)
-                    # worksheet8.merge_range("B1:B2", "Study Status", bold_12_wrap_format)
-                    # worksheet8.merge_range("C1:C2", "Reason for LTFU", bold_12_wrap_format)
-                    # worksheet8.merge_range("D1:D2", "Reason for Retx LTFU", bold_12_wrap_format)
-                    # worksheet8.merge_range("E1:E2", "Last Study Visit Completed", bold_12_wrap_format)
-                    # worksheet8.merge_range("F1:F2", "End of Study Date", bold_12_wrap_format)
-                    # worksheet8.merge_range("G1:G2", "Reason for End of Study", bold_12_wrap_format)
-                    #
-                    # safety_total_df_subject_count = len(self.TXSUB_status_df["Subject"].unique())
-                    # worksheet8.merge_range("J1:M1", "Safety Statistics (N=" + str(safety_total_df_subject_count) + ")", bold_12_wrap_format)
-                    # worksheet8.merge_range("J2:K2", "Adverse Events", bold_11_format)
-                    # worksheet8.merge_range("L2:M2", "Serious Adverse Events ", bold_11_format)
-                    # worksheet8.write("J3", "Yes", bold_11_format)
-                    # worksheet8.write("K3", "No", bold_11_format)
-                    # worksheet8.write("L3", "Yes", bold_11_format)
-                    # worksheet8.write("M3", "No", bold_11_format)
-                    # worksheet8.write("I4", "Cohort A", bold_11_format)
-                    #
-                    # safety_df = getattr(self, "safetyTX_total_df", self.safetyCH1_total_df)
-                    # for i in range(0, len(safety_df)):
-                    #     for j in range(0, len(safety_df.columns)):
-                    #         worksheet8.write(
-                    #             i + 3,
-                    #             j + 9,
-                    #             safety_df.iloc[i, j],
-                    #             normal_data_format,
-                    #         )
-                    #
-                    # worksheet8.autofit()

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import pandas as pd
 
@@ -18,9 +16,6 @@ from cci_automation.util import (
     get_data_from_dict,
     remove_leading_zeros_from_dates,
 )
-
-# Opt-in to the future behavior
-pd.set_option("future.no_silent_downcasting", True)
 
 
 class DSMB12423:
@@ -183,8 +178,6 @@ class DSMB12423:
                 "End of Study Reason",
             ]
         )
-        # Remove the rows with Event Group Label is Day 0-R
-        # enrollment_df = enrollment_df[enrollment_df["Event Group Label"] != "Day 0-R"]
         enrollment_df = enrollment_df.drop(columns=["Event Group Label"])
         # Update 'Infused' column based on the conditions:
         enrollment_df.loc[
@@ -452,7 +445,7 @@ class DSMB12423:
         # fill NaN with empty string
         infusion_df = infusion_df.fillna(
             "",
-        ).infer_objects(copy=False)
+        ).infer_objects()
 
         # Only keep the rows that have Event Group Label
         infusion_df = infusion_df[infusion_df["Event Group Label"] != ""]
@@ -550,7 +543,6 @@ class DSMB12423:
                 "Met Target %scFv",
             ]
         ]
-        # print(infusionR_df)
         return infusion_df, infusionR_df
 
     def infusion_stats(self, infusion_df, infusionR_df):
@@ -1912,9 +1904,6 @@ class DSMB12423:
                                     self.Ethnicity_list[i].iloc[j, k],
                                     normal_data_format,
                                 )
-
-                    # Apply the format to a range of cells
-                    # worksheet1.set_column('B:I', None, normal_data_format)
 
                     # * WRITING HEADER AND FORMATTING
                     Sex_order = ["Male", "Female", "X (Nonbinary)", "Not Reported"]

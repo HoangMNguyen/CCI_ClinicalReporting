@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from datetime import datetime
 
 import numpy as np
@@ -26,7 +25,6 @@ def DSMB15420(
     output_file_name=datetime.now().strftime("%Y%m%d%H%M%S") + "-15420-DSMB Report",
     debug=False,
 ):
-    # if not data['DM'].empty:
     # Subject
     enrollment_df = data["DM"][["Subject"]].copy()
     enrollment_df = enrollment_df.sort_values(["Subject"])
@@ -418,8 +416,6 @@ def DSMB15420(
     }
 
     ### TODO: INFUSION LISTING
-    # if not data['INF'].empty:
-
     # adding Target Cell Dose dictionary
     TCD_dict = {
         "Dose Level 1a (DL1a)": 3000000,
@@ -912,7 +908,6 @@ def DSMB15420(
     final_infusion_statD = infusion_statD
 
     # TODO: RESPONSE LISTING
-    # if not data['RS'].empty:
     # TODO: PREPARE
     # Disease Response NHL PET based dictionary
     DR_NHL_PET_dict = {

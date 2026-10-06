@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -6,7 +5,6 @@ from dateutil.relativedelta import relativedelta
 
 def EnrollmentLog16321(final_data):
     # DM
-    # if 'DM' in final_data:
     DM_df = final_data["DM"][
         [
             "Subject",
@@ -41,7 +39,6 @@ def EnrollmentLog16321(final_data):
     merged_df.insert(
         index_reference, "Assigned Cohort", merged_df.pop("Assigned Cohort")
     )
-    # print(merged_df)
 
     # IE
     IE_df = final_data["IE"][
@@ -125,7 +122,6 @@ def EnrollmentLog16321(final_data):
     merged_df["Date of Apheresis Collection"] = pd.to_datetime(
         merged_df["Date of Apheresis Collection"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # EXINF
     EXINF_df = final_data["EXINF"][
@@ -141,7 +137,6 @@ def EnrollmentLog16321(final_data):
     merged_df["CAR T cell Injection #1 Date (Day 0)"] = pd.to_datetime(
         merged_df["CAR T cell Injection #1 Date (Day 0)"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # EXINF2
     EXINF_df = final_data["EXINF"][
@@ -157,7 +152,6 @@ def EnrollmentLog16321(final_data):
     merged_df["CAR T cell Injection #2 Date (Day 14)"] = pd.to_datetime(
         merged_df["CAR T cell Injection #2 Date (Day 14)"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # DSINITLF
     INITLF_df = final_data["DSINITLF"][
@@ -187,7 +181,6 @@ def EnrollmentLog16321(final_data):
     merged_df["Initiation of LTFU Date"] = pd.to_datetime(
         merged_df["Initiation of LTFU Date"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # DSINITRT
     DSINITRT_df = final_data["DSINITRT"][
@@ -298,8 +291,6 @@ def EnrollmentLog16321(final_data):
         [
             "Last Visit Completed in Primary Follow-Up (ig_DSINITRT1.DSLVCPFUR)",
             "Phase",
-            #  "Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)",
-            #  "End of Retreatment Long-Term Follow-Up Date (ig_DSINITRT1.DSRENRETXLTFUDAT)",
         ],
         axis=1,
     )
@@ -325,7 +316,6 @@ def EnrollmentLog16321(final_data):
     merged_df["CAR T Cell Retreatment Date (Day 0-R1)"] = pd.to_datetime(
         merged_df["CAR T Cell Retreatment Date (Day 0-R1)"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # EXINF Retx Day 0-R2
     EXINF_df = final_data["EXINF"][
@@ -341,7 +331,6 @@ def EnrollmentLog16321(final_data):
     merged_df["CAR T Cell Retreatment Date (Day 0-R2)"] = pd.to_datetime(
         merged_df["CAR T Cell Retreatment Date (Day 0-R2)"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # INITLF Retx
     import re
@@ -445,7 +434,6 @@ def EnrollmentLog16321(final_data):
     ].fillna("N/A")
     # Remove duplicate rows based on both columns
     merged_df.drop_duplicates(inplace=True)
-    # return merged_df
     # select and reorder columns
     column_list = [
         "Subject ID#",
@@ -488,10 +476,4 @@ def EnrollmentLog16321(final_data):
     output_df = pd.concat([output_df, merged_df], ignore_index=True)
     # sort based on 'Subject ID#'
     output_df = output_df.sort_values(["Subject ID#"]).reset_index(drop=True)
-    # convert the date columns to string format
-    # for col in output_df.columns:
-    #     if "Date" in col:
-    #         output_df[col] = pd.to_datetime(output_df[col])
-    #         output_df[col] = output_df[col].dt.strftime("%m/%d/%Y")
-
     return output_df

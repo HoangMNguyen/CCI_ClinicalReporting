@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -659,8 +657,7 @@ def DSMB15122(
         infusion_df["Met Target %scFv"].notna()
     ]["Met Target %scFv"].apply(lambda x: "Y" if x >= 2 else "N")
     # fill NaN with empty string
-    pd.set_option("future.no_silent_downcasting", True)
-    infusion_df = infusion_df.fillna("").infer_objects(copy=False)
+    infusion_df = infusion_df.fillna("").infer_objects()
 
     # Only keep the rows that have Event Group Label
     infusion_df = infusion_df[infusion_df["Event Label"] != ""]
@@ -679,13 +676,6 @@ def DSMB15122(
         "Event Onset (IG_NS_NA_AE1.CL_NS_YH_AEONSET_cl_NS_AEONSET1)": "Event Onset",
     }
     AE_df = AE_df.rename(columns=AE_new_col_name)
-    #  Only assign Y to AE/SAE for event onset is after study tx
-    # filtered_AE_df = AE_df[
-    #     AE_df["Event Onset"] == "After huCART-meso cell Administration"
-    # ]
-
-    # # replaces all occurrences of NaN, positive infinity, and negative infinity in the infusion_df dataframe with empty strings.
-    # infusion_df = infusion_df.replace([np.nan, np.inf, -np.inf], "")
     status_df = EL_df[["Subject", "Cohort Assignment"]]
     # Check filtered_AE_df if the subject of status_df is in the filtered_AE dataframe. If yes, then add 'Y' to the column 'AE' in infusion_df, else add 'N'
     status_df["AE"] = status_df["Subject"].apply(
@@ -724,18 +714,15 @@ def DSMB15122(
     status_SV_df = data["DSSV"][["Subject", "Event Group Label", "Event Date"]]
     # Getting Study Status dataframe from DSSVLTFU, column Subject, Event Label and Event Date
     status_DSSVLTFU_df = data["DSSVLTFU"][["Subject", "Event Label", "Event Date"]]
-    #   print(status_DSSVLTFU_df)
     status_DSSVLTFU_df["Event Group Label"] = status_DSSVLTFU_df["Event Label"].apply(
         map_event
     )
-    #   print(status_DSSVLTFU_df["Event Group Label"])
     # Combine DSSVLTFU with SV dataframe vertically
     status_SV_df = pd.concat([status_SV_df, status_DSSVLTFU_df])
     # Sort the dataframe by Subject and Event Date
     status_SV_df = status_SV_df.sort_values(by=["Subject", "Event Date"])
     # For each unique subject, get the last row of the dataframe
     status_SV_df = status_SV_df.groupby("Subject").tail(1)
-    #   print(status_SV_df["Event Group Label"])
     # Merge left with the current response dataframe
     status_df = pd.merge(
         status_df,
@@ -743,7 +730,6 @@ def DSMB15122(
         on="Subject",
         how="left",
     )
-    #  print(status_df)
     # Rename the column Event Label to Event Label (Study Status)
     status_df["Event Group Label"] = status_df["Event Group Label"].map(event_1_dict)
 
@@ -921,12 +907,6 @@ def DSMB15122(
     total_status_df = total_status_df[
         total_status_df["Cohort Assignment"] == "Cohort 1"
     ]
-
-    # # Total number of subjects
-    # AE_total_count = get_stats_percentage("AE", total_status_df).T
-    # SAE_total_count = get_stats_percentage("SAE", total_status_df).T
-    # # merge AE and SAE dataframes
-    # safety_total_df = pd.concat([AE_total_count, SAE_total_count], axis=1)
 
     if export:
         with pd.ExcelWriter(
@@ -1176,7 +1156,6 @@ def DSMB15122(
                     # Merge and format data
                     if infusion_df["Event Label"].count() > 0:
                         infusion_df = infusion_df.drop(columns=["Event Label"])
-                        # print(infusion_statA.shape)
                         if (
                             not infusion_statA.empty
                             and len(infusion_statA) > 0
@@ -1213,7 +1192,6 @@ def DSMB15122(
 
                     # * WRITING HEADER AND FORMATTING
                     worksheet4.merge_range("A1:A2", "Subject ID", bold_12_wrap_format)
-                    #      worksheet4.merge_range("B1:B2", "Study Day", bold_12_wrap_format)
                     worksheet4.merge_range(
                         "B1:B2", "Cohort Assignment", bold_12_wrap_format
                     )
@@ -1282,35 +1260,6 @@ def DSMB15122(
                         "Last Study Visit Performed for Off-Study Subject",
                         bold_12_wrap_format,
                     )
-
-                    # Safety Headers
-                    # number of subject of safety_total_df
-                    # safety_total_df_subject_count = len(status_df["Subject"].unique())
-                    # worksheet5.merge_range(
-                    #     "K1:N1",
-                    #     "Safety Statistics (N="
-                    #     + str(safety_total_df_subject_count)
-                    #     + ")",
-                    #     bold_12_wrap_format,
-                    # )
-                    # worksheet5.merge_range("K2:L2", "Adverse Events", bold_11_format)
-                    # worksheet5.merge_range(
-                    #     "M2:N2", "Serious Adverse Events ", bold_11_format
-                    # )
-                    # worksheet5.write("K3", "Yes", bold_11_format)
-                    # worksheet5.write("L3", "No", bold_11_format)
-                    # worksheet5.write("M3", "Yes", bold_11_format)
-                    # worksheet5.write("N3", "No", bold_11_format)
-                    # worksheet5.write("J4", "Cohort 1", bold_11_format)
-                    # # Safety Data
-                    # for i in range(0, len(safety_total_df)):
-                    #     for j in range(0, len(safety_total_df.columns)):
-                    #         worksheet5.write(
-                    #             i + 3,
-                    #             j + 10,
-                    #             safety_total_df.iloc[i, j],
-                    #             normal_data_format,
-                    #         )
 
                     # Autofit
                     worksheet5.autofit()

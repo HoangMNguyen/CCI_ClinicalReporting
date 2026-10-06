@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
@@ -55,7 +54,6 @@ def EnrollmentLog03821(final_data):
             "Study Assignment",
             merged_df.pop("Study Assignment"),
         )
-        # print(merged_df)
 
         # MHDIAG
         MHDIAG_df = final_data["MHDIAG"][
@@ -130,7 +128,6 @@ def EnrollmentLog03821(final_data):
         merged_df["Date of Monitoring Visit for Eligibility"] = pd.to_datetime(
             merged_df["Date of Monitoring Visit for Eligibility"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
         merged_df = merged_df.drop("Date of Birth", axis=1)
 
         # move the column
@@ -169,7 +166,6 @@ def EnrollmentLog03821(final_data):
         merged_df["Date of VCN-01 Infusion"] = pd.to_datetime(
             merged_df["Date of VCN-01 Infusion"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
 
         # EXMESOINF
         INF_df = final_data["EXMESOINF"][
@@ -342,9 +338,4 @@ def EnrollmentLog03821(final_data):
         ).dt.strftime("%m/%d/%Y")
         # update headers and fill N/A
         merged_df = merged_df.rename(columns={"Subject": "Subject ID#"})
-        # merged_df.loc[
-        #     merged_df["End of Study Date"].notna(), merged_df.columns.tolist()
-        # ] = merged_df.loc[
-        #     merged_df["End of Study Date"].notna(), merged_df.columns.tolist()
-        # ].fillna("N/A")
         return merged_df

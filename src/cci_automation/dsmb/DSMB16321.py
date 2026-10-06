@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import pandas as pd
 
@@ -15,9 +13,6 @@ from cci_automation.util import (
     age_calculation,
     get_data_from_dict,
 )
-
-# Opt-in to the future behavior
-pd.set_option("future.no_silent_downcasting", True)
 
 
 class DSMB16321:
@@ -233,7 +228,6 @@ class DSMB16321:
             & (~enrollment_df["End of Study Date"].isnull()),
             "Treated",
         ] = "No"
-        # enrollment_df = enrollment_df.drop(columns=["End of Study Date"])
         # Sort
         enrollment_df = enrollment_df.sort_values(["Subject"])
 
@@ -368,7 +362,6 @@ class DSMB16321:
             by=["Date of Completion of Monitoring Visit for Eligibility", "Subject"],
             ascending=[True, True],
         ).reset_index(drop=True)
-        # print(Eligible_df)
 
         # Drop helper column if not needed
         Eligible_df = Eligible_df.drop(
@@ -422,8 +415,6 @@ class DSMB16321:
         filtered_MHSGINIT_df = filtered_MHSGINIT_df.groupby("Subject").tail(
             1
         )  # Get the last row per subject
-        # filtered_MHSGINIT_df = filtered_MHSGINIT_df.sort_values(["Subject"])
-        # print(filtered_MHSGINIT_df)
         # drop "Event Group Label" and "Was EGFR amplification testing performed on this sample?" column
         filtered_MHSGINIT_df = filtered_MHSGINIT_df.drop(
             columns=[
@@ -437,17 +428,10 @@ class DSMB16321:
         )
 
         # *: PREPARE DATA FOR EGFR LISTING
-        # EGFR_subject_df = Eligible_df["Subject"].copy()
-        # EGFR1_df = EGFR_subject_df
-        # EGFR1_df = add_rename_column_corelisting(EGFR1_df, data, "LBEGFR", "Event Group Label", "Event Group Label")
-
-        # EGFR1_df = EGFR1_df[(EGFR1_df["Event Group Label"] == "Initial Study Enrollment/Apheresis")].copy()
 
         EGFR_df = data["LBEGFR"][
             [
                 "Subject",
-                # "Event Group Label",
-                # "Was EGFR Amplification testing performed? (IG_NS_NA_LBEGFR1.CL_NS_NH_EGFRAMPERF_cl_YS_YN1)",
                 "Collection Date (IG_NS_NA_LBEGFR1.DT_YS_NH_LBDAT)",
                 "Amplification of EGFR (IG_NS_NA_LBEGFR2.CL_NS_NH_AMPEGFR_cl_YS_DTNDT1)",
                 "EGFRvIII Mutation (IG_NS_NA_LBEGFR2.CL_NS_NH_AMPEGFR8_cl_YS_DTNDT1)",
@@ -456,7 +440,6 @@ class DSMB16321:
         ].copy()
 
         EGFR_new_col_name = {
-            # "Was EGFR Amplification testing performed? (IG_NS_NA_LBEGFR1.CL_NS_NH_EGFRAMPERF_cl_YS_YN1)": "Was EGFR Amplification testing performed?",
             "Collection Date (IG_NS_NA_LBEGFR1.DT_YS_NH_LBDAT)": "Collection Date",
             "Amplification of EGFR (IG_NS_NA_LBEGFR2.CL_NS_NH_AMPEGFR_cl_YS_DTNDT1)": "Amplification of EGFR",
             "EGFRvIII Mutation (IG_NS_NA_LBEGFR2.CL_NS_NH_AMPEGFR8_cl_YS_DTNDT1)": "EGFRvIII Mutation",
@@ -473,20 +456,7 @@ class DSMB16321:
             how="left",
         )
 
-        # Filter the DataFrame based on the conditions
-        # filtered_INIT_df = EGFR_collectionDT_df[
-        #     (EGFR_collectionDT_df["Event Group Label"] == "Initial Study Enrollment/Apheresis")
-        #     & (EGFR_collectionDT_df["Was EGFR Amplification testing performed?"] == "Yes")
-        #     & (EGFR_collectionDT_df["Collection Date"].notna())
-        # ].copy()
-
-        # # Sort and get the last row for each subject, need test result from last collection date
-        # filtered_INIT_df = filtered_INIT_df.sort_values(["Collection Date"])
-        # filtered_INIT_df = filtered_INIT_df.groupby("Subject").tail(2)  # Get the last 2 rows per subject
-        # filtered_INIT_df = filtered_INIT_df.sort_values(["Subject"])
-
         replacement_date = pd.Timestamp("1900-01-01")
-        # filtered_INIT_df["Collection Date"] = filtered_INIT_df["Collection Date"].fillna(replacement_date)
 
         # Define the columns to concatenate
         columns_to_concatenate_init = [
@@ -515,7 +485,6 @@ class DSMB16321:
         EGFR_df["Collection Date"] = pd.to_datetime(EGFR_df["Collection Date"])
 
         EGFR_final_df = agg_init_df.sort_values(["Subject"])
-        # print(EGFR_final_df)
 
         MHDIAG_df = data["MHDIAG"][
             [
@@ -535,11 +504,9 @@ class DSMB16321:
         )
 
         EGFR_final2_df = pd.merge(EGFR_final_df, MHDIAG_df, on="Subject", how="right")
-        # EGFR_final2_df = pd.merge(EGFR_df, MHDIAG_df, on="Subject", how="right")
         EGFR_final2_df["Collection Date"] = EGFR_final2_df["Collection Date"].fillna(
             replacement_date
         )
-        #  EGFR_final2_df = EGFR_final2_df.sort_values(["Subject"])
         EGFR_final2_df = EGFR_final2_df.fillna("")
 
         # replace "" with "Not Done" for all columns except "Subject" and "Collection Date"
@@ -633,19 +600,12 @@ class DSMB16321:
         # Drop helper column if not needed
         raw_infusion_df = raw_infusion_df.drop(columns=["First Treatment Date"])
 
-        # # format the date field to be no leading 0
-        # raw_infusion_df["Study Treatment Date"] = pd.to_datetime(
-        #     raw_infusion_df["Study Treatment Date"], errors="coerce"
-        # ).dt.strftime("%m-%d-%Y")
-
-        # print(raw_infusion_df)
         # TODO: INFUSION LISTING Day 0
 
         infusion_df = raw_infusion_df[
             (raw_infusion_df["Event Group Label"] == "Day 0")
             | (raw_infusion_df["Event Group Label"] == "Injection 2")
         ]
-        # print(infusion_df)
 
         # adding Target Dose using TCD_dict
         infusion_df["Target Dose"] = infusion_df["Cohort Assignment"].map(TCD_dict)
@@ -691,7 +651,7 @@ class DSMB16321:
         # fill NaN with empty string
         infusion_df = infusion_df.fillna(
             "",
-        ).infer_objects(copy=False)
+        ).infer_objects()
 
         # Only keep the rows that have Event Group Label
         infusion_df = infusion_df[infusion_df["Event Group Label"] != ""]
@@ -770,9 +730,6 @@ class DSMB16321:
 
         # Only keep the rows that have Event Group Label
         infusionR_df = infusionR_df[infusionR_df["Event Group Label"] != ""]
-        # infusionR_df = infusionR_df.sort_values(by=["Subject", "Study Treatment Date"], ascending=True).reset_index(
-        #     drop=True
-        # )
 
         # *Re-order the columns and remove the columns that are not needed
         infusionR_df = infusionR_df[
@@ -885,7 +842,6 @@ class DSMB16321:
         infusion_statB2 = get_stats_df("CART-EGFR-IL13Rα2 Cell Dose", infusion2_df)
 
         # Count the number of subjects that met the target dose
-        # infusion_statB3 = get_stats_df("CART-EGFR-IL13Rα2 Cell Dose", infusion2_df)
         met_targetDose_count = infusion2_df[
             infusion2_df["Met Target Dose (Y/N)"] == "Y"
         ].count()["Subject"]
@@ -934,7 +890,6 @@ class DSMB16321:
         infusion_statC2 = get_stats_df("CART-EGFR-IL13Rα2 Cell Dose", infusion3_df)
 
         # Count the number of subjects that met the target dose
-        # infusion_statC3 = get_stats_df("CART-EGFR-IL13Rα2 Cell Dose", infusion3_df)
         met_targetDose_count = infusion3_df[
             infusion3_df["Met Target Dose (Y/N)"] == "Y"
         ].count()["Subject"]
@@ -982,7 +937,6 @@ class DSMB16321:
         infusion_statD2 = get_stats_df("CART-EGFR-IL13Rα2 Cell Dose", infusion4_df)
 
         # Count the number of subjects that met the target dose
-        # infusion_statD3 = get_stats_df("CART-EGFR-IL13Rα2 Cell Dose", infusion4_df)
         met_targetDose_count = infusion4_df[
             infusion4_df["Met Target Dose (Y/N)"] == "Y"
         ].count()["Subject"]
@@ -1007,7 +961,6 @@ class DSMB16321:
             + str(round(met_targetFlow_count / total_subject_count * 100, 2))
             + "%)"
         )
-        # print(infusion4_df)
         # Create a new dataframe for %scFV (Il13Rα2) with infusion_df
         infusion_statD4 = get_stats_perc_df("%scFV (Il13Rα2)", infusion4_df)
         # Combine the three dataframes
@@ -1099,8 +1052,6 @@ class DSMB16321:
         }
         AE_df = AE_df.rename(columns=AE_new_col_name)
 
-        # # replaces all occurrences of NaN, positive infinity, and negative infinity in the infusion_df dataframe with empty strings.
-        # infusion_df = infusion_df.replace([np.nan, np.inf, -np.inf], "N/A")
         status_df = self.enrollment_listing_df[
             self.enrollment_listing_df["Screen Fail"].str.strip() == "No"
         ][["Subject", "Cohort Assignment"]]
@@ -1168,8 +1119,6 @@ class DSMB16321:
             == "Yes"
         ]
 
-        # status_DSSVLTFU_df["Event Group Label"] = status_DSSVLTFU_df["Event Label"].apply(map_event)
-
         # Combine DSSVLTFU with SV dataframe vertically
         status_SV_df = pd.concat([status_SV_df, status_DSSVLTFU_df])
         # Sort the dataframe by Subject and Event Date
@@ -1188,7 +1137,6 @@ class DSMB16321:
 
         # Rename the column Event Label to Event Label (Study Status)
         status_df["Event Label"] = status_df["Event Label"].map(event_1_dict)
-        # print(status_df)
 
         status_df["Event Label3"] = status_df.apply(
             lambda row: (
@@ -1207,7 +1155,6 @@ class DSMB16321:
             ),
             axis=1,
         )
-        # print(status_df)
         status_df["Event Label4"] = status_df["Subject"].apply(
             lambda x: (
                 "Withdrawn Prior to Study Treatment"
@@ -1247,7 +1194,6 @@ class DSMB16321:
                 "Event Label4",
             ]
         )
-        # print(status_df)
 
         # filter the data frame to only include subjects whose end of study date is later than or equal to main consent date
         filteredemrollment_df = self.enrollment_listing_df[
@@ -1389,7 +1335,6 @@ class DSMB16321:
         AE_df = AE_df.rename(columns=AE_new_col_name)
 
         TXSUB_status_df = self.infusion_df["Subject"].copy()
-        # TXSUB_status_df = TXSUB_status_df.sort_values()
 
         # Merge left with the TXSUB_status_df and keep unique rows
         TXSUB_status_df = (
@@ -1448,8 +1393,6 @@ class DSMB16321:
             ]
             == "Yes"
         ]
-        # Combine DSSVLTFU with SV dataframe vertically
-        # TXSUB_status_SV_df = pd.concat([TXSUB_status_SV_df, TXSUB_status_DSSVLTFU_df])
         # Sort the dataframe by Subject and Event Date
         TXSUB_status_SV_df = TXSUB_status_SV_df.sort_values(
             by=["Subject", "Event Date"]
@@ -1794,19 +1737,11 @@ class DSMB16321:
                     worksheet1.merge_range("A8:Q8", "Age at Consent", bold_11_format)
                     worksheet1.merge_range("A12:Q12", "Race", bold_11_format)
                     worksheet1.merge_range("A22:Q22", "Ethnicity", bold_11_format)
-                    # # remove columns F, G, J, K, N, O
-                    # worksheet1.delete_cols(15)
-                    # worksheet1.delete_cols(14)
-                    # worksheet1.delete_cols(10)
-                    # worksheet1.delete_cols(9)
-                    # worksheet1.delete_cols(7)
-                    # worksheet1.delete_cols(6)
                     worksheet1.autofit()
 
                     ## TODO: Enrollment Listing
                     # * WRITING DATA: enrollment_listing_df_output
                     worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
-                    # self.enrollment_df = self.enrollment_df.drop(columns=["End of Study Date"])
 
                     # * WRITING HEADER AND FORMATTING
                     # Assuming 'enrollment_listing_df_output' is your DataFrame

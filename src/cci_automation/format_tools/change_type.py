@@ -9,6 +9,7 @@ folder.
 """
 
 import io
+import logging
 import os
 import re
 import zipfile
@@ -23,6 +24,8 @@ from clinical_reporting.workflow import (
     input_name,
     reading_input,
 )
+
+logger = logging.getLogger(__name__)
 
 #: What the messages call this workflow (in the middle of a sentence).
 WORKFLOW = "the format tool"
@@ -136,7 +139,11 @@ def write_formatted(all_data, target):
                         df.isetitem(col_index, dates)
                     except Exception as e:
                         # If conversion fails, keep original data
-                        print(f"Could not process date column '{col_name}': {e}")
+                        logger.warning(
+                            "Could not process date column %r (%s)",
+                            col_name,
+                            type(e).__name__,
+                        )
 
     # Create a Pandas Excel writer using XlsxWriter as the engine
     writer = pd.ExcelWriter(

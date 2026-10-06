@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import pandas as pd
 
@@ -16,9 +14,6 @@ from cci_automation.util import (
     remove_leading_zeros_from_dates,
 )
 from clinical_reporting.export import get_named_excel_formats
-
-# Opt-in to the future behavior
-pd.set_option("future.no_silent_downcasting", True)
 
 
 class DSMB11823:
@@ -540,7 +535,7 @@ class DSMB11823:
             infusion_df["%scFv Flow"].ge(2).map({True: "Y", False: "N"}).fillna("")
         )
         # fill NaN with empty string and use infer_objects to avoid downcast warning
-        infusion_df = infusion_df.fillna("").infer_objects(copy=False)
+        infusion_df = infusion_df.fillna("").infer_objects()
         # Only keep the rows that have Event Group Label
         infusion_df = infusion_df[infusion_df["Event Group Label"] != ""]
         # Re-order the columns and remove the columns that are not needed
@@ -1765,5 +1760,3 @@ class DSMB11823:
                 worksheet.set_column(2, 4, 25)  # All value columns
                 # Freeze top two rows and first two columns
                 worksheet.freeze_panes(2, 2)
-
-            print(f"Output created at {self.output_dir}/{self.output_file_name}.xlsx")

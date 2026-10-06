@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
@@ -210,7 +209,6 @@ def EnrollmentLog11823(final_data):
         merged_df["Initiation of LTFU Date"] = pd.to_datetime(
             merged_df["Initiation of LTFU Date"]
         ).dt.strftime("%m/%d/%Y")
-        # print(merged_df)
 
     # DSINITRT
     if "DSINITRT" in final_data:
@@ -338,6 +336,4 @@ def EnrollmentLog11823(final_data):
     merged_df = merged_df.drop_duplicates(subset=["Subject"])
     # update headers and fill N/A
     merged_df = merged_df.rename(columns={"Subject": "Subject ID#"})
-    # merged_df.loc[(merged_df['End of Study Date'].notna() & merged_df['CAR T cell Infusion Date [Day 0]'].notna())] = merged_df.loc[(merged_df['End of Study Date'].notna() & merged_df['CAR T cell Infusion Date [Day 0]'].notna())].fillna('Missing Data')
-    # merged_df.loc[merged_df['End of Study Date'].notna(), merged_df.columns.tolist()] = merged_df.loc[merged_df['End of Study Date'].notna(), merged_df.columns.tolist()].fillna('N/A')
     return merged_df

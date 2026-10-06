@@ -1,9 +1,9 @@
+import logging
 import warnings
 from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
-import pytest
 
 import cci_automation.dsmb.DSMB_util as dsmb_util
 from cci_automation.util import (
@@ -12,7 +12,6 @@ from cci_automation.util import (
     age_calculation,
     convert_integers_to_strings,
     get_data_from_dict_first,
-    get_stats_df,
     remove_leading_zeros_from_dates,
 )
 
@@ -69,14 +68,6 @@ def test_add_rename_column_df_left_merges_on_compound_key():
         {"Subject": ["S1", "S2"], "Visit": ["V1", "V1"], "Dose Level": [10.0, np.nan]}
     )
     pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
-
-
-def test_get_stats_df_coerces_numeric_values_and_formats_summary():
-    result = get_stats_df("Age", pd.DataFrame({"Age": ["10", "bad", "20"]}))
-
-    assert result.iloc[0, 0] == "15.00 (7.07)"
-    assert result.iloc[1, 0] == 15.0
-    assert result.iloc[2, 0] == "10.00 - 20.00"
 
 
 def test_convert_integers_to_strings_preserves_strings_booleans_and_missing_values():
@@ -137,6 +128,24 @@ def test_remove_leading_zeros_from_dates_formats_date_columns_only():
         {"Visit Date": ["1/5/2024", ""], "Comment": ["2024-01-05", "keep"]}
     )
     pd.testing.assert_frame_equal(result, expected)
+
+
+def test_a_date_column_that_cant_be_converted_is_logged_without_its_values(
+    caplog, capsys
+):
+    # Mixed UTC offsets make pandas raise even with errors="coerce".
+    df = pd.DataFrame(
+        {"Visit Date": ["2024-01-05T08:00:00+01:00", "2024-01-06T09:00:00+05:00"]}
+    )
+
+    with caplog.at_level(logging.WARNING, logger="cci_automation.util"):
+        remove_leading_zeros_from_dates(df)
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "Could not process date column 'Visit Date' (ValueError)"
+    ]
+    assert "2024" not in caplog.text
+    assert capsys.readouterr().out == ""
 
 
 def test_dsmb_add_rename_column_corelisting_left_merges_non_ilb_rows():
@@ -200,19 +209,6 @@ def test_dsmb_get_stats_perc_df_formats_percentage_summary():
 
 def test_dsmb_convert_float_2_sci_notation_uses_half_up_rounding():
     assert dsmb_util.convert_float_2_sci_notation(1.005) == "1.01x10^0"
-
-
-def test_dsmb_convert_sci_notation_2_float_valid_input():
-    assert dsmb_util.convert_sci_notation_2_float("2.5x10^2") == 250.0
-
-
-def test_pandas_chained_inplace_fillna_warns_and_does_not_update_parent_dataframe():
-    df = pd.DataFrame({"Response": ["CR", None]})
-
-    with pytest.warns(pd.errors.ChainedAssignmentError):
-        df["Response"].fillna("Not Applicable", inplace=True)
-
-    assert pd.isna(df.loc[1, "Response"])
 
 
 def test_pandas_fillna_assignment_updates_parent_dataframe_without_future_warnings():
