@@ -1,19 +1,10 @@
 import types
 
-import pytest
-from PySide6.QtWidgets import QApplication, QListWidget
+from PySide6.QtWidgets import QListWidget
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.selection_tabs import FormItemsTabMixin
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
 
 
 class DummyFormItemsWidget(FormItemsTabMixin, WidgetBaseMixin):

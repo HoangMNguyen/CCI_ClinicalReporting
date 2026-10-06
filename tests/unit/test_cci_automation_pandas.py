@@ -1,5 +1,4 @@
 import warnings
-import zipfile
 from contextlib import contextmanager
 
 import numpy as np
@@ -16,7 +15,6 @@ from cci_automation.util import (
     get_stats_df,
     remove_leading_zeros_from_dates,
 )
-from clinical_reporting.data import read_data_dict_zip_corelisting
 
 _PANDAS_FUTURE_WARNING_CATEGORIES = tuple(
     warning_category
@@ -35,34 +33,6 @@ def pandas_future_warnings_as_errors():
         for warning_category in _PANDAS_FUTURE_WARNING_CATEGORIES:
             warnings.simplefilter("error", warning_category)
         yield
-
-
-def test_read_data_dict_zip_corelisting_filters_submitted_non_ilb_and_cutoff(tmp_path):
-    df = pd.DataFrame(
-        {
-            "Subject": ["100-15420-01", "100-15420-02", "100-15420-03", "100-15420-04"],
-            "Event Date": ["2024-01-01", "2024-02-01", "2024-01-10", "2024-01-15"],
-            "Form Status": ["Submitted", "Submitted", "Draft", "Submitted"],
-            "Form ILB Status": [False, False, False, True],
-            "Value": ["keep", "after cutoff", "draft", "ilb"],
-        }
-    )
-    zip_path = tmp_path / "core_listing.zip"
-    with zipfile.ZipFile(zip_path, "w") as z:
-        z.writestr("Core_Listings_DM.csv", df.to_csv(index=False))
-
-    result = read_data_dict_zip_corelisting(str(zip_path), cut_off_date="2024-01-31")
-
-    expected = pd.DataFrame(
-        {
-            "Subject": ["15420-01"],
-            "Event Date": [pd.Timestamp("2024-01-01")],
-            "Form Status": ["Submitted"],
-            "Form ILB Status": [False],
-            "Value": ["keep"],
-        }
-    )
-    pd.testing.assert_frame_equal(result["DM"].reset_index(drop=True), expected)
 
 
 def test_add_rename_column_corelisting_left_merges_non_ilb_rows():

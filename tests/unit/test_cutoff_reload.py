@@ -9,21 +9,13 @@ few UI widgets it touches and monkeypatching the loader.
 import datetime
 
 import pandas as pd
-from tests.unit.fakes import FakePathPicker, FakeSection
+from tests.unit.fakes import FakeBanner, FakeCheckBox, FakePathPicker, FakeSection
 
 from clinical_reporting import feedback
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import settings_tab as settings_module
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.settings_tab import SettingsTabMixin
-
-
-class _FakeCheckBox:
-    def __init__(self, checked=False):
-        self._checked = checked
-
-    def isChecked(self):
-        return self._checked
 
 
 class _FakeQDate:
@@ -42,21 +34,13 @@ class _FakeDateEdit:
         return self._date
 
 
-class _FakeLabel:
-    def __init__(self):
-        self.value = ""
-
-    def setText(self, text):
-        self.value = text
-
-
 class _FakeUi:
     def __init__(self, checked, date_value):
-        self.cutoff_checkBox = _FakeCheckBox(checked)
+        self.cutoff_checkBox = FakeCheckBox(checked)
         self.cutoff_dateEdit = _FakeDateEdit(date_value)
         self.pathPicker_input_file = FakePathPicker()
         self.section_input_file = FakeSection()
-        self.banner_input_file = _FakeLabel()
+        self.banner_input_file = FakeBanner()
 
 
 class _BusyRunner:

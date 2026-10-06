@@ -1,5 +1,9 @@
 """Status messages tagged by kind (clinical_reporting.feedback)."""
 
+import pickle
+
+import pytest
+
 from clinical_reporting import feedback
 
 
@@ -9,6 +13,20 @@ def test_a_message_is_a_string_with_a_kind_and_details():
     assert message == "Could not read x.zip" and message.kind == "error"
     assert message.details == "Traceback ..."
     assert feedback.kind_of("plain text") == "info"
+
+
+def test_plain_strings_count_as_info_and_unknown_kinds_are_rejected():
+    assert feedback.kind_of("Generating preview...") == "info"
+    assert feedback.kind_of(None) == "info"
+    with pytest.raises(ValueError):
+        feedback.Message("text", kind="fatal")
+
+
+def test_message_survives_pickling():
+    restored = pickle.loads(pickle.dumps(feedback.warning("Missing forms: AE")))
+
+    assert restored == "Missing forms: AE"
+    assert restored.kind == "warning"
 
 
 def test_one_line_drops_line_breaks_and_bullets():

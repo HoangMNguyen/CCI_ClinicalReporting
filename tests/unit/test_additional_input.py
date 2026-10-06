@@ -1,11 +1,9 @@
 import types
 
 import pandas as pd
-import pytest
 from PySide6.QtCore import QItemSelectionModel, QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import (
-    QApplication,
     QListWidget,
     QPushButton,
     QTableWidget,
@@ -36,14 +34,6 @@ class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
 
     def update_all_ui(self):
         self.update_all_ui_calls += 1
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
 
 
 class DummyAdditionalInputUiWidget(AdditionalInputTabMixin, WidgetBaseMixin):

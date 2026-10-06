@@ -8,15 +8,10 @@ Order & rename page may change the arrangement.
 
 import pandas as pd
 import pytest
+from tests.unit.fakes import DummyTable
 
 from clinical_reporting.models import CLForm, JoinHow
 from clinical_reporting.report import CLReport
-
-
-# Lightweight stand-in for pandas DataFrame objects used during form setup.
-class DummyTable:
-    def __init__(self, columns):
-        self.columns = columns
 
 
 @pytest.fixture

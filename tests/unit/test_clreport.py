@@ -1,25 +1,11 @@
-import types
+import json
 
+import pandas as pd
 import pytest
+from tests.unit.fakes import DummyTable
 
 from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
-
-
-# Lightweight stand-in for pandas DataFrame objects used during form setup.
-class DummyTable:
-    def __init__(self, columns):
-        self.columns = columns
-
-
-@pytest.fixture(scope="module", autouse=True)
-def ensure_numpy_stub():
-    """Provide a numpy stub when the dependency is not installed."""
-
-    import sys
-
-    if "numpy" not in sys.modules:
-        sys.modules["numpy"] = types.SimpleNamespace(datetime64=object)
 
 
 @pytest.fixture
@@ -257,3 +243,16 @@ def test_dynamic_filter_management():
 
     report.set_dynamic_filter_items([("Subject", "=", "Subject")])
     assert report.get_dynamic_filter_items() == [("Subject", "=", "Subject")]
+
+
+def test_settings_dict_matches_the_saved_json(tmp_path):
+    report = CLReport()
+    report.set_data({"DM": pd.DataFrame({"Subject": ["01"], "Age": [42]})})
+    report.add_selected_form("DM")
+    path = tmp_path / "baseline.json"
+
+    report.save_setting_to_json(str(path), setting_name="baseline")
+
+    assert json.loads(path.read_text(encoding="utf-8")) == report.settings_to_dict(
+        "baseline"
+    )

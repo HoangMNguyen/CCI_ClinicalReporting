@@ -1,8 +1,7 @@
 import types
 
-import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QComboBox, QTableWidget, QTableWidgetItem
+from PySide6.QtWidgets import QComboBox, QTableWidget, QTableWidgetItem
 
 from cci_ui.theme import manager as theme_manager
 from cci_ui.theme.manager import Theme, current
@@ -12,14 +11,6 @@ from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.join_config import JoinConfigMixin
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
 
 
 class DummyJoinWidget(JoinConfigMixin, WidgetBaseMixin):

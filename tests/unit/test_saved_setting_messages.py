@@ -4,6 +4,7 @@ import types
 
 import pandas as pd
 from PySide6.QtWidgets import QComboBox
+from tests.unit.fakes import FakeBanner
 
 from clinical_reporting import feedback
 from clinical_reporting.additional_names import SETTINGS_KEY, from_settings
@@ -12,14 +13,6 @@ from clinical_reporting.settings_store import SavedSetting
 from clinical_reporting.ui import dialogs
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.settings_tab import SettingsTabMixin
-
-
-class _Label:
-    def __init__(self):
-        self.value = ""
-
-    def setText(self, text):  # noqa: N802 (Qt naming convention)
-        self.value = text
 
 
 class _Store:
@@ -39,8 +32,8 @@ class _SettingsWidget(SettingsTabMixin, WidgetBaseMixin):
         self.report.set_data({"DM": pd.DataFrame({"Subject": ["001"], "Age": [54]})})
         self.study_name = "DEMO01"
         self.settings_directory = None
-        self.label_setting = _Label()
-        self.label_save_confirmation = _Label()
+        self.label_setting = FakeBanner()
+        self.label_save_confirmation = FakeBanner()
         self._pending_saved_setting_reapply = False
         self._store = store
         self.ui = types.SimpleNamespace(
@@ -110,7 +103,7 @@ class _OfferingWidget(_SettingsWidget):
         self._saved_additional_names = []
         self._last_loaded_setting_path = None
         self.ui.comboBox_saved_setting = _Combo()
-        self.ui.lineEdit_setting_name = _Label()
+        self.ui.lineEdit_setting_name = FakeBanner()
 
     def _offer_saved_additional_names(self, entries, setting_name, used_forms=None):
         self.offers.append((entries, setting_name, used_forms))

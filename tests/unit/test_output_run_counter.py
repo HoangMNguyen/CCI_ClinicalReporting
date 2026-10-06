@@ -5,6 +5,7 @@ from __future__ import annotations
 import types
 
 import pandas as pd
+from tests.unit.fakes import FakeBanner, FakeCheckBox
 
 from clinical_reporting import feedback, session
 from clinical_reporting.ui import run_save_tab
@@ -48,31 +49,18 @@ class _LineEdit:
         return self.value
 
 
-class _CheckBox:
-    def __init__(self, checked):
-        self.checked = checked
-
-    def isChecked(self):  # noqa: N802 (Qt naming convention)
-        return self.checked
-
-
-class _Label:
-    def __init__(self):
-        self.value = ""
-
-
 class _RunWidget(WidgetBaseMixin, run_save_tab.RunAndSaveMixin):
     def __init__(self, output_folder):
         self.report = _Report()
         self.output_folder_name = str(output_folder)
         self.settings_directory = str(output_folder)
-        self.label_run_confirmation = _Label()
-        self.label_save_confirmation = _Label()
+        self.label_run_confirmation = FakeBanner()
+        self.label_save_confirmation = FakeBanner()
         self.ui = types.SimpleNamespace(
             lineEdit_file_name=_LineEdit(),
             lineEdit_setting_name=_LineEdit("baseline"),
-            checkBox_save_current_setting=_CheckBox(True),
-            checkBox_saved_setting=_CheckBox(False),
+            checkBox_save_current_setting=FakeCheckBox(True),
+            checkBox_saved_setting=FakeCheckBox(False),
         )
 
     @staticmethod

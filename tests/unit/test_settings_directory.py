@@ -1,21 +1,13 @@
 """Tests for retaining the selected settings directory in folder dialogs."""
 
 import pandas as pd
-from tests.unit.fakes import FakeBanner, FakePathPicker
+from tests.unit.fakes import FakeBanner, FakeCheckBox, FakePathPicker
 
 from clinical_reporting import data
 from clinical_reporting.ui import additional_input_tab, dialogs, settings_tab
 from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
 from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
 from clinical_reporting.ui.settings_tab import SettingsTabMixin
-
-
-class _CheckBox:
-    def __init__(self, checked):
-        self._checked = checked
-
-    def isChecked(self):
-        return self._checked
 
 
 class _WorkspaceWidget(SettingsTabMixin):
@@ -27,7 +19,7 @@ class _WorkspaceWidget(SettingsTabMixin):
             "Ui",
             (),
             {
-                "checkBox_saved_setting": _CheckBox(False),
+                "checkBox_saved_setting": FakeCheckBox(False),
                 "pathPicker_output_folder": FakePathPicker(),
                 "pathPicker_settings_folder": FakePathPicker(),
             },
@@ -48,8 +40,8 @@ class _OutputWidget(RunAndSaveMixin):
             "Ui",
             (),
             {
-                "checkBox_save_current_setting": _CheckBox(True),
-                "checkBox_saved_setting": _CheckBox(False),
+                "checkBox_save_current_setting": FakeCheckBox(True),
+                "checkBox_saved_setting": FakeCheckBox(False),
             },
         )()
 
@@ -125,7 +117,7 @@ def test_settings_folder_selection_is_shared_between_first_and_last_tabs(monkeyp
     class _LinkedWidget(_WorkspaceWidget, RunAndSaveMixin):
         def __init__(self):
             super().__init__()
-            self.ui.checkBox_save_current_setting = _CheckBox(True)
+            self.ui.checkBox_save_current_setting = FakeCheckBox(True)
 
     widget = _LinkedWidget()
     initial_directories = []

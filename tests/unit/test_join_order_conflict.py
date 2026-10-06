@@ -3,6 +3,7 @@
 import types
 
 import pandas as pd
+from tests.unit.fakes import FakeBanner
 
 from clinical_reporting import feedback
 from clinical_reporting.models import CLForm, JoinHow
@@ -57,24 +58,13 @@ class _FakeButton:
         self.enabled = value
 
 
-class _FakeLabel:
-    def __init__(self):
-        self._text = ""
-
-    def setText(self, text):  # noqa: N802
-        self._text = text or ""
-
-    def text(self):
-        return self._text
-
-
 class DummyRunWidget(RunAndSaveMixin, WidgetBaseMixin):
     """Compose just enough of the widget to exercise the run guard."""
 
     def __init__(self, report: CLReport):
         self.report = report
         self.button = _FakeButton()
-        self.label_run_confirmation = _FakeLabel()
+        self.label_run_confirmation = FakeBanner()
         self.ui = types.SimpleNamespace(pushButton_run=self.button)
 
 
