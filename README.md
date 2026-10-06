@@ -20,13 +20,13 @@ All four share the design system, [`cci_ui`](src/cci_ui/README.md).
 
 ## Setup
 
-Python 3.11 or newer is required (pandas 3 and numpy 2.4 need it). Create the
-environment once per machine:
+Python 3.14 is required; `requirements-lock.txt` is compiled for it. Create
+the environment once per machine:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt
+python -m pip install -r requirements-lock.txt
 ```
 
 On Windows cmd.exe, activate with `.venv\Scripts\activate.bat`. If
@@ -36,15 +36,19 @@ on PATH on Windows, use the `py` launcher (`py -m venv .venv`, etc.).
 
 The requirements files build on each other:
 
-| File | Contents | Install it to |
+| File | Contents | For |
 |---|---|---|
 | `requirements-core.txt` | The Qt-free processing engine (pandas, numpy, xlsxwriter, openpyxl, python-dateutil) | Run reports headless or on a server |
 | `requirements.txt` | Core + PySide6 | Run the desktop apps |
-| `requirements-dev.txt` | Desktop + `pytest` and `ruff` | Develop and test |
+| `requirements-dev.txt` | Desktop + `pytest`, `pytest-cov` and `ruff` | Develop and test |
 | `requirements-build.txt` | Desktop + PyInstaller | Build the executables |
 
-Each dependency is pinned to its current major version so DSMB and safety
-outputs stay reproducible; raise a bound deliberately after testing.
+Each dependency is bounded to its current major version so DSMB and safety
+outputs stay reproducible; raise a bound deliberately after testing. Those
+four files are the source of `requirements-lock.txt`, which pins one exact
+version per package for both Linux and Windows. Development and the builds
+install the lock, so everyone runs the same versions; it needs plain `pip`,
+not `uv`.
 
 The packages are not pip-installed; every app imports from `src/` directly.
 In each terminal session, activate the venv and put `src/` on the Python path
@@ -61,6 +65,20 @@ python -m peer_review_automation
 
 One-off alternative on bash without exporting:
 `PYTHONPATH=src python -m clinical_reporting`.
+
+### Upgrading a library
+
+Change the bound in the requirements file the package comes from and rerun
+the compile below; to move to newer versions within the existing bounds, add
+`--upgrade` to it. `uv` is needed only here:
+
+```bash
+uv pip compile requirements-dev.txt requirements-build.txt --universal \
+    --python-version 3.14 -o requirements-lock.txt
+```
+
+Install the new lock, run `python -m pytest -q`, and commit the lock on its
+own, with the reason for the change.
 
 ## How the tools fit together
 
@@ -202,10 +220,10 @@ Testing notes:
 ## Building the executables
 
 Each application has a PyInstaller spec file at the repository root. Install
-the build requirements, then build the app(s) you need:
+the locked versions, then build the app(s) you need:
 
 ```bash
-python -m pip install -r requirements-build.txt
+python -m pip install -r requirements-lock.txt
 python -m PyInstaller "CCI Clinical Reporting.spec"
 python -m PyInstaller "CCI Automation.spec"
 python -m PyInstaller "Safety Automation.spec"
