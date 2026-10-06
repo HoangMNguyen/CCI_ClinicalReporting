@@ -133,24 +133,36 @@ class EnrollmentLog:
     def output(self, target):
         """Write the log's workbook to *target* (a path or a binary file)."""
         sheet_name = "Enrollment Log " + self.study_name
-        subject_id_columns = [col for col in self.output_df.columns if str(col).strip().lower().startswith("subject")]
+        subject_id_columns = [
+            col
+            for col in self.output_df.columns
+            if str(col).strip().lower().startswith("subject")
+        ]
         for col in subject_id_columns:
-            self.output_df[col] = self.output_df[col].where(self.output_df[col].isna(), self.output_df[col].astype(str))
+            self.output_df[col] = self.output_df[col].where(
+                self.output_df[col].isna(), self.output_df[col].astype(str)
+            )
 
         # Convert all potential date-like columns to datetime
         for col in self.output_df.columns:
             if col in subject_id_columns:
                 continue
             # check if text is stored as the dedicated string dtype instead of object.
-            is_text_dtype = pd.api.types.is_object_dtype(self.output_df[col]) or pd.api.types.is_string_dtype(
+            is_text_dtype = pd.api.types.is_object_dtype(
                 self.output_df[col]
-            )
+            ) or pd.api.types.is_string_dtype(self.output_df[col])
             if pd.api.types.is_datetime64_any_dtype(self.output_df[col]) or (
-                is_text_dtype and self.output_df[col].apply(lambda x: pd.to_datetime(x, errors="coerce")).notna().any()
+                is_text_dtype
+                and self.output_df[col]
+                .apply(lambda x: pd.to_datetime(x, errors="coerce"))
+                .notna()
+                .any()
             ):
                 # format="mixed" parses each element individually (dates are "m/d/Y", blanks/"N/A"
                 # coerce to NaT) — same result as before but without pandas' format-inference warning.
-                self.output_df[col] = pd.to_datetime(self.output_df[col], errors="coerce", format="mixed")
+                self.output_df[col] = pd.to_datetime(
+                    self.output_df[col], errors="coerce", format="mixed"
+                )
 
         with pd.ExcelWriter(target, engine="xlsxwriter") as writer:
             # Write once
@@ -174,15 +186,21 @@ class EnrollmentLog:
                     if not pd.isna(eos_val):  # End of Study Date is NOT blank
                         if col_name == "End of Study Date":
                             # Always write the actual End of Study Date
-                            worksheet.write_datetime(row_idx, col_idx, eos_val.to_pydatetime(), date_fmt)
+                            worksheet.write_datetime(
+                                row_idx, col_idx, eos_val.to_pydatetime(), date_fmt
+                            )
                         else:
                             if pd.isna(val) or val == "":
                                 # Blank → force "N/A"
                                 worksheet.write(row_idx, col_idx, "N/A")
                             else:
                                 # Keep original value
-                                if pd.api.types.is_datetime64_any_dtype(self.output_df[col_name]):
-                                    worksheet.write_datetime(row_idx, col_idx, val.to_pydatetime(), date_fmt)
+                                if pd.api.types.is_datetime64_any_dtype(
+                                    self.output_df[col_name]
+                                ):
+                                    worksheet.write_datetime(
+                                        row_idx, col_idx, val.to_pydatetime(), date_fmt
+                                    )
                                 else:
                                     worksheet.write(row_idx, col_idx, val)
                     else:
@@ -190,8 +208,12 @@ class EnrollmentLog:
                         if pd.isna(val) or val == "":
                             worksheet.write(row_idx, col_idx, "")
                         else:
-                            if pd.api.types.is_datetime64_any_dtype(self.output_df[col_name]):
-                                worksheet.write_datetime(row_idx, col_idx, val.to_pydatetime(), date_fmt)
+                            if pd.api.types.is_datetime64_any_dtype(
+                                self.output_df[col_name]
+                            ):
+                                worksheet.write_datetime(
+                                    row_idx, col_idx, val.to_pydatetime(), date_fmt
+                                )
                             else:
                                 worksheet.write(row_idx, col_idx, val)
 
@@ -268,124 +290,234 @@ class EnrollmentLog:
             )
             if self.study_name == "11823":
                 for i in range(7):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(7, 11):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(11, 16):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(16, 22):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(22, 23):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "12423":
                 for i in range(8):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(8, 12):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(12, 17):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(17, 23):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(23, 24):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "15122":
                 for i in range(8):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(8, 12):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(12, 17):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(17, 18):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(18, 19):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "15420":
                 for i in range(8):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(8, 11):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(11, 17):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(17, 23):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(23, 24):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "16321":
                 for i in range(7):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(7, 11):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(11, 17):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(17, 27):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(27, 28):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "03821":
                 for i in range(9):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(9, 13):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(13, 19):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(19, 25):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(25, 26):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "03325":
                 for i in range(8):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(8, 12):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(12, 24):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(24, 29):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(29, 30):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "10325":
                 for i in range(8):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(8, 12):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(12, 20):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(20, 26):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(26, 27):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "50425":
                 for i in range(9):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(9, 12):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(12, 16):
-                    worksheet.write(0, i, self.output_df.columns.values[i], lavender_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], lavender_header_format
+                    )
                 for i in range(16, 19):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(19, 26):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(26, 28):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
             elif self.study_name == "30425":
                 for i in range(0, 8):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(8, 11):
-                    worksheet.write(0, i, self.output_df.columns.values[i], purple_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], purple_header_format
+                    )
                 for i in range(11, 14):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(14, 18):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(18, 19):
-                    worksheet.write(0, i, self.output_df.columns.values[i], green_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], green_header_format
+                    )
                 for i in range(19, 23):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(23, 26):
-                    worksheet.write(0, i, self.output_df.columns.values[i], blue_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], blue_header_format
+                    )
                 for i in range(26, 28):
-                    worksheet.write(0, i, self.output_df.columns.values[i], pink_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], pink_header_format
+                    )
                 for i in range(28, 29):
-                    worksheet.write(0, i, self.output_df.columns.values[i], yellow_header_format)
+                    worksheet.write(
+                        0, i, self.output_df.columns.values[i], yellow_header_format
+                    )
 
             worksheet.set_row(0, 60)
             worksheet.set_column("A:CQ", 15)

@@ -118,24 +118,34 @@ class DSMB11823:
         # invert Screen Fail
         if "Screen Fail (Y/N)" in enrollment_df:
             enrollment_df["Screen Fail (Y/N)"] = (
-                enrollment_df["Screen Fail (Y/N)"].map({"Yes": "No", "No": "Yes"}).fillna("")
+                enrollment_df["Screen Fail (Y/N)"]
+                .map({"Yes": "No", "No": "Yes"})
+                .fillna("")
             )
 
         # ensure string
-        enrollment_df["Reason for Screen Failure"] = enrollment_df["Reason for Screen Failure"].astype(str)
+        enrollment_df["Reason for Screen Failure"] = enrollment_df[
+            "Reason for Screen Failure"
+        ].astype(str)
 
         # unified replacements
-        repl_cols = {"Other": "SF3", "Inclusion Criteria": "SF1", "Exclusion Criteria": "SF2"}
+        repl_cols = {
+            "Other": "SF3",
+            "Inclusion Criteria": "SF1",
+            "Exclusion Criteria": "SF2",
+        }
         for label, src in repl_cols.items():
             m = enrollment_df["Reason for Screen Failure"] == label
             if src == "Other":
                 # replace exact Other→SF3
-                enrollment_df.loc[m, "Reason for Screen Failure"] = enrollment_df.loc[m, src]
+                enrollment_df.loc[m, "Reason for Screen Failure"] = enrollment_df.loc[
+                    m, src
+                ]
             else:
                 # append code
-                enrollment_df.loc[m & enrollment_df[src].ne(""), "Reason for Screen Failure"] = (
-                    label + " " + enrollment_df.loc[m, src].astype(str)
-                )
+                enrollment_df.loc[
+                    m & enrollment_df[src].ne(""), "Reason for Screen Failure"
+                ] = label + " " + enrollment_df.loc[m, src].astype(str)
 
         # Check DSEOS data for screen failures
         if "DSEOS" in data and not data["DSEOS"].empty:
@@ -143,7 +153,9 @@ class DSMB11823:
             # Look for subjects with "Screen failure" as the reason for end of study
             # Use the exact column name as it appears in the raw CSV data
             screen_fail_mask = (
-                dseos_data["Reason for End of Study? (IG_NS_NA_DSEOS2.CL_NS_YH_EOSCOD1_cl_NS_EOSREAS1)"]
+                dseos_data[
+                    "Reason for End of Study? (IG_NS_NA_DSEOS2.CL_NS_YH_EOSCOD1_cl_NS_EOSREAS1)"
+                ]
                 == "Screen failure"
             )
             screen_fail_subjects = dseos_data[screen_fail_mask]
@@ -153,8 +165,14 @@ class DSMB11823:
                 subject = row["Subject"]
                 # Also use the exact column name for supportive info
                 supportive_info = (
-                    row["Provide Supportive Information (IG_NS_NA_DSEOS2.TX_NS_YH_EOSTERM)"]
-                    if pd.notna(row["Provide Supportive Information (IG_NS_NA_DSEOS2.TX_NS_YH_EOSTERM)"])
+                    row[
+                        "Provide Supportive Information (IG_NS_NA_DSEOS2.TX_NS_YH_EOSTERM)"
+                    ]
+                    if pd.notna(
+                        row[
+                            "Provide Supportive Information (IG_NS_NA_DSEOS2.TX_NS_YH_EOSTERM)"
+                        ]
+                    )
                     else ""
                 )
 
@@ -165,10 +183,14 @@ class DSMB11823:
                     enrollment_df.loc[subject_mask, "Screen Fail (Y/N)"] = "Yes"
                     # Update Reason for Screen Failure if supportive info exists
                     if supportive_info:
-                        enrollment_df.loc[subject_mask, "Reason for Screen Failure"] = supportive_info
+                        enrollment_df.loc[subject_mask, "Reason for Screen Failure"] = (
+                            supportive_info
+                        )
 
         # drop all helper cols at once
-        enrollment_df = enrollment_df.drop(columns=["SF1", "SF2", "SF3", "Event Group Label"])
+        enrollment_df = enrollment_df.drop(
+            columns=["SF1", "SF2", "SF3", "Event Group Label"]
+        )
 
         # set Infused status
         inf = enrollment_df["Infused (Y/N)"].fillna("No")
@@ -177,7 +199,11 @@ class DSMB11823:
         enrollment_df.loc[pending, "Infused (Y/N)"] = "Pending"
         enrollment_df.loc[ended, "Infused (Y/N)"] = "No"
         enrollment_df = enrollment_df.drop(
-            columns=["End of Study Date", "End of Study Reason", "End of Study Supportive Info"]
+            columns=[
+                "End of Study Date",
+                "End of Study Reason",
+                "End of Study Supportive Info",
+            ]
         )
 
         # Sort
@@ -189,7 +215,9 @@ class DSMB11823:
             out[dcol] = out[dcol].dt.strftime("%m/%d/%Y")
 
         # If Gender is "Other", replace the value with "Other Gender"
-        out.loc[out["Gender Identity"] == "Other", "Gender Identity"] = out["Other Gender"]
+        out.loc[out["Gender Identity"] == "Other", "Gender Identity"] = out[
+            "Other Gender"
+        ]
 
         # If Race is "Other", replace the value with "Other Race"
         out.loc[out["Race"] == "Other", "Race"] = out["Other Race"]
@@ -228,7 +256,8 @@ class DSMB11823:
             # Apply the filter to the dataframe
             filtered_df = enrollment_df[filter_option].copy()
             filtered_df = filtered_df[
-                (filtered_df["Consent Date"].notna()) | (filtered_df["Main Consent Date"].notna())
+                (filtered_df["Consent Date"].notna())
+                | (filtered_df["Main Consent Date"].notna())
             ]
             # Calculate the stats
             ## Total Consented
@@ -255,11 +284,19 @@ class DSMB11823:
             # Calculate the stats for the filtered dataframe
             Legal_Sex_Codelist = ["Male", "Female", "X (Nonbinary)", "Not Reported"]
             self.LegalSex_list.append(
-                get_stats_percentage2("Legal Sex", Legal_Sex_Codelist, TT_df, SF_df, EL_df, INF_df)
+                get_stats_percentage2(
+                    "Legal Sex", Legal_Sex_Codelist, TT_df, SF_df, EL_df, INF_df
+                )
             )
-            self.Age_at_Consent_list.append(get_stats_df("Age at Consent", TT_df, SF_df, EL_df, INF_df))
-            self.Race_list.append(get_stats_percentage("Race", TT_df, SF_df, EL_df, INF_df))
-            self.Ethnicity_list.append(get_stats_percentage("Ethnicity", TT_df, SF_df, EL_df, INF_df))
+            self.Age_at_Consent_list.append(
+                get_stats_df("Age at Consent", TT_df, SF_df, EL_df, INF_df)
+            )
+            self.Race_list.append(
+                get_stats_percentage("Race", TT_df, SF_df, EL_df, INF_df)
+            )
+            self.Ethnicity_list.append(
+                get_stats_percentage("Ethnicity", TT_df, SF_df, EL_df, INF_df)
+            )
 
     def Status_Eligible_Subjects(self):
         # centralize data column names for maintainability
@@ -277,7 +314,9 @@ class DSMB11823:
         data = self.data
 
         # status_df subjects are the filtered enrollment_df with only subjects that are not screen failed
-        status_df = self.enrollment_df[self.enrollment_df["Screen Fail (Y/N)"] == "No"].copy()
+        status_df = self.enrollment_df[
+            self.enrollment_df["Screen Fail (Y/N)"] == "No"
+        ].copy()
         # get dataframe from status_df with only the subject and Dose Level Assignment columns
         status_df = status_df[["Subject", "Dose Level Assignment"]].copy()
 
@@ -285,7 +324,9 @@ class DSMB11823:
         if "AE" in data:
             ae_data = data["AE"]
             subjects_with_ae = set(ae_data["Subject"].unique())
-            subjects_with_sae = set(ae_data[ae_data[cols["ae_flag"]] == "SAE"]["Subject"].unique())
+            subjects_with_sae = set(
+                ae_data[ae_data[cols["ae_flag"]] == "SAE"]["Subject"].unique()
+            )
             # Add columns for AEs and SAEs
             status_df["Adverse Events (Y/N)"] = status_df["Subject"].apply(
                 lambda x: "Y" if x in subjects_with_ae else "N"
@@ -356,12 +397,16 @@ class DSMB11823:
             subject = row["Subject"]
             if subject in off_study_subjects:
                 status_df.loc[idx, "Study Status"] = "Off Study"
-                status_df.loc[idx, "Off-Study Reason"] = off_study_reason.get(subject, "Not Reported")
-                status_df.loc[idx, "Last Study Visit Performed for Off-Study Subject"] = last_study_visit.get(
+                status_df.loc[idx, "Off-Study Reason"] = off_study_reason.get(
                     subject, "Not Reported"
                 )
+                status_df.loc[
+                    idx, "Last Study Visit Performed for Off-Study Subject"
+                ] = last_study_visit.get(subject, "Not Reported")
             elif subject in latest_visits:
-                status_df.loc[idx, "Study Status"] = f"On Study/{latest_visits[subject]}"
+                status_df.loc[idx, "Study Status"] = (
+                    f"On Study/{latest_visits[subject]}"
+                )
 
         # sort by Subject ID
         status_df = status_df.sort_values("Subject").reset_index(drop=True)
@@ -374,7 +419,9 @@ class DSMB11823:
 
         # Filter EXINF data to include only "Primary Treatment" in Study Phase
         exinf_data = data["EXINF"]
-        study_phase_col = "Study Phase (IG_NS_NA_EXINF1.CL_YS_NH_STUDYPS_cl_YS_STUDYPS1)"
+        study_phase_col = (
+            "Study Phase (IG_NS_NA_EXINF1.CL_YS_NH_STUDYPS_cl_YS_STUDYPS1)"
+        )
         if study_phase_col in exinf_data.columns:
             exinf_data = exinf_data[exinf_data[study_phase_col] == "Primary Treatment"]
             data["EXINF"] = exinf_data
@@ -394,20 +441,33 @@ class DSMB11823:
             exchmo_df = data["EXCHMO"].copy()
 
             # Filter EXCHMO data to include only "Primary Treatment" in Study Phase
-            exchmo_phase_col = "Study Phase (IG_NS_NA_EXCHMO1.CL_NS_NH_CHMOSTPS_cl_YS_STUDYPS1)"
+            exchmo_phase_col = (
+                "Study Phase (IG_NS_NA_EXCHMO1.CL_NS_NH_CHMOSTPS_cl_YS_STUDYPS1)"
+            )
             if exchmo_phase_col in exchmo_df.columns:
-                exchmo_df = exchmo_df[exchmo_df[exchmo_phase_col] == "Primary Treatment"]
+                exchmo_df = exchmo_df[
+                    exchmo_df[exchmo_phase_col] == "Primary Treatment"
+                ]
 
             # Check if the required columns exist
             start_date_col = "Start Date (IG_NS_NA_EXCHMO2.DT_NS_NH_EXSTDAT)"
             end_date_col = "End Date (IG_NS_NA_EXCHMO2.DT_NS_NH_EXENDAT)"
-            if start_date_col in exchmo_df.columns and end_date_col in exchmo_df.columns:
+            if (
+                start_date_col in exchmo_df.columns
+                and end_date_col in exchmo_df.columns
+            ):
                 # Convert date columns to datetime, coercing errors
-                exchmo_df[start_date_col] = pd.to_datetime(exchmo_df[start_date_col], errors="coerce")
-                exchmo_df[end_date_col] = pd.to_datetime(exchmo_df[end_date_col], errors="coerce")
+                exchmo_df[start_date_col] = pd.to_datetime(
+                    exchmo_df[start_date_col], errors="coerce"
+                )
+                exchmo_df[end_date_col] = pd.to_datetime(
+                    exchmo_df[end_date_col], errors="coerce"
+                )
                 # Group by Subject to get start and end dates for chemotherapy
                 chemo_dates = (
-                    exchmo_df.groupby("Subject").agg({start_date_col: "min", end_date_col: "max"}).reset_index()
+                    exchmo_df.groupby("Subject")
+                    .agg({start_date_col: "min", end_date_col: "max"})
+                    .reset_index()
                 )
                 # Format dates as MM/DD/YYYY only if they're not null
                 chemo_dates = remove_leading_zeros_from_dates(chemo_dates)
@@ -420,7 +480,9 @@ class DSMB11823:
                     axis=1,
                 )
                 # Keep only Subject and combined dates
-                chemo_info = chemo_dates[["Subject", "Lymphodepleting Chemotherapy Dates"]]
+                chemo_info = chemo_dates[
+                    ["Subject", "Lymphodepleting Chemotherapy Dates"]
+                ]
         # Prepare the data for the Study Treatment Listing
         input_dict = {
             "EXINF": {
@@ -451,10 +513,15 @@ class DSMB11823:
             # Add empty column if no chemotherapy data
             infusion_df["Lymphodepleting Chemotherapy Dates"] = ""
         # adding Target TmPSMA-02 CAR T Cell Dose using TCD_dict
-        infusion_df["Target TmPSMA-02 CAR T Cell Dose"] = infusion_df["Dose Level Assignment"].map(TCD_dict)
+        infusion_df["Target TmPSMA-02 CAR T Cell Dose"] = infusion_df[
+            "Dose Level Assignment"
+        ].map(TCD_dict)
         # in‐place dose multipliers
-        infusion_df["Total TmPSMA-02 CAR T Cell Dose Administered"] *= 10 ** infusion_df.pop(
-            "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"
+        infusion_df["Total TmPSMA-02 CAR T Cell Dose Administered"] *= (
+            10
+            ** infusion_df.pop(
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"
+            )
         )
         infusion_df["Total Cell Dose Administered"] *= 10 ** infusion_df.pop(
             "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"
@@ -462,11 +529,16 @@ class DSMB11823:
         # met target binary count
         targ = infusion_df["Target TmPSMA-02 CAR T Cell Dose"]
         infusion_df["Met Target Dose"] = (
-            (targ.eq(targ.astype(int)) & infusion_df["Total TmPSMA-02 CAR T Cell Dose Administered"].ge(targ))
+            (
+                targ.eq(targ.astype(int))
+                & infusion_df["Total TmPSMA-02 CAR T Cell Dose Administered"].ge(targ)
+            )
             .map({True: "Y", False: "N"})
             .fillna("")
         )
-        infusion_df["Met Target %scFv"] = infusion_df["%scFv Flow"].ge(2).map({True: "Y", False: "N"}).fillna("")
+        infusion_df["Met Target %scFv"] = (
+            infusion_df["%scFv Flow"].ge(2).map({True: "Y", False: "N"}).fillna("")
+        )
         # fill NaN with empty string and use infer_objects to avoid downcast warning
         infusion_df = infusion_df.fillna("").infer_objects(copy=False)
         # Only keep the rows that have Event Group Label
@@ -500,20 +572,28 @@ class DSMB11823:
         if infusion_df.empty:
             return
         # Create statistics for Total TmPSMA-02 CAR T Cell Dose Administered
-        infusion_stat1 = get_stats_df("Total TmPSMA-02 CAR T Cell Dose Administered", infusion_df)
+        infusion_stat1 = get_stats_df(
+            "Total TmPSMA-02 CAR T Cell Dose Administered", infusion_df
+        )
         # Create statistics for Total Cell Dose Administered
         infusion_stat2 = get_stats_df("Total Cell Dose Administered", infusion_df)
         # Count the number of subjects that met the target dose
         total = infusion_df["Subject"].nunique()
         ycount = infusion_df["Met Target Dose"].eq("Y").sum()
-        infusion_stat2["Met Target Dose"] = f"{ycount} ({ycount / total * 100:.2f}%)" if total else "0 (0%)"
+        infusion_stat2["Met Target Dose"] = (
+            f"{ycount} ({ycount / total * 100:.2f}%)" if total else "0 (0%)"
+        )
         # Create statistics for %scFv Flow
         infusion_stat3 = get_stats_perc_df("%scFv Flow", infusion_df)
         # Count the number of subjects that met the target %scFv
         y2 = infusion_df["Met Target %scFv"].eq("Y").sum()
-        infusion_stat3["Met Target %scFv"] = f"{y2} ({y2 / total * 100:.2f}%)" if total else "0 (0%)"
+        infusion_stat3["Met Target %scFv"] = (
+            f"{y2} ({y2 / total * 100:.2f}%)" if total else "0 (0%)"
+        )
         # Combine the three statistics dataframes
-        self.infusion_stat_df = pd.concat([infusion_stat1, infusion_stat2, infusion_stat3], axis=1)
+        self.infusion_stat_df = pd.concat(
+            [infusion_stat1, infusion_stat2, infusion_stat3], axis=1
+        )
         # Rename the columns to the desired headers
         self.infusion_stat_df.columns = [
             "TmPSMA-02 CAR T Cells",
@@ -527,17 +607,25 @@ class DSMB11823:
         self.infusion_stat_df = self.infusion_stat_df.fillna("")
         # Now format the display dataframe with scientific notation AFTER statistics have been calculated
         display_df = self.infusion_df.copy()
-        display_df["Target TmPSMA-02 CAR T Cell Dose"] = display_df["Target TmPSMA-02 CAR T Cell Dose"].apply(
-            lambda x: convert_float_2_sci_notation(x) if not isinstance(x, str) and pd.notna(x) else x
+        display_df["Target TmPSMA-02 CAR T Cell Dose"] = display_df[
+            "Target TmPSMA-02 CAR T Cell Dose"
+        ].apply(
+            lambda x: (
+                convert_float_2_sci_notation(x)
+                if not isinstance(x, str) and pd.notna(x)
+                else x
+            )
         )
         display_df["Total TmPSMA-02 CAR T Cell Dose Administered"] = display_df[
             "Total TmPSMA-02 CAR T Cell Dose Administered"
         ].apply(lambda x: convert_float_2_sci_notation(x) if pd.notna(x) else x)
-        display_df["Total Cell Dose Administered"] = display_df["Total Cell Dose Administered"].apply(
-            lambda x: convert_float_2_sci_notation(x) if pd.notna(x) else x
-        )
+        display_df["Total Cell Dose Administered"] = display_df[
+            "Total Cell Dose Administered"
+        ].apply(lambda x: convert_float_2_sci_notation(x) if pd.notna(x) else x)
         # Add percentage sign to %scFv Flow values if they're not empty
-        display_df["%scFv Flow"] = display_df["%scFv Flow"].apply(lambda x: f"{x}%" if pd.notna(x) and x != "" else x)
+        display_df["%scFv Flow"] = display_df["%scFv Flow"].apply(
+            lambda x: f"{x}%" if pd.notna(x) and x != "" else x
+        )
         # Save the formatted display version for output
         self.infusion_display_df = display_df
 
@@ -553,7 +641,9 @@ class DSMB11823:
             return
 
         # Filter RS data to include only "Primary Treatment" in Study Phase
-        study_phase_col = "Study Phase (IG_YS_NA_STUDYPHASE.CL_NS_NH_STUDPS_cl_YS_STUDYPS1)"
+        study_phase_col = (
+            "Study Phase (IG_YS_NA_STUDYPHASE.CL_NS_NH_STUDPS_cl_YS_STUDYPS1)"
+        )
         if study_phase_col in rs_data.columns:
             rs_data = rs_data[rs_data[study_phase_col] == "Primary Treatment"]
 
@@ -568,7 +658,16 @@ class DSMB11823:
         }
 
         subjects = sorted(rs_data[cols["subject"]].unique())
-        standard_time_points = ["Day 28", "Month 2", "Month 3", "Month 4", "Month 5", "Month 6", "Month 9", "Month 12"]
+        standard_time_points = [
+            "Day 28",
+            "Month 2",
+            "Month 3",
+            "Month 4",
+            "Month 5",
+            "Month 6",
+            "Month 9",
+            "Month 12",
+        ]
         rows = []
         for subject in subjects:
             subject_data = rs_data[rs_data[cols["subject"]] == subject]
@@ -614,7 +713,7 @@ class DSMB11823:
                                 if day_num < 28:
                                     continue  # Skip this timepoint
                                 timepoint_label = f"Day {unscheduled_day}"
-                            except (ValueError, TypeError):
+                            except ValueError, TypeError:
                                 timepoint_label = "Unscheduled"
                         else:
                             timepoint_label = "Unscheduled"
@@ -644,26 +743,48 @@ class DSMB11823:
                     # Store timepoint info with sort value and response text
                     if recist_response and pd.notna(recist_response):
                         recist_data["additional_timepoints"].append(
-                            {"timepoint": timepoint_label, "response": recist_response, "sort_value": sort_value}
+                            {
+                                "timepoint": timepoint_label,
+                                "response": recist_response,
+                                "sort_value": sort_value,
+                            }
                         )
                     if pcwg_response and pd.notna(pcwg_response):
                         pcwg_data["additional_timepoints"].append(
-                            {"timepoint": timepoint_label, "response": pcwg_response, "sort_value": sort_value}
+                            {
+                                "timepoint": timepoint_label,
+                                "response": pcwg_response,
+                                "sort_value": sort_value,
+                            }
                         )
                     if psa_response and pd.notna(psa_response):
                         psa_data["additional_timepoints"].append(
-                            {"timepoint": timepoint_label, "response": psa_response, "sort_value": sort_value}
+                            {
+                                "timepoint": timepoint_label,
+                                "response": psa_response,
+                                "sort_value": sort_value,
+                            }
                         )
             # Sort and format additional timepoints for each subject
             for data_dict in [recist_data, pcwg_data, psa_data]:
-                if "additional_timepoints" in data_dict and data_dict["additional_timepoints"]:
+                if (
+                    "additional_timepoints" in data_dict
+                    and data_dict["additional_timepoints"]
+                ):
                     # Sort by the sort_value
-                    data_dict["additional_timepoints"].sort(key=lambda x: x["sort_value"])
+                    data_dict["additional_timepoints"].sort(
+                        key=lambda x: x["sort_value"]
+                    )
                     # Format as a newline-separated list of "Timepoint (Response)"
                     formatted_timepoints = "\n".join(
-                        [f"{tp['timepoint']} ({tp['response']})" for tp in data_dict["additional_timepoints"]]
+                        [
+                            f"{tp['timepoint']} ({tp['response']})"
+                            for tp in data_dict["additional_timepoints"]
+                        ]
                     )
-                    data_dict["Additional/ Unscheduled Timepoints"] = formatted_timepoints
+                    data_dict["Additional/ Unscheduled Timepoints"] = (
+                        formatted_timepoints
+                    )
                     # Remove the temporary list
                     del data_dict["additional_timepoints"]
                 else:
@@ -677,11 +798,17 @@ class DSMB11823:
         if rows:
             response_df = pd.DataFrame(rows)
             # Generate final column order - standard timepoints plus the single additional timepoints column
-            final_columns = ["Subject", "Response Type"] + standard_time_points + ["Additional/ Unscheduled Timepoints"]
+            final_columns = (
+                ["Subject", "Response Type"]
+                + standard_time_points
+                + ["Additional/ Unscheduled Timepoints"]
+            )
             # Reindex dataframe with all columns, fill missing with empty string
             response_df = response_df.reindex(columns=final_columns).fillna("")
             # Store the complete list of time points including the additional column
-            self.time_points = standard_time_points + ["Additional/ Unscheduled Timepoints"]
+            self.time_points = standard_time_points + [
+                "Additional/ Unscheduled Timepoints"
+            ]
         # Store the DataFrame as a class attribute
         self.response_df = response_df
 
@@ -732,9 +859,7 @@ class DSMB11823:
             and "Subject had measurable disease per RECIST 1.1 at baseline? (IG_NS_NA_RS2.CL_NS_NH_MDRCTBL_cl_YS_YN1)"
             in rs_data.columns
         ):
-            measurable_column = (
-                "Subject had measurable disease per RECIST 1.1 at baseline? (IG_NS_NA_RS2.CL_NS_NH_MDRCTBL_cl_YS_YN1)"
-            )
+            measurable_column = "Subject had measurable disease per RECIST 1.1 at baseline? (IG_NS_NA_RS2.CL_NS_NH_MDRCTBL_cl_YS_YN1)"
             # Group by Subject and check if any records show 'No' for measurable disease
             for subject, subject_data in rs_data.groupby("Subject"):
                 # If any record shows 'No' for measurable disease, add to not_measurable_subjects
@@ -746,7 +871,11 @@ class DSMB11823:
             if not response_text or not isinstance(response_text, str):
                 return "Not Reported"
             # If response is standard format with no timepoint prefix, return as is
-            if response_text in recist_ranking or response_text in bone_scan_ranking or response_text in psa_ranking:
+            if (
+                response_text in recist_ranking
+                or response_text in bone_scan_ranking
+                or response_text in psa_ranking
+            ):
                 return response_text
             # Check if this is a formatted string like "Day X (Response)"
             if "(" in response_text and ")" in response_text:
@@ -764,10 +893,14 @@ class DSMB11823:
                                 # When we find the matching closing parenthesis
                                 if open_count == 0:
                                     # Return everything between the first "(" and the matching ")"
-                                    return response_text[first_paren_idx + 1 : i].strip()
+                                    return response_text[
+                                        first_paren_idx + 1 : i
+                                    ].strip()
                     # Fallback for simple formats with no nested parentheses
-                    return response_text[first_paren_idx + 1 : response_text.rfind(")")].strip()
-                except (ValueError, IndexError):
+                    return response_text[
+                        first_paren_idx + 1 : response_text.rfind(")")
+                    ].strip()
+                except ValueError, IndexError:
                     # If parsing fails, return original
                     return response_text.strip()
             # Return as is if it doesn't match our expected formats
@@ -795,12 +928,17 @@ class DSMB11823:
                     # Check all time point columns (excluding Subject and Response Type)
                     for col in recist_row.columns[2:]:
                         response_value = recist_row.iloc[0][col]
-                        if response_value and isinstance(response_value, str) and response_value.strip() != "":
+                        if (
+                            response_value
+                            and isinstance(response_value, str)
+                            and response_value.strip() != ""
+                        ):
                             extracted_response = extract_response(response_value)
                             # Check if this response has a better rank
                             if (
                                 extracted_response in recist_ranking
-                                and recist_ranking[extracted_response] < best_recist_rank
+                                and recist_ranking[extracted_response]
+                                < best_recist_rank
                             ):
                                 best_recist = extracted_response
                                 best_recist_rank = recist_ranking[extracted_response]
@@ -809,11 +947,16 @@ class DSMB11823:
             if not bone_scan_row.empty:
                 for col in bone_scan_row.columns[2:]:
                     response_value = bone_scan_row.iloc[0][col]
-                    if response_value and isinstance(response_value, str) and response_value.strip() != "":
+                    if (
+                        response_value
+                        and isinstance(response_value, str)
+                        and response_value.strip() != ""
+                    ):
                         extracted_response = extract_response(response_value)
                         if (
                             extracted_response in bone_scan_ranking
-                            and bone_scan_ranking[extracted_response] < best_bone_scan_rank
+                            and bone_scan_ranking[extracted_response]
+                            < best_bone_scan_rank
                         ):
                             best_bone_scan = extracted_response
                             best_bone_scan_rank = bone_scan_ranking[extracted_response]
@@ -822,13 +965,24 @@ class DSMB11823:
             if not psa_row.empty:
                 for col in psa_row.columns[2:]:
                     response_value = psa_row.iloc[0][col]
-                    if response_value and isinstance(response_value, str) and response_value.strip() != "":
+                    if (
+                        response_value
+                        and isinstance(response_value, str)
+                        and response_value.strip() != ""
+                    ):
                         extracted_response = extract_response(response_value)
-                        if extracted_response in psa_ranking and psa_ranking[extracted_response] < best_psa_rank:
+                        if (
+                            extracted_response in psa_ranking
+                            and psa_ranking[extracted_response] < best_psa_rank
+                        ):
                             best_psa = extracted_response
                             best_psa_rank = psa_ranking[extracted_response]
             # Store best responses for this subject
-            best_responses[subject] = {"RECIST 1.1": best_recist, "PCWG3": best_bone_scan, "PSA Response": best_psa}
+            best_responses[subject] = {
+                "RECIST 1.1": best_recist,
+                "PCWG3": best_bone_scan,
+                "PSA Response": best_psa,
+            }
             # Update counts
             recist_counts[best_recist] += 1
             bone_scan_counts[best_bone_scan] += 1
@@ -840,7 +994,9 @@ class DSMB11823:
             {
                 "Count": [recist_counts[status] for status in recist_ranking.keys()],
                 "Percentage": [
-                    f"{recist_counts[status] / total_subjects * 100:.1f}%" if total_subjects > 0 else "0.0%"
+                    f"{recist_counts[status] / total_subjects * 100:.1f}%"
+                    if total_subjects > 0
+                    else "0.0%"
                     for status in recist_ranking.keys()
                 ],
             },
@@ -848,9 +1004,13 @@ class DSMB11823:
         )
         bone_scan_stats = pd.DataFrame(
             {
-                "Count": [bone_scan_counts[status] for status in bone_scan_ranking.keys()],
+                "Count": [
+                    bone_scan_counts[status] for status in bone_scan_ranking.keys()
+                ],
                 "Percentage": [
-                    f"{bone_scan_counts[status] / total_subjects * 100:.1f}%" if total_subjects > 0 else "0.0%"
+                    f"{bone_scan_counts[status] / total_subjects * 100:.1f}%"
+                    if total_subjects > 0
+                    else "0.0%"
                     for status in bone_scan_ranking.keys()
                 ],
             },
@@ -860,7 +1020,9 @@ class DSMB11823:
             {
                 "Count": [psa_counts[status] for status in psa_ranking.keys()],
                 "Percentage": [
-                    f"{psa_counts[status] / total_subjects * 100:.1f}%" if total_subjects > 0 else "0.0%"
+                    f"{psa_counts[status] / total_subjects * 100:.1f}%"
+                    if total_subjects > 0
+                    else "0.0%"
                     for status in psa_ranking.keys()
                 ],
             },
@@ -875,7 +1037,9 @@ class DSMB11823:
         self.bone_scan_stats = bone_scan_stats
         self.psa_stats = psa_stats
         self.total_response_subjects = total_subjects
-        self.best_responses = best_responses  # Store individual subject responses for reference
+        self.best_responses = (
+            best_responses  # Store individual subject responses for reference
+        )
 
     def PET_Imaging(self):
         """
@@ -921,7 +1085,8 @@ class DSMB11823:
                 # Process each record for this subject
                 for _, record in subject_data.iterrows():
                     timepoint = record.get(
-                        "Primary Treatment Time Point (IG_YS_NA_STUDYPHASE.CL_YS_NH_PRMFLTP_cl_NS_PRMTXTP1)", ""
+                        "Primary Treatment Time Point (IG_YS_NA_STUDYPHASE.CL_YS_NH_PRMFLTP_cl_NS_PRMTXTP1)",
+                        "",
                     )
                     event_date = record.get("Event Date", "")
 
@@ -931,14 +1096,22 @@ class DSMB11823:
                     # Get the appropriate value based on Measurement
                     value = ""
                     if measurement_type == "Total Tumor Uptake":
-                        value = record.get("Total Tumor Uptake (IG_NS_NA_PSMAIMG4.NM_NS_NH_TTU)", "")
+                        value = record.get(
+                            "Total Tumor Uptake (IG_NS_NA_PSMAIMG4.NM_NS_NH_TTU)", ""
+                        )
                     elif measurement_type == "Average Tumor Uptake":
-                        value = record.get("Average Tumor Uptake (IG_NS_NA_PSMAIMG4.NM_NS_NH_ATU)", "")
+                        value = record.get(
+                            "Average Tumor Uptake (IG_NS_NA_PSMAIMG4.NM_NS_NH_ATU)", ""
+                        )
                     elif measurement_type == "Qualitative Tumor Uptake":
-                        value = record.get("Qualitative Tumor Uptake (IG_NS_NA_PSMAIMG4.CL_NS_NH_QTU_cl_NS_PNMNR1)", "")
+                        value = record.get(
+                            "Qualitative Tumor Uptake (IG_NS_NA_PSMAIMG4.CL_NS_NH_QTU_cl_NS_PNMNR1)",
+                            "",
+                        )
                     elif measurement_type == "Total Uptake Percent Change":
                         value = record.get(
-                            "Total Tumor Uptake Percent Change (%) (IG_NS_NA_PSMAIMG4.NM_NS_YH_TTUCP1)", ""
+                            "Total Tumor Uptake Percent Change (%) (IG_NS_NA_PSMAIMG4.NM_NS_YH_TTUCP1)",
+                            "",
                         )
                         if pd.notna(value):
                             value = f"{value}%"
@@ -952,23 +1125,36 @@ class DSMB11823:
                                 "Total Number of New PSMA Positive Lesions (IG_NS_NA_PSMAIMG5.CL_NS_NH_NPSMAPL_cl_NS_NPSMAPL1)",
                                 "",
                             )
-                            value = f"Yes, {num_lesions}" if pd.notna(num_lesions) else "Yes"
+                            value = (
+                                f"Yes, {num_lesions}"
+                                if pd.notna(num_lesions)
+                                else "Yes"
+                            )
                         elif new_lesions == "Not Applicable- Baseline Imaging":
                             value = "N/A"
                         else:
                             value = new_lesions if pd.notna(new_lesions) else ""
 
                     # Assign to the correct column based on timepoint
-                    if "Pre-Treatment Safety/Baseline" in timepoint or "Baseline" in timepoint:
-                        row["Baseline (Pre-Tx Safety)"] = value if pd.notna(value) else "N/A"
+                    if (
+                        "Pre-Treatment Safety/Baseline" in timepoint
+                        or "Baseline" in timepoint
+                    ):
+                        row["Baseline (Pre-Tx Safety)"] = (
+                            value if pd.notna(value) else "N/A"
+                        )
                     elif "Day 28" in timepoint:
-                        row["Post-Treatment (Day 28)"] = value if pd.notna(value) else ""
+                        row["Post-Treatment (Day 28)"] = (
+                            value if pd.notna(value) else ""
+                        )
                     else:
                         # For other timepoints, combine with any existing disease progression data
                         if pd.notna(value) and value != "":
                             existing = row["Disease Progression"]
                             if existing and existing != "":
-                                row["Disease Progression"] = f"{existing}\n{timepoint} ({value})"
+                                row["Disease Progression"] = (
+                                    f"{existing}\n{timepoint} ({value})"
+                                )
                             else:
                                 row["Disease Progression"] = f"{timepoint} ({value})"
 
@@ -989,7 +1175,9 @@ class DSMB11823:
             )
 
     def output(self):
-        with pd.ExcelWriter(self.output_dir + "/" + self.output_file_name + ".xlsx", engine="xlsxwriter") as writer:
+        with pd.ExcelWriter(
+            self.output_dir + "/" + self.output_file_name + ".xlsx", engine="xlsxwriter"
+        ) as writer:
             # Get formatting options from util.py
             formats = get_named_excel_formats(writer.book)
 
@@ -1017,16 +1205,26 @@ class DSMB11823:
                 ]
                 Ethnicity_order = ["Hispanic", "Non-Hispanic", "Unknown"]
                 # Status row headers and data
-                worksheet.merge_range("B1:E1", "Overall Study Enrollment", formats["bold_12_format"])
+                worksheet.merge_range(
+                    "B1:E1", "Overall Study Enrollment", formats["bold_12_format"]
+                )
                 worksheet.write(1, 0, "Status", formats["bold_11_format"])
                 for i in range(0, len(Sex_order)):
-                    worksheet.write(i + 3, 0, Sex_order[i], formats["bold_11_wrap_format"])
+                    worksheet.write(
+                        i + 3, 0, Sex_order[i], formats["bold_11_wrap_format"]
+                    )
                 for i in range(0, len(Age_order)):
-                    worksheet.write(i + 8, 0, Age_order[i], formats["bold_11_wrap_format"])
+                    worksheet.write(
+                        i + 8, 0, Age_order[i], formats["bold_11_wrap_format"]
+                    )
                 for i in range(0, len(Race_order)):
-                    worksheet.write(i + 12, 0, Race_order[i], formats["bold_11_wrap_format"])
+                    worksheet.write(
+                        i + 12, 0, Race_order[i], formats["bold_11_wrap_format"]
+                    )
                 for i in range(0, len(Ethnicity_order)):
-                    worksheet.write(i + 22, 0, Ethnicity_order[i], formats["bold_11_wrap_format"])
+                    worksheet.write(
+                        i + 22, 0, Ethnicity_order[i], formats["bold_11_wrap_format"]
+                    )
                 # Write status headers with counts
                 status_headers = [
                     "Total Consented\nN=" + str(self.status_list[0]["Total Consented"]),
@@ -1045,9 +1243,16 @@ class DSMB11823:
                 # Write Legal Sex data
                 for j in range(len(self.LegalSex_list[0])):
                     for k in range(len(self.LegalSex_list[0].columns)):
-                        worksheet.write(j + 3, k + 1, self.LegalSex_list[0].iloc[j, k], formats["normal_data_format"])
+                        worksheet.write(
+                            j + 3,
+                            k + 1,
+                            self.LegalSex_list[0].iloc[j, k],
+                            formats["normal_data_format"],
+                        )
                 # Age at Consent section
-                worksheet.merge_range("A8:E8", "Age at Consent", formats["bold_11_format"])
+                worksheet.merge_range(
+                    "A8:E8", "Age at Consent", formats["bold_11_format"]
+                )
                 age_order = ["Mean SD", "Median", "Range"]
                 # Write Age at Consent row labels
                 for i, age in enumerate(age_order):
@@ -1056,7 +1261,10 @@ class DSMB11823:
                 for j in range(len(self.Age_at_Consent_list[0])):
                     for k in range(len(self.Age_at_Consent_list[0].columns)):
                         worksheet.write(
-                            j + 8, k + 1, self.Age_at_Consent_list[0].iloc[j, k], formats["normal_data_format"]
+                            j + 8,
+                            k + 1,
+                            self.Age_at_Consent_list[0].iloc[j, k],
+                            formats["normal_data_format"],
                         )
                 # Race section
                 worksheet.merge_range("A12:E12", "Race", formats["bold_11_format"])
@@ -1064,36 +1272,64 @@ class DSMB11823:
                 # Write Race data
                 for j in range(len(self.Race_list[0])):
                     for k in range(len(self.Race_list[0].columns)):
-                        worksheet.write(j + 12, k + 1, self.Race_list[0].iloc[j, k], formats["normal_data_format"])
+                        worksheet.write(
+                            j + 12,
+                            k + 1,
+                            self.Race_list[0].iloc[j, k],
+                            formats["normal_data_format"],
+                        )
                 # Ethnicity section
                 worksheet.merge_range("A22:E22", "Ethnicity", formats["bold_11_format"])
                 # Write Ethnicity row labels and data starting at row 22
                 for j in range(len(self.Ethnicity_list[0])):
                     for k in range(len(self.Ethnicity_list[0].columns)):
-                        worksheet.write(j + 22, k + 1, self.Ethnicity_list[0].iloc[j, k], formats["normal_data_format"])
+                        worksheet.write(
+                            j + 22,
+                            k + 1,
+                            self.Ethnicity_list[0].iloc[j, k],
+                            formats["normal_data_format"],
+                        )
                 # Set column widths
                 worksheet.set_column(0, 0, 30)  # First column wider for labels
                 worksheet.set_column(1, 4, 15)  # Data columns
 
             # ==================== Enrollment Listing Tab ====================
-            if hasattr(self, "enrollment_output_df") and not self.enrollment_output_df.empty:
+            if (
+                hasattr(self, "enrollment_output_df")
+                and not self.enrollment_output_df.empty
+            ):
                 # Write data
                 self.enrollment_output_df.to_excel(
-                    writer, sheet_name="DSMB-Enrollment Listing", index=False, header=False, startrow=1
+                    writer,
+                    sheet_name="DSMB-Enrollment Listing",
+                    index=False,
+                    header=False,
+                    startrow=1,
                 )
                 worksheet = writer.sheets["DSMB-Enrollment Listing"]
                 # Format headers
-                for col_num, value in enumerate(self.enrollment_output_df.columns.values):
+                for col_num, value in enumerate(
+                    self.enrollment_output_df.columns.values
+                ):
                     worksheet.write(0, col_num, value, formats["bold_12_wrap_format"])
                 # Format data cells
                 for row in range(1, len(self.enrollment_output_df) + 1):
                     for col in range(len(self.enrollment_output_df.columns)):
                         worksheet.write(
-                            row, col, self.enrollment_output_df.iloc[row - 1, col], formats["normal_data_format"]
+                            row,
+                            col,
+                            self.enrollment_output_df.iloc[row - 1, col],
+                            formats["normal_data_format"],
                         )
                 # Set column widths
                 for idx, col in enumerate(self.enrollment_output_df.columns):
-                    max_len = max(self.enrollment_output_df[col].astype(str).map(len).max(), len(str(col))) + 3
+                    max_len = (
+                        max(
+                            self.enrollment_output_df[col].astype(str).map(len).max(),
+                            len(str(col)),
+                        )
+                        + 3
+                    )
                     worksheet.set_column(idx, idx, max_len)
                 # Freeze top row
                 worksheet.freeze_panes(1, 0)
@@ -1102,7 +1338,11 @@ class DSMB11823:
             if hasattr(self, "status_df") and not self.status_df.empty:
                 # Write data
                 self.status_df.to_excel(
-                    writer, sheet_name="DSMB-Status Eligible Subjects", index=False, header=False, startrow=1
+                    writer,
+                    sheet_name="DSMB-Status Eligible Subjects",
+                    index=False,
+                    header=False,
+                    startrow=1,
                 )
                 worksheet = writer.sheets["DSMB-Status Eligible Subjects"]
                 # Format headers
@@ -1111,10 +1351,21 @@ class DSMB11823:
                 # Format data cells
                 for row in range(1, len(self.status_df) + 1):
                     for col in range(len(self.status_df.columns)):
-                        worksheet.write(row, col, self.status_df.iloc[row - 1, col], formats["normal_data_format"])
+                        worksheet.write(
+                            row,
+                            col,
+                            self.status_df.iloc[row - 1, col],
+                            formats["normal_data_format"],
+                        )
                 # Set column widths
                 for idx, col in enumerate(self.status_df.columns):
-                    max_len = max(self.status_df[col].astype(str).map(len).max(), len(str(col))) + 3
+                    max_len = (
+                        max(
+                            self.status_df[col].astype(str).map(len).max(),
+                            len(str(col)),
+                        )
+                        + 3
+                    )
                     worksheet.set_column(idx, idx, max_len)
                 # Freeze top row
                 worksheet.freeze_panes(1, 0)
@@ -1126,8 +1377,12 @@ class DSMB11823:
                 # Define row indices
                 row_indices = ["Mean SD", "Median", "Range"]
                 # Create section headers
-                worksheet.merge_range("B1:D1", "Cells Infused", formats["bold_12_format"])
-                worksheet.merge_range("E1:F1", "Transduction Efficiency", formats["bold_12_format"])
+                worksheet.merge_range(
+                    "B1:D1", "Cells Infused", formats["bold_12_format"]
+                )
+                worksheet.merge_range(
+                    "E1:F1", "Transduction Efficiency", formats["bold_12_format"]
+                )
                 # Write column headers
                 col_headers = [
                     "TmPSMA-02 CAR T Cells",
@@ -1144,9 +1399,12 @@ class DSMB11823:
                 # Write data
                 for row in range(len(self.infusion_stat_df)):
                     for col in range(len(self.infusion_stat_df.columns)):
-                        if row < len(row_indices):  # Only write data for defined row indices
+                        if row < len(
+                            row_indices
+                        ):  # Only write data for defined row indices
                             worksheet.write(
-                                row + 2,  # Row offset of 2 (merged header + column titles)
+                                row
+                                + 2,  # Row offset of 2 (merged header + column titles)
                                 col + 1,  # Column offset of 1 (for row indices)
                                 self.infusion_stat_df.iloc[row, col],
                                 formats["normal_data_format"],
@@ -1158,14 +1416,18 @@ class DSMB11823:
                         cell_value = self.infusion_stat_df.iloc[
                             0, 2  # Only need to write data in first row
                         ]  # Value from first row of "Met Target Dose" column
-                        worksheet.merge_range(2, 3, 4, 3, cell_value, formats["normal_data_format"])
+                        worksheet.merge_range(
+                            2, 3, 4, 3, cell_value, formats["normal_data_format"]
+                        )
                 # For "Met Target %scFv" column (index 4) - merge for all row indices
                 for row in range(len(row_indices)):
                     if row == 0:  # Only need to write data in first row
                         cell_value = self.infusion_stat_df.iloc[
                             0, 4  # Only need to write data in first row
                         ]  # Value from first row of "Met Target %scFv" column
-                        worksheet.merge_range(2, 5, 4, 5, cell_value, formats["normal_data_format"])
+                        worksheet.merge_range(
+                            2, 5, 4, 5, cell_value, formats["normal_data_format"]
+                        )
                 # Set column widths
                 worksheet.set_column(0, 0, 15)  # Row labels column
                 worksheet.set_column(1, 5, 20)  # Data columns
@@ -1173,15 +1435,35 @@ class DSMB11823:
             # ==================== Infusion Listing Tab (AFTER Infusion Statistics) ====================
             if hasattr(self, "infusion_df") and not self.infusion_df.empty:
                 # Write data starting at row 3, using the display version with formatted values
-                display_df = self.infusion_display_df if hasattr(self, "infusion_display_df") else self.infusion_df
-                display_df.to_excel(writer, sheet_name="DSMB-Infusion Listing", index=False, header=False, startrow=2)
+                display_df = (
+                    self.infusion_display_df
+                    if hasattr(self, "infusion_display_df")
+                    else self.infusion_df
+                )
+                display_df.to_excel(
+                    writer,
+                    sheet_name="DSMB-Infusion Listing",
+                    index=False,
+                    header=False,
+                    startrow=2,
+                )
                 worksheet = writer.sheets["DSMB-Infusion Listing"]
                 # Create merged header cells
                 worksheet.merge_range("A1:A2", "Subject ID", formats["bold_12_format"])
-                worksheet.merge_range("B1:B2", "Dose Level Assignment", formats["bold_12_format"])
-                worksheet.merge_range("C1:C2", "Lymphodepleting Chemotherapy Dates", formats["bold_12_format"])
-                worksheet.merge_range("D1:H1", "Cells Infused", formats["bold_12_format"])
-                worksheet.merge_range("I1:J1", "Transduction Efficiency", formats["bold_12_format"])
+                worksheet.merge_range(
+                    "B1:B2", "Dose Level Assignment", formats["bold_12_format"]
+                )
+                worksheet.merge_range(
+                    "C1:C2",
+                    "Lymphodepleting Chemotherapy Dates",
+                    formats["bold_12_format"],
+                )
+                worksheet.merge_range(
+                    "D1:H1", "Cells Infused", formats["bold_12_format"]
+                )
+                worksheet.merge_range(
+                    "I1:J1", "Transduction Efficiency", formats["bold_12_format"]
+                )
                 # Write column headers in row 2
                 column_headers = [
                     "",
@@ -1209,21 +1491,34 @@ class DSMB11823:
                         )
                 # Set column widths
                 for idx, col in enumerate(display_df.columns):
-                    max_len = max(display_df[col].astype(str).map(len).max(), len(str(col))) + 3
+                    max_len = (
+                        max(display_df[col].astype(str).map(len).max(), len(str(col)))
+                        + 3
+                    )
                     worksheet.set_column(idx, idx, max_len)
                 # Freeze top two rows
                 worksheet.freeze_panes(2, 0)
 
             # ==================== Response Statistics Tab ====================
-            if hasattr(self, "recist_stats") and hasattr(self, "bone_scan_stats") and hasattr(self, "psa_stats"):
+            if (
+                hasattr(self, "recist_stats")
+                and hasattr(self, "bone_scan_stats")
+                and hasattr(self, "psa_stats")
+            ):
                 # Create worksheet
                 worksheet = writer.book.add_worksheet("DSMB-Response Statistics")
                 # Filter out Total rows from all stats dataframes
-                recist_stats_filtered = self.recist_stats[self.recist_stats.index != "Total"]
-                bone_scan_stats_filtered = self.bone_scan_stats[self.bone_scan_stats.index != "Total"]
+                recist_stats_filtered = self.recist_stats[
+                    self.recist_stats.index != "Total"
+                ]
+                bone_scan_stats_filtered = self.bone_scan_stats[
+                    self.bone_scan_stats.index != "Total"
+                ]
                 psa_stats_filtered = self.psa_stats[self.psa_stats.index != "Total"]
                 # Add merged title across all tables
-                worksheet.merge_range("A1:F1", "Best Overall Response", formats["bold_12_format"])
+                worksheet.merge_range(
+                    "A1:F1", "Best Overall Response", formats["bold_12_format"]
+                )
                 # Define column positions for the three tables
                 col_recist = 0
                 col_bone = 2
@@ -1232,35 +1527,78 @@ class DSMB11823:
                 recist_count = self.total_response_subjects
                 bone_count = self.total_response_subjects
                 psa_count = self.total_response_subjects
-                worksheet.write(1, col_recist, f"RECIST 1.1 (N={recist_count})", formats["bold_11_format"])
-                worksheet.write(1, col_recist + 1, "Count (%)", formats["bold_11_format"])
-                worksheet.write(1, col_bone, f"Bone Scan Response (PCWG3) (N={bone_count})", formats["bold_11_format"])
+                worksheet.write(
+                    1,
+                    col_recist,
+                    f"RECIST 1.1 (N={recist_count})",
+                    formats["bold_11_format"],
+                )
+                worksheet.write(
+                    1, col_recist + 1, "Count (%)", formats["bold_11_format"]
+                )
+                worksheet.write(
+                    1,
+                    col_bone,
+                    f"Bone Scan Response (PCWG3) (N={bone_count})",
+                    formats["bold_11_format"],
+                )
                 worksheet.write(1, col_bone + 1, "Count (%)", formats["bold_11_format"])
-                worksheet.write(1, col_psa, f"PSA Response (N={psa_count})", formats["bold_11_format"])
+                worksheet.write(
+                    1,
+                    col_psa,
+                    f"PSA Response (N={psa_count})",
+                    formats["bold_11_format"],
+                )
                 worksheet.write(1, col_psa + 1, "Count (%)", formats["bold_11_format"])
                 # Write RECIST data
                 for i, (index, row) in enumerate(recist_stats_filtered.iterrows()):
-                    worksheet.write(i + 2, col_recist, index, formats["normal_data_format"])
+                    worksheet.write(
+                        i + 2, col_recist, index, formats["normal_data_format"]
+                    )
                     # Combine count and percentage
-                    count_perc = f"{row['Count']} ({row['Percentage'].replace('%', '')}%)"
-                    worksheet.write(i + 2, col_recist + 1, count_perc, formats["normal_data_format"])
+                    count_perc = (
+                        f"{row['Count']} ({row['Percentage'].replace('%', '')}%)"
+                    )
+                    worksheet.write(
+                        i + 2, col_recist + 1, count_perc, formats["normal_data_format"]
+                    )
                 # Write Bone Scan data
                 for i, (index, row) in enumerate(bone_scan_stats_filtered.iterrows()):
-                    worksheet.write(i + 2, col_bone, index, formats["normal_data_format"])
+                    worksheet.write(
+                        i + 2, col_bone, index, formats["normal_data_format"]
+                    )
                     # Combine count and percentage
-                    count_perc = f"{row['Count']} ({row['Percentage'].replace('%', '')}%)"
-                    worksheet.write(i + 2, col_bone + 1, count_perc, formats["normal_data_format"])
+                    count_perc = (
+                        f"{row['Count']} ({row['Percentage'].replace('%', '')}%)"
+                    )
+                    worksheet.write(
+                        i + 2, col_bone + 1, count_perc, formats["normal_data_format"]
+                    )
                 # Write PSA Response data
                 for i, (index, row) in enumerate(psa_stats_filtered.iterrows()):
-                    worksheet.write(i + 2, col_psa, index, formats["normal_data_format"])
+                    worksheet.write(
+                        i + 2, col_psa, index, formats["normal_data_format"]
+                    )
                     # Combine count and percentage
-                    count_perc = f"{row['Count']} ({row['Percentage'].replace('%', '')}%)"
-                    worksheet.write(i + 2, col_psa + 1, count_perc, formats["normal_data_format"])
+                    count_perc = (
+                        f"{row['Count']} ({row['Percentage'].replace('%', '')}%)"
+                    )
+                    worksheet.write(
+                        i + 2, col_psa + 1, count_perc, formats["normal_data_format"]
+                    )
                 # Set column widths for all tables
-                worksheet.set_column(col_recist, col_recist, 30)  # RECIST response descriptions
-                worksheet.set_column(col_recist + 1, col_recist + 1, 15)  # RECIST count/%
-                worksheet.set_column(col_bone, col_bone, 40)  # Bone scan response descriptions
-                worksheet.set_column(col_bone + 1, col_bone + 1, 15)  # Bone scan count/%
+                worksheet.set_column(
+                    col_recist, col_recist, 30
+                )  # RECIST response descriptions
+                worksheet.set_column(
+                    col_recist + 1, col_recist + 1, 15
+                )  # RECIST count/%
+                worksheet.set_column(
+                    col_bone, col_bone, 40
+                )  # Bone scan response descriptions
+                worksheet.set_column(
+                    col_bone + 1, col_bone + 1, 15
+                )  # Bone scan count/%
                 worksheet.set_column(col_psa, col_psa, 30)  # PSA response descriptions
                 worksheet.set_column(col_psa + 1, col_psa + 1, 15)  # PSA count/%
 
@@ -1268,11 +1606,17 @@ class DSMB11823:
             if hasattr(self, "response_df") and not self.response_df.empty:
                 # Write data with a row offset of 2 to leave space for the header row
                 self.response_df.to_excel(
-                    writer, sheet_name="DSMB-Response Listing", index=False, header=False, startrow=2
+                    writer,
+                    sheet_name="DSMB-Response Listing",
+                    index=False,
+                    header=False,
+                    startrow=2,
                 )
                 worksheet = writer.sheets["DSMB-Response Listing"]
                 # Add merged header for "Overall Disease Response"
-                worksheet.merge_range("B1:H1", "Overall Disease Response", formats["bold_12_format"])
+                worksheet.merge_range(
+                    "B1:H1", "Overall Disease Response", formats["bold_12_format"]
+                )
                 # Write column headers in row 2
                 worksheet.write(1, 0, "Subject", formats["bold_12_wrap_format"])
                 worksheet.write(1, 1, "Response Type", formats["bold_12_wrap_format"])
@@ -1294,7 +1638,10 @@ class DSMB11823:
                         start_row = row_idx
                 # Add the last subject's range
                 if current_subject is not None:
-                    subject_ranges[current_subject] = (start_row, len(self.response_df) - 1)
+                    subject_ranges[current_subject] = (
+                        start_row,
+                        len(self.response_df) - 1,
+                    )
                 # Now merge cells for each subject range
                 for subject, (start_idx, end_idx) in subject_ranges.items():
                     # Calculate Excel rows (add 2 for header rows offset)
@@ -1303,11 +1650,18 @@ class DSMB11823:
                     # Only merge if there are multiple rows for this subject
                     if excel_start_row < excel_end_row:
                         worksheet.merge_range(
-                            excel_start_row, 0, excel_end_row, 0, subject, formats["normal_data_format"]
+                            excel_start_row,
+                            0,
+                            excel_end_row,
+                            0,
+                            subject,
+                            formats["normal_data_format"],
                         )
                     else:
                         # Single row case, just write the value directly
-                        worksheet.write(excel_start_row, 0, subject, formats["normal_data_format"])
+                        worksheet.write(
+                            excel_start_row, 0, subject, formats["normal_data_format"]
+                        )
                 # Write the remaining data (response types and values) with wrap_format
                 for row in range(len(self.response_df)):
                     for col in range(1, len(self.response_df.columns)):
@@ -1315,7 +1669,9 @@ class DSMB11823:
                             row + 2,  # +2 due to header rows
                             col,
                             self.response_df.iloc[row, col],
-                            formats["normal_data_wrap_format"],  # Changed to wrap format
+                            formats[
+                                "normal_data_wrap_format"
+                            ],  # Changed to wrap format
                         )
                 # Set column widths
                 worksheet.set_column(0, 0, 15)  # Subject column
@@ -1330,17 +1686,29 @@ class DSMB11823:
             if hasattr(self, "pet_imaging_df") and not self.pet_imaging_df.empty:
                 # Write data with a row offset of 2 to leave space for the header row
                 self.pet_imaging_df.to_excel(
-                    writer, sheet_name="DSMB-PET Imaging", index=False, header=False, startrow=2
+                    writer,
+                    sheet_name="DSMB-PET Imaging",
+                    index=False,
+                    header=False,
+                    startrow=2,
                 )
                 worksheet = writer.sheets["DSMB-PET Imaging"]
                 # Add merged header for "PET Imaging Data"
-                worksheet.merge_range("B1:E1", "PET Imaging Data", formats["bold_12_format"])
+                worksheet.merge_range(
+                    "B1:E1", "PET Imaging Data", formats["bold_12_format"]
+                )
                 # Write column headers in row 2
                 worksheet.write(1, 0, "Subject", formats["bold_12_wrap_format"])
                 worksheet.write(1, 1, "Measurement", formats["bold_12_wrap_format"])
-                worksheet.write(1, 2, "Baseline (Pre-Tx Safety)", formats["bold_12_wrap_format"])
-                worksheet.write(1, 3, "Post-Treatment (Day 28)", formats["bold_12_wrap_format"])
-                worksheet.write(1, 4, "Disease Progression", formats["bold_12_wrap_format"])
+                worksheet.write(
+                    1, 2, "Baseline (Pre-Tx Safety)", formats["bold_12_wrap_format"]
+                )
+                worksheet.write(
+                    1, 3, "Post-Treatment (Day 28)", formats["bold_12_wrap_format"]
+                )
+                worksheet.write(
+                    1, 4, "Disease Progression", formats["bold_12_wrap_format"]
+                )
                 # Group and merge subject cells
                 # First, identify where each subject starts and ends
                 subject_ranges = {}
@@ -1356,7 +1724,10 @@ class DSMB11823:
                         start_row = row_idx
                 # Add the last subject's range
                 if current_subject is not None:
-                    subject_ranges[current_subject] = (start_row, len(self.pet_imaging_df) - 1)
+                    subject_ranges[current_subject] = (
+                        start_row,
+                        len(self.pet_imaging_df) - 1,
+                    )
                 # Now merge cells for each subject range
                 for subject, (start_idx, end_idx) in subject_ranges.items():
                     # Calculate Excel rows (add 2 for header rows offset)
@@ -1365,11 +1736,18 @@ class DSMB11823:
                     # Only merge if there are multiple rows for this subject
                     if excel_start_row < excel_end_row:
                         worksheet.merge_range(
-                            excel_start_row, 0, excel_end_row, 0, subject, formats["normal_data_format"]
+                            excel_start_row,
+                            0,
+                            excel_end_row,
+                            0,
+                            subject,
+                            formats["normal_data_format"],
                         )
                     else:
                         # Single row case, just write the value directly
-                        worksheet.write(excel_start_row, 0, subject, formats["normal_data_format"])
+                        worksheet.write(
+                            excel_start_row, 0, subject, formats["normal_data_format"]
+                        )
                 # Write the remaining data (Measurements and values) with wrap_format
                 for row in range(len(self.pet_imaging_df)):
                     for col in range(1, len(self.pet_imaging_df.columns)):
@@ -1377,7 +1755,9 @@ class DSMB11823:
                             row + 2,  # +2 due to header rows
                             col,
                             self.pet_imaging_df.iloc[row, col],
-                            formats["normal_data_wrap_format"],  # Changed to wrap format
+                            formats[
+                                "normal_data_wrap_format"
+                            ],  # Changed to wrap format
                         )
                 # Set column widths
                 worksheet.set_column(0, 0, 15)  # Subject column

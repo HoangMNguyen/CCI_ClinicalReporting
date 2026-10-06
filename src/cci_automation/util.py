@@ -112,7 +112,12 @@ def get_stats_df(column, *dfs):
             std = 0
 
         # Create a DataFrame for the current stats if non of the stats are NaN
-        if not np.isnan(mean) and not np.isnan(median) and not np.isnan(minimum) and not np.isnan(maximum):
+        if (
+            not np.isnan(mean)
+            and not np.isnan(median)
+            and not np.isnan(minimum)
+            and not np.isnan(maximum)
+        ):
             # Format the mean and standard deviation
             if mean < 100:
                 mean_std = f"{mean:.2f} ({std:.2f})"
@@ -124,7 +129,9 @@ def get_stats_df(column, *dfs):
                 range = f"{minimum:.2f} - {maximum:.2f}"
             else:
                 range = f"{convert_float_2_sci_notation(int(minimum))} - {convert_float_2_sci_notation(int(maximum))}"
-            stats_df = pd.DataFrame({"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i])
+            stats_df = pd.DataFrame(
+                {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
+            )
         else:
             stats_df = pd.DataFrame(index=[i])
         # Append the stats DataFrame to the main DataFrame if it is not empty
@@ -165,7 +172,12 @@ def get_stats_perc_df(column, *dfs):
             std = 0
 
         # Create a DataFrame for the current stats if non of the stats are NaN
-        if not np.isnan(mean) and not np.isnan(median) and not np.isnan(minimum) and not np.isnan(maximum):
+        if (
+            not np.isnan(mean)
+            and not np.isnan(median)
+            and not np.isnan(minimum)
+            and not np.isnan(maximum)
+        ):
             # Format the mean and standard deviation
             if mean < 100:
                 mean_std = f"{mean:.2f}% ({std:.2f}%)"
@@ -179,7 +191,9 @@ def get_stats_perc_df(column, *dfs):
                 range = f"{minimum:.2f}% - {maximum:.2f}%"
             else:
                 range = f"{convert_float_2_sci_notation(int(minimum))}% - {convert_float_2_sci_notation(int(maximum))}%"
-            stats_df = pd.DataFrame({"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i])
+            stats_df = pd.DataFrame(
+                {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
+            )
         else:
             stats_df = pd.DataFrame(index=[i])
         # Append the stats DataFrame to the main DataFrame if it is not empty
@@ -304,20 +318,24 @@ def get_data_from_dict(data: dict, input_dict: dict, *exclude) -> pd.DataFrame:
             # input_key is not within the exclude list
             if key not in exclude:
                 # if there are more than one row for the same subject, keep the one with the last 'Event Date'
-                collected_data = collected_data.sort_values(["Subject", "Event Date"]).drop_duplicates(
-                    subset=["Subject"], keep="last"
-                )
+                collected_data = collected_data.sort_values(
+                    ["Subject", "Event Date"]
+                ).drop_duplicates(subset=["Subject"], keep="last")
             # check if value contains 'Date' in the column name, then convert to datetime
             for col in collected_data.columns:
                 if "Date" in col:
-                    collected_data[col] = pd.to_datetime(collected_data[col], errors="coerce")
+                    collected_data[col] = pd.to_datetime(
+                        collected_data[col], errors="coerce"
+                    )
             # drop 'Event Date' column
             collected_data = collected_data.drop("Event Date", axis=1)
             # merge dataframes
             if keys_list.index(key) == 0:
                 merged_df = collected_data
             else:
-                merged_df = pd.merge(merged_df, collected_data, on="Subject", how="left")
+                merged_df = pd.merge(
+                    merged_df, collected_data, on="Subject", how="left"
+                )
 
     return merged_df
 
@@ -345,20 +363,24 @@ def get_data_from_dict_first(data: dict, input_dict: dict) -> pd.DataFrame:
             collected_data = data[key][input_keys].copy()
             collected_data.rename(columns=input_dict[key], inplace=True)
             # if there are more than one row for the same subject, keep the one with the last 'Event Date'
-            collected_data = collected_data.sort_values(["Subject", "Event Date"]).drop_duplicates(
-                subset=["Subject"], keep="first"
-            )
+            collected_data = collected_data.sort_values(
+                ["Subject", "Event Date"]
+            ).drop_duplicates(subset=["Subject"], keep="first")
             # check if value contains 'Date' in the column name, then convert to datetime
             for col in collected_data.columns:
                 if "Date" in col:
-                    collected_data[col] = pd.to_datetime(collected_data[col], errors="coerce")
+                    collected_data[col] = pd.to_datetime(
+                        collected_data[col], errors="coerce"
+                    )
             # drop 'Event Date' column
             collected_data = collected_data.drop("Event Date", axis=1)
             # merge dataframes
             if keys_list.index(key) == 0:
                 merged_df = collected_data
             else:
-                merged_df = pd.merge(merged_df, collected_data, on="Subject", how="left")
+                merged_df = pd.merge(
+                    merged_df, collected_data, on="Subject", how="left"
+                )
     return merged_df
 
 
@@ -387,7 +409,9 @@ def age_calculation(merged_df, output_column, DOB: str, CS1: str, CS2: str = "")
         if (CS2 in merged_df) and CS2 != "":
             # for rows that CS1 isnull but CS2 is not null, then use CS2 instead to calculate age
             if not merged_df[CS2].empty:
-                merged_df.loc[(merged_df[CS1].isnull() & merged_df[CS2].notnull()), output_column] = merged_df.loc[
+                merged_df.loc[
+                    (merged_df[CS1].isnull() & merged_df[CS2].notnull()), output_column
+                ] = merged_df.loc[
                     (merged_df[CS1].isnull() & merged_df[CS2].notnull())
                 ].apply(lambda x: relativedelta(x[CS2], x[DOB]).years, axis=1)
     return merged_df
@@ -417,7 +441,9 @@ def remove_leading_zeros_from_dates(df):
             try:
                 # First convert to datetime if not already
                 if not pd.api.types.is_datetime64_any_dtype(df_copy[col_name]):
-                    df_copy[col_name] = pd.to_datetime(df_copy[col_name], errors="coerce")
+                    df_copy[col_name] = pd.to_datetime(
+                        df_copy[col_name], errors="coerce"
+                    )
 
                 # Apply formatting to remove leading zeros if it's not ""
                 df_copy[col_name] = df_copy[col_name].apply(

@@ -8,27 +8,39 @@ from cci_automation.util import age_calculation, get_data_from_dict
 def EnrollmentLog15122(raw_data):
     # * Filter conditions before calling
     # filter conditions for the raw data
-    raw_data["PRTUBX"] = raw_data["PRTUBX"][raw_data["PRTUBX"]["Event Label"] == "Surgical Excision/Biopsy (Day 7)"]
+    raw_data["PRTUBX"] = raw_data["PRTUBX"][
+        raw_data["PRTUBX"]["Event Label"] == "Surgical Excision/Biopsy (Day 7)"
+    ]
 
     # Re-consented subjects
     filtered_data1 = raw_data.copy()
-    filtered_data1["DM"] = filtered_data1["DM"][filtered_data1["DM"]["Event Group Label"] == "Repeat Pre-Screening"]
+    filtered_data1["DM"] = filtered_data1["DM"][
+        filtered_data1["DM"]["Event Group Label"] == "Repeat Pre-Screening"
+    ]
     filtered_data1["DSEOS"] = filtered_data1["DSEOS"][
         filtered_data1["DSEOS"]["Event Group Label"] == "Repeat End of Study"
     ]
     # Subjects not re-consented
     filtered_data2 = raw_data.copy()
-    filtered_data2["DM"] = filtered_data2["DM"][~filtered_data2["DM"]["Subject"].isin(filtered_data1["DM"]["Subject"])]
-    filtered_data2["DSEOS"] = filtered_data2["DSEOS"][filtered_data2["DSEOS"]["Event Group Label"] == "Common Forms"]
+    filtered_data2["DM"] = filtered_data2["DM"][
+        ~filtered_data2["DM"]["Subject"].isin(filtered_data1["DM"]["Subject"])
+    ]
+    filtered_data2["DSEOS"] = filtered_data2["DSEOS"][
+        filtered_data2["DSEOS"]["Event Group Label"] == "Common Forms"
+    ]
     # re-consented subjects capturing the initial consent
     filtered_data3 = raw_data.copy()
     filtered_data3["DM"] = filtered_data3["DM"][
         filtered_data3["DM"]["Subject"].isin(filtered_data1["DM"]["Subject"])
         & (filtered_data3["DM"]["Event Group Label"] == "Pre-Screening")
     ]
-    filtered_data3["DSEOS"] = filtered_data3["DSEOS"][filtered_data3["DSEOS"]["Event Group Label"] == "Common Forms"]
+    filtered_data3["DSEOS"] = filtered_data3["DSEOS"][
+        filtered_data3["DSEOS"]["Event Group Label"] == "Common Forms"
+    ]
     # remove all data other than 'DM', 'DSEOS'
-    filtered_data3 = {key: filtered_data3[key] for key in ["DM", "DSEOS", "DSCA", "DSDLA"]}
+    filtered_data3 = {
+        key: filtered_data3[key] for key in ["DM", "DSEOS", "DSCA", "DSDLA"]
+    }
     data_list = [filtered_data1, filtered_data2, filtered_data3]
     # create an empty dataframe
     output_df = pd.DataFrame()
@@ -43,7 +55,9 @@ def EnrollmentLog15122(raw_data):
                 "Date of Birth (IG_NS_NA_DM1.DT_NS_NH_BRTHDAT)": "Date of Birth",
                 "Pre-Screening Consent Date (IG_NS_NA_DM1.DT_NS_YH_RFICDAT)": "Pre-Screening Consent Date",
             },
-            "DSCA": {"Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_YH_CACHASCOD_cl_NS_COHORT1)": "Cohort"},
+            "DSCA": {
+                "Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_YH_CACHASCOD_cl_NS_COHORT1)": "Cohort"
+            },
             "DSDLA": {
                 "Dose Level Assignment (IG_NS_NA_DSDLA1.CL_NS_YH_DLADOSELV_cl_NS_DOSELV1)": "Assigned Dose Level"
             },
@@ -68,7 +82,9 @@ def EnrollmentLog15122(raw_data):
                 "Last Study Visit Completed in Primary Follow-Up (IG_NS_NA_DSINITLF1.CL_NS_NH_LVCPFU_cl_YS_LVCPFU1)": "Last Study Visit Completed in Primary Follow-Up",
                 "End of Primary Follow-Up Date (IG_NS_NA_DSINITLF1.DT_NS_YH_INITLFPFUENDDAT)": "Initiation of LTFU Date",
             },
-            "DSEOS": {"End of Study Date (IG_NS_NA_DSEOS1.DT_NS_YH_EOSDAT)": "End of Study Date"},
+            "DSEOS": {
+                "End of Study Date (IG_NS_NA_DSEOS1.DT_NS_YH_EOSDAT)": "End of Study Date"
+            },
         }
 
         merged_df = get_data_from_dict(data, input_dict)
@@ -83,9 +99,11 @@ def EnrollmentLog15122(raw_data):
 
         if "PRTUBX" in data:
             # combine 'Date of Surgery' and 'Date of Surgical Excision or Tumor Biopsy (Day 7 +2d)' columns
-            merged_df["Date of Surgical Excision or Tumor Biopsy (Day 7 +2d)"] = merged_df[
-                "Date of Surgical Excision or Tumor Biopsy (Day 7 +2d)"
-            ].fillna(merged_df["Date of Surgery"])
+            merged_df["Date of Surgical Excision or Tumor Biopsy (Day 7 +2d)"] = (
+                merged_df[
+                    "Date of Surgical Excision or Tumor Biopsy (Day 7 +2d)"
+                ].fillna(merged_df["Date of Surgery"])
+            )
 
         # * Formatting
 
@@ -121,7 +139,9 @@ def EnrollmentLog15122(raw_data):
         # merge the dataframes with the output dataframe
         output_df = pd.concat([output_df, merged_df], ignore_index=True)
     # sort based on 'Subject ID#' and 'Pre-Screening Consent Date'
-    output_df = output_df.sort_values(["Subject ID#", "Pre-Screening Consent Date"]).reset_index(drop=True)
+    output_df = output_df.sort_values(
+        ["Subject ID#", "Pre-Screening Consent Date"]
+    ).reset_index(drop=True)
     # convert the date columns to string format
     for col in output_df.columns:
         if "Date" in col:

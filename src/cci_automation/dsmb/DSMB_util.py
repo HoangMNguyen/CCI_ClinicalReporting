@@ -135,21 +135,32 @@ def get_stats_percentage(column, *args):
 
     for arg in args:
         if groupby is not None:
-            temp_df = arg.groupby(column).agg({"Subject": "count"}).reindex(groupby, fill_value=0)
+            temp_df = (
+                arg.groupby(column)
+                .agg({"Subject": "count"})
+                .reindex(groupby, fill_value=0)
+            )
         else:
             temp_df = arg.groupby(column).agg({"Subject": "count"})
         # combine the percentage and count column into 1 column for variables different than 0
         temp_df = temp_df.apply(
-            lambda x: x.astype(str) + " (" + (x / sum(x)).apply(lambda y: "{:.1%}".format(y)) + ")"
-            if x.sum() != 0
-            else x.astype(str) + " (0.0%)"
+            lambda x: (
+                x.astype(str)
+                + " ("
+                + (x / sum(x)).apply(lambda y: "{:.1%}".format(y))
+                + ")"
+                if x.sum() != 0
+                else x.astype(str) + " (0.0%)"
+            )
         )
         # merge the temp_df to the main df
         main_df = pd.concat([main_df, temp_df], axis=1)
     return main_df
 
 
-def get_stats_percentage2(column: str, groupby: list, *args: pd.DataFrame) -> pd.DataFrame:
+def get_stats_percentage2(
+    column: str, groupby: list, *args: pd.DataFrame
+) -> pd.DataFrame:
     """
     Calculate the percentage of each unique value in a specified column of a DataFrame, grouped by another column.
 
@@ -175,14 +186,23 @@ def get_stats_percentage2(column: str, groupby: list, *args: pd.DataFrame) -> pd
 
     for arg in args:
         if groupby is not None:
-            temp_df = arg.groupby(column).agg({"Subject": "count"}).reindex(groupby, fill_value=0)
+            temp_df = (
+                arg.groupby(column)
+                .agg({"Subject": "count"})
+                .reindex(groupby, fill_value=0)
+            )
         else:
             temp_df = arg.groupby(column).agg({"Subject": "count"})
         # combine the percentage and count column into 1 column for variables different than 0
         temp_df = temp_df.apply(
-            lambda x: x.astype(str) + " (" + (x / sum(x)).apply(lambda y: "{:.1%}".format(y)) + ")"
-            if x.sum() != 0
-            else x.astype(str) + " (0.0%)"
+            lambda x: (
+                x.astype(str)
+                + " ("
+                + (x / sum(x)).apply(lambda y: "{:.1%}".format(y))
+                + ")"
+                if x.sum() != 0
+                else x.astype(str) + " (0.0%)"
+            )
         )
         # merge the temp_df to the main df
         main_df = pd.concat([main_df, temp_df], axis=1)
@@ -220,7 +240,12 @@ def get_stats_df(column, *dfs):
                 std = 0
 
             # Create a DataFrame for the current stats if non of the stats are NaN
-            if not np.isnan(mean) and not np.isnan(median) and not np.isnan(minimum) and not np.isnan(maximum):
+            if (
+                not np.isnan(mean)
+                and not np.isnan(median)
+                and not np.isnan(minimum)
+                and not np.isnan(maximum)
+            ):
                 # Format the mean and standard deviation
                 if mean < 100:
                     mean_std = f"{mean:.2f} ({std:.2f})"
@@ -231,17 +256,19 @@ def get_stats_df(column, *dfs):
                 if minimum < 100 and maximum < 100:
                     range = f"{minimum:.2f} - {maximum:.2f}"
                 else:
-                    range = (
-                        f"{convert_float_2_sci_notation(int(minimum))} - {convert_float_2_sci_notation(int(maximum))}"
-                    )
-                stats_df = pd.DataFrame({"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i])
+                    range = f"{convert_float_2_sci_notation(int(minimum))} - {convert_float_2_sci_notation(int(maximum))}"
+                stats_df = pd.DataFrame(
+                    {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
+                )
             else:
                 stats_df = pd.DataFrame(index=[i])
             # Append the stats DataFrame to the main DataFrame if it is not empty
             main_df = pd.concat([main_df, stats_df])
         else:
             # if the column is empty, fill the stats with '0 (0.0)'
-            stats_df = pd.DataFrame({"Mean ± SD": "0 (0.0)", "Median": 0, "Range": "0 - 0"}, index=[i])
+            stats_df = pd.DataFrame(
+                {"Mean ± SD": "0 (0.0)", "Median": 0, "Range": "0 - 0"}, index=[i]
+            )
             # Append the stats DataFrame to the main DataFrame if it is not empty
             main_df = pd.concat([main_df, stats_df])
     # Transpose the DataFrame to switch the axes
@@ -282,7 +309,12 @@ def get_stats_perc_df(column, *dfs):
             std = 0
 
         # Create a DataFrame for the current stats if non of the stats are NaN
-        if not np.isnan(mean) and not np.isnan(median) and not np.isnan(minimum) and not np.isnan(maximum):
+        if (
+            not np.isnan(mean)
+            and not np.isnan(median)
+            and not np.isnan(minimum)
+            and not np.isnan(maximum)
+        ):
             # Format the mean and standard deviation
             if mean < 100:
                 mean_std = f"{mean:.2f}% ({std:.2f}%)"
@@ -298,7 +330,9 @@ def get_stats_perc_df(column, *dfs):
                 range = f"{minimum:.2f}% - {maximum:.2f}%"
             else:
                 range = f"{convert_float_2_sci_notation(int(minimum))}% - {convert_float_2_sci_notation(int(maximum))}%"
-            stats_df = pd.DataFrame({"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i])
+            stats_df = pd.DataFrame(
+                {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
+            )
         else:
             stats_df = pd.DataFrame(index=[i])
         # Append the stats DataFrame to the main DataFrame if it is not empty
@@ -354,7 +388,11 @@ def convert_float_2_sci_notation(n):
         mantissa = n_decimal / (Decimal("10") ** exponent)
 
         # Round mantissa to 2 decimals (ROUND_HALF_UP)
-        mantissa_str = str(mantissa.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)).rstrip("0").rstrip(".")
+        mantissa_str = (
+            str(mantissa.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+            .rstrip("0")
+            .rstrip(".")
+        )
 
         return f"{mantissa_str}x10^{exponent}"
 

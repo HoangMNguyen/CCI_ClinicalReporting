@@ -37,14 +37,18 @@ def EnrollmentLog15420(final_data):
                 "Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_NH_CACHASCOD_cl_NS_COHORT1)",
             ]
         ].copy()
-        DSCA_new_col_name = {"Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_NH_CACHASCOD_cl_NS_COHORT1)": "Cohort"}
+        DSCA_new_col_name = {
+            "Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_NH_CACHASCOD_cl_NS_COHORT1)": "Cohort"
+        }
         DSCA_df = DSCA_df.rename(columns=DSCA_new_col_name)
         merged_df = pd.merge(sorted_DM_df, DSCA_df, on="Subject", how="left")
         index_reference = merged_df.columns.get_loc("Race")
         merged_df.insert(index_reference, "Cohort", merged_df.pop("Cohort"))
         # print(merged_df)
     elif "PRDIAG" in final_data:
-        PRDIAG_df = final_data["PRDIAG"][["Subject", "Disease Type (ig_PRDIAG1.RSCAT)"]].copy()
+        PRDIAG_df = final_data["PRDIAG"][
+            ["Subject", "Disease Type (ig_PRDIAG1.RSCAT)"]
+        ].copy()
         PRDIAG_new_col_name = {"Disease Type (ig_PRDIAG1.RSCAT)": "Cohort"}
         PRDIAG_df = PRDIAG_df.rename(columns=PRDIAG_new_col_name)
         merged_df = pd.merge(sorted_DM_df, PRDIAG_df, on="Subject", how="left")
@@ -56,12 +60,18 @@ def EnrollmentLog15420(final_data):
 
     # DLA
 
-    DLA_df = final_data["DLA"][["Subject", "Dose Level Assignment (ig_DLA1.DLADOSELVL)"]].copy()
-    DLA_new_col_name = {"Dose Level Assignment (ig_DLA1.DLADOSELVL)": "Assigned Dose Level"}
+    DLA_df = final_data["DLA"][
+        ["Subject", "Dose Level Assignment (ig_DLA1.DLADOSELVL)"]
+    ].copy()
+    DLA_new_col_name = {
+        "Dose Level Assignment (ig_DLA1.DLADOSELVL)": "Assigned Dose Level"
+    }
     DLA_df = DLA_df.rename(columns=DLA_new_col_name)
     merged_df = pd.merge(merged_df, DLA_df, on="Subject", how="left")
     index_reference = merged_df.columns.get_loc("Race")
-    merged_df.insert(index_reference, "Assigned Dose Level", merged_df.pop("Assigned Dose Level"))
+    merged_df.insert(
+        index_reference, "Assigned Dose Level", merged_df.pop("Assigned Dose Level")
+    )
 
     # IE
     IE_df = final_data["IE"][
@@ -73,7 +83,9 @@ def EnrollmentLog15420(final_data):
             "Date of completion of monitoring visit for eligibility (ig_IE5.ELIGMONDAT)",
         ]
     ].copy()
-    IE_df = IE_df[IE_df["Did subject sign the consent form? (ig_IE1.SIGNMAINC)"] == "Yes"]
+    IE_df = IE_df[
+        IE_df["Did subject sign the consent form? (ig_IE1.SIGNMAINC)"] == "Yes"
+    ]
     IE_df = IE_df.drop("Did subject sign the consent form? (ig_IE1.SIGNMAINC)", axis=1)
     IE_new_col_name = {
         "Consent Date (ig_IE1.MAINCDAT)": "Consent Date",
@@ -99,7 +111,9 @@ def EnrollmentLog15420(final_data):
         lambda x: relativedelta(x["Consent Date"], x["Date of Birth"]).years, axis=1
     )
 
-    merged_df["Consent Date"] = pd.to_datetime(merged_df["Consent Date"]).dt.strftime("%m/%d/%Y")
+    merged_df["Consent Date"] = pd.to_datetime(merged_df["Consent Date"]).dt.strftime(
+        "%m/%d/%Y"
+    )
     # print(merged_df)
     merged_df = merged_df.drop("Date of Birth", axis=1)
 
@@ -124,19 +138,26 @@ def EnrollmentLog15420(final_data):
     APH_df = APH_df.drop("Event Group Label", axis=1)
     APH_df = APH_df.rename(columns=APH_new_col_name)
     merged_df = pd.merge(merged_df, APH_df, on="Subject", how="left")
-    merged_df["Date of Apheresis Collection"] = pd.to_datetime(merged_df["Date of Apheresis Collection"]).dt.strftime(
-        "%m/%d/%Y"
-    )
+    merged_df["Date of Apheresis Collection"] = pd.to_datetime(
+        merged_df["Date of Apheresis Collection"]
+    ).dt.strftime("%m/%d/%Y")
 
     # EXCHMO
-    EXCHMO_df = final_data["EXCHMO"][["Subject", "Event Group Label", "Start Date (ig_EXCHMO2.EXSTDAT)"]].copy()
+    EXCHMO_df = final_data["EXCHMO"][
+        ["Subject", "Event Group Label", "Start Date (ig_EXCHMO2.EXSTDAT)"]
+    ].copy()
     EXCHMO_df = EXCHMO_df[EXCHMO_df["Start Date (ig_EXCHMO2.EXSTDAT)"] != "NaN"]
     EXCHMO_df = EXCHMO_df[
         (EXCHMO_df["Event Group Label"] != "Retreatment Lymphodepleting Chemotherapy")
-        & (EXCHMO_df["Event Group Label"] != "Retreatment Lymphodepleting Chemotherapy - ALL")
+        & (
+            EXCHMO_df["Event Group Label"]
+            != "Retreatment Lymphodepleting Chemotherapy - ALL"
+        )
     ]
     EXCHMO_df = EXCHMO_df.drop_duplicates(subset=["Subject"])
-    EXCHMO_new_col_name = {"Start Date (ig_EXCHMO2.EXSTDAT)": "Date of Initiation of LD Chemo"}
+    EXCHMO_new_col_name = {
+        "Start Date (ig_EXCHMO2.EXSTDAT)": "Date of Initiation of LD Chemo"
+    }
     EXCHMO_df = EXCHMO_df.rename(columns=EXCHMO_new_col_name)
     EXCHMO_df = EXCHMO_df.sort_values(["Subject"])
     EXCHMO_df = EXCHMO_df.drop("Event Group Label", axis=1)
@@ -146,9 +167,16 @@ def EnrollmentLog15420(final_data):
     ).dt.strftime("%m/%d/%Y")
 
     # INF
-    INF_df = final_data["INF"][["Subject", "Event Group Label", "Infusion Date (ig_INF1.INFDAT)"]].copy()
-    INF_df = INF_df[(INF_df["Event Group Label"] != "Day 0-R") & (INF_df["Event Group Label"] != " Day 0-R")]
-    INF_new_col_name = {"Infusion Date (ig_INF1.INFDAT)": "CAR T cell Infusion Date [Day 0]"}
+    INF_df = final_data["INF"][
+        ["Subject", "Event Group Label", "Infusion Date (ig_INF1.INFDAT)"]
+    ].copy()
+    INF_df = INF_df[
+        (INF_df["Event Group Label"] != "Day 0-R")
+        & (INF_df["Event Group Label"] != " Day 0-R")
+    ]
+    INF_new_col_name = {
+        "Infusion Date (ig_INF1.INFDAT)": "CAR T cell Infusion Date [Day 0]"
+    }
     INF_df = INF_df.rename(columns=INF_new_col_name)
     INF_df = INF_df.drop("Event Group Label", axis=1)
     merged_df = pd.merge(merged_df, INF_df, on="Subject", how="left")
@@ -167,7 +195,10 @@ def EnrollmentLog15420(final_data):
         ]
     ].copy()
     INITLF_df = INITLF_df[
-        INITLF_df["From which Phase is the Subject entering Long-Term Follow-Up? (ig_INITLF1.DSPHASE)"] != "Retreatment"
+        INITLF_df[
+            "From which Phase is the Subject entering Long-Term Follow-Up? (ig_INITLF1.DSPHASE)"
+        ]
+        != "Retreatment"
     ]
     INITLF_new_col_name = {
         "Last Study Visit Completed in Primary Follow-Up (ig_INITLF1.DSLVCPFU)": "Last Study Visit Completed in Primary Follow-Up",
@@ -179,7 +210,9 @@ def EnrollmentLog15420(final_data):
         axis=1,
     )
     merged_df = pd.merge(merged_df, INITLF_df, on="Subject", how="left")
-    merged_df["Initiation of LTFU Date"] = pd.to_datetime(merged_df["Initiation of LTFU Date"]).dt.strftime("%m/%d/%Y")
+    merged_df["Initiation of LTFU Date"] = pd.to_datetime(
+        merged_df["Initiation of LTFU Date"]
+    ).dt.strftime("%m/%d/%Y")
     # print(merged_df)
 
     # DSINITRT
@@ -199,31 +232,43 @@ def EnrollmentLog15420(final_data):
         "End of Primary Follow-Up Date (ig_DSINITRT1.DSRENPFUDAT)": "Initiation of Retx Date",
     }
     DSINITRT_df = DSINITRT_df.rename(columns=DSINITRT_new_col_name)
-    DSINITRT_df["Initiation of Retx Date"] = DSINITRT_df["Initiation of Retx Date"].fillna(
-        DSINITRT_df["End of Long-Term Follow-Up Date (ig_DSINITRT1.DSRENLTFUDAT)"]
+    DSINITRT_df["Initiation of Retx Date"] = DSINITRT_df[
+        "Initiation of Retx Date"
+    ].fillna(DSINITRT_df["End of Long-Term Follow-Up Date (ig_DSINITRT1.DSRENLTFUDAT)"])
+    DSINITRT_df = DSINITRT_df.drop(
+        "End of Long-Term Follow-Up Date (ig_DSINITRT1.DSRENLTFUDAT)", axis=1
     )
-    DSINITRT_df = DSINITRT_df.drop("End of Long-Term Follow-Up Date (ig_DSINITRT1.DSRENLTFUDAT)", axis=1)
     merged_df = pd.merge(merged_df, DSINITRT_df, on="Subject", how="left")
     # if 'Phase' = Primary Follow-Up, convert Initiation of LTFU Date to N/A
-    merged_df.loc[merged_df["Phase"] == "Primary Follow-Up", "Initiation of LTFU Date"] = "N/A"
+    merged_df.loc[
+        merged_df["Phase"] == "Primary Follow-Up", "Initiation of LTFU Date"
+    ] = "N/A"
     merged_df["Last Study Visit Completed in Primary Follow-Up"] = merged_df[
         "Last Study Visit Completed in Primary Follow-Up"
-    ].fillna(merged_df["Last Visit Completed in Primary Follow-Up (ig_DSINITRT1.DSLVCPFUR)"])
+    ].fillna(
+        merged_df["Last Visit Completed in Primary Follow-Up (ig_DSINITRT1.DSLVCPFUR)"]
+    )
     merged_df = merged_df.drop(
         ["Last Visit Completed in Primary Follow-Up (ig_DSINITRT1.DSLVCPFUR)", "Phase"],
         axis=1,
     )
-    merged_df["Initiation of Retx Date"] = pd.to_datetime(merged_df["Initiation of Retx Date"]).dt.strftime("%m/%d/%Y")
+    merged_df["Initiation of Retx Date"] = pd.to_datetime(
+        merged_df["Initiation of Retx Date"]
+    ).dt.strftime("%m/%d/%Y")
 
     # EXCHMO Retreatment
-    EXCHMO_df = final_data["EXCHMO"][["Subject", "Event Group Label", "Start Date (ig_EXCHMO2.EXSTDAT)"]].copy()
+    EXCHMO_df = final_data["EXCHMO"][
+        ["Subject", "Event Group Label", "Start Date (ig_EXCHMO2.EXSTDAT)"]
+    ].copy()
     EXCHMO_df = EXCHMO_df[EXCHMO_df["Start Date (ig_EXCHMO2.EXSTDAT)"] != "NaN"]
     EXCHMO_df = EXCHMO_df[
         (EXCHMO_df["Event Group Label"] != "Lymphodepleting Chemotherapy")
         & (EXCHMO_df["Event Group Label"] != "Lymphodepleting Chemotherapy - ALL")
     ]
     EXCHMO_df = EXCHMO_df.drop_duplicates(subset=["Subject"])
-    EXCHMO_new_col_name = {"Start Date (ig_EXCHMO2.EXSTDAT)": "Date of Initiation of Retx LD Chemo"}
+    EXCHMO_new_col_name = {
+        "Start Date (ig_EXCHMO2.EXSTDAT)": "Date of Initiation of Retx LD Chemo"
+    }
     EXCHMO_df = EXCHMO_df.rename(columns=EXCHMO_new_col_name)
     EXCHMO_df = EXCHMO_df.sort_values(["Subject"])
     EXCHMO_df = EXCHMO_df.drop("Event Group Label", axis=1)
@@ -233,9 +278,16 @@ def EnrollmentLog15420(final_data):
     ).dt.strftime("%m/%d/%Y")
 
     # INF Retx
-    INF_df = final_data["INF"][["Subject", "Event Group Label", "Infusion Date (ig_INF1.INFDAT)"]].copy()
-    INF_df = INF_df[(INF_df["Event Group Label"] == "Day 0-R") | (INF_df["Event Group Label"] == " Day 0-R")]
-    INF_new_col_name = {"Infusion Date (ig_INF1.INFDAT)": "CAR T cell Retreatment Date [Day 0-R]"}
+    INF_df = final_data["INF"][
+        ["Subject", "Event Group Label", "Infusion Date (ig_INF1.INFDAT)"]
+    ].copy()
+    INF_df = INF_df[
+        (INF_df["Event Group Label"] == "Day 0-R")
+        | (INF_df["Event Group Label"] == " Day 0-R")
+    ]
+    INF_new_col_name = {
+        "Infusion Date (ig_INF1.INFDAT)": "CAR T cell Retreatment Date [Day 0-R]"
+    }
     INF_df = INF_df.rename(columns=INF_new_col_name)
     INF_df = INF_df.drop("Event Group Label", axis=1)
     merged_df = pd.merge(merged_df, INF_df, on="Subject", how="left")
@@ -254,7 +306,10 @@ def EnrollmentLog15420(final_data):
         ]
     ].copy()
     INITLF_df = INITLF_df[
-        INITLF_df["From which Phase is the Subject entering Long-Term Follow-Up? (ig_INITLF1.DSPHASE)"] == "Retreatment"
+        INITLF_df[
+            "From which Phase is the Subject entering Long-Term Follow-Up? (ig_INITLF1.DSPHASE)"
+        ]
+        == "Retreatment"
     ]
     INITLF_new_col_name = {
         "Last Study Visit Completed in Retreatment (ig_INITLF1.DSLVCRETX)": "Last Study Visit Completed in Retreatment F/up",
@@ -275,7 +330,9 @@ def EnrollmentLog15420(final_data):
     EOS_new_col_name = {"End of Study Date (ig_EOS1.EOSDAT)": "End of Study Date"}
     EOS_df = EOS_df.rename(columns=EOS_new_col_name)
     merged_df = pd.merge(merged_df, EOS_df, on="Subject", how="left")
-    merged_df["End of Study Date"] = pd.to_datetime(merged_df["End of Study Date"]).dt.strftime("%m/%d/%Y")
+    merged_df["End of Study Date"] = pd.to_datetime(
+        merged_df["End of Study Date"]
+    ).dt.strftime("%m/%d/%Y")
 
     # update headers and fill N/A
     merged_df = merged_df.rename(columns={"Subject": "Subject ID#"})

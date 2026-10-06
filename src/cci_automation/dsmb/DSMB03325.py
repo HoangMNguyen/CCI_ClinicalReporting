@@ -47,7 +47,9 @@ class DSMB03325:
         data = self.data
         if not data["DM"].empty:
             # process Demographics Statistics
-            self.enrollment_listing_df_output, self.enrollment_listing_df = self.enrollment_listing()
+            self.enrollment_listing_df_output, self.enrollment_listing_df = (
+                self.enrollment_listing()
+            )
             # process Enrollment Listing
             self.enrollment_stat_table(self.enrollment_listing_df)
             # process the Treatment Listing
@@ -57,7 +59,9 @@ class DSMB03325:
             # process EGFR MGMT Listing
             self.EGFR_listing_df_output, self.EGFR_listing_df = self.EGFR_listing()
             # process the Status of Eligible Subjects and Cohort A Safety Statistics
-            self.AE_df, self.status_df, self.safetyCH1_total_df = self.status_listing(self.enrollment_listing_df)
+            self.AE_df, self.status_df, self.safetyCH1_total_df = self.status_listing(
+                self.enrollment_listing_df
+            )
             # process Status of Treated Subjects
             self.TXSUB_status_df = self.TXSUB_status_listing(self.infusion_listing)
             # generate Excel export
@@ -80,7 +84,9 @@ class DSMB03325:
                 "Specify Other or Multiple Races (IG_NS_NA_DM1.TX_NS_NH_RACEOTH)": "Other Race",
                 "Ethnicity (IG_NS_NA_DM1.CL_NS_NH_ETHNIC_cl_NS_DMETHNIC1)": "Ethnicity",
             },
-            "DSCA": {"Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_YH_CACHASCOD_cl_NS_COHORT1)": "Cohort Assignment"},
+            "DSCA": {
+                "Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_YH_CACHASCOD_cl_NS_COHORT1)": "Cohort Assignment"
+            },
             "DSDLA": {
                 "Dose Level Assignment (IG_NS_NA_DSDLA1.CL_NS_YH_DLADOSELV_cl_NS_DOSELV1)": "Dose Level Assignment"
             },
@@ -121,8 +127,12 @@ class DSMB03325:
 
         enrollment_df = get_data_from_dict(data, input_dict)
         # Replace missing values in the "Cohort Assignment" and "Dose Level Assignment" columns with "Pending"
-        enrollment_df["Cohort Assignment"] = enrollment_df["Cohort Assignment"].fillna("Pending")
-        enrollment_df["Dose Level Assignment"] = enrollment_df["Dose Level Assignment"].fillna("Pending")
+        enrollment_df["Cohort Assignment"] = enrollment_df["Cohort Assignment"].fillna(
+            "Pending"
+        )
+        enrollment_df["Dose Level Assignment"] = enrollment_df[
+            "Dose Level Assignment"
+        ].fillna("Pending")
 
         enrollment_df = age_calculation(
             enrollment_df,
@@ -135,27 +145,39 @@ class DSMB03325:
         enrollment_df = enrollment_df.fillna("")
 
         # Convert the entire column to string to avoid data type issues
-        enrollment_df["Reason for Screen Fail"] = enrollment_df["Reason for Screen Fail"].astype(str)
+        enrollment_df["Reason for Screen Fail"] = enrollment_df[
+            "Reason for Screen Fail"
+        ].astype(str)
 
         # if "Reason for Screen Fail" in enrollment_df.columns equal "Other", replace the value with SF3
         mask = enrollment_df["Reason for Screen Fail"] == "Other"
         # Replace "Other" with the corresponding values from the "SF3" column
-        enrollment_df.loc[mask, "Reason for Screen Fail"] = enrollment_df.loc[mask, "SF3"]
+        enrollment_df.loc[mask, "Reason for Screen Fail"] = enrollment_df.loc[
+            mask, "SF3"
+        ]
 
         # if "Reason for Screen Fail" in enrollment_df.columns equal "Inclusion Criteria", concat the value of the column with "SF1"
         # Create a mask for rows where "Reason for Screen Fail" is "Inclusion Criteria"
-        mask = (enrollment_df["Reason for Screen Fail"] == "Inclusion Criteria") & (enrollment_df["SF1"] != "")
+        mask = (enrollment_df["Reason for Screen Fail"] == "Inclusion Criteria") & (
+            enrollment_df["SF1"] != ""
+        )
         # Use the mask to update the "Reason for Screen Fail" column
         enrollment_df.loc[mask, "Reason for Screen Fail"] = (
-            enrollment_df.loc[mask, "Reason for Screen Fail"] + " " + enrollment_df.loc[mask, "SF1"].astype(str)
+            enrollment_df.loc[mask, "Reason for Screen Fail"]
+            + " "
+            + enrollment_df.loc[mask, "SF1"].astype(str)
         )
 
         # Create a mask for rows where "Reason for Screen Fail" is "Exclusion Criteria" and "SF2" is not empty
-        mask = (enrollment_df["Reason for Screen Fail"] == "Exclusion Criteria") & (enrollment_df["SF2"] != "")
+        mask = (enrollment_df["Reason for Screen Fail"] == "Exclusion Criteria") & (
+            enrollment_df["SF2"] != ""
+        )
 
         # Use the mask to update the "Reason for Screen Fail" column
         enrollment_df.loc[mask, "Reason for Screen Fail"] = (
-            enrollment_df.loc[mask, "Reason for Screen Fail"] + " " + enrollment_df.loc[mask, "SF2"].astype(str)
+            enrollment_df.loc[mask, "Reason for Screen Fail"]
+            + " "
+            + enrollment_df.loc[mask, "SF2"].astype(str)
         )
 
         # if subject does not have IE data, check if the subject has DSEOS "End of Study Date" data. If yes, then the subject is "No" for "Subject meets all study eligibility?"
@@ -179,9 +201,12 @@ class DSMB03325:
 
         # Define conditions and corresponding values
         conditions = [
-            enrollment_df["Subject meets all study eligibility?"].fillna("Unknown") == "No",
-            enrollment_df["Subject meets all study eligibility?"].fillna("Unknown") == "Yes",
-            enrollment_df["Subject meets all study eligibility?"].fillna("Unknown") == "Pending",
+            enrollment_df["Subject meets all study eligibility?"].fillna("Unknown")
+            == "No",
+            enrollment_df["Subject meets all study eligibility?"].fillna("Unknown")
+            == "Yes",
+            enrollment_df["Subject meets all study eligibility?"].fillna("Unknown")
+            == "Pending",
         ]
 
         values = [
@@ -194,28 +219,37 @@ class DSMB03325:
         enrollment_df["Screen Fail"] = np.select(conditions, values, default="Unknown")
 
         # Override Screen Fail if DSEOS indicates screen failure ---
-        mask_dseos_sf = enrollment_df["End of Study Reason"].str.contains("Screen failure", case=False, na=False)
+        mask_dseos_sf = enrollment_df["End of Study Reason"].str.contains(
+            "Screen failure", case=False, na=False
+        )
 
         # If DSEOS says screen failure → Screen Fail must be Yes
         enrollment_df.loc[mask_dseos_sf, "Screen Fail"] = "Yes"
 
         # Use supportive information as reason if Screen Failure is triggered by DSEOS
-        enrollment_df.loc[mask_dseos_sf, "Reason for Screen Fail"] = enrollment_df["Supportive Information"].fillna("")
+        enrollment_df.loc[mask_dseos_sf, "Reason for Screen Fail"] = enrollment_df[
+            "Supportive Information"
+        ].fillna("")
 
         enrollment_df.loc[
-            (enrollment_df["Last Eligibility Step Completed"] == "Step #1 Screening/Eligibility")
+            (
+                enrollment_df["Last Eligibility Step Completed"]
+                == "Step #1 Screening/Eligibility"
+            )
             & (enrollment_df["Treated"] != "Yes")
             & enrollment_df["Screen Fail"].isin(["No", ""]),
             "Screen Fail",
         ] = "Pending"
 
         # Add Last Eligibility Step Completed column
-        enrollment_df["Last Eligibility Step Completed"] = enrollment_df["Last Eligibility Step Completed"].fillna("")
+        enrollment_df["Last Eligibility Step Completed"] = enrollment_df[
+            "Last Eligibility Step Completed"
+        ].fillna("")
 
         # Remove only the trailing " Screening/Eligibility"
-        enrollment_df["Last Eligibility Step Completed"] = enrollment_df["Last Eligibility Step Completed"].str.replace(
-            " Screening/Eligibility", "", regex=False
-        )
+        enrollment_df["Last Eligibility Step Completed"] = enrollment_df[
+            "Last Eligibility Step Completed"
+        ].str.replace(" Screening/Eligibility", "", regex=False)
 
         # drop the columns that are not needed
         enrollment_df = enrollment_df.drop(
@@ -231,11 +265,13 @@ class DSMB03325:
         enrollment_df = enrollment_df.drop(columns=["Event Group Label"])
         # Update 'Treated' column based on the conditions:
         enrollment_df.loc[
-            (enrollment_df["Treated"] != "Yes") & (enrollment_df["End of Study Date"].isnull()),
+            (enrollment_df["Treated"] != "Yes")
+            & (enrollment_df["End of Study Date"].isnull()),
             "Treated",
         ] = "Pending"
         enrollment_df.loc[
-            (enrollment_df["Treated"] != "Yes") & (~enrollment_df["End of Study Date"].isnull()),
+            (enrollment_df["Treated"] != "Yes")
+            & (~enrollment_df["End of Study Date"].isnull()),
             "Treated",
         ] = "No"
 
@@ -243,11 +279,17 @@ class DSMB03325:
         treated_series = enrollment_df.get("Treated")
         eos_reason_series = enrollment_df.get("End of Study Reason")
         if screen_fail_series is None:
-            screen_fail_series = pd.Series([""] * len(enrollment_df), index=enrollment_df.index)
+            screen_fail_series = pd.Series(
+                [""] * len(enrollment_df), index=enrollment_df.index
+            )
         if treated_series is None:
-            treated_series = pd.Series([""] * len(enrollment_df), index=enrollment_df.index)
+            treated_series = pd.Series(
+                [""] * len(enrollment_df), index=enrollment_df.index
+            )
         if eos_reason_series is None:
-            eos_reason_series = pd.Series([""] * len(enrollment_df), index=enrollment_df.index)
+            eos_reason_series = pd.Series(
+                [""] * len(enrollment_df), index=enrollment_df.index
+            )
 
         enrollment_df["Reason for Withdrawal Prior to Study Treatment"] = np.where(
             (screen_fail_series.fillna("").astype(str).str.strip() == "No")
@@ -255,7 +297,9 @@ class DSMB03325:
             eos_reason_series.fillna("").astype(str),
             "",
         )
-        enrollment_df = enrollment_df.drop(columns=["End of Study Reason"], errors="ignore")
+        enrollment_df = enrollment_df.drop(
+            columns=["End of Study Reason"], errors="ignore"
+        )
         # enrollment_df = enrollment_df.drop(columns=["End of Study Date"])
 
         # Sort
@@ -265,7 +309,9 @@ class DSMB03325:
         enrollment_output_df = enrollment_df.copy()
         for col in enrollment_output_df.columns:
             if "Date" in col:
-                enrollment_output_df[col] = enrollment_output_df[col].dt.strftime("%m/%d/%Y")
+                enrollment_output_df[col] = enrollment_output_df[col].dt.strftime(
+                    "%m/%d/%Y"
+                )
         # If Gender is "Other", replace the value with "Other Gender"
         enrollment_output_df.loc[
             enrollment_output_df["Gender Identity"] == "Other",
@@ -273,7 +319,10 @@ class DSMB03325:
         ] = enrollment_output_df["Other Gender"]
         # Use `.loc` to filter where Race is "Other" and update it with the value in "Other Race"
         enrollment_output_df.loc[enrollment_output_df["Race"] == "Other", "Race"] = (
-            "Other- " + enrollment_output_df.loc[enrollment_output_df["Race"] == "Other", "Other Race"].astype(str)
+            "Other- "
+            + enrollment_output_df.loc[
+                enrollment_output_df["Race"] == "Other", "Other Race"
+            ].astype(str)
         )
         # *Re-order the columns and remove the columns that are not needed
         enrollment_output_df = enrollment_output_df[
@@ -340,11 +389,19 @@ class DSMB03325:
             # Calculate the stats for the filtered dataframe
             Legal_Sex_Codelist = ["Male", "Female", "X (Nonbinary)", "Not Reported"]
             self.LegalSex_list.append(
-                get_stats_percentage2("Legal Sex", Legal_Sex_Codelist, TT_df, SF_df, EL_df, INFR_df)
+                get_stats_percentage2(
+                    "Legal Sex", Legal_Sex_Codelist, TT_df, SF_df, EL_df, INFR_df
+                )
             )
-            self.Age_at_Consent_list.append(get_stats_df("Age at Consent", TT_df, SF_df, EL_df, INFR_df))
-            self.Race_list.append(get_stats_percentage("Race", TT_df, SF_df, EL_df, INFR_df))
-            self.Ethnicity_list.append(get_stats_percentage("Ethnicity", TT_df, SF_df, EL_df, INFR_df))
+            self.Age_at_Consent_list.append(
+                get_stats_df("Age at Consent", TT_df, SF_df, EL_df, INFR_df)
+            )
+            self.Race_list.append(
+                get_stats_percentage("Race", TT_df, SF_df, EL_df, INFR_df)
+            )
+            self.Ethnicity_list.append(
+                get_stats_percentage("Ethnicity", TT_df, SF_df, EL_df, INFR_df)
+            )
 
     def EGFR_listing(self):
         data = self.data
@@ -372,13 +429,20 @@ class DSMB03325:
         # Combine results by subject, giving NeoGenomics priority unless its value is "Not Done"
         def combine_labs(group):
             res = {"Subject": group.name}
-            labs = group.get("Laboratory Name", pd.Series([], dtype=str)).fillna("").astype(str).str.strip()
+            labs = (
+                group.get("Laboratory Name", pd.Series([], dtype=str))
+                .fillna("")
+                .astype(str)
+                .str.strip()
+            )
             neo_mask = labs.eq("NeoGenomics")
             other_mask = ~neo_mask
 
             for col in ["Amplification of EGFR", "EGFRvIII Mutation", "EGFR Mutation"]:
                 neo_vals = group.loc[neo_mask, col].fillna("").astype(str).str.strip()
-                other_vals = group.loc[other_mask, col].fillna("").astype(str).str.strip()
+                other_vals = (
+                    group.loc[other_mask, col].fillna("").astype(str).str.strip()
+                )
 
                 neo_nonempty = neo_vals[neo_vals != ""]
                 other_nonempty = other_vals[other_vals != ""]
@@ -407,7 +471,12 @@ class DSMB03325:
         # Merge on "Subject"
         EGFR_final_df = pd.merge(DM_df, combined_EGFR_df, on="Subject", how="left")
 
-        MHDIAG_df = data["MHDIAG"][["Subject", "MGMT Result (IG_NS_NA_MHDIAG2.CL_NS_NH_MGMTRES_cl_NS_MGMTRES1)"]].copy()
+        MHDIAG_df = data["MHDIAG"][
+            [
+                "Subject",
+                "MGMT Result (IG_NS_NA_MHDIAG2.CL_NS_NH_MGMTRES_cl_NS_MGMTRES1)",
+            ]
+        ].copy()
         MHDIAG_new_col_name = {
             "MGMT Result (IG_NS_NA_MHDIAG2.CL_NS_NH_MGMTRES_cl_NS_MGMTRES1)": "MGMT Result",
         }
@@ -459,7 +528,9 @@ class DSMB03325:
         }
 
         input_dict2 = {
-            "DSCA": {"Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_YH_CACHASCOD_cl_NS_COHORT1)": "Cohort Assignment"},
+            "DSCA": {
+                "Cohort Assignment (IG_NS_NA_DSCA1.CL_NS_YH_CACHASCOD_cl_NS_COHORT1)": "Cohort Assignment"
+            },
         }
 
         input_dict3 = {
@@ -471,8 +542,12 @@ class DSMB03325:
         raw_infusion_df1 = get_data_from_dict_first(data, input_dict1)
         raw_infusion_df2 = get_data_from_dict(data, input_dict2)
         raw_infusion_df3 = get_data_from_dict(data, input_dict3)
-        raw_infusion_df_TEMP = pd.merge(raw_infusion_df1, raw_infusion_df2, on="Subject", how="left")
-        raw_infusion_df = pd.merge(raw_infusion_df_TEMP, raw_infusion_df3, on="Subject", how="left")
+        raw_infusion_df_TEMP = pd.merge(
+            raw_infusion_df1, raw_infusion_df2, on="Subject", how="left"
+        )
+        raw_infusion_df = pd.merge(
+            raw_infusion_df_TEMP, raw_infusion_df3, on="Subject", how="left"
+        )
 
         # print(raw_infusion_df)
         # TODO: TREATMENT LISTING Day 0
@@ -484,24 +559,37 @@ class DSMB03325:
         infusion_df["Target Dose"] = infusion_df["Dose Level Assignment"].map(TCD_dict)
 
         # combine CART-EGFR-IL13Rα2 Cell Dose and x 10 to the power of (ig_EXINF1.INFDOSXP) columns, compare the new value with 'Target Cell Dose', and convert the CART-EGFR-IL13Rα2 Cell Dose column to string
-        infusion_df["CART-EGFR-IL13Ra2 Cell Dose"] = infusion_df["CART-EGFR-IL13Ra2 Cell Dose"].multiply(
-            10 ** infusion_df["x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"]
+        infusion_df["CART-EGFR-IL13Ra2 Cell Dose"] = infusion_df[
+            "CART-EGFR-IL13Ra2 Cell Dose"
+        ].multiply(
+            10
+            ** infusion_df[
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"
+            ]
         )
         infusion_df = infusion_df.drop(
-            columns=["x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"]
+            columns=[
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"
+            ]
         )
         infusion_df["Total Cell Dose"] = infusion_df["Total Cell Dose"].multiply(
-            10 ** infusion_df["x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"]
+            10
+            ** infusion_df[
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"
+            ]
         )
         infusion_df = infusion_df.drop(
-            columns=["x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"]
+            columns=[
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"
+            ]
         )
 
         # Adding Met Target Dose column based on the condition of Total Cell Dose and CART-EGFR-IL13Rα2 Cell Dose if 'Target Cell Dose' is integer
         infusion_df["Met Target Dose (Y/N)"] = infusion_df.apply(
             lambda row: (
                 "Y"
-                if isinstance(row["Target Dose"], int) and row["CART-EGFR-IL13Ra2 Cell Dose"] >= row["Target Dose"]
+                if isinstance(row["Target Dose"], int)
+                and row["CART-EGFR-IL13Ra2 Cell Dose"] >= row["Target Dose"]
                 else ""
             ),
             axis=1,
@@ -509,16 +597,17 @@ class DSMB03325:
         infusion_df["Met Target Dose (Y/N)"] = infusion_df.apply(
             lambda row: (
                 "N"
-                if isinstance(row["Target Dose"], int) and row["CART-EGFR-IL13Ra2 Cell Dose"] < row["Target Dose"]
+                if isinstance(row["Target Dose"], int)
+                and row["CART-EGFR-IL13Ra2 Cell Dose"] < row["Target Dose"]
                 else row["Met Target Dose (Y/N)"]
             ),
             axis=1,
         )
 
         # adding Met Target %scFv and filter out the rows that have NaN in Met Target %scFv
-        infusion_df["Met Target % scFV Flow (Y/N) (≥2%)"] = infusion_df[infusion_df["%scFV (EGFR)"].notna()][
-            "%scFV (EGFR)"
-        ].apply(lambda x: "Y" if x >= 2 else "N")
+        infusion_df["Met Target % scFV Flow (Y/N) (≥2%)"] = infusion_df[
+            infusion_df["%scFV (EGFR)"].notna()
+        ]["%scFV (EGFR)"].apply(lambda x: "Y" if x >= 2 else "N")
         # fill NaN with empty string
         infusion_df = infusion_df.fillna(
             "",
@@ -550,30 +639,48 @@ class DSMB03325:
         raw_infusionR_df1 = get_data_from_dict(data, input_dict1)
         raw_infusionR_df2 = get_data_from_dict(data, input_dict2)
         raw_infusionR_df3 = get_data_from_dict(data, input_dict3)
-        raw_infusionR_df_TEMP = pd.merge(raw_infusionR_df1, raw_infusionR_df2, on="Subject", how="left")
-        raw_infusionR_df = pd.merge(raw_infusionR_df_TEMP, raw_infusionR_df3, on="Subject", how="left")
+        raw_infusionR_df_TEMP = pd.merge(
+            raw_infusionR_df1, raw_infusionR_df2, on="Subject", how="left"
+        )
+        raw_infusionR_df = pd.merge(
+            raw_infusionR_df_TEMP, raw_infusionR_df3, on="Subject", how="left"
+        )
 
-        infusionR_df = raw_infusionR_df[(raw_infusionR_df["Event Label"] == "Day 0-R")].copy()
+        infusionR_df = raw_infusionR_df[
+            (raw_infusionR_df["Event Label"] == "Day 0-R")
+        ].copy()
 
         # combine CART-EGFR-IL13Rα2 Cell Dose and x 10 to the power of (ig_EXINF1.INFDOSXP) columns, compare the new value with 'Target Cell Dose', and convert the CART-EGFR-IL13Rα2 Cell Dose column to string
-        infusionR_df["CART-EGFR-IL13Ra2 Cell Dose"] = infusionR_df["CART-EGFR-IL13Ra2 Cell Dose"].multiply(
-            10 ** infusionR_df["x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"]
+        infusionR_df["CART-EGFR-IL13Ra2 Cell Dose"] = infusionR_df[
+            "CART-EGFR-IL13Ra2 Cell Dose"
+        ].multiply(
+            10
+            ** infusionR_df[
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"
+            ]
         )
         infusionR_df = infusionR_df.drop(
-            columns=["x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"]
+            columns=[
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TDOSXP_cl_YS_EX10POW1)"
+            ]
         )
 
         infusionR_df["Total Cell Dose"] = infusionR_df["Total Cell Dose"].multiply(
-            10 ** infusionR_df["x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"]
+            10
+            ** infusionR_df[
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"
+            ]
         )
         infusionR_df = infusionR_df.drop(
-            columns=["x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"]
+            columns=[
+                "x 10 to the power of (IG_NS_NA_EXINF1.CL_NS_NH_TOTDOSXP_cl_YS_EX10POW1)"
+            ]
         )
 
         # adding Met Target %scFv and fillter out the rows that have NaN in Met Target %scFv
-        infusionR_df["Met Target % scFV Flow (Y/N) (≥2%)"] = infusionR_df[infusionR_df["%scFV (EGFR)"].notna()][
-            "%scFV (EGFR)"
-        ].apply(lambda x: "Y" if x >= 2 else "N")
+        infusionR_df["Met Target % scFV Flow (Y/N) (≥2%)"] = infusionR_df[
+            infusionR_df["%scFV (EGFR)"].notna()
+        ]["%scFV (EGFR)"].apply(lambda x: "Y" if x >= 2 else "N")
         # fill NaN with empty string
         infusionR_df = infusionR_df.fillna(
             "",
@@ -617,11 +724,15 @@ class DSMB03325:
         infusion_df["Study Treatment Date"] = pd.to_datetime(
             infusion_df["Study Treatment Date"], errors="coerce"
         ).dt.strftime("%m-%d-%Y")
-        infusion_df["Study Treatment Date"] = infusion_df["Study Treatment Date"].apply(format_date)
+        infusion_df["Study Treatment Date"] = infusion_df["Study Treatment Date"].apply(
+            format_date
+        )
         infusionR_df["Study Treatment Date"] = pd.to_datetime(
             infusionR_df["Study Treatment Date"], errors="coerce"
         ).dt.strftime("%m-%d-%Y")
-        infusionR_df["Study Treatment Date"] = infusionR_df["Study Treatment Date"].apply(format_date)
+        infusionR_df["Study Treatment Date"] = infusionR_df[
+            "Study Treatment Date"
+        ].apply(format_date)
 
         return infusion_df, infusionR_df
 
@@ -630,27 +741,37 @@ class DSMB03325:
         infusion_count = []
         # * Cohort A
         # Create a new dataframe for Cohort A with infusion_df
-        infusion1_df = self.infusion_df[self.infusion_df["Cohort Assignment"] == "Cohort A"]
+        infusion1_df = self.infusion_df[
+            self.infusion_df["Cohort Assignment"] == "Cohort A"
+        ]
         # Create a new dataframe for Total Cell Dose table with infusion_df
         infusion_statA1 = get_stats_df("Total Cell Dose", infusion1_df)
         # Create a new dataframe for CAR T Cell Dose table with infusion_df
         infusion_statA2 = get_stats_df("CART-EGFR-IL13Ra2 Cell Dose", infusion1_df)
         # Count the number of subjects that met the target dose
-        met_targetDose_count = infusion1_df[infusion1_df["Met Target Dose (Y/N)"] == "Y"].count()["Subject"]
+        met_targetDose_count = infusion1_df[
+            infusion1_df["Met Target Dose (Y/N)"] == "Y"
+        ].count()["Subject"]
         # Count the number of subjects
         total_subject_count = infusion1_df["Subject"].nunique()
         # Add column "Met Target Dose (Y/N)" to infusion_statA2 data frame, since data frames are concated, the order of the data frame should match the output order
         infusion_statA2["Met Target Dose (Y/N)"] = (
-            str(met_targetDose_count) + " (" + str(round(met_targetDose_count / total_subject_count * 100, 2)) + "%)"
+            str(met_targetDose_count)
+            + " ("
+            + str(round(met_targetDose_count / total_subject_count * 100, 2))
+            + "%)"
         )
         # Create a new dataframe for %scFv Flow table with infusion_df
         infusion_statA3 = get_stats_perc_df("%scFV (EGFR)", infusion1_df)
         # Count the number of subjects that met the target %scFv
-        met_targetFlow_count = infusion1_df[infusion1_df["Met Target % scFV Flow (Y/N) (≥2%)"] == "Y"].count()[
-            "Subject"
-        ]
+        met_targetFlow_count = infusion1_df[
+            infusion1_df["Met Target % scFV Flow (Y/N) (≥2%)"] == "Y"
+        ].count()["Subject"]
         infusion_statA3["Met Target % scFV Flow (Y/N) (≥2%)"] = (
-            str(met_targetFlow_count) + " (" + str(round(met_targetFlow_count / total_subject_count * 100, 2)) + "%)"
+            str(met_targetFlow_count)
+            + " ("
+            + str(round(met_targetFlow_count / total_subject_count * 100, 2))
+            + "%)"
         )
         # Create a new dataframe for %scFV (Il13Rα2) with infusion_df
         infusion_statA4 = get_stats_perc_df("%scFV (IL13Ra2)", infusion1_df)
@@ -669,34 +790,58 @@ class DSMB03325:
         # TODO: Day 0
         # Convert the columns to scientific notation if the value is not NaN
 
-        infusion_df["CART-EGFR-IL13Ra2 Cell Dose"] = infusion_df["CART-EGFR-IL13Ra2 Cell Dose"].apply(
-            lambda x: convert_float_2_sci_notation(x) if not isinstance(x, str) and pd.notna(x) else x
+        infusion_df["CART-EGFR-IL13Ra2 Cell Dose"] = infusion_df[
+            "CART-EGFR-IL13Ra2 Cell Dose"
+        ].apply(
+            lambda x: (
+                convert_float_2_sci_notation(x)
+                if not isinstance(x, str) and pd.notna(x)
+                else x
+            )
         )
         infusion_df["Total Cell Dose"] = infusion_df["Total Cell Dose"].apply(
-            lambda x: convert_float_2_sci_notation(x) if not isinstance(x, str) and pd.notna(x) else x
+            lambda x: (
+                convert_float_2_sci_notation(x)
+                if not isinstance(x, str) and pd.notna(x)
+                else x
+            )
         )
         # adding '%' sign to %scFv Flow
         infusion_df["%scFV (EGFR)"] = infusion_df.apply(
-            lambda row: str(x) + "%" if pd.notna(x := row["%scFV (EGFR)"]) else x, axis=1
+            lambda row: str(x) + "%" if pd.notna(x := row["%scFV (EGFR)"]) else x,
+            axis=1,
         )
         infusion_df["%scFV (IL13Ra2)"] = infusion_df.apply(
-            lambda row: str(x) + "%" if pd.notna(x := row["%scFV (IL13Ra2)"]) else x, axis=1
+            lambda row: str(x) + "%" if pd.notna(x := row["%scFV (IL13Ra2)"]) else x,
+            axis=1,
         )
 
         # TODO: Day 0-R
         # Convert the columns to scientific notation if the value is not NaN
-        infusionR_df["CART-EGFR-IL13Ra2 Cell Dose"] = infusionR_df["CART-EGFR-IL13Ra2 Cell Dose"].apply(
-            lambda x: convert_float_2_sci_notation(x) if isinstance(x, float) and pd.notna(x) else x
+        infusionR_df["CART-EGFR-IL13Ra2 Cell Dose"] = infusionR_df[
+            "CART-EGFR-IL13Ra2 Cell Dose"
+        ].apply(
+            lambda x: (
+                convert_float_2_sci_notation(x)
+                if isinstance(x, float) and pd.notna(x)
+                else x
+            )
         )
         infusionR_df["Total Cell Dose"] = infusionR_df["Total Cell Dose"].apply(
-            lambda x: convert_float_2_sci_notation(x) if isinstance(x, float) and pd.notna(x) else x
+            lambda x: (
+                convert_float_2_sci_notation(x)
+                if isinstance(x, float) and pd.notna(x)
+                else x
+            )
         )
         # adding '%' sign to %scFv Flow
         infusionR_df["%scFV (EGFR)"] = infusionR_df.apply(
-            lambda row: str(x) + "%" if pd.notna(x := row["%scFV (EGFR)"]) else x, axis=1
+            lambda row: str(x) + "%" if pd.notna(x := row["%scFV (EGFR)"]) else x,
+            axis=1,
         )
         infusionR_df["%scFV (IL13Ra2)"] = infusionR_df.apply(
-            lambda row: str(x) + "%" if pd.notna(x := row["%scFV (IL13Ra2)"]) else x, axis=1
+            lambda row: str(x) + "%" if pd.notna(x := row["%scFV (IL13Ra2)"]) else x,
+            axis=1,
         )
 
     def status_listing(self, enrollment_listing_df):
@@ -716,14 +861,20 @@ class DSMB03325:
 
         # # replaces all occurrences of NaN, positive infinity, and negative infinity in the infusion_df dataframe with empty strings.
         # infusion_df = infusion_df.replace([np.nan, np.inf, -np.inf], "N/A")
-        status_df = self.enrollment_listing_df[self.enrollment_listing_df["Screen Fail"].str.strip() == "No"][
-            ["Subject", "Cohort Assignment", "Dose Level Assignment"]
-        ]
+        status_df = self.enrollment_listing_df[
+            self.enrollment_listing_df["Screen Fail"].str.strip() == "No"
+        ][["Subject", "Cohort Assignment", "Dose Level Assignment"]]
 
-        status_df["AE"] = status_df["Subject"].apply(lambda x: "Y" if x in AE_df["Subject"].values else "N")
+        status_df["AE"] = status_df["Subject"].apply(
+            lambda x: "Y" if x in AE_df["Subject"].values else "N"
+        )
 
         status_df["SAE"] = status_df["Subject"].apply(
-            lambda x: "Y" if x in AE_df[AE_df["AE or SAE?"] == "SAE"]["Subject"].values else "N"
+            lambda x: (
+                "Y"
+                if x in AE_df[AE_df["AE or SAE?"] == "SAE"]["Subject"].values
+                else "N"
+            )
         )
         # replaces all occurrences of NaN, positive infinity, and negative infinity in the infusion_df dataframe with empty strings.
         status_df = status_df.replace([np.nan, np.inf, -np.inf], "")
@@ -805,7 +956,9 @@ class DSMB03325:
                 "Pre-Treatment"
                 if (
                     row["Event Group Name"] != "Pre-Treatment"  # avoid duplication
-                    and self.enrollment_listing_df[self.enrollment_listing_df["Subject"] == row["Subject"]]["Treated"]
+                    and self.enrollment_listing_df[
+                        self.enrollment_listing_df["Subject"] == row["Subject"]
+                    ]["Treated"]
                     .fillna("")
                     .str.strip()
                     .values[0]
@@ -820,14 +973,18 @@ class DSMB03325:
             lambda x: (
                 "Withdrawn Prior to Study Treatment"
                 if (
-                    self.enrollment_listing_df[self.enrollment_listing_df["Subject"] == x]["Treated"]
+                    self.enrollment_listing_df[
+                        self.enrollment_listing_df["Subject"] == x
+                    ]["Treated"]
                     .fillna("")
                     .str.strip()
                     .values[0]
                     == "No"
                 )
                 & (
-                    self.enrollment_listing_df[self.enrollment_listing_df["Subject"] == x]["Screen Fail"]
+                    self.enrollment_listing_df[
+                        self.enrollment_listing_df["Subject"] == x
+                    ]["Screen Fail"]
                     .fillna("")
                     .str.strip()
                     .values[0]
@@ -838,11 +995,15 @@ class DSMB03325:
         )
 
         status_df["Event Group Name"] = np.where(
-            status_df["Event Group Name"].isna() | (status_df["Event Group Name"] == ""),
-            status_df["Event Group Name3"].fillna("") + status_df["Event Group Name4"].fillna(""),
+            status_df["Event Group Name"].isna()
+            | (status_df["Event Group Name"] == ""),
+            status_df["Event Group Name3"].fillna("")
+            + status_df["Event Group Name4"].fillna(""),
             status_df["Event Group Name"],
         )
-        status_df["Event Group Name"] = status_df["Event Group Name"].fillna(status_df["Event Group Name"])
+        status_df["Event Group Name"] = status_df["Event Group Name"].fillna(
+            status_df["Event Group Name"]
+        )
         status_df = status_df.drop(
             columns=[
                 "Event Group Name3",
@@ -853,7 +1014,8 @@ class DSMB03325:
 
         # filter the data frame to only include subjects whose end of study date is later than or equal to main consent date
         filteredemrollment_df = self.enrollment_listing_df[
-            self.enrollment_listing_df["End of Study Date"] >= self.enrollment_listing_df["Main Consent Date"]
+            self.enrollment_listing_df["End of Study Date"]
+            >= self.enrollment_listing_df["Main Consent Date"]
         ]
         DSEOS_df = data["DSEOS"][
             [
@@ -879,9 +1041,9 @@ class DSMB03325:
         DSEOS_df = DSEOS_df.rename(columns=DSEOS_new_col_name)
 
         # Merge last study visit
-        DSEOS_df["Last Study Visit"] = DSEOS_df["Last Primary FUP"].fillna("") + DSEOS_df[
-            "Last Primary Retreatment"
-        ].fillna("")
+        DSEOS_df["Last Study Visit"] = DSEOS_df["Last Primary FUP"].fillna(
+            ""
+        ) + DSEOS_df["Last Primary Retreatment"].fillna("")
 
         # Merge off-study reason
         DSEOS_df["Off-Study Reason"] = (
@@ -893,7 +1055,9 @@ class DSMB03325:
             + DSEOS_df["Off-Study Reason sp3"].fillna("")
         )
 
-        filteredDSEOS_df = DSEOS_df[(DSEOS_df["Subject"].isin(filteredemrollment_df["Subject"].values))].copy()
+        filteredDSEOS_df = DSEOS_df[
+            (DSEOS_df["Subject"].isin(filteredemrollment_df["Subject"].values))
+        ].copy()
         # on perform the replace when status_df is not empty
         if not status_df.empty:
             eos_subjects = set(filteredDSEOS_df["Subject"].values)
@@ -925,7 +1089,9 @@ class DSMB03325:
         # Gather all stats of each cohort
         total_status_df = status_df.copy()
 
-        totalCH1_status_df = total_status_df[total_status_df["Cohort Assignment"].isin(["Cohort A"])].copy()
+        totalCH1_status_df = total_status_df[
+            total_status_df["Cohort Assignment"].isin(["Cohort A"])
+        ].copy()
         # Total number of subjects for Cohort A
         AECH1_total_count = get_stats_percentage("AE", totalCH1_status_df).T
         SAECH1_total_count = get_stats_percentage("SAE", totalCH1_status_df).T
@@ -969,10 +1135,16 @@ class DSMB03325:
             .reset_index(drop=True)
         )
 
-        TXSUB_status_df["AE"] = TXSUB_status_df["Subject"].apply(lambda x: "Y" if x in AE_df["Subject"].values else "N")
+        TXSUB_status_df["AE"] = TXSUB_status_df["Subject"].apply(
+            lambda x: "Y" if x in AE_df["Subject"].values else "N"
+        )
 
         TXSUB_status_df["SAE"] = TXSUB_status_df["Subject"].apply(
-            lambda x: "Y" if x in AE_df[AE_df["AE or SAE?"] == "SAE"]["Subject"].values else "N"
+            lambda x: (
+                "Y"
+                if x in AE_df[AE_df["AE or SAE?"] == "SAE"]["Subject"].values
+                else "N"
+            )
         )
         # replaces all occurrences of NaN, positive infinity, and negative infinity in the TXSUB_status_df dataframe with empty strings.
         TXSUB_status_df = TXSUB_status_df.replace([np.nan, np.inf, -np.inf], "")
@@ -1012,8 +1184,12 @@ class DSMB03325:
         # Combine DSSVLTFU with SV dataframe vertically
         # TXSUB_status_SV_df = pd.concat([TXSUB_status_SV_df, TXSUB_status_DSSVLTFU_df])
         # Sort the dataframe by Subject and Event Date
-        TXSUB_status_SV_df = TXSUB_status_SV_df.sort_values(by=["Subject", "Event Date"])
-        TXSUB_status_DSSVLTFU_df = TXSUB_status_DSSVLTFU_df.sort_values(by=["Subject", "Event Date"])
+        TXSUB_status_SV_df = TXSUB_status_SV_df.sort_values(
+            by=["Subject", "Event Date"]
+        )
+        TXSUB_status_DSSVLTFU_df = TXSUB_status_DSSVLTFU_df.sort_values(
+            by=["Subject", "Event Date"]
+        )
 
         # For each unique subject, get the last row of the dataframe
         TXSUB_status_SV_df = TXSUB_status_SV_df.groupby("Subject").tail(1)
@@ -1022,13 +1198,17 @@ class DSMB03325:
         # Merge left with TXSUB_status_df
         TXSUB_status_df = pd.merge(
             TXSUB_status_df,
-            TXSUB_status_SV_df[["Subject", "Event Group Label", "Event Label", "Event Date"]],
+            TXSUB_status_SV_df[
+                ["Subject", "Event Group Label", "Event Label", "Event Date"]
+            ],
             on="Subject",
             how="left",
         )
         TXSUB_status_df = pd.merge(
             TXSUB_status_df,
-            TXSUB_status_DSSVLTFU_df[["Subject", "Event Group Label", "Event Label", "Event Date"]],
+            TXSUB_status_DSSVLTFU_df[
+                ["Subject", "Event Group Label", "Event Label", "Event Date"]
+            ],
             on="Subject",
             how="left",
         )
@@ -1073,7 +1253,9 @@ class DSMB03325:
             "Provide reason the Subject is entering into the Long-Term Follow-Up Phase (IG_NS_NA_DSINITLF2.CL_NS_NH_LTFUREAS_cl_NS_LTFURE1)",
             "Provide supportive information on the reason for entering Long-Term Follow-Up (IG_NS_NA_DSINITLF2.TX_NS_YH_LTFUREASSP)",
         ]
-        dsinit_df = data.get("DSINITLF", pd.DataFrame(columns=dsinit_cols))[dsinit_cols].copy()
+        dsinit_df = data.get("DSINITLF", pd.DataFrame(columns=dsinit_cols))[
+            dsinit_cols
+        ].copy()
         dsinit_df = dsinit_df.rename(
             columns={
                 "From which Phase is the Subject entering Long-Term Follow-Up? (IG_NS_NA_DSINITLF1.CL_NS_NH_PHASELTFU_cl_NS_PHASE1)": "PhaseLTFU",
@@ -1108,15 +1290,23 @@ class DSMB03325:
             .to_dict()
         )
 
-        TXSUB_status_df["Reason for LTFU"] = TXSUB_status_df["Subject"].map(primary_map).fillna("")
-        TXSUB_status_df["Reason for Retx LTFU"] = TXSUB_status_df["Subject"].map(retx_map).fillna("")
+        TXSUB_status_df["Reason for LTFU"] = (
+            TXSUB_status_df["Subject"].map(primary_map).fillna("")
+        )
+        TXSUB_status_df["Reason for Retx LTFU"] = (
+            TXSUB_status_df["Subject"].map(retx_map).fillna("")
+        )
 
         def _fill_na_reason(val):
             txt = _clean_str(val)
             return txt if txt else "N/A"
 
-        TXSUB_status_df["Reason for LTFU"] = TXSUB_status_df["Reason for LTFU"].apply(_fill_na_reason)
-        TXSUB_status_df["Reason for Retx LTFU"] = TXSUB_status_df["Reason for Retx LTFU"].apply(_fill_na_reason)
+        TXSUB_status_df["Reason for LTFU"] = TXSUB_status_df["Reason for LTFU"].apply(
+            _fill_na_reason
+        )
+        TXSUB_status_df["Reason for Retx LTFU"] = TXSUB_status_df[
+            "Reason for Retx LTFU"
+        ].apply(_fill_na_reason)
         # replaces all occurrences of NaN, positive infinity, and negative infinity with empty strings.
         TXSUB_status_df = TXSUB_status_df.replace([np.nan, np.inf, -np.inf], "N/A")
         # Convert date column to string in M-D-YYYY format without leading zeros
@@ -1142,14 +1332,20 @@ class DSMB03325:
                 return str(x)  # fallback, just keep original string
 
         # Apply formatting
-        TXSUB_status_df["Event Date_x Str"] = TXSUB_status_df["Event Date_x"].apply(format_date)
+        TXSUB_status_df["Event Date_x Str"] = TXSUB_status_df["Event Date_x"].apply(
+            format_date
+        )
 
         # Combine into new column
         TXSUB_status_df["Event Combined_x"] = TXSUB_status_df.apply(
             lambda row: (
                 f"{row['Event Group Label_x']} ({row['Event Date_x Str']})"
                 if row["Event Group Label_x"]
-                in ["Pre-Treatment Safety Visit", "Pre-Retreatment Safety Visit", "CSF-Ventricular Reservoir Placement"]
+                in [
+                    "Pre-Treatment Safety Visit",
+                    "Pre-Retreatment Safety Visit",
+                    "CSF-Ventricular Reservoir Placement",
+                ]
                 else f"{row['Event Group Label_x']}/{row['Event Label_x']} ({row['Event Date_x Str']})"
                 if row["Event Group Label_x"]
                 else ""
@@ -1157,7 +1353,9 @@ class DSMB03325:
             axis=1,
         )
         # Apply formatting
-        TXSUB_status_df["Event Date_y Str"] = TXSUB_status_df["Event Date_y"].apply(format_date)
+        TXSUB_status_df["Event Date_y Str"] = TXSUB_status_df["Event Date_y"].apply(
+            format_date
+        )
 
         # Combine into new column
         TXSUB_status_df["Event Combined_y"] = TXSUB_status_df.apply(
@@ -1169,7 +1367,9 @@ class DSMB03325:
             axis=1,
         )
         # Apply formatting
-        TXSUB_status_df["End of Study Date Str"] = TXSUB_status_df["End of Study Date"].apply(format_date)
+        TXSUB_status_df["End of Study Date Str"] = TXSUB_status_df[
+            "End of Study Date"
+        ].apply(format_date)
 
         def _extract_last_date(val: str):
             if not isinstance(val, str):
@@ -1207,7 +1407,9 @@ class DSMB03325:
                 return val_y
             return "N/A"
 
-        TXSUB_status_df["Last Study Visit Completed"] = TXSUB_status_df.apply(_pick_last_visit, axis=1)
+        TXSUB_status_df["Last Study Visit Completed"] = TXSUB_status_df.apply(
+            _pick_last_visit, axis=1
+        )
 
         # Separate End of Study date and reason for reporting
         TXSUB_status_df["End of Study Date"] = TXSUB_status_df["End of Study Date Str"]
@@ -1233,11 +1435,18 @@ class DSMB03325:
         # Add Study Status from the eligible status listing (if available) so it can be shown on the treated subjects sheet
         study_status_map = {}
         try:
-            if hasattr(self, "status_df") and "Event Group Name" in self.status_df.columns:
-                study_status_map = self.status_df.set_index("Subject")["Event Group Name"].to_dict()
+            if (
+                hasattr(self, "status_df")
+                and "Event Group Name" in self.status_df.columns
+            ):
+                study_status_map = self.status_df.set_index("Subject")[
+                    "Event Group Name"
+                ].to_dict()
         except Exception:
             study_status_map = {}
-        TXSUB_status_df["Study Status"] = TXSUB_status_df["Subject"].map(study_status_map).fillna("")
+        TXSUB_status_df["Study Status"] = (
+            TXSUB_status_df["Subject"].map(study_status_map).fillna("")
+        )
 
         # *Re-order the columns and remove the columns that are not needed
         TXSUB_status_df = TXSUB_status_df[
@@ -1256,17 +1465,21 @@ class DSMB03325:
         # Safety stats for treated subjects
         AE_total_treated = get_stats_percentage("AE", TXSUB_status_df).T
         SAE_total_treated = get_stats_percentage("SAE", TXSUB_status_df).T
-        self.safetyTX_total_df = pd.concat([AE_total_treated, SAE_total_treated], axis=1)
-
-        TXSUB_status_df = TXSUB_status_df.replace([np.nan, np.inf, -np.inf], "N/A").replace(
-            [r"N/A\s*\(N/A\)", r"N/A\s+N/A"], "N/A", regex=True
+        self.safetyTX_total_df = pd.concat(
+            [AE_total_treated, SAE_total_treated], axis=1
         )
+
+        TXSUB_status_df = TXSUB_status_df.replace(
+            [np.nan, np.inf, -np.inf], "N/A"
+        ).replace([r"N/A\s*\(N/A\)", r"N/A\s+N/A"], "N/A", regex=True)
 
         return TXSUB_status_df
 
     def export(self, output_dir, output_file_name):
         data = self.data
-        with pd.ExcelWriter(output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter") as writer:
+        with pd.ExcelWriter(
+            output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
+        ) as writer:
             # TODO: - Add formatting and coloring
             # TODO: - for each tab: write data, format data, write header, format header
 
@@ -1336,7 +1549,9 @@ class DSMB03325:
                 # TODO: DSMB-Demo Stats Table
                 if self.enrollment_listing_df_output["Subject"].count() > 0:
                     # * WRITING DATA: LegalSex_list, Age_at_Consent_list, Race_list, Ethnicity_list
-                    worksheet1 = writer.book.add_worksheet("DSMB-Demographics Statistics")
+                    worksheet1 = writer.book.add_worksheet(
+                        "DSMB-Demographics Statistics"
+                    )
 
                     # * FORMAT DATA
                     for i in range(0, len(self.status_list)):
@@ -1398,21 +1613,27 @@ class DSMB03325:
                     for i in range(0, len(Ethnicity_order)):
                         worksheet1.write(i + 22, 0, Ethnicity_order[i], bold_11_format)
 
-                    worksheet1.merge_range("B1:E1", "Overall Study Enrollment", bold_12_format)
-                    worksheet1.merge_range("F1:I1", "Cohort A Enrollment", bold_12_format)
+                    worksheet1.merge_range(
+                        "B1:E1", "Overall Study Enrollment", bold_12_format
+                    )
+                    worksheet1.merge_range(
+                        "F1:I1", "Cohort A Enrollment", bold_12_format
+                    )
                     worksheet1.write(1, 0, "Status", bold_11_format)
                     for i in range(len(self.status_list)):
                         worksheet1.write(
                             1,
                             1 + i * 4,
-                            "Total Consented\nN=" + str(self.status_list[i]["Total Consented"]),
+                            "Total Consented\nN="
+                            + str(self.status_list[i]["Total Consented"]),
                             bold_11_wrap_format,
                         )
 
                         worksheet1.write(
                             1,
                             2 + i * 4,
-                            "Screen Fail\nN=" + str(self.status_list[i]["Screen Failed"]),
+                            "Screen Fail\nN="
+                            + str(self.status_list[i]["Screen Failed"]),
                             bold_11_wrap_format,
                         )
                         worksheet1.write(
@@ -1442,12 +1663,14 @@ class DSMB03325:
 
                     # * WRITING HEADER AND FORMATTING
                     # Assuming 'enrollment_listing_df_output' is your DataFrame
-                    self.enrollment_listing_df_output = self.enrollment_listing_df_output.replace(
-                        [np.inf, -np.inf], np.nan
+                    self.enrollment_listing_df_output = (
+                        self.enrollment_listing_df_output.replace(
+                            [np.inf, -np.inf], np.nan
+                        )
                     )  # Replace INF with NaN
 
-                    self.enrollment_listing_df_output = self.enrollment_listing_df_output.fillna(
-                        ""
+                    self.enrollment_listing_df_output = (
+                        self.enrollment_listing_df_output.fillna("")
                     )  # Replace NaN with a placeholder
                     # Replace column header for A1 from "Subject" to "Subject ID", columns name starting from 1 instead of 0
                     worksheet2.write("A1", "Subject ID", bold_12_wrap_format)
@@ -1461,35 +1684,66 @@ class DSMB03325:
                         worksheet2.write(0, i, header, bold_11_format)
                     # * FORMAT DATA
                     for i in range(0, len(self.enrollment_listing_df_output)):
-                        for j in range(0, len(self.enrollment_listing_df_output.columns)):
-                            worksheet2.write(i + 1, j, self.enrollment_listing_df_output.iloc[i, j], normal_data_format)
+                        for j in range(
+                            0, len(self.enrollment_listing_df_output.columns)
+                        ):
+                            worksheet2.write(
+                                i + 1,
+                                j,
+                                self.enrollment_listing_df_output.iloc[i, j],
+                                normal_data_format,
+                            )
                     # Autofit
                     worksheet2.autofit()
 
                     # DSMB-Status_Treated Subjects (moved up to follow Enrollment Listing)
                     # * WRITING AND FORMATING DATA (AE/SAE hidden from display)
-                    txsub_display = self.TXSUB_status_df.drop(columns=["AE", "SAE"], errors="ignore")
-                    worksheet8 = writer.book.add_worksheet("DSMB-Status_Treated Subjects")
+                    txsub_display = self.TXSUB_status_df.drop(
+                        columns=["AE", "SAE"], errors="ignore"
+                    )
+                    worksheet8 = writer.book.add_worksheet(
+                        "DSMB-Status_Treated Subjects"
+                    )
                     for i in range(0, len(txsub_display)):
                         for j in range(0, len(txsub_display.columns)):
-                            worksheet8.write(i + 2, j, txsub_display.iloc[i, j], normal_data_format)
+                            worksheet8.write(
+                                i + 2, j, txsub_display.iloc[i, j], normal_data_format
+                            )
 
                     # * WRITING HEADER AND FORMATTING
                     worksheet8.merge_range("A1:A2", "Subject ID", bold_12_wrap_format)
                     worksheet8.merge_range("B1:B2", "Study Status", bold_12_wrap_format)
-                    worksheet8.merge_range("C1:C2", "Reason for LTFU", bold_12_wrap_format)
-                    worksheet8.merge_range("D1:D2", "Reason for Retx LTFU", bold_12_wrap_format)
-                    worksheet8.merge_range("E1:E2", "Last Study Visit Completed", bold_12_wrap_format)
-                    worksheet8.merge_range("F1:F2", "End of Study Date", bold_12_wrap_format)
-                    worksheet8.merge_range("G1:G2", "Reason for End of Study", bold_12_wrap_format)
+                    worksheet8.merge_range(
+                        "C1:C2", "Reason for LTFU", bold_12_wrap_format
+                    )
+                    worksheet8.merge_range(
+                        "D1:D2", "Reason for Retx LTFU", bold_12_wrap_format
+                    )
+                    worksheet8.merge_range(
+                        "E1:E2", "Last Study Visit Completed", bold_12_wrap_format
+                    )
+                    worksheet8.merge_range(
+                        "F1:F2", "End of Study Date", bold_12_wrap_format
+                    )
+                    worksheet8.merge_range(
+                        "G1:G2", "Reason for End of Study", bold_12_wrap_format
+                    )
 
                     # Safety Headers
-                    safety_total_df_subject_count = len(self.TXSUB_status_df["Subject"].unique())
+                    safety_total_df_subject_count = len(
+                        self.TXSUB_status_df["Subject"].unique()
+                    )
                     worksheet8.merge_range(
-                        "J1:M1", "Safety Statistics (N=" + str(safety_total_df_subject_count) + ")", bold_12_wrap_format
+                        "J1:M1",
+                        "Safety Statistics (N="
+                        + str(safety_total_df_subject_count)
+                        + ")",
+                        bold_12_wrap_format,
                     )
                     worksheet8.merge_range("J2:K2", "Adverse Events", bold_11_format)
-                    worksheet8.merge_range("L2:M2", "Serious Adverse Events ", bold_11_format)
+                    worksheet8.merge_range(
+                        "L2:M2", "Serious Adverse Events ", bold_11_format
+                    )
                     worksheet8.write("J3", "Yes", bold_11_format)
                     worksheet8.write("K3", "No", bold_11_format)
                     worksheet8.write("L3", "Yes", bold_11_format)
@@ -1497,7 +1751,9 @@ class DSMB03325:
                     worksheet8.write("I4", "Cohort A", bold_11_format)
 
                     # Safety Data
-                    safety_df = getattr(self, "safetyTX_total_df", self.safetyCH1_total_df)
+                    safety_df = getattr(
+                        self, "safetyTX_total_df", self.safetyCH1_total_df
+                    )
                     for i in range(0, len(safety_df)):
                         for j in range(0, len(safety_df.columns)):
                             worksheet8.write(
@@ -1559,13 +1815,23 @@ class DSMB03325:
                     #     bold_12_wrap_format,
                     # )
 
-                    worksheet4.merge_range("B1:D1", "Cells Administered", bold_12_wrap_format)
-                    worksheet4.merge_range("E1:G1", "Transduction Efficiency", bold_12_wrap_format)
+                    worksheet4.merge_range(
+                        "B1:D1", "Cells Administered", bold_12_wrap_format
+                    )
+                    worksheet4.merge_range(
+                        "E1:G1", "Transduction Efficiency", bold_12_wrap_format
+                    )
                     worksheet4.write("B2", "Total Cell Dose", bold_12_wrap_format)
-                    worksheet4.write("C2", "CART-EGFR-IL13Ra2 Cell Dose", bold_12_wrap_format)
+                    worksheet4.write(
+                        "C2", "CART-EGFR-IL13Ra2 Cell Dose", bold_12_wrap_format
+                    )
                     worksheet4.write("D2", "Met Target Dose (Y/N)", bold_12_wrap_format)
                     worksheet4.write("E2", "%scFV (EGFR)", bold_12_wrap_format)
-                    worksheet4.write("F2", "Met Target % scFV (EGFR) Flow (Y/N) (≥2%)", bold_12_wrap_format)
+                    worksheet4.write(
+                        "F2",
+                        "Met Target % scFV (EGFR) Flow (Y/N) (≥2%)",
+                        bold_12_wrap_format,
+                    )
                     worksheet4.write("G2", "%scFV (IL13Ra2)", bold_12_wrap_format)
                     worksheet4.merge_range(
                         "A3:G3",
@@ -1574,11 +1840,17 @@ class DSMB03325:
                     )
 
                     # Merge and format data
-                    worksheet4.merge_range("D4:D6", self.infusion_statA.iloc[0, 2], normal_data_format)
-                    worksheet4.merge_range("F4:F6", self.infusion_statA.iloc[0, 4], normal_data_format)
+                    worksheet4.merge_range(
+                        "D4:D6", self.infusion_statA.iloc[0, 2], normal_data_format
+                    )
+                    worksheet4.merge_range(
+                        "F4:F6", self.infusion_statA.iloc[0, 4], normal_data_format
+                    )
 
                     for i in range(0, len(stat_order)):
-                        worksheet4.write(i + 3, 0, stat_order[i], bold_11_format)  # Cohort A
+                        worksheet4.write(
+                            i + 3, 0, stat_order[i], bold_11_format
+                        )  # Cohort A
 
                     # * Autofit
                     worksheet4.autofit()
@@ -1588,23 +1860,46 @@ class DSMB03325:
                     # * WRITING AND FORMATING DATA
                     for i in range(0, len(self.infusion_df)):
                         for j in range(0, len(self.infusion_df.columns)):
-                            worksheet5.write(i + 2, j, self.infusion_df.iloc[i, j], normal_data_format)
+                            worksheet5.write(
+                                i + 2,
+                                j,
+                                self.infusion_df.iloc[i, j],
+                                normal_data_format,
+                            )
 
                     # * WRITING HEADER AND FORMATTING
                     worksheet5.merge_range("A1:A2", "Subject ID", bold_12_wrap_format)
-                    worksheet5.merge_range("B1:B2", "Cohort Assignment", bold_12_wrap_format)
-                    worksheet5.merge_range("C1:C2", "Dose Level Assignment", bold_12_wrap_format)
-                    worksheet5.merge_range("D1:D2", "Study Treatment Date", bold_12_wrap_format)
-                    worksheet5.merge_range("E1:F1", "Product Administration Volumes", bold_12_wrap_format)
-                    worksheet5.merge_range("G1:I1", "Cells Administered", bold_12_wrap_format)
-                    worksheet5.merge_range("J1:L1", "Transduction Efficiency", bold_12_wrap_format)
+                    worksheet5.merge_range(
+                        "B1:B2", "Cohort Assignment", bold_12_wrap_format
+                    )
+                    worksheet5.merge_range(
+                        "C1:C2", "Dose Level Assignment", bold_12_wrap_format
+                    )
+                    worksheet5.merge_range(
+                        "D1:D2", "Study Treatment Date", bold_12_wrap_format
+                    )
+                    worksheet5.merge_range(
+                        "E1:F1", "Product Administration Volumes", bold_12_wrap_format
+                    )
+                    worksheet5.merge_range(
+                        "G1:I1", "Cells Administered", bold_12_wrap_format
+                    )
+                    worksheet5.merge_range(
+                        "J1:L1", "Transduction Efficiency", bold_12_wrap_format
+                    )
                     worksheet5.write("E2", "Volume CSF Removed", bold_12_wrap_format)
                     worksheet5.write("F2", "Volume Administered", bold_12_wrap_format)
                     worksheet5.write("G2", "Total Cell Dose", bold_12_wrap_format)
-                    worksheet5.write("H2", "CART-EGFR-IL13Ra2 Cell Dose", bold_12_wrap_format)
+                    worksheet5.write(
+                        "H2", "CART-EGFR-IL13Ra2 Cell Dose", bold_12_wrap_format
+                    )
                     worksheet5.write("I2", "Met Target Dose (Y/N)", bold_12_wrap_format)
                     worksheet5.write("J2", "%scFV (EGFR)", bold_12_wrap_format)
-                    worksheet5.write("K2", "Met Target % scFV (EGFR) Flow (Y/N) (≥2%)", bold_12_wrap_format)
+                    worksheet5.write(
+                        "K2",
+                        "Met Target % scFV (EGFR) Flow (Y/N) (≥2%)",
+                        bold_12_wrap_format,
+                    )
                     worksheet5.write("L2", "%scFV (IL13Ra2)", bold_12_wrap_format)
 
                     worksheet5.autofit()
@@ -1615,7 +1910,9 @@ class DSMB03325:
                     worksheet9.write("A1", "Subject ID", bold_12_wrap_format)
                     worksheet9.write("B1", "Study Day", bold_12_wrap_format)
                     worksheet9.write("C1", "Sample Type", bold_12_wrap_format)
-                    worksheet9.write("D1", "Site of Lesion/Laterality", bold_12_wrap_format)
+                    worksheet9.write(
+                        "D1", "Site of Lesion/Laterality", bold_12_wrap_format
+                    )
                     worksheet9.write("E1", "Results", bold_12_wrap_format)
 
                     worksheet9.autofit()
@@ -1634,18 +1931,36 @@ class DSMB03325:
 
                     # * WRITING HEADER AND FORMATTING
                     worksheet6.merge_range("A1:A2", "Subject ID", bold_12_wrap_format)
-                    worksheet6.merge_range("B1:B2", "Cohort Assignment", bold_12_wrap_format)
-                    worksheet6.merge_range("C1:C2", "Dose Level Assignment", bold_12_wrap_format)
-                    worksheet6.merge_range("D1:D2", "Study Retreatment Date", bold_12_wrap_format)
-                    worksheet6.merge_range("E1:F1", "Product Administration", bold_12_wrap_format)
-                    worksheet6.merge_range("G1:H1", "Cells Administered", bold_12_wrap_format)
-                    worksheet6.merge_range("I1:K1", "Transduction Efficiency", bold_12_wrap_format)
+                    worksheet6.merge_range(
+                        "B1:B2", "Cohort Assignment", bold_12_wrap_format
+                    )
+                    worksheet6.merge_range(
+                        "C1:C2", "Dose Level Assignment", bold_12_wrap_format
+                    )
+                    worksheet6.merge_range(
+                        "D1:D2", "Study Retreatment Date", bold_12_wrap_format
+                    )
+                    worksheet6.merge_range(
+                        "E1:F1", "Product Administration", bold_12_wrap_format
+                    )
+                    worksheet6.merge_range(
+                        "G1:H1", "Cells Administered", bold_12_wrap_format
+                    )
+                    worksheet6.merge_range(
+                        "I1:K1", "Transduction Efficiency", bold_12_wrap_format
+                    )
                     worksheet6.write("E2", "Volume CSF Removed", bold_12_wrap_format)
                     worksheet6.write("F2", "Volume Administered", bold_12_wrap_format)
                     worksheet6.write("G2", "Total Cell Dose", bold_12_wrap_format)
-                    worksheet6.write("H2", "CART-EGFR-IL13Ra2 Cell Dose", bold_12_wrap_format)
+                    worksheet6.write(
+                        "H2", "CART-EGFR-IL13Ra2 Cell Dose", bold_12_wrap_format
+                    )
                     worksheet6.write("I2", "%scFV (EGFR)", bold_12_wrap_format)
-                    worksheet6.write("J2", "Met Target % scFV (EGFR) Flow (Y/N) (≥2%)", bold_12_wrap_format)
+                    worksheet6.write(
+                        "J2",
+                        "Met Target % scFV (EGFR) Flow (Y/N) (≥2%)",
+                        bold_12_wrap_format,
+                    )
                     worksheet6.write("K2", "%scFV (Il13Ra2)", bold_12_wrap_format)
 
                     # Autofit
@@ -1666,11 +1981,18 @@ class DSMB03325:
                     # Replace column header for A1 from "Subject" to "Subject ID", columns name starting from 1 instead of 0
                     worksheet7.write("A1", "Subject ID", bold_12_wrap_format)
                     for i in range(1, len(self.EGFR_listing_df_output.columns)):
-                        worksheet7.write(0, i, self.EGFR_listing_df_output.columns[i], bold_11_format)
+                        worksheet7.write(
+                            0, i, self.EGFR_listing_df_output.columns[i], bold_11_format
+                        )
                     # * FORMAT DATA
                     for i in range(0, len(self.EGFR_listing_df_output)):
                         for j in range(0, len(self.EGFR_listing_df_output.columns)):
-                            worksheet7.write(i + 1, j, self.EGFR_listing_df_output.iloc[i, j], normal_data_format)
+                            worksheet7.write(
+                                i + 1,
+                                j,
+                                self.EGFR_listing_df_output.iloc[i, j],
+                                normal_data_format,
+                            )
                     # Autofit
                     worksheet7.autofit()
 
