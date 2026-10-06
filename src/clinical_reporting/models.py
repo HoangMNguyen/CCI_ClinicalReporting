@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, TypeVar, Union
+
+from clinical_reporting.settings_store import read_settings_json, write_settings_json
 
 FORM_ITEM_SEPARATOR = "."
 SUBJECT_COLUMN = "Subject"
@@ -188,12 +189,10 @@ class ReportConfig:
 
     @classmethod
     def from_settings_json(cls, file_path: PathLike) -> "ReportConfig":
-        with open(file_path, "r", encoding="utf-8") as handle:
-            return cls(json.load(handle))
+        return cls(read_settings_json(file_path))
 
     def to_settings_json(self, file_path: PathLike) -> None:
-        with open(file_path, "w", encoding="utf-8") as handle:
-            json.dump(self.raw, handle, indent=4)
+        write_settings_json(file_path, self.raw)
 
     def to_dict(self) -> Dict[str, Any]:
         return deepcopy(self.raw)

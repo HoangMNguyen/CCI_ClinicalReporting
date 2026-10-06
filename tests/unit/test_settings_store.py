@@ -2,7 +2,30 @@
 
 import json
 
-from clinical_reporting.settings_store import LocalFolderStore, SavedSetting
+from clinical_reporting.settings_store import (
+    LocalFolderStore,
+    SavedSetting,
+    read_settings_json,
+    settings_from_json,
+    settings_to_json,
+    write_settings_json,
+)
+
+
+def test_a_setting_is_saved_as_json_with_a_four_space_indent():
+    assert settings_to_json({"a": [1]}) == '{\n    "a": [\n        1\n    ]\n}'
+    assert settings_from_json('{"a": [1]}') == {"a": [1]}
+
+
+def test_a_setting_written_to_a_file_reads_back_the_same(tmp_path):
+    path = tmp_path / "monthly.json"
+
+    write_settings_json(path, {"setting_name": "monthly", "order_list": ["Subject"]})
+
+    assert read_settings_json(path) == {
+        "setting_name": "monthly",
+        "order_list": ["Subject"],
+    }
 
 
 def test_local_folder_store_round_trip_and_study_filter(tmp_path):

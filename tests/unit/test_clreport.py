@@ -189,6 +189,20 @@ def test_static_filter_management():
     assert report.get_static_filter_items() == [("Subject", "=", "002")]
 
 
+def test_a_filter_on_a_bare_item_name_needs_a_form_that_selected_it():
+    report = CLReport()
+    dm, vs = CLForm("DM"), CLForm("VS")
+    dm.selected_form_items = ["Age"]
+    vs.selected_form_items = ["Pulse"]
+    report.selected_forms = {"DM": dm, "VS": vs}
+
+    report.add_static_filter_item("Pulse", ">", "60")
+    report.add_static_filter_item("Pulse", ">", "60")  # Not added twice.
+    report.add_static_filter_item("Weight", "=", "70")  # No form selected it.
+
+    assert report.get_static_filter_items() == [("Pulse", ">", "60")]
+
+
 def test_dynamic_filter_management():
     report = CLReport()
 

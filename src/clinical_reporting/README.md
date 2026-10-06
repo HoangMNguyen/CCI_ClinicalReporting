@@ -220,14 +220,20 @@ report.save_setting_to_json("my_setting.json", setting_name="batch-run")
 config.to_settings_json("my_setting.json")
 ```
 
-To store settings somewhere other than a JSON file, take the dictionary and
-hand it to a settings store (the desktop app uses the local-folder store):
+The settings dictionary can also go to a folder of saved settings (the store
+the desktop app uses), or become the saved JSON text without any file:
 
 ```python
-from clinical_reporting.settings_store import LocalFolderStore
+from clinical_reporting.settings_store import (
+    LocalFolderStore,
+    settings_from_json,
+    settings_to_json,
+)
 
 settings = report.settings_to_dict("batch-run")
 LocalFolderStore("C:/Reports/settings").save("batch-run", settings)
+text = settings_to_json(settings)  # the exact text a saved setting file holds
+assert settings_from_json(text) == settings
 ```
 
 A setting saved from the desktop app may also hold `additional_input_names`:
@@ -346,7 +352,7 @@ src/clinical_reporting/
   models.py                    # form/config models, labels, identifiers
   report.py                    # report state, persistence, reconciliation
   session.py                   # what happens to a report when the user acts; build/export
-  settings_store.py            # where saved settings live (local folder today)
+  settings_store.py            # saved settings as JSON files in a folder; their JSON text
   feedback.py                  # status messages tagged info/success/warning/error
   filenames.py                 # safe file names; "<name> YYMMDD_HHMMSS.xlsx" outputs
   pipeline.py                  # joins, filters, ordering, renames, formatting

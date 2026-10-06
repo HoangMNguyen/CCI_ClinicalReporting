@@ -3,8 +3,7 @@
 Separates report *execution* (joining forms, applying filters, ordering,
 renaming, date formatting) from the report *state* held by
 :class:`~clinical_reporting.report.CLReport`. ``CLReport.create_report``
-delegates here, so public behaviour is unchanged while the previously
-~285-line method is broken into small, individually testable steps.
+delegates here; the steps are small and can be tested one at a time.
 """
 
 from __future__ import annotations
@@ -16,9 +15,11 @@ import numpy as np
 import pandas as pd
 
 from clinical_reporting import report_columns
+from clinical_reporting.export import to_short_date_string
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
     JoinHow,
+    Operator,
     is_qualified,
     qualify,
     split_qualified,
@@ -40,35 +41,35 @@ def apply_static_filter(df, item, operator, value):
     except Exception:
         pass
 
-    if operator == "=":
+    if operator == Operator.EQ:
         if is_numeric:
             return df[numeric_column == numeric_value]
         return df[df[item].astype(str).str.lower() == str(value).lower()]
-    if operator == "!=":
+    if operator == Operator.NE:
         if is_numeric:
             return df[numeric_column != numeric_value]
         return df[df[item].astype(str).str.lower() != str(value).lower()]
-    if operator == ">":
+    if operator == Operator.GT:
         return (
             df[numeric_column > numeric_value] if is_numeric else df[df[item] > value]
         )
-    if operator == ">=":
+    if operator == Operator.GE:
         return (
             df[numeric_column >= numeric_value] if is_numeric else df[df[item] >= value]
         )
-    if operator == "<":
+    if operator == Operator.LT:
         return (
             df[numeric_column < numeric_value] if is_numeric else df[df[item] < value]
         )
-    if operator == "<=":
+    if operator == Operator.LE:
         return (
             df[numeric_column <= numeric_value] if is_numeric else df[df[item] <= value]
         )
-    if operator == "Contains":
+    if operator == Operator.CONTAINS:
         return df[df[item].astype(str).str.contains(str(value), case=False, na=False)]
-    if operator == "Does not contain":
+    if operator == Operator.NOT_CONTAINS:
         return df[~df[item].astype(str).str.contains(str(value), case=False, na=False)]
-    if operator in {"In", "Not in"}:
+    if operator in {Operator.IN, Operator.NOT_IN}:
         value_list = [part.strip() for part in str(value).split(",")]
         if is_numeric:
             try:
@@ -89,10 +90,10 @@ def apply_static_filter(df, item, operator, value):
                 .str.lower()
                 .isin([part.lower() for part in value_list])
             )
-        return df[matches] if operator == "In" else df[~matches]
-    if operator == "is Null":
+        return df[matches] if operator == Operator.IN else df[~matches]
+    if operator == Operator.IS_NULL:
         return df[df[item].isnull()]
-    if operator == "is not Null":
+    if operator == Operator.IS_NOT_NULL:
         return df[~df[item].isnull()]
     return df
 
@@ -153,17 +154,17 @@ def apply_dynamic_filter(df, item1, operator, item2):
     left = df_copy[item1]
     right = df_copy[item2]
     string_columns = not date_columns and not numeric_columns
-    if string_columns and operator in {"=", "!="}:
+    if string_columns and operator in {Operator.EQ, Operator.NE}:
         left = left.astype(str).str.lower().str.strip()
         right = right.astype(str).str.lower().str.strip()
 
     operations = {
-        "=": lambda: left == right,
-        "!=": lambda: left != right,
-        ">": lambda: left > right,
-        ">=": lambda: left >= right,
-        "<": lambda: left < right,
-        "<=": lambda: left <= right,
+        Operator.EQ: lambda: left == right,
+        Operator.NE: lambda: left != right,
+        Operator.GT: lambda: left > right,
+        Operator.GE: lambda: left >= right,
+        Operator.LT: lambda: left < right,
+        Operator.LE: lambda: left <= right,
     }
     result = df_copy[operations[operator]()] if operator in operations else df_copy
     logger.debug("Dynamic filter reduced rows from %s to %s", len(df_copy), len(result))
@@ -413,9 +414,7 @@ class ReportEngine:
         for col in date_cols:
             try:
                 result_df[col] = self._to_datetime_quiet(result_df[col])
-                result_df[col] = result_df[col].apply(
-                    lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
-                )
+                result_df[col] = result_df[col].apply(to_short_date_string)
             except Exception:
                 logger.debug("Could not format column %s as date", col)
         return result_df

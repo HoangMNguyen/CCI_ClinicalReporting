@@ -11,6 +11,8 @@ from typing import BinaryIO, Dict, Iterable, List, Optional, Tuple, Union
 
 import pandas as pd
 
+from clinical_reporting.models import SUBJECT_COLUMN
+
 logger = logging.getLogger(__name__)
 
 # Keep literal clinical values such as "N/A", "None", and "n/a".  Pandas'
@@ -95,7 +97,7 @@ def try_load_tabular_files(
     for file_path in file_paths:
         try:
             loaded[file_path] = load_tabular_file(file_path)
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             logger.warning("Could not read %s", file_path, exc_info=True)
             failures[file_path] = str(exc) or type(exc).__name__
     return loaded, failures
@@ -142,7 +144,9 @@ def read_data_dict_zip_corelisting(
                         ]
 
                 df = df.loc[:, ~df.columns.str.contains("_RAW")]
-                df["Subject"] = df["Subject"].str.replace("^100-", "", regex=True)
+                df[SUBJECT_COLUMN] = df[SUBJECT_COLUMN].str.replace(
+                    "^100-", "", regex=True
+                )
                 df = df[df["Form Status"] == "Submitted"]
                 df = df[df["Form ILB Status"] == False]  # noqa: E712
 
@@ -212,8 +216,10 @@ def build_additional_data_map(
             df_clean = df_clean.drop(columns=drop_cols)
         if rename_map:
             df_clean = df_clean.rename(columns=rename_map)
-        if "Subject" in df_clean.columns:
-            df_clean["Subject"] = df_clean["Subject"].apply(strip_subject_prefix)
+        if SUBJECT_COLUMN in df_clean.columns:
+            df_clean[SUBJECT_COLUMN] = df_clean[SUBJECT_COLUMN].apply(
+                strip_subject_prefix
+            )
 
         data_map[form_name] = df_clean
 

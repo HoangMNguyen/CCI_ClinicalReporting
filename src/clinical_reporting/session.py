@@ -28,6 +28,7 @@ from typing import Any, Collection, Dict, Optional
 import pandas as pd
 
 from clinical_reporting.export import write_xlsx
+from clinical_reporting.models import SUBJECT_COLUMN
 from clinical_reporting.report import CLReport
 
 
@@ -41,14 +42,7 @@ def capture_selection(report: CLReport) -> Dict[str, Any]:
             form: set(cl_form.get_selected_form_items())
             for form, cl_form in selected_forms.items()
         },
-        "join": {
-            form: {
-                "items": list(cl_form.get_join_items()),
-                "order": cl_form.get_join_order(),
-                "how": cl_form.get_join_how(),
-            }
-            for form, cl_form in selected_forms.items()
-        },
+        "join": report.get_join_list_dict(),
     }
 
 
@@ -79,8 +73,8 @@ def restore_selection(report: CLReport, state: Dict[str, Any]) -> None:
     for common_item in state.get("common", set()):
         if common_item in report.static_available_common_items:
             report.set_common_item_state(common_item, selected=True)
-    if "Subject" in getattr(report, "static_available_common_items", []):
-        report.set_common_item_state("Subject", selected=True)
+    if SUBJECT_COLUMN in getattr(report, "static_available_common_items", []):
+        report.set_common_item_state(SUBJECT_COLUMN, selected=True)
 
     # Restore join configuration for forms that still exist, dropping any
     # join items that are no longer valid selected common items. All in one
@@ -104,7 +98,7 @@ def new_report(study_name: Optional[str], data: Dict[str, pd.DataFrame]) -> CLRe
     report = CLReport()
     report.set_study_name(study_name)
     report.set_data(data)
-    report.set_common_item_state("Subject", selected=True)
+    report.set_common_item_state(SUBJECT_COLUMN, selected=True)
     return report
 
 

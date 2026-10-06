@@ -1,7 +1,7 @@
 """What the automation tools' workflows take and give back.
 
-Each workflow is a plain function, ``run(inputs, params) -> OutputFile``: it
-reads its input files (a path or a file-like object), builds the workbook in
+Each workflow is a plain function, ``run(<inputs>, *, <options>) -> OutputFile``:
+it reads its input files (a path or a file-like object), builds the workbook in
 memory, and returns it with the file name to save it under. It never writes
 to a folder: the desktop tools save the bytes where the user chose
 (:func:`cci_ui.files.save_output`), and a web version would offer the same

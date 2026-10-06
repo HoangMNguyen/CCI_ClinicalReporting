@@ -1,4 +1,14 @@
-import json
+"""What a Clinical Reporting report is made of: :class:`CLReport`.
+
+A report holds a study's forms, the forms and items chosen from them, how the
+forms join (the common items each joins on, the join order and the join
+type), the filters and comparisons, and the column order and names. It turns
+into a saved setting and back (:meth:`CLReport.settings_to_dict`,
+:meth:`CLReport.load_setting_from_dict`), and :meth:`CLReport.create_report`
+hands the building of the table to
+:class:`clinical_reporting.pipeline.ReportEngine`.
+"""
+
 import logging
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -12,6 +22,7 @@ from clinical_reporting.models import (
     qualify,
     split_qualified,
 )
+from clinical_reporting.settings_store import write_settings_json
 
 if TYPE_CHECKING:
     from clinical_reporting.models import ReportConfig
@@ -124,11 +135,9 @@ class CLReport:
             new_form = CLForm(form)
             # Remember the input file order of the form's own (non-common)
             # columns so the item lists keep that order from here on.
-            new_form.column_order = [
-                item
-                for item in self.data[form].columns
-                if item not in self.static_available_common_items
-            ]
+            new_form.column_order = self._own_columns(
+                form, self.static_available_common_items
+            )
             for item in new_form.column_order:
                 new_form.set_form_item_state(item, selected=False)
             self.selected_forms[form] = new_form
@@ -298,12 +307,16 @@ class CLReport:
         form.join_how = data.get("join_how")
         return form
 
+    def _own_columns(self, form_name: str, common) -> List[str]:
+        """The columns of *form_name* that aren't in *common*, in input file order."""
+        return [
+            column for column in self.data[form_name].columns if column not in common
+        ]
+
     def save_setting_to_json(self, file_path: str, setting_name: Optional[str] = None):
         """Save the report settings to a JSON file (see :meth:`settings_to_dict`)."""
 
-        settings = self.settings_to_dict(setting_name)
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=4)
+        write_settings_json(file_path, self.settings_to_dict(setting_name))
 
     def settings_to_dict(self, setting_name: Optional[str] = None) -> Dict[str, Any]:
         """Return the saved-settings dictionary for this report, without file I/O.
@@ -439,11 +452,7 @@ class CLReport:
                 continue
 
             # The form's own columns, in input file order.
-            form.column_order = [
-                column
-                for column in self.data[form_name].columns
-                if column not in common_lookup
-            ]
+            form.column_order = self._own_columns(form_name, common_lookup)
 
             for item in list(form.get_selected_form_items()):
                 if item not in form.column_order:
@@ -467,11 +476,7 @@ class CLReport:
             if form_name in valid_selected_form_names:
                 continue
             new_form = CLForm(form_name)
-            new_form.column_order = [
-                column
-                for column in self.data[form_name].columns
-                if column not in common_lookup
-            ]
+            new_form.column_order = self._own_columns(form_name, common_lookup)
             new_form.available_form_items = list(new_form.column_order)
             self.available_forms[form_name] = new_form
 
@@ -623,14 +628,10 @@ class CLReport:
         return self.reconcile_with_current_data()
 
     def get_join_list_dict(self) -> Dict[str, Dict[str, Any]]:
-        """Return the join configuration keyed by form name.
+        """The join settings of each selected form, keyed by form name.
 
-        The refactored join UI works with dictionaries so that it can look up
-        a specific form's existing join items, order, and join strategy when
-        populating table widgets.  The original implementation only exposed a
-        flattened list; this helper simply repackages the same information in a
-        structure that is easier for the UI to consume while keeping behaviour
-        identical to the previous widget.
+        Each entry holds the common items the form joins on (``items``), its
+        join order (``order``) and its join type (``how``).
         """
 
         join_data: Dict[str, Dict[str, Any]] = {}
@@ -685,7 +686,7 @@ class CLReport:
                     self.static_filter_items.append((item, operator, value))
         else:
             # Check if the item is in any form's selected items
-            for form_name, form in self.selected_forms.items():
+            for form in self.selected_forms.values():
                 if item in form.get_selected_form_items():
                     if (item, operator, value) not in self.static_filter_items:
                         self.static_filter_items.append((item, operator, value))
