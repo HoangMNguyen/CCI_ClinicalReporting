@@ -32,9 +32,9 @@ def report():
     report.selected_forms["AE"].set_form_item_state("TERM", selected=True)
     report.update_join_items("DM", [], 1, JoinHow.LEFT)
     report.update_join_items("AE", ["Subject"], 2, JoinHow.LEFT)
-    report.set_rename_dict(
-        {"DM.AGE": "Age", "AE.TERM": "Adverse Event", "Subject": "ID"}
-    )
+    report.set_rename_item("DM.AGE", "Age")
+    report.set_rename_item("AE.TERM", "Adverse Event")
+    report.set_rename_item("Subject", "ID")
     report.static_filter_items = [("DM.AGE", ">", "0"), ("AE.TERM", "!=", "x")]
     report.dynamic_filter_items = [
         ("DM.AGE", "!=", "AE.TERM"),
@@ -99,7 +99,7 @@ def test_deselecting_common_item_parks_and_restores_its_rename():
     )
     report.set_common_item_state("Subject", selected=True)
     report.set_common_item_state("Visit", selected=True)
-    report.set_rename_dict({"Visit": "Visit Name"})
+    report.set_rename_item("Visit", "Visit Name")
 
     report.set_common_item_state("Visit", selected=False)
     report.sync_with_selection()
@@ -127,7 +127,7 @@ def test_active_rename_wins_over_parked_copy(report):
 
 
 def test_order_lists_are_pruned(report):
-    report.set_order_list(["Subject", "AE.TERM", "DM.AGE"])
+    report.order_list = ["Subject", "AE.TERM", "DM.AGE"]
     report.set_selected_items_order_list(["AE.TERM", "Subject", "DM.AGE"])
 
     report.add_available_form("AE")

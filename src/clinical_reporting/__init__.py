@@ -25,14 +25,9 @@ from .validation import (
 # it here and nowhere else.
 __version__ = "2.13"
 
-# ``Report`` is the preferred public name. ``CLReport`` remains available for
-# settings/scripts written against earlier releases.
-Report = CLReport
-
 __all__ = [
     "CLForm",
     "CLReport",
-    "Report",
     "ReportConfig",
     "ReportValidationError",
     "ReportValidationIssue",

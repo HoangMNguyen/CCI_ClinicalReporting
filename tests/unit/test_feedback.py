@@ -12,12 +12,9 @@ def test_a_message_is_a_string_with_a_kind_and_details():
 
     assert message == "Could not read x.zip" and message.kind == "error"
     assert message.details == "Traceback ..."
-    assert feedback.kind_of("plain text") == "info"
 
 
-def test_plain_strings_count_as_info_and_unknown_kinds_are_rejected():
-    assert feedback.kind_of("Generating preview...") == "info"
-    assert feedback.kind_of(None) == "info"
+def test_unknown_kinds_are_rejected():
     with pytest.raises(ValueError):
         feedback.Message("text", kind="fatal")
 

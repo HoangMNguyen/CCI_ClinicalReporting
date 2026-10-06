@@ -33,7 +33,6 @@ class CLReport:
         self.new_items = []
         self.order_list = []
         self.rename_dict = {}
-        self.file_path = None
         self.static_available_common_items = []  # Initialize as empty, will be populated dynamically
         self.static_filter_items = []  # Static filter items: Item Name, Operator, Value
         self.dynamic_filter_items = []  # Dynamic filter items: Item Name 1 , Operator, Item Name 2
@@ -50,21 +49,6 @@ class CLReport:
         self._inactive_rename_dict = {}
         self._inactive_static_filters = []
         self._inactive_dynamic_filters = []
-
-    @staticmethod
-    def _move_between_lists(
-        item: str,
-        source: Optional[List[str]],
-        target: Optional[List[str]],
-        order: Optional[List[str]] = None,
-    ) -> bool:
-        """Move ``item`` between ``source`` and ``target`` while avoiding duplicates.
-
-        When ``order`` is given the item is inserted at the position that keeps
-        ``target`` consistent with that reference ordering.
-        """
-
-        return move_item(item, source, target, order)
 
     def set_study_name(self, study_name: str):
         """Set the study name for the report."""
@@ -115,10 +99,6 @@ class CLReport:
         # by default, all common items are available.
         self.add_all_available_common_items()
 
-    def get_data(self):
-        """Get the data for the report."""
-        return self.data
-
     def add_available_form(self, form: str):
         """Add the available form to the available forms dictionary."""
         self.available_forms[form] = CLForm(form)
@@ -128,11 +108,6 @@ class CLReport:
         """Add all available forms from the data to the available forms dictionary."""
         for form_name in self.data.keys():
             self.add_available_form(form_name)
-
-    def remove_available_form(self, form: str):
-        """Remove the available form from the available forms dictionary."""
-        if form in self.available_forms:
-            del self.available_forms[form]
 
     def remove_all_available_forms(self):
         """Remove all available forms from the available forms dictionary."""
@@ -179,23 +154,10 @@ class CLReport:
         """Get the list of selected forms."""
         return list(self.selected_forms.keys())
 
-    def get_forms_in_join_order(self) -> List[str]:
-        """Return selected form names in merge (join) order.
-
-        Forms without a configured join order are merged last; ties keep the
-        selection order. This mirrors the sequence the report engine uses when
-        joining forms.
-        """
-        return report_columns.forms_in_join_order(self.selected_forms)
-
     def add_all_available_common_items(self):
         """Add all static available common items to the available common items list."""
         for item in self.static_available_common_items:
             self.set_common_item_state(item, selected=False)
-
-    def remove_all_available_common_items(self):
-        """Remove all available common items from the available common items list."""
-        self.available_common_items = []
 
     def get_available_common_items(self):
         """Get the list of available common items."""
@@ -214,29 +176,15 @@ class CLReport:
             if selected
             else (self.selected_common_items, self.available_common_items)
         )
-        return self._move_between_lists(
-            item, source, target, self.static_available_common_items
-        )
+        return move_item(item, source, target, self.static_available_common_items)
 
     def get_selected_common_items(self):
         """Get the list of selected common items."""
         return self.selected_common_items
 
-    def set_order_list(self, order_list: list):
-        """Set the order list for the report."""
-        self.order_list = order_list
-
-    def get_order_list(self):
-        """Get the order list for the report."""
-        return self.order_list
-
     def get_rename_dict(self):
         """Get the rename dictionary for the report."""
         return self.rename_dict
-
-    def set_rename_dict(self, rename_dict: dict):
-        """Set the rename dictionary for the report."""
-        self.rename_dict = rename_dict
 
     def set_rename_item(self, original_name: str, new_name: str) -> None:
         """Set or update a single rename mapping.
@@ -252,10 +200,6 @@ class CLReport:
     def remove_rename_item(self, original_name: str) -> None:
         """Remove a single rename mapping if it exists."""
         self.rename_dict.pop(original_name, None)
-
-    def set_file_path(self, file_path: str):
-        """Set the file path for the report."""
-        self.file_path = file_path
 
     def get_selected_items_order_list(self):
         """Get the ordered list of selected items."""
@@ -343,19 +287,6 @@ class CLReport:
         return self.selected_items_order_list
 
     @staticmethod
-    def _serialize_form(form: CLForm) -> Dict[str, Any]:
-        """Convert a CLForm instance into a JSON-serializable dictionary."""
-
-        return {
-            "name": form.get_name(),
-            "available_form_items": deepcopy(form.get_available_form_items()),
-            "selected_form_items": deepcopy(form.get_selected_form_items()),
-            "join_items": deepcopy(form.get_join_items()),
-            "join_order": form.get_join_order(),
-            "join_how": form.get_join_how(),
-        }
-
-    @staticmethod
     def _deserialize_form(form_name: str, data: Dict[str, Any]) -> CLForm:
         """Recreate a CLForm instance from persisted data."""
 
@@ -421,19 +352,10 @@ class CLReport:
         }
         return settings
 
-    def load_setting_from_json(self, file_path: str) -> Dict[str, Any]:
-        """Load the report settings from a JSON file."""
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            settings = json.load(f)
-
-        return self.load_setting_from_dict(settings)
-
     def load_setting_from_dict(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Apply an in-memory settings dictionary to this report.
 
-        This is the file-free counterpart of :meth:`load_setting_from_json`; it
-        performs no I/O so it can be driven directly from a
+        It performs no I/O, so it can be driven directly from a
         :class:`~clinical_reporting.models.ReportConfig` or any program
         that constructs the settings schema itself.
         """
@@ -700,21 +622,6 @@ class CLReport:
         self.load_setting_from_dict(raw)
         return self.reconcile_with_current_data()
 
-    def get_join_list(self):
-        """Get the list of join items."""
-        join_list = []
-        for form in self.selected_forms.keys():
-            join_list.extend(
-                [
-                    self.selected_forms[form].get_name(),
-                    self.selected_forms[form].get_join_items(),
-                    self.selected_forms[form].get_join_order(),
-                    self.selected_forms[form].get_join_how(),
-                ]
-            )
-
-        return join_list
-
     def get_join_list_dict(self) -> Dict[str, Dict[str, Any]]:
         """Return the join configuration keyed by form name.
 
@@ -735,33 +642,12 @@ class CLReport:
             }
         return join_data
 
-    def get_join_order_conflicts(self) -> Dict[int, List[str]]:
-        """Return join orders shared by two or more selected forms.
-
-        Thin wrapper over
-        :func:`clinical_reporting.validation.duplicate_join_orders`, which is
-        the single source of truth for duplicate join-order detection.
-        """
-        from clinical_reporting.validation import duplicate_join_orders
-
-        return duplicate_join_orders(
-            {name: form.get_join_order() for name, form in self.selected_forms.items()}
-        )
-
     # The common items a form joins on decide which of them it puts out as
     # FORM.item (clinical_reporting.report_columns), so every join change
     # re-syncs renames, filters and order lists with the columns that now
     # exist (sync_with_selection). Change several forms' joins with one
     # update_join_list call: a column that is gone between two calls loses
     # its place in a customized order.
-
-    def add_join_item(self, form: str, item: str, order: int, how: str):
-        """Add a join item to the form, then re-sync (see above)."""
-        if form in self.selected_forms.keys():
-            self.selected_forms[form].set_join_item_state(item, include=True)
-            self.selected_forms[form].set_join_order(order)
-            self.selected_forms[form].set_join_how(how)
-            self.sync_with_selection()
 
     def _set_join(self, form: str, items: list, order: int, how: str) -> None:
         if form in self.selected_forms.keys():
@@ -779,14 +665,6 @@ class CLReport:
         for form, items, order, how in join_list:
             self._set_join(form, items, order, how)
         self.sync_with_selection()
-
-    def get_all_selected_items(self):
-        """Get all items from all selected forms and common items."""
-        all_items = []
-        for form in self.selected_forms.values():
-            all_items.extend(form.get_selected_form_items())
-        all_items.extend(self.selected_common_items)
-        return list(set(all_items))
 
     def get_static_filter_items(self):
         """Get the list of static filter items."""
@@ -871,25 +749,6 @@ class CLReport:
     def set_dynamic_filter_items(self, items: list):
         """Set the dynamic filter items."""
         self.dynamic_filter_items = deepcopy(items)
-
-    def update_dynamic_filter_item(
-        self, row: int, item1: str, operator: str, item2: str
-    ) -> None:
-        """Update or append a dynamic filter item by row.
-
-        If ``row`` is within the current list bounds, replace that entry.
-        If ``row`` is at or beyond the end, append a new entry.
-        """
-        new_item = (item1, operator, item2)
-
-        if row < 0:
-            return
-
-        if row < len(self.dynamic_filter_items):
-            self.dynamic_filter_items[row] = new_item
-        else:
-            # Append when adding a brand new dynamic filter row from the UI
-            self.dynamic_filter_items.append(new_item)
 
     def create_report(self):
         """Create the report from the stored selections, filters, joins, and renames.

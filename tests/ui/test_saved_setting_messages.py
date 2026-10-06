@@ -6,7 +6,6 @@ import pandas as pd
 from PySide6.QtWidgets import QComboBox
 from tests.unit.fakes import FakeBanner
 
-from clinical_reporting import feedback
 from clinical_reporting.additional_names import SETTINGS_KEY, from_settings
 from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import SavedSetting
@@ -64,7 +63,7 @@ def test_loading_a_setting_is_a_success():
 
     shown = widget.label_save_confirmation.value
     assert shown == "Loaded settings from monthly.json"
-    assert feedback.kind_of(shown) == "success"
+    assert shown.kind == "success"
     assert widget.label_setting.value == ""
 
 
@@ -75,7 +74,7 @@ def test_a_setting_with_missing_forms_warns():
 
     # No saved names for AE, so no hint about additional files.
     assert widget.label_setting.value == "Missing forms: AE"
-    assert feedback.kind_of(widget.label_setting.value) == "warning"
+    assert widget.label_setting.value.kind == "warning"
 
 
 class _Combo:
@@ -144,7 +143,7 @@ def test_picking_a_setting_offers_its_saved_names_and_names_the_files():
         "pk_results.csv on Additional input, and their saved names will be "
         "picked for you."
     )
-    assert feedback.kind_of(widget.label_setting.value) == "warning"
+    assert widget.label_setting.value.kind == "warning"
 
 
 def test_re_applying_the_setting_leaves_the_saved_names_alone():
@@ -196,7 +195,7 @@ def test_a_setting_that_cannot_be_read_is_an_error_with_details():
 
     shown = widget.label_save_confirmation.value
     assert shown == "Failed to load settings: bad json"
-    assert feedback.kind_of(shown) == "error"
+    assert shown.kind == "error"
     assert "ValueError: bad json" in shown.details
 
 
@@ -213,7 +212,7 @@ def test_choosing_the_settings_folder_is_confirmed(monkeypatch):
 
     shown = widget.label_save_confirmation.value
     assert shown == "Settings folder set to D:/Study/Settings"
-    assert feedback.kind_of(shown) == "info"
+    assert shown.kind == "info"
 
 
 def test_files_already_added_are_to_be_checked_and_applied():

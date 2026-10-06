@@ -6,6 +6,8 @@ form's items follow in file order grouped by merge (join) order, and only the
 Order & rename page may change the arrangement.
 """
 
+import json
+
 import pandas as pd
 import pytest
 from tests.unit.fakes import DummyTable
@@ -155,7 +157,7 @@ def test_customized_flag_roundtrips_through_settings(tmp_path, report_with_data)
     report.save_setting_to_json(str(path))
 
     loaded = CLReport()
-    loaded.load_setting_from_json(str(path))
+    loaded.load_setting_from_dict(json.loads(path.read_text(encoding="utf-8")))
     assert loaded.order_list_customized is True
     assert loaded.get_selected_items_order_list() == ["DM.Weight", "Subject"]
 

@@ -199,7 +199,7 @@ def test_failed_reload_keeps_the_data_says_why_and_is_not_repeated(monkeypatch):
         "The cut-off date was not applied; the report still uses the data "
         "loaded before."
     )
-    assert feedback.kind_of(problem) == "error" and "OSError" in problem.details
+    assert problem.kind == "error" and "OSError" in problem.details
     assert widget.update_all_ui_calls == 0
     assert reads == [datetime.date(2024, 6, 1)]
 

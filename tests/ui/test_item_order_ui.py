@@ -23,7 +23,8 @@ class DummyOrderWidget(OrderRenameTabMixin, WidgetBaseMixin):
     def __init__(self, items, renames=None):
         self.report = CLReport()
         self.report.selected_common_items = list(items)
-        self.report.set_rename_dict(dict(renames or {}))
+        for original, new in (renames or {}).items():
+            self.report.set_rename_item(original, new)
         table = QTableWidget()
         table.setColumnCount(2)
         self.ui = types.SimpleNamespace(

@@ -51,7 +51,9 @@ def test_save_and_load_settings_roundtrip(tmp_path):
     assert payload["dynamic_filter_items"] == [["DM.Age", ">", "DM.Weight"]]
 
     loaded_report = CLReport()
-    loaded_report.load_setting_from_json(str(output_file))
+    loaded_report.load_setting_from_dict(
+        json.loads(output_file.read_text(encoding="utf-8"))
+    )
 
     loaded_form = loaded_report.selected_forms["DM"]
     assert loaded_form.get_selected_form_items() == ["Age", "Weight"]

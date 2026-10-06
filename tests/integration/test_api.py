@@ -169,29 +169,6 @@ def test_load_setting_from_dict_applies_settings_without_io(tmp_path):
     assert report.selected_forms["VS"].get_join_how() == "Left join"
 
 
-def test_load_setting_from_json_delegates_to_dict(tmp_path):
-    """The file loader and dict loader must yield equivalent report state."""
-    settings = _reference_settings_dict(tmp_path)
-    path = tmp_path / "setting.json"
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(settings, handle)
-
-    from_json = CLReport()
-    from_json.load_setting_from_json(str(path))
-
-    from_dict = CLReport()
-    from_dict.load_setting_from_dict(settings)
-
-    assert (
-        from_json.get_selected_common_items() == from_dict.get_selected_common_items()
-    )
-    assert (
-        from_json.selected_forms["VS"].get_join_items()
-        == from_dict.selected_forms["VS"].get_join_items()
-    )
-    assert from_json.rename_dict == from_dict.rename_dict
-
-
 # ---------------------------------------------------------------------------
 # CLReport.apply_config
 # ---------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from clinical_reporting import report_columns
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
     JoinHow,
@@ -200,10 +201,6 @@ class ReportEngine:
     # ------------------------------------------------------------------
     # Join phase
 
-    def _ordered_form_names(self):
-        """Return selected form names sorted by their configured join order."""
-        return self.report.get_forms_in_join_order()
-
     def _select_filtered_columns(self, form_name, form):
         """Select a form's contributing columns and apply its static filters.
 
@@ -303,7 +300,7 @@ class ReportEngine:
         """Join all selected forms in join order; return the merged DataFrame or ``None``."""
         report = self.report
         result_df = None
-        for form_name in self._ordered_form_names():
+        for form_name in report_columns.forms_in_join_order(report.selected_forms):
             form = report.selected_forms[form_name]
             form_df = self._select_filtered_columns(form_name, form)
             if form_df is None:

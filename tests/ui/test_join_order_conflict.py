@@ -5,12 +5,15 @@ import types
 import pandas as pd
 from tests.unit.fakes import FakeBanner
 
-from clinical_reporting import feedback
 from clinical_reporting.models import CLForm, JoinHow
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
-from clinical_reporting.validation import ReportValidationError, ReportValidationIssue
+from clinical_reporting.validation import (
+    ReportValidationError,
+    ReportValidationIssue,
+    duplicate_join_orders,
+)
 
 
 def _report_with_orders(orders: dict) -> CLReport:
@@ -25,25 +28,29 @@ def _report_with_orders(orders: dict) -> CLReport:
     return report
 
 
+def _join_orders(report: CLReport) -> dict:
+    return {name: form.get_join_order() for name, form in report.selected_forms.items()}
+
+
 # ---------------------------------------------------------------------------
 # Core detection
 
 
-def test_get_join_order_conflicts_flags_shared_orders():
+def test_duplicate_join_orders_flags_shared_orders():
     report = _report_with_orders({"DM": 1, "VS": 2, "AE": 2})
-    assert report.get_join_order_conflicts() == {2: ["AE", "VS"]}
+    assert duplicate_join_orders(_join_orders(report)) == {2: ["AE", "VS"]}
 
 
-def test_get_join_order_conflicts_empty_when_unique():
+def test_duplicate_join_orders_empty_when_unique():
     report = _report_with_orders({"DM": 1, "VS": 2, "AE": 3})
-    assert report.get_join_order_conflicts() == {}
+    assert duplicate_join_orders(_join_orders(report)) == {}
 
 
-def test_get_join_order_conflicts_ignores_unset_orders():
+def test_duplicate_join_orders_ignores_unset_orders():
     # Forms without a configured order default to "join last" and are not
     # treated as conflicting with each other.
     report = _report_with_orders({"DM": None, "VS": None, "AE": 1})
-    assert report.get_join_order_conflicts() == {}
+    assert duplicate_join_orders(_join_orders(report)) == {}
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +87,7 @@ def test_join_configuration_message_describes_shared_order():
     message = widget._join_configuration_error_message()
     assert message is not None
     assert message.startswith("Cannot run:")
-    assert feedback.kind_of(message) == "warning"
+    assert message.kind == "warning"
     assert "order 2" in message
     assert "DM" in message and "VS" in message
 
@@ -90,7 +97,7 @@ def test_refresh_disables_run_and_shows_hint_on_conflict():
     widget._refresh_run_availability()
     assert widget.button.enabled is False
     assert widget.label_run_confirmation.text().startswith("Cannot run:")
-    assert feedback.kind_of(widget.label_run_confirmation.text()) == "warning"
+    assert widget.label_run_confirmation.text().kind == "warning"
 
 
 def test_refresh_disables_run_and_shows_hint_when_join_item_is_missing():
@@ -159,7 +166,7 @@ def test_report_validation_message_lists_actionable_core_issues():
 
     assert message is not None
     assert message.startswith("Cannot run:")
-    assert feedback.kind_of(message) == "warning"
+    assert message.kind == "warning"
     assert "VS" in message
     assert "at least one join item" in message
 
@@ -172,16 +179,16 @@ def test_report_errors_are_warnings_when_invalid_and_errors_otherwise():
 
     widget._show_report_error("Error saving report", invalid, "traceback")
     shown = widget.label_run_confirmation.text()
-    assert shown.startswith("Cannot run:") and feedback.kind_of(shown) == "warning"
+    assert shown.startswith("Cannot run:") and shown.kind == "warning"
 
     widget._show_report_error("Error saving report", OSError("disk full"), "tb")
     shown = widget.label_run_confirmation.text()
     assert shown == "Error saving report: disk full"
-    assert feedback.kind_of(shown) == "error" and shown.details == "tb"
+    assert shown.kind == "error" and shown.details == "tb"
 
 
 def test_running_without_a_report_is_a_warning():
     message = DummyRunWidget(None)._report_validation_message()
 
     assert message == "Cannot run: no report is loaded."
-    assert feedback.kind_of(message) == "warning"
+    assert message.kind == "warning"
