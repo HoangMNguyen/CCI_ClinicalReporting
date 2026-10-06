@@ -246,7 +246,7 @@ def DSMB15420(
 
     final_enrollment_df = enrollment_df.copy()
 
-    ###TODO: Demo Stats Table
+    # Demo Stats Table
     # Calculate Stats of enrollment table
     TT = enrollment_df["Subject"].count()
     TT_df = enrollment_df.copy()
@@ -415,7 +415,7 @@ def DSMB15420(
         "Cohort C Infused": CCI,
     }
 
-    ### TODO: INFUSION LISTING
+    # INFUSION LISTING
     # adding Target Cell Dose dictionary
     TCD_dict = {
         "Dose Level 1a (DL1a)": 3000000,
@@ -427,7 +427,7 @@ def DSMB15420(
         "Not Assigned": "Not Assigned",
     }
 
-    # TODO: PREPARE DATA FOR INFUSION LISTING
+    # PREPARE DATA FOR INFUSION LISTING
     EXCHMO_df = data["EXCHMO"].copy()
     EXCHMO_df = EXCHMO_df.sort_values(
         ["Subject", "Event Group Label", "Medication (ig_EXCHMO2.EXCCAT)"]
@@ -462,7 +462,7 @@ def DSMB15420(
     # reassign the dataframe to EXCHMO_df with subject, Study Day, and Medication
     EXCHMO_df = grouped_df
 
-    # TODO: INFUSION LISTING Day 0
+    # INFUSION LISTING Day 0
     # Subject
     infusion_df = data["DM"][["Subject"]].copy()
     infusion_df = infusion_df.sort_values(["Subject"])
@@ -614,7 +614,7 @@ def DSMB15420(
     # Only keep the rows that have Event Group Label
     infusion_df = infusion_df[infusion_df["Event Group Label"] != ""]
 
-    # TODO: Infusion Listing Day 0-R
+    # Infusion Listing Day 0-R
     # Subject
     infusionR_df = data["DM"][["Subject"]].copy()
     infusionR_df = infusionR_df.sort_values(["Subject"])
@@ -736,7 +736,7 @@ def DSMB15420(
     # Only keep the rows that have Event Group Label
     infusionR_df = infusionR_df[infusionR_df["Event Group Label"] != ""]
 
-    # TODO: INFUSION STATISTICS
+    # INFUSION STATISTICS
     def calculate_cohort_infusion_stats(infusion_df, cohort_filter, cohort_name=None):
         """
         Calculate infusion statistics for a specific cohort.
@@ -808,7 +808,7 @@ def DSMB15420(
 
         return combined_stats, total_subject_count
 
-    # TODO: INFUSION STATISTICS - REFACTORED VERSION
+    # INFUSION STATISTICS - REFACTORED VERSION
     # Define cohort mappings
     cohort_mappings = {
         "A": "Cohort A: Non-Hodgkin Lymphoma (NHL)",
@@ -843,8 +843,8 @@ def DSMB15420(
     infusion_statC = final_infusion_statC
     infusion_statD = final_infusion_statD
 
-    ## TODO: FORMATTING THE DATAFRAME
-    # TODO: Day 0
+    # FORMATTING THE DATAFRAME
+    # Day 0
     # Convert the columns to scientific notation if the value is not NaN
     infusion_df["Target Cell Dose"] = infusion_df["Target Cell Dose"].apply(
         lambda x: (
@@ -874,7 +874,7 @@ def DSMB15420(
         lambda row: str(x) + "%" if pd.notna(x := row["%scFv Flow"]) else x, axis=1
     )
 
-    # TODO: Day 0-R
+    # Day 0-R
     # Convert the columns to scientific notation if the value is not NaN
     infusionR_df["Total huCAR T Cell Dose Administered"] = infusionR_df[
         "Total huCAR T Cell Dose Administered"
@@ -899,7 +899,7 @@ def DSMB15420(
         lambda row: str(x) + "%" if pd.notna(x := row["%scFv Flow"]) else x, axis=1
     )
 
-    # TODO: ASSIGNING THE DATAFRAME TO THE CLASS VARIABLE
+    # ASSIGNING THE DATAFRAME TO THE CLASS VARIABLE
     final_infusion_df = infusion_df
     final_infusionR_df = infusionR_df
     final_infusion_statA = infusion_statA
@@ -907,8 +907,8 @@ def DSMB15420(
     final_infusion_statC = infusion_statC
     final_infusion_statD = infusion_statD
 
-    # TODO: RESPONSE LISTING
-    # TODO: PREPARE
+    # RESPONSE LISTING
+    # PREPARE
     # Disease Response NHL PET based dictionary
     DR_NHL_PET_dict = {
         "Complete Metabolic Response (CMR)": 1,
@@ -1071,7 +1071,7 @@ def DSMB15420(
         )
     )
 
-    # TODO: RESPONSE LISTING NHL ONLY
+    # RESPONSE LISTING NHL ONLY
     # Response data dataframe for NHL only
     response_df = data["RS"][
         [
@@ -1108,7 +1108,7 @@ def DSMB15420(
     # replace Not Evaluable with Not Reported in all columns
     responseBRT_df = responseBRT_df.replace("Not Evaluable", "Not Reported")
 
-    # TODO: Cohort A - NHL Primary
+    # Cohort A - NHL Primary
     # Filter to only Primary Treatment
     responseA_primary_df = responseA_df[
         responseA_df["Study Phase (ig_RS1.STUDYPHS2)"] == "Primary Treatment"
@@ -1490,7 +1490,7 @@ def DSMB15420(
 
         # * Formatting the dataframe
 
-    # TODO: Cohort A - NHL Retreatment
+    # Cohort A - NHL Retreatment
     # Filter to only Primary Treatment
     responseA_retreatment_df = responseA_df[
         responseA_df["Study Phase (ig_RS1.STUDYPHS2)"] == "Retreatment"
@@ -1853,8 +1853,8 @@ def DSMB15420(
         final_responseA_retreatment_df = final_responseA_retreatment_df.replace(
             [np.nan, np.inf, -np.inf], ""
         )
-    # TODO: Cohort B - CLL for Primary
-    # TODO: RESPONSE LISTING CLL ONLY
+    # Cohort B - CLL for Primary
+    # RESPONSE LISTING CLL ONLY
     # Response data dataframe for CLL only
     response_df = data["RS"][
         [
@@ -1886,7 +1886,7 @@ def DSMB15420(
     # Replace Not Evaluable with Not Reported in all columns
     responseB_df = responseB_df.replace("Not Evaluable", "Not Reported")
 
-    # TODO: Cohort B - CLL Primary
+    # Cohort B - CLL Primary
     # Filter to only Primary Treatment
     responseB_primary_df = responseB_df[
         responseB_df["Study Phase (ig_RS1.STUDYPHS2)"] == "Primary Treatment"
@@ -2226,7 +2226,7 @@ def DSMB15420(
             [np.nan, np.inf, -np.inf], ""
         )
 
-    # TODO: Cohort B - CLL Retreatment
+    # Cohort B - CLL Retreatment
     # Filter to only Primary Treatment
     responseB_retreatment_df = responseB_df[
         responseB_df["Study Phase (ig_RS1.STUDYPHS2)"] == "Retreatment"
@@ -2574,8 +2574,8 @@ def DSMB15420(
             [np.nan, np.inf, -np.inf], ""
         )
 
-    # TODO: RESPONSE LISTING RICHTER'S TRANSFORMATION ONLY
-    # TODO: Cohort B - RESPONSE LISTING RICHTER'S TRANSFORMATION
+    # RESPONSE LISTING RICHTER'S TRANSFORMATION ONLY
+    # Cohort B - RESPONSE LISTING RICHTER'S TRANSFORMATION
     # Filter to only Primary Treatment
     responseBRT_primary_df = responseBRT_df[
         responseBRT_df["Study Phase (ig_RS1.STUDYPHS2)"] == "Primary Treatment"
@@ -2941,7 +2941,7 @@ def DSMB15420(
         )
         # * Formatting the dataframe
 
-    # TODO: Cohort B - RT Retreatment
+    # Cohort B - RT Retreatment
     # Filter to only Primary Treatment
     responseBRT_retreatment_df = responseBRT_df[
         responseBRT_df["Study Phase (ig_RS1.STUDYPHS2)"] == "Retreatment"
@@ -3301,7 +3301,7 @@ def DSMB15420(
             [np.nan, np.inf, -np.inf], ""
         )
 
-    # TODO: RESPONSE LISTING ALL ONLY
+    # RESPONSE LISTING ALL ONLY
     # Response data dataframe for NHL only
     responseC_df = data["RSALL"][
         [
@@ -3322,7 +3322,7 @@ def DSMB15420(
     # Replace Not Assessed with Not Reported in all columns
     responseC_df = responseC_df.replace("Not Assessed", "Not Reported")
 
-    # TODO: Cohort C - ALL Primary
+    # Cohort C - ALL Primary
     # Filter to only Primary Treatment
     responseC_primary_df = responseC_df[
         responseC_df["Study Phase (ig_RSALL1.STUDYPHS2)"] == "Primary Treatment"
@@ -3770,7 +3770,7 @@ def DSMB15420(
             ]["Subject"].unique()
         )
 
-        # TODO: Cohort C - ALL Retreatment
+        # Cohort C - ALL Retreatment
     # Filter to only Retreatment
     responseC_retreatment_df = responseC_df[
         responseC_df["Study Phase (ig_RSALL1.STUDYPHS2)"] == "Retreatment"
@@ -4190,8 +4190,8 @@ def DSMB15420(
 
         # Count number of subjects with responses
 
-    ### TODO: REPONSE STATS
-    # TODO: SAFETY STATS
+    # REPONSE STATS
+    # SAFETY STATS
 
     # Gather all stats of Cohort A, B and C
     total_infused_df = final_infusion_df.copy()
@@ -4306,7 +4306,7 @@ def DSMB15420(
             {"Y": ["0 (0%)"], "N": ["0 (0%)"]}, index=["Y"]
         )
 
-    # TODO: RESPONSE STATS
+    # RESPONSE STATS
     if final_subject_A_prim_count > 0:
         responseA_stat = final_responseA_primary_df.copy()
         # replace 'Not Assessed' with 'Not Reported' for all columns in responseA_stat
@@ -4453,7 +4453,7 @@ def DSMB15420(
         final_subject_D_ALL_OR_count = 0
         final_subject_D_ALL_ED_count = 0
 
-    # TODO: UPDATE FORMAT FOR NHL, CLL, and ALL after getting the stats
+    # UPDATE FORMAT FOR NHL, CLL, and ALL after getting the stats
 
     if final_subject_A_prim_count > 0:
         final_responseA_primary_df.loc[
@@ -4574,8 +4574,6 @@ def DSMB15420(
     with pd.ExcelWriter(
         output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
     ) as writer:
-        # TODO: - Add formatting and coloring
-        # TODO: - for each tab: write data, format data, write header, format header
         # Get the workbook
         workbook = writer.book
         # Get all format objects from util.py function
@@ -4590,7 +4588,7 @@ def DSMB15420(
         # Create a format for a black cell
         black_cell = writer.book.add_format({"bg_color": "black"})
 
-        ## TODO: DSMB-Demo Stats Table
+        # DSMB-Demo Stats Table
         # * WRITING DATA: LegalSex_df, Age_df, Race_df
         final_LegalSex_df.to_excel(
             writer,
@@ -5040,7 +5038,7 @@ def DSMB15420(
         # Now call autofit after all tables are written
         worksheet1.autofit()
 
-        ## TODO: Enrollment Listing
+        # Enrollment Listing
         # * WRITING DATA: enrollment_df
         final_enrollment_df.to_excel(
             writer, sheet_name="DSMB-Enrollment Listing", index=False, startcol=0
@@ -5057,7 +5055,7 @@ def DSMB15420(
         # Autofit
         worksheet2.autofit()
 
-        ## TODO: DSMB-New Infusion Statistics
+        # DSMB-New Infusion Statistics
         # * WRITING DATA: new_infusion_df
         final_infusion_statA.to_excel(
             writer,
@@ -5183,7 +5181,7 @@ def DSMB15420(
         # * Autofit
         worksheet3.autofit()
 
-        ## TODO: DSMB-Infusion Listing
+        # DSMB-Infusion Listing
         # * WRITING DATA: infusion_df, infusionR_df
         final_infusion_df.to_excel(
             writer,
@@ -5241,7 +5239,7 @@ def DSMB15420(
         # Autofit
         worksheet4.autofit()
 
-        ## TODO: DSMB-Response Stats
+        # DSMB-Response Stats
         # * WRITING DATA
         # Safety Data
         final_safety_df.to_excel(
@@ -5912,7 +5910,7 @@ def DSMB15420(
         # Autofit the worksheet
         worksheet_d_stats.autofit()
 
-        ## TODO: Response Listing NHL
+        # Response Listing NHL
         # * WRITING DATA
         if final_subject_A_prim_count > 0:
             final_responseA_primary_df.to_excel(
@@ -6007,7 +6005,7 @@ def DSMB15420(
         # Autofit
         worksheet6.autofit()
 
-        ## TODO:
+        # Response Listing CLL
         # * WRITING DATA
         if final_subject_B_prim_count > 0:
             final_responseB_primary_df.to_excel(
@@ -6110,7 +6108,7 @@ def DSMB15420(
             # Autofit
             worksheet7.autofit()
 
-        ## TODO: Response Listing Richter's Transformation
+        # Response Listing Richter's Transformation
         # * WRITING DATA
         if final_subject_BRT_prim_count > 0:
             final_responseBRT_primary_df.to_excel(
@@ -6201,7 +6199,7 @@ def DSMB15420(
             worksheet8.merge_range("AB2:AB3", "Study Status", bold_11_wrap_format)
             worksheet8.autofit()
 
-        ## TODO: Response Listing ALL
+        # Response Listing ALL
         # * WRITING DATA
         if final_subject_C_prim_count > 0:
             final_responseC_primary_df.to_excel(

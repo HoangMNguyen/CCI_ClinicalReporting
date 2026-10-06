@@ -18,7 +18,7 @@ def DSMB15122(
     output_dir,
     output_file_name,
 ):
-    # TODO: DEMO ENROLLMENT LISTING
+    # DEMO ENROLLMENT LISTING
     if not data["DM"].empty:
         # DM data
         DM_df = data["DM"][
@@ -401,8 +401,8 @@ def DSMB15122(
     )
     enrollment_df = enrollment_df.replace([np.nan, np.inf, -np.inf], "")
     enrollment_df = enrollment_df.fillna("")
-    #     ### TODO: DSMB-Demographics Statistics
-    #     # !Update this filter options to each cohort
+    # DSMB-Demographics Statistics
+    # !Update this filter options to each cohort
     filter_options = [
         enrollment_df["Consent Date"].notna()
         | enrollment_df["Main Consent Date"].notna(),
@@ -490,7 +490,7 @@ def DSMB15122(
     update_race_column = {"Race1": "Race"}
     enrollment_df = enrollment_df.rename(columns=update_race_column)
 
-    ### TODO: DSMB-Study Tx & AE Listing
+    # DSMB-Study Tx & AE Listing
     # adding Target Cell Dose dictionary
     # !: Update this dictionary when new dose level and their dose are added
     TCD_dict = {
@@ -501,7 +501,7 @@ def DSMB15122(
         "Not Assigned": "Not Assigned",
     }
 
-    # TODO: Study Tx & AE Listing Day 0
+    # Study Tx & AE Listing Day 0
     # Subject: get subject from enrollment_df instead of data["DM"] because enrollment_df already removed duplicate DM if more than 1 DM is entered.
     infusion_df = enrollment_df["Subject"].copy()
     infusion_df = add_rename_column_corelisting(
@@ -819,7 +819,7 @@ def DSMB15122(
     # replaces all occurrences of NaN, positive infinity, and negative infinity in the infusion_df dataframe with empty strings.
     status_df = status_df.replace([np.nan, np.inf, -np.inf], "")
 
-    # TODO: DSMB-Study Tx & AE STATISTICS
+    # DSMB-Study Tx & AE STATISTICS
     infusion_count = []
     # * Cohort 1
     # Create a new dataframe for Total huCAR T Cell Dose Administered table with infusion_df
@@ -859,8 +859,8 @@ def DSMB15122(
     infusion_statA = infusion_statA.fillna("")
     infusion_count.append(total_subject_count)
 
-    ## TODO: FORMATTING THE DATAFRAME
-    # TODO: Day 0
+    # FORMATTING THE DATAFRAME
+    # Day 0
     # Convert the columns to scientific notation if the value is not NaN
 
     infusion_df["Target Cell Dose"] = infusion_df["Target Cell Dose"].apply(
@@ -894,7 +894,7 @@ def DSMB15122(
     )
     infusion_df = infusion_df.drop(columns=["Target Cell Dose"])
 
-    # TODO: SAFETY STATS
+    # SAFETY STATS
 
     # Gather all stats of each cohort (currently only has cohort 1)
     total_infused_df = infusion_df.copy()
@@ -914,9 +914,6 @@ def DSMB15122(
             engine="xlsxwriter",
             engine_kwargs={"options": {"nan_inf_to_errors": True}},
         ) as writer:
-            # TODO: - Add formatting and coloring
-            # TODO: - for each tab: write data, format data, write header, format header
-
             ## * FORMATING AND COLORING
             bold_11_format = writer.book.add_format(
                 {
@@ -980,7 +977,7 @@ def DSMB15122(
             )
             # Create a format for a black cell
             if data["DM"]["Subject"].count() > 0:
-                ## TODO: DSMB-Demo Stats Table
+                # DSMB-Demo Stats Table
                 if enrollment_df["Subject"].count() > 0:
                     # * WRITING DATA: LegalSex_list, Age_at_Consent_list, Race_list, Ethnicity_list
                     worksheet1 = writer.book.add_worksheet(
@@ -1088,7 +1085,7 @@ def DSMB15122(
                     worksheet1.merge_range("A22:I22", "Ethnicity", bold_11_format)
                     worksheet1.autofit()
 
-                    ## TODO: Enrollment Listing
+                    # Enrollment Listing
                     # * WRITING DATA: enrollment_df
                     worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
                     # * WRITING HEADER AND FORMATTING
@@ -1118,7 +1115,7 @@ def DSMB15122(
                     # Autofit
                     worksheet2.autofit()
 
-                    ## TODO: DSMB-New Infusion Statistics
+                    # DSMB-New Infusion Statistics
                     # * WRITING DATA: new_infusion_df
                     # * WRITING DATA: enrollment_df
                     worksheet3 = writer.book.add_worksheet("DSMB-Study Tx Statistics")
@@ -1181,7 +1178,7 @@ def DSMB15122(
                     # * Autofit
                     worksheet3.autofit()
 
-                    ## TODO: DSMB-Study Tx & AE Listing
+                    # DSMB-Study Tx & AE Listing
                     worksheet4 = writer.book.add_worksheet("DSMB-Study Tx Listing")
                     # * WRITING AND FORMATING DATA
                     for i in range(0, len(infusion_df)):
@@ -1229,7 +1226,7 @@ def DSMB15122(
                     # Autofit
                     worksheet4.autofit()
 
-                    ## TODO: Summary of Protocol Status
+                    # Summary of Protocol Status
                     worksheet5 = writer.book.add_worksheet(
                         "Status for Eligible Subjects"
                     )

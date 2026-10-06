@@ -4,8 +4,6 @@ from decimal import ROUND_HALF_UP, Decimal
 import numpy as np
 import pandas as pd
 
-# TODO: implement type hints for all functions
-
 
 def add_rename_column_corelisting(
     current_df,
@@ -179,8 +177,6 @@ def get_stats_percentage2(
                       values from the specified column, and the 'Percentage' column contains the percentage of each
                       value relative to the total count within each group.
     """
-    # Your function implementation here
-
     # create a dataframe to store the stats
     main_df = pd.DataFrame()
 

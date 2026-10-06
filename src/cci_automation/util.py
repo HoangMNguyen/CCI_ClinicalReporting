@@ -7,8 +7,6 @@ from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
 
-# TODO: implement type hints for all functions
-
 
 def add_rename_column_corelisting(
     current_df,

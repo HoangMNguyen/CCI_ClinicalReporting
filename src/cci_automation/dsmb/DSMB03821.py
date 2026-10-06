@@ -21,7 +21,7 @@ def DSMB03821(
     output_file_name,
     # debug,
 ):
-    # TODO: DEMO ENROLLMENT LISTING
+    # DEMO ENROLLMENT LISTING
     if not data["DM"].empty:
         # Subject
         enrollment_df = data["DM"][["Subject"]].copy()
@@ -395,7 +395,7 @@ def DSMB03821(
 
         enrollment_df = enrollment_df.drop_duplicates()
 
-        ### TODO: Demo Stats Table
+        # Demo Stats Table
         # !Update this filter options to each cohort
         filter_options = [
             enrollment_df["Consent Date"].notna()
@@ -474,7 +474,7 @@ def DSMB03821(
         )
         update_race_column = {"Race1": "Race"}
         enrollment_df = enrollment_df.rename(columns=update_race_column)
-        ### TODO: INFUSION LISTING
+        # INFUSION LISTING
         # adding Target Cell Dose dictionary
         # !: Update this dictionary to the new study, dose level for VCN-01
         TCD_dict = {
@@ -508,7 +508,7 @@ def DSMB03821(
         # reassign the dataframe to EXCHMO_df with subject, Study Day, and Medication
         EXCHMO_df = grouped_df
 
-        # TODO: INFUSION LISTING Infusion 2
+        # INFUSION LISTING Infusion 2
         # Subject
         infusion_df = enrollment_df[enrollment_df["Treated"] == "Yes"]["Subject"].copy()
         infusion_df = infusion_df.sort_values()
@@ -599,7 +599,7 @@ def DSMB03821(
         # fill NaN with empty string
         infusion_df = infusion_df.fillna("").infer_objects()
 
-        # # TODO: Infusion Listing Day 0-R
+        # Infusion Listing Day 0-R
 
         # Subject
         infusionR_df = data["DM"][["Subject"]].copy()
@@ -713,8 +713,8 @@ def DSMB03821(
         # Only keep the rows that have Event Group Label
         infusionR_df = infusionR_df[infusionR_df["Event Group Label"] != ""]
 
-        ## TODO: FORMATTING THE DATAFRAME
-        # TODO: Day 0
+        # FORMATTING THE DATAFRAME
+        # Day 0
         # Convert the columns to scientific notation if the value is not NaN
 
         infusion_df["Total huCART-meso Cell Dose Administered"] = infusion_df[
@@ -797,7 +797,7 @@ def DSMB03821(
             "Total Cell Dose Administered"
         ].replace("", "N/A")
 
-        # # # TODO: PREPARE
+        # PREPARE
         # Filter for Cohort 1&2 response data frame
         response_df = infusion_df[
             (infusion_df["Study Assignment"] == "Cohort 1")
@@ -2449,9 +2449,6 @@ def DSMB03821(
         with pd.ExcelWriter(
             output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
         ) as writer:
-            # TODO: - Add formatting and coloring
-            # TODO: - for each tab: write data, format data, write header, format header
-
             ## * FORMATING AND COLORING
             bold_11_format = writer.book.add_format(
                 {
@@ -2515,7 +2512,7 @@ def DSMB03821(
             )
             # Create a format for a black cell
             if data["DM"]["Subject"].count() > 0:
-                ## TODO: DSMB-Demo Stats Table
+                # DSMB-Demo Stats Table
                 if enrollment_df["Subject"].count() > 0:
                     # * WRITING DATA: LegalSex_list, Age_at_Consent_list, Race_list, Ethnicity_list
                     worksheet1 = writer.book.add_worksheet("DSMB-Demo Stats Table")
@@ -2633,7 +2630,7 @@ def DSMB03821(
                     worksheet1.merge_range("A23:U23", "Ethnicity", bold_11_format)
                     worksheet1.autofit()
 
-                    ## TODO: Enrollment Listing
+                    # Enrollment Listing
                     # * WRITING DATA: enrollment_df
                     worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
                     enrollment_df = enrollment_df.drop(columns=["Treated"])
@@ -2656,7 +2653,7 @@ def DSMB03821(
                     # Autofit
                     worksheet2.autofit()
 
-                    ## TODO: DSMB-Infusion Listing
+                    # DSMB-Infusion Listing
                     worksheet3 = writer.book.add_worksheet("DSMB-Infusion Listing")
                     # * WRITING AND FORMATING DATA
                     infusion_df = infusion_df.drop(columns=["Event Group Label"])
@@ -2727,7 +2724,7 @@ def DSMB03821(
                     # Autofit
                     worksheet3.autofit()
 
-                    ## TODO: Response Listing for Cohorts 1&2
+                    # Response Listing for Cohorts 1&2
                     worksheet4 = writer.book.add_worksheet(
                         "Cohorts 1 & 2 Response Listing"
                     )
@@ -2798,7 +2795,7 @@ def DSMB03821(
                             )
                     worksheet4.autofit()
 
-                    ## TODO: Response Listing for Arms A & B
+                    # Response Listing for Arms A & B
                     worksheet5 = writer.book.add_worksheet(
                         "Arms A & B Response Listing"
                     )
@@ -2869,7 +2866,7 @@ def DSMB03821(
                             )
                     worksheet5.autofit()
 
-                    ## TODO: Summary of Protocol Status
+                    # Summary of Protocol Status
                     worksheet6 = writer.book.add_worksheet(
                         "Status for Eligible Subjects"
                     )

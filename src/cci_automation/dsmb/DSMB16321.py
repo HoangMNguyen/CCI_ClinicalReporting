@@ -270,7 +270,7 @@ class DSMB16321:
         return enrollment_output_df, enrollment_df
 
     def enrollment_stat_table(self, enrollment_df):
-        ### TODO: Demo Stats Table
+        # Demo Stats Table
         # !Update this filter options to each cohort
         filter_options = [
             enrollment_df["Consent Date"].notna()
@@ -535,7 +535,7 @@ class DSMB16321:
 
     def infusion_listing(self):
         data = self.data
-        ### TODO: INFUSION LISTING
+        # INFUSION LISTING
         # adding Target Cell Dose dictionary
         # !: Update this dictionary to the new study
         TCD_dict = {
@@ -600,7 +600,7 @@ class DSMB16321:
         # Drop helper column if not needed
         raw_infusion_df = raw_infusion_df.drop(columns=["First Treatment Date"])
 
-        # TODO: INFUSION LISTING Day 0
+        # INFUSION LISTING Day 0
 
         infusion_df = raw_infusion_df[
             (raw_infusion_df["Event Group Label"] == "Day 0")
@@ -675,7 +675,7 @@ class DSMB16321:
             ]
         ]
 
-        # TODO: Infusion Listing Day 0-R1, Day 0-R2
+        # Infusion Listing Day 0-R1, Day 0-R2
 
         infusionR_df = raw_infusion_df[
             (raw_infusion_df["Event Group Label"] == "Day 0-R1")
@@ -779,7 +779,7 @@ class DSMB16321:
         return infusion_df, infusionR_df
 
     def infusion_stats(self, infusion_df, infusionR_df):
-        # TODO: INFUSION STATISTICS
+        # INFUSION STATISTICS
         infusion_count = []
         # * Cohort 1
         # Create a new dataframe for Cohort 1 with infusion_df
@@ -973,8 +973,8 @@ class DSMB16321:
         infusion_count.append(total_subject_count)
         self.infusion_count = infusion_count
 
-        ## TODO: FORMATTING THE DATAFRAME
-        # TODO: Day 0
+        # FORMATTING THE DATAFRAME
+        # Day 0
         # Convert the columns to scientific notation if the value is not NaN
         infusion_df["Target Dose"] = infusion_df["Target Dose"].apply(
             lambda x: (
@@ -1009,7 +1009,7 @@ class DSMB16321:
             axis=1,
         )
 
-        # TODO: Day 0-R1
+        # Day 0-R1
         # Convert the columns to scientific notation if the value is not NaN
         infusionR_df["CART-EGFR-IL13Rα2 Cell Dose"] = infusionR_df[
             "CART-EGFR-IL13Rα2 Cell Dose"
@@ -1554,9 +1554,6 @@ class DSMB16321:
         with pd.ExcelWriter(
             output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
         ) as writer:
-            # TODO: - Add formatting and coloring
-            # TODO: - for each tab: write data, format data, write header, format header
-
             ## * FORMATING AND COLORING
             bold_11_format = writer.book.add_format(
                 {
@@ -1620,7 +1617,7 @@ class DSMB16321:
             )
             # Create a format for a black cell
             if data["DM"]["Subject"].count() > 0:
-                ## TODO: DSMB-Demo Stats Table
+                # DSMB-Demo Stats Table
                 if self.enrollment_listing_df_output["Subject"].count() > 0:
                     # * WRITING DATA: LegalSex_list, Age_at_Consent_list, Race_list, Ethnicity_list
                     worksheet1 = writer.book.add_worksheet(
@@ -1739,7 +1736,7 @@ class DSMB16321:
                     worksheet1.merge_range("A22:Q22", "Ethnicity", bold_11_format)
                     worksheet1.autofit()
 
-                    ## TODO: Enrollment Listing
+                    # Enrollment Listing
                     # * WRITING DATA: enrollment_listing_df_output
                     worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
 
@@ -1875,7 +1872,7 @@ class DSMB16321:
                     # Autofit
                     worksheet3.autofit()
 
-                    ## TODO: Study Tx Statistics
+                    # Study Tx Statistics
                     worksheet4 = writer.book.add_worksheet("DSMB-Treatment Statistics")
 
                     # * FORMATING DATA
@@ -2014,7 +2011,7 @@ class DSMB16321:
                     # * Autofit
                     worksheet4.autofit()
 
-                    ## TODO: DSMB-Infusion Listing
+                    # DSMB-Infusion Listing
                     worksheet5 = writer.book.add_worksheet("DSMB-Treatment Listing")
                     # * WRITING AND FORMATING DATA
                     for i in range(0, len(self.infusion_df)):
@@ -2068,7 +2065,7 @@ class DSMB16321:
 
                     worksheet5.autofit()
 
-                    ## TODO: DSMB-Retreatment Listing
+                    # DSMB-Retreatment Listing
                     worksheet6 = writer.book.add_worksheet("DSMB-Retreatment Listing")
                     # if there are subjects in infusionR_df
                     if len(self.infusionR_df) > 0:
@@ -2130,7 +2127,7 @@ class DSMB16321:
                     # Autofit
                     worksheet6.autofit()
 
-                    ## TODO: EGFR for Eligible Subjects
+                    # EGFR for Eligible Subjects
                     worksheet7 = writer.book.add_worksheet("EGFR for Eligible Subjects")
 
                     # * WRITING HEADER AND FORMATTING

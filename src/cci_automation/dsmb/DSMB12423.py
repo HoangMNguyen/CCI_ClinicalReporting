@@ -232,7 +232,7 @@ class DSMB12423:
         return enrollment_output_df, enrollment_df
 
     def enrollment_stat_table(self, enrollment_df):
-        ### TODO: Demo Stats Table
+        # Demo Stats Table
         # !Update this filter options to each cohort
         filter_options = [
             enrollment_df["Consent Date"].notna()
@@ -299,7 +299,7 @@ class DSMB12423:
 
     def infusion_listing(self):
         data = self.data
-        ### TODO: INFUSION LISTING
+        # INFUSION LISTING
         # adding Target Cell Dose dictionary
         # !: Update this dictionary to the new study
         TCD_dict = {
@@ -369,7 +369,7 @@ class DSMB12423:
         # convert the date to datetime object and format it to MM-DD-YYYY
         raw_infusion_df = remove_leading_zeros_from_dates(raw_infusion_df)
 
-        # TODO: INFUSION LISTING Day 0
+        # INFUSION LISTING Day 0
 
         infusion_df = raw_infusion_df[
             raw_infusion_df["Event Group Label"] == "Day 0"
@@ -468,7 +468,7 @@ class DSMB12423:
             ]
         ]
 
-        # TODO: Infusion Listing Day 0-R
+        # Infusion Listing Day 0-R
         infusionR_df = raw_infusion_df[
             raw_infusion_df["Event Group Label"] == "Day 0-R"
         ].copy()
@@ -546,7 +546,7 @@ class DSMB12423:
         return infusion_df, infusionR_df
 
     def infusion_stats(self, infusion_df, infusionR_df):
-        # TODO: INFUSION STATISTICS
+        # INFUSION STATISTICS
         infusion_count = []
         # * Cohort A: Non-Hodgkin Lymphoma
         # Create a new dataframe for Total huCAR T Cell Dose Administered table with infusion_df
@@ -592,8 +592,8 @@ class DSMB12423:
         infusion_count.append(total_subject_count)
         self.infusion_count = infusion_count
 
-        ## TODO: FORMATTING THE DATAFRAME
-        # TODO: Day 0
+        # FORMATTING THE DATAFRAME
+        # Day 0
         # Convert the columns to scientific notation if the value is not NaN
         infusion_df["Target Cell Dose"] = infusion_df["Target Cell Dose"].apply(
             lambda x: (
@@ -625,7 +625,7 @@ class DSMB12423:
             lambda row: str(x) + "%" if pd.notna(x := row["%scFv Flow"]) else x, axis=1
         )
 
-        # TODO: Day 0-R
+        # Day 0-R
         # Convert the columns to scientific notation if the value is not NaN
         infusionR_df["Total TmCD19-IL18 CAR T Cell Dose Administered"] = infusionR_df[
             "Total TmCD19-IL18 CAR T Cell Dose Administered"
@@ -652,7 +652,7 @@ class DSMB12423:
 
     def response_listing(self):
         data = self.data
-        # TODO: PREPARE
+        # PREPARE
         # Disease Response NHL PET based dictionary
         DR_NHL_PET_dict = {
             "Complete Metabolic Response (CMR)": 1,
@@ -762,7 +762,7 @@ class DSMB12423:
             ]
         )
 
-        # TODO: RESPONSE LISTING NHL ONLY
+        # RESPONSE LISTING NHL ONLY
         # Response data dataframe for NHL only
         responseA_df = data["NHLRS"][
             [
@@ -782,7 +782,7 @@ class DSMB12423:
         # replace Not Assessed with Not Reported in all columns
         responseA_df = responseA_df.replace("Not Assessed", "Not Reported")
 
-        # TODO: Cohort A - NHL Primary
+        # Cohort A - NHL Primary
         # Filter to only Primary Treatment
         responseA_primary_df = responseA_df[
             responseA_df[
@@ -1260,7 +1260,7 @@ class DSMB12423:
             )
             # * Formatting the dataframe
 
-            # TODO: Cohort A - NHL Retreatment
+            # Cohort A - NHL Retreatment
             # Filter to only Primary Treatment
             responseA_retreatment_df = responseA_df[
                 responseA_df[
@@ -1684,8 +1684,8 @@ class DSMB12423:
 
     def response_stats(self):
         data = self.data
-        ### TODO: REPONSE STATS
-        # TODO: SAFETY STATS
+        # REPONSE STATS
+        # SAFETY STATS
 
         # Gather all stats of Cohort A
         total_infused_df = self.infusion_df.copy()
@@ -1736,7 +1736,7 @@ class DSMB12423:
             "Not Reported",
         ]
 
-        # TODO: RESPONSE STATS
+        # RESPONSE STATS
         if self.subject_A_prim_count > 0:
             responseA_stat = self.responseA_primary_df.copy()
             # replace 'Not Assessed' with 'Not Reported' for all columns in responseA_stat
@@ -1754,7 +1754,7 @@ class DSMB12423:
                 "CT-Based ORR", CT_Response_Codelist, responseA_stat
             )
 
-        # TODO: UPDATE FORMAT for cohort A after getting the stats
+        # UPDATE FORMAT for cohort A after getting the stats
 
         if self.subject_A_prim_count > 0:
             self.responseA_primary_df.loc[
@@ -1799,9 +1799,6 @@ class DSMB12423:
         with pd.ExcelWriter(
             output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
         ) as writer:
-            # TODO: - Add formatting and coloring
-            # TODO: - for each tab: write data, format data, write header, format header
-
             ## * FORMATING AND COLORING
             bold_11_format = writer.book.add_format(
                 {
@@ -1865,7 +1862,7 @@ class DSMB12423:
             )
             # Create a format for a black cell
             if data["DM"]["Subject"].count() > 0:
-                ## TODO: DSMB-Demo Stats Table
+                # DSMB-Demo Stats Table
                 if self.enrollment_listing_df_output["Subject"].count() > 0:
                     # * WRITING DATA: LegalSex_list, Age_at_Consent_list, Race_list, Ethnicity_list
                     worksheet1 = writer.book.add_worksheet("DSMB-Demo Stats Table")
@@ -1971,7 +1968,7 @@ class DSMB12423:
                     worksheet1.merge_range("A22:I22", "Ethnicity", bold_11_format)
                     worksheet1.autofit()
 
-                    ## TODO: Enrollment Listing
+                    # Enrollment Listing
                     # * WRITING DATA: enrollment_listing_df_output
                     worksheet2 = writer.book.add_worksheet("DSMB-Enrollment Listing")
                     # * WRITING HEADER AND FORMATTING
@@ -2007,7 +2004,7 @@ class DSMB12423:
                     # Autofit
                     worksheet2.autofit()
 
-                    ## TODO: DSMB-New Infusion Statistics
+                    # DSMB-New Infusion Statistics
                     # * WRITING DATA: new_infusion_df
                     worksheet3 = writer.book.add_worksheet(
                         "DSMB-New Infusion Statistics"
@@ -2057,7 +2054,7 @@ class DSMB12423:
                     # * Autofit
                     worksheet3.autofit()
 
-                    ## TODO: DSMB-Infusion Listing
+                    # DSMB-Infusion Listing
                     worksheet4 = writer.book.add_worksheet("DSMB-Infusion Listing")
                     # * WRITING AND FORMATING DATA
                     for i in range(0, len(self.infusion_df)):
@@ -2155,7 +2152,7 @@ class DSMB12423:
                     # Autofit
                     worksheet4.autofit()
 
-                    ## TODO: DSMB-Response Stats
+                    # DSMB-Response Stats
                     worksheet5 = writer.book.add_worksheet("DSMB-Response Stats")
                     # * WRITING DATA
                     # * FORMATING DATA
@@ -2279,7 +2276,7 @@ class DSMB12423:
                         worksheet5.write(i + 9, 2, response_A_CT[i], bold_11_format)
                     worksheet5.autofit()
 
-                    ## TODO: Response Listing NHL
+                    # Response Listing NHL
                     if self.subject_A_prim_count > 0:
                         worksheet6 = writer.book.add_worksheet("Response Listing NHL")
                         # * WRITING DATA
