@@ -16,9 +16,7 @@ from clinical_reporting.export import get_excel_formats, to_short_date_string
 def test_load_tabular_file_preserves_literal_na(tmp_path):
     input_path = tmp_path / "additional.csv"
     input_path.write_text(
-        "Subject,Value,Blank\n"
-        "001,NA,\n"
-        "002,N/A,text\n",
+        "Subject,Value,Blank\n001,NA,\n002,N/A,text\n",
         encoding="utf-8",
     )
 
@@ -71,7 +69,9 @@ def test_object_dtype_dates_export_as_text_not_datetimes(tmp_path):
         {
             "Subject": ["001", "002", "003"],
             # object dtype: datetime objects mixed with a non-date value
-            "D+28": pd.Series([datetime(2025, 11, 11), "N/A", datetime(2025, 1, 5)], dtype=object),
+            "D+28": pd.Series(
+                [datetime(2025, 11, 11), "N/A", datetime(2025, 1, 5)], dtype=object
+            ),
         }
     )
 
@@ -122,12 +122,18 @@ def test_get_excel_formats_styles_worksheet(tmp_path):
     assert all(c.font.bold for c in header_cells)
     assert all(c.alignment.wrap_text for c in header_cells)
     assert all(_has_thin_border(c) for c in header_cells)
-    assert all(c.alignment.horizontal == "left" and c.alignment.vertical == "center" for c in header_cells)
+    assert all(
+        c.alignment.horizontal == "left" and c.alignment.vertical == "center"
+        for c in header_cells
+    )
 
     # Data: not bold, bordered, left + middle aligned.
     assert not any(c.font.bold for c in data_cells)
     assert all(_has_thin_border(c) for c in data_cells)
-    assert all(c.alignment.horizontal == "left" and c.alignment.vertical == "center" for c in data_cells)
+    assert all(
+        c.alignment.horizontal == "left" and c.alignment.vertical == "center"
+        for c in data_cells
+    )
 
     # autofit set explicit (non-default) widths on every column.
     assert worksheet.column_dimensions["A"].width is not None

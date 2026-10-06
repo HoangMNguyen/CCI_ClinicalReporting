@@ -25,7 +25,10 @@ def test_static_filter_string_equality_is_case_insensitive():
 
 def test_static_filter_contains_and_in():
     df = _people()
-    assert apply_static_filter(df, "Name", "Contains", "a")["Name"].tolist() == ["amy", "cat"]
+    assert apply_static_filter(df, "Name", "Contains", "a")["Name"].tolist() == [
+        "amy",
+        "cat",
+    ]
     assert apply_static_filter(df, "Age", "In", "25, 75")["Age"].tolist() == [25, 75]
 
 

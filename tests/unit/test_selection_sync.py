@@ -21,7 +21,9 @@ def report():
     report.set_data(
         {
             "DM": pd.DataFrame({"Subject": ["001", "002"], "AGE": [30, 40]}),
-            "AE": pd.DataFrame({"Subject": ["001", "002"], "TERM": ["Headache", "Nausea"]}),
+            "AE": pd.DataFrame(
+                {"Subject": ["001", "002"], "TERM": ["Headache", "Nausea"]}
+            ),
         }
     )
     report.set_common_item_state("Subject", selected=True)
@@ -30,9 +32,14 @@ def report():
     report.selected_forms["AE"].set_form_item_state("TERM", selected=True)
     report.update_join_items("DM", [], 1, JoinHow.LEFT)
     report.update_join_items("AE", ["Subject"], 2, JoinHow.LEFT)
-    report.set_rename_dict({"DM.AGE": "Age", "AE.TERM": "Adverse Event", "Subject": "ID"})
+    report.set_rename_dict(
+        {"DM.AGE": "Age", "AE.TERM": "Adverse Event", "Subject": "ID"}
+    )
     report.static_filter_items = [("DM.AGE", ">", "0"), ("AE.TERM", "!=", "x")]
-    report.dynamic_filter_items = [("DM.AGE", "!=", "AE.TERM"), ("Subject", "=", "Subject")]
+    report.dynamic_filter_items = [
+        ("DM.AGE", "!=", "AE.TERM"),
+        ("Subject", "=", "Subject"),
+    ]
     report.sync_with_selection()
     assert report.validate() == []
     return report
@@ -61,7 +68,11 @@ def test_readding_form_restores_parked_renames_and_filters(report):
     report.selected_forms["AE"].set_form_item_state("TERM", selected=True)
     report.sync_with_selection()
 
-    assert report.rename_dict == {"DM.AGE": "Age", "AE.TERM": "Adverse Event", "Subject": "ID"}
+    assert report.rename_dict == {
+        "DM.AGE": "Age",
+        "AE.TERM": "Adverse Event",
+        "Subject": "ID",
+    }
     assert ("AE.TERM", "!=", "x") in report.static_filter_items
     assert ("DM.AGE", "!=", "AE.TERM") in report.dynamic_filter_items
     assert report.validate() == []

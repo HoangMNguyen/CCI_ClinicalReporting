@@ -328,5 +328,5 @@ class WidgetBaseMixin:
                     signal.disconnect()
                 else:
                     signal.disconnect(slot)
-            except (RuntimeError, TypeError):
+            except RuntimeError, TypeError:
                 pass

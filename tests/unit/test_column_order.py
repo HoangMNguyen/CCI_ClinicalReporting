@@ -113,12 +113,20 @@ def test_changing_join_order_regroups_default_order(report_with_data):
 
     report.update_join_items("DM", [], 1, JoinHow.LEFT)
     report.update_join_items("VS", ["Subject"], 2, JoinHow.LEFT)
-    assert report.update_selected_items_order_list() == ["Subject", "DM.Weight", "VS.Pulse"]
+    assert report.update_selected_items_order_list() == [
+        "Subject",
+        "DM.Weight",
+        "VS.Pulse",
+    ]
 
     # Swapping the join order re-derives the default: VS now merges first.
     report.update_join_items("VS", [], 1, JoinHow.LEFT)
     report.update_join_items("DM", ["Subject"], 2, JoinHow.LEFT)
-    assert report.update_selected_items_order_list() == ["Subject", "VS.Pulse", "DM.Weight"]
+    assert report.update_selected_items_order_list() == [
+        "Subject",
+        "VS.Pulse",
+        "DM.Weight",
+    ]
 
 
 def test_manual_order_survives_join_order_changes(report_with_data):
@@ -134,7 +142,11 @@ def test_manual_order_survives_join_order_changes(report_with_data):
     report.set_selected_items_order_list(["DM.Weight", "Subject", "VS.Pulse"])
     report.update_join_items("VS", [], 1, JoinHow.LEFT)
     report.update_join_items("DM", ["Subject"], 2, JoinHow.LEFT)
-    assert report.update_selected_items_order_list() == ["DM.Weight", "Subject", "VS.Pulse"]
+    assert report.update_selected_items_order_list() == [
+        "DM.Weight",
+        "Subject",
+        "VS.Pulse",
+    ]
 
 
 def test_customized_flag_roundtrips_through_settings(tmp_path, report_with_data):
@@ -215,8 +227,12 @@ def test_reconcile_keeps_input_column_order(report_with_data):
 
 def test_report_output_columns_follow_file_and_merge_order():
     data = {
-        "DM": pd.DataFrame({"Subject": ["001"], "Visit": [1], "Weight": [70], "Age": [30]}),
-        "VS": pd.DataFrame({"Subject": ["001"], "Visit": [1], "Pulse": [60], "BP": [120]}),
+        "DM": pd.DataFrame(
+            {"Subject": ["001"], "Visit": [1], "Weight": [70], "Age": [30]}
+        ),
+        "VS": pd.DataFrame(
+            {"Subject": ["001"], "Visit": [1], "Pulse": [60], "BP": [120]}
+        ),
     }
     report = CLReport()
     report.set_data(data)
@@ -236,7 +252,13 @@ def test_report_output_columns_follow_file_and_merge_order():
 
     result = report.create_report()
 
-    assert list(result.columns) == ["Subject", "DM.Weight", "DM.Age", "VS.Pulse", "VS.BP"]
+    assert list(result.columns) == [
+        "Subject",
+        "DM.Weight",
+        "DM.Age",
+        "VS.Pulse",
+        "VS.BP",
+    ]
 
 
 def test_clform_without_column_order_appends():

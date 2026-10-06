@@ -110,7 +110,10 @@ def test_synchronize_static_filters_keeps_valid_and_skips_empty_rows():
         ],
     )
     widget.synchronize_static_filters()
-    assert report.get_static_filter_items() == [("Subject", "=", "1"), ("DM.Age", ">", "18")]
+    assert report.get_static_filter_items() == [
+        ("Subject", "=", "1"),
+        ("DM.Age", ">", "18"),
+    ]
 
 
 def test_synchronize_static_filters_all_empty_applies_nothing():

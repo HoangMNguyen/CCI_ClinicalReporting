@@ -150,7 +150,9 @@ class CLReport:
             # Remember the input file order of the form's own (non-common)
             # columns so the item lists keep that order from here on.
             new_form.column_order = [
-                item for item in self.data[form].columns if item not in self.static_available_common_items
+                item
+                for item in self.data[form].columns
+                if item not in self.static_available_common_items
             ]
             for item in new_form.column_order:
                 new_form.set_form_item_state(item, selected=False)
@@ -212,7 +214,9 @@ class CLReport:
             if selected
             else (self.selected_common_items, self.available_common_items)
         )
-        return self._move_between_lists(item, source, target, self.static_available_common_items)
+        return self._move_between_lists(
+            item, source, target, self.static_available_common_items
+        )
 
     def get_selected_common_items(self):
         """Get the list of selected common items."""
@@ -290,7 +294,9 @@ class CLReport:
         if self.order_list_customized:
             # Keep the user's arrangement for items still selected; once none
             # of it survives there is nothing manual left to preserve.
-            new_order_list = [item for item in self.selected_items_order_list if item in canonical_set]
+            new_order_list = [
+                item for item in self.selected_items_order_list if item in canonical_set
+            ]
             if not new_order_list:
                 self.order_list_customized = False
 
@@ -437,7 +443,8 @@ class CLReport:
         # Only selected forms are persisted; available forms are reconstructed later
         selected_forms_data = settings.get("selected_forms", {})
         self.selected_forms = {
-            name: self._deserialize_form(name, form_data) for name, form_data in selected_forms_data.items()
+            name: self._deserialize_form(name, form_data)
+            for name, form_data in selected_forms_data.items()
         }
 
         # Only selected common items are persisted; available/common pools are reconstructed later
@@ -496,8 +503,12 @@ class CLReport:
 
         # Keep both pools in the input column order.
         selected_lookup = set(self.selected_common_items)
-        self.selected_common_items = [item for item in actual_common_items if item in selected_lookup]
-        self.available_common_items = [item for item in actual_common_items if item not in selected_lookup]
+        self.selected_common_items = [
+            item for item in actual_common_items if item in selected_lookup
+        ]
+        self.available_common_items = [
+            item for item in actual_common_items if item not in selected_lookup
+        ]
 
         valid_selected_forms: dict[str, CLForm] = {}
         for form_name, form in list(self.selected_forms.items()):
@@ -507,7 +518,9 @@ class CLReport:
 
             # The form's own columns, in input file order.
             form.column_order = [
-                column for column in self.data[form_name].columns if column not in common_lookup
+                column
+                for column in self.data[form_name].columns
+                if column not in common_lookup
             ]
 
             for item in list(form.get_selected_form_items()):
@@ -516,8 +529,12 @@ class CLReport:
                     missing_items.add(qualify(form_name, item))
 
             selected_items = set(form.get_selected_form_items())
-            form.selected_form_items = [column for column in form.column_order if column in selected_items]
-            form.available_form_items = [column for column in form.column_order if column not in selected_items]
+            form.selected_form_items = [
+                column for column in form.column_order if column in selected_items
+            ]
+            form.available_form_items = [
+                column for column in form.column_order if column not in selected_items
+            ]
             valid_selected_forms[form_name] = form
 
         self.selected_forms = valid_selected_forms
@@ -529,7 +546,9 @@ class CLReport:
                 continue
             new_form = CLForm(form_name)
             new_form.column_order = [
-                column for column in self.data[form_name].columns if column not in common_lookup
+                column
+                for column in self.data[form_name].columns
+                if column not in common_lookup
             ]
             new_form.available_form_items = list(new_form.column_order)
             self.available_forms[form_name] = new_form
@@ -537,11 +556,23 @@ class CLReport:
         # Build a set of valid identifiers for filters and ordering.
         valid_identifiers = self._active_identifiers(include_unqualified=True)
 
-        self.order_list = [item for item in self.order_list if item in valid_identifiers]
-        self.selected_items_order_list = [item for item in self.selected_items_order_list if item in valid_identifiers]
-        self.rename_dict = {key: value for key, value in self.rename_dict.items() if key in valid_identifiers}
+        self.order_list = [
+            item for item in self.order_list if item in valid_identifiers
+        ]
+        self.selected_items_order_list = [
+            item for item in self.selected_items_order_list if item in valid_identifiers
+        ]
+        self.rename_dict = {
+            key: value
+            for key, value in self.rename_dict.items()
+            if key in valid_identifiers
+        }
 
-        self.static_filter_items = [item for item in self.static_filter_items if item and item[0] in valid_identifiers]
+        self.static_filter_items = [
+            item
+            for item in self.static_filter_items
+            if item and item[0] in valid_identifiers
+        ]
         self.dynamic_filter_items = [
             item
             for item in self.dynamic_filter_items
@@ -569,19 +600,27 @@ class CLReport:
         return identifiers
 
     @staticmethod
-    def _partition_filters(active: list, parked: list, identifiers: set[str], operand_indexes: tuple):
+    def _partition_filters(
+        active: list, parked: list, identifiers: set[str], operand_indexes: tuple
+    ):
         """Split ``active`` + ``parked`` filters by whether all operands are selected.
 
         Parked filters that duplicate an active one are dropped. Malformed
         entries are left active so validation still reports them.
         """
-        active_keys = {tuple(item) for item in active if isinstance(item, (list, tuple))}
-        merged = list(active) + [item for item in parked if tuple(item) not in active_keys]
+        active_keys = {
+            tuple(item) for item in active if isinstance(item, (list, tuple))
+        }
+        merged = list(active) + [
+            item for item in parked if tuple(item) not in active_keys
+        ]
 
         still_active, inactive = [], []
         for item in merged:
             well_formed = isinstance(item, (list, tuple)) and len(item) == 3
-            if well_formed and not all(item[index] in identifiers for index in operand_indexes):
+            if well_formed and not all(
+                item[index] in identifiers for index in operand_indexes
+            ):
                 inactive.append(item)
             else:
                 still_active.append(item)
@@ -607,18 +646,34 @@ class CLReport:
         filterable = self._active_identifiers(include_unqualified=True)
 
         renames = {**self._inactive_rename_dict, **self.rename_dict}
-        self.rename_dict = {key: value for key, value in renames.items() if key in selected}
-        self._inactive_rename_dict = {key: value for key, value in renames.items() if key not in selected}
+        self.rename_dict = {
+            key: value for key, value in renames.items() if key in selected
+        }
+        self._inactive_rename_dict = {
+            key: value for key, value in renames.items() if key not in selected
+        }
 
-        self.static_filter_items, self._inactive_static_filters = self._partition_filters(
-            self.static_filter_items, self._inactive_static_filters, filterable, (0,)
+        self.static_filter_items, self._inactive_static_filters = (
+            self._partition_filters(
+                self.static_filter_items,
+                self._inactive_static_filters,
+                filterable,
+                (0,),
+            )
         )
-        self.dynamic_filter_items, self._inactive_dynamic_filters = self._partition_filters(
-            self.dynamic_filter_items, self._inactive_dynamic_filters, filterable, (0, 2)
+        self.dynamic_filter_items, self._inactive_dynamic_filters = (
+            self._partition_filters(
+                self.dynamic_filter_items,
+                self._inactive_dynamic_filters,
+                filterable,
+                (0, 2),
+            )
         )
 
         self.order_list = [item for item in self.order_list if item in selected]
-        self.selected_items_order_list = [item for item in self.selected_items_order_list if item in selected]
+        self.selected_items_order_list = [
+            item for item in self.selected_items_order_list if item in selected
+        ]
 
     def apply_config(self, config: "ReportConfig") -> Dict[str, list]:
         """Apply a :class:`ReportConfig` and reconcile it against the loaded data.
@@ -760,12 +815,18 @@ class CLReport:
 
         logger.debug("After adding static filter: %s", self.static_filter_items)
 
-    def remove_static_filter_item(self, item: str, operator: str = None, value: str = None):
+    def remove_static_filter_item(
+        self, item: str, operator: str = None, value: str = None
+    ):
         """Remove a static filter item."""
         self.static_filter_items = [
             f
             for f in self.static_filter_items
-            if not (f[0] == item and (operator is None or f[1] == operator) and (value is None or f[2] == value))
+            if not (
+                f[0] == item
+                and (operator is None or f[1] == operator)
+                and (value is None or f[2] == value)
+            )
         ]
 
     def set_static_filter_items(self, items: list):
@@ -790,7 +851,9 @@ class CLReport:
             self.dynamic_filter_items.append((item1, operator, item2))
             logger.debug("Added dynamic filter: %s %s %s", item1, operator, item2)
 
-    def remove_dynamic_filter_item(self, item1: str = None, operator: str = None, item2: str = None):
+    def remove_dynamic_filter_item(
+        self, item1: str = None, operator: str = None, item2: str = None
+    ):
         """Remove a dynamic filter item.
 
         If any parameter is None, it matches any value for that position.
@@ -809,7 +872,9 @@ class CLReport:
         """Set the dynamic filter items."""
         self.dynamic_filter_items = deepcopy(items)
 
-    def update_dynamic_filter_item(self, row: int, item1: str, operator: str, item2: str) -> None:
+    def update_dynamic_filter_item(
+        self, row: int, item1: str, operator: str, item2: str
+    ) -> None:
         """Update or append a dynamic filter item by row.
 
         If ``row`` is within the current list bounds, replace that entry.

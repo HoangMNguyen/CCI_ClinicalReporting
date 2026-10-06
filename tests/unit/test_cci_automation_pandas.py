@@ -77,7 +77,9 @@ def test_add_rename_column_corelisting_left_merges_non_ilb_rows():
         )
     }
 
-    result = add_rename_column_corelisting(current_df, input_data, "FORM", "Raw Column", "Renamed Column")
+    result = add_rename_column_corelisting(
+        current_df, input_data, "FORM", "Raw Column", "Renamed Column"
+    )
 
     expected = pd.DataFrame({"Subject": ["S1", "S2"], "Renamed Column": ["A", "B"]})
     pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
@@ -85,11 +87,17 @@ def test_add_rename_column_corelisting_left_merges_non_ilb_rows():
 
 def test_add_rename_column_df_left_merges_on_compound_key():
     current_df = pd.DataFrame({"Subject": ["S1", "S2"], "Visit": ["V1", "V1"]})
-    input_df = pd.DataFrame({"Subject": ["S1", "S2"], "Visit": ["V1", "V2"], "Dose": [10, 20]})
+    input_df = pd.DataFrame(
+        {"Subject": ["S1", "S2"], "Visit": ["V1", "V2"], "Dose": [10, 20]}
+    )
 
-    result = add_rename_column_df(current_df, input_df, "FORM", "Dose", "Dose Level", key2="Visit")
+    result = add_rename_column_df(
+        current_df, input_df, "FORM", "Dose", "Dose Level", key2="Visit"
+    )
 
-    expected = pd.DataFrame({"Subject": ["S1", "S2"], "Visit": ["V1", "V1"], "Dose Level": [10.0, np.nan]})
+    expected = pd.DataFrame(
+        {"Subject": ["S1", "S2"], "Visit": ["V1", "V1"], "Dose Level": [10.0, np.nan]}
+    )
     pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
 
 
@@ -141,17 +149,23 @@ def test_age_calculation_uses_primary_date_then_fallback_date():
         }
     )
 
-    result = age_calculation(df, "Age", "Date of Birth", "Consent Date", "Main Consent Date")
+    result = age_calculation(
+        df, "Age", "Date of Birth", "Consent Date", "Main Consent Date"
+    )
 
     assert result["Age"].tolist() == [19, 20]
 
 
 def test_remove_leading_zeros_from_dates_formats_date_columns_only():
-    df = pd.DataFrame({"Visit Date": ["2024-01-05", pd.NaT], "Comment": ["2024-01-05", "keep"]})
+    df = pd.DataFrame(
+        {"Visit Date": ["2024-01-05", pd.NaT], "Comment": ["2024-01-05", "keep"]}
+    )
 
     result = remove_leading_zeros_from_dates(df)
 
-    expected = pd.DataFrame({"Visit Date": ["1/5/2024", ""], "Comment": ["2024-01-05", "keep"]})
+    expected = pd.DataFrame(
+        {"Visit Date": ["1/5/2024", ""], "Comment": ["2024-01-05", "keep"]}
+    )
     pd.testing.assert_frame_equal(result, expected)
 
 
@@ -167,7 +181,9 @@ def test_dsmb_add_rename_column_corelisting_left_merges_non_ilb_rows():
         )
     }
 
-    result = dsmb_util.add_rename_column_corelisting(current_df, input_data, "FORM", "Raw Column", "Renamed Column")
+    result = dsmb_util.add_rename_column_corelisting(
+        current_df, input_data, "FORM", "Raw Column", "Renamed Column"
+    )
 
     expected = pd.DataFrame({"Subject": ["S1", "S2"], "Renamed Column": ["A", "B"]})
     pd.testing.assert_frame_equal(result, expected)
@@ -185,7 +201,9 @@ def test_dsmb_get_stats_percentage_counts_and_percentages_codelist_values():
 def test_dsmb_get_stats_percentage2_reindexes_to_custom_group_order():
     df = pd.DataFrame({"Subject": ["S1", "S2"], "Legal Sex": ["Male", "Female"]})
 
-    result = dsmb_util.get_stats_percentage2("Legal Sex", ["Male", "Female", "Unknown"], df)
+    result = dsmb_util.get_stats_percentage2(
+        "Legal Sex", ["Male", "Female", "Unknown"], df
+    )
 
     assert result.index.tolist() == ["Male", "Female", "Unknown"]
     assert result.loc["Male", "Subject"] == "1 (50.0%)"
@@ -201,7 +219,9 @@ def test_dsmb_get_stats_df_coerces_numeric_values_and_formats_summary():
 
 
 def test_dsmb_get_stats_perc_df_formats_percentage_summary():
-    result = dsmb_util.get_stats_perc_df("Percent", pd.DataFrame({"Percent": [1, 2, 3]}))
+    result = dsmb_util.get_stats_perc_df(
+        "Percent", pd.DataFrame({"Percent": [1, 2, 3]})
+    )
 
     assert result.iloc[0, 0] == "2.00% (1.00%)"
     assert result.iloc[1, 0] == "2.00%"
@@ -278,7 +298,13 @@ def test_pandas_groupby_idxmax_safe_pattern_skips_all_missing_date_groups():
     df = pd.DataFrame(
         {
             "Subject": ["S1", "S1", "S2", "S2", "S3"],
-            "Event Date": [pd.NaT, pd.NaT, pd.Timestamp("2024-01-01"), pd.Timestamp("2024-02-01"), pd.Timestamp("2024-03-01")],
+            "Event Date": [
+                pd.NaT,
+                pd.NaT,
+                pd.Timestamp("2024-01-01"),
+                pd.Timestamp("2024-02-01"),
+                pd.Timestamp("2024-03-01"),
+            ],
             "Visit": ["missing 1", "missing 2", "V1", "V2", "V1"],
         }
     )
@@ -299,12 +325,19 @@ def test_pandas_groupby_idxmax_safe_pattern_skips_all_missing_date_groups():
 
 
 def test_pandas_replace_inf_and_nan_for_report_output_without_future_warnings():
-    df = pd.DataFrame({"Dose": [1.0, np.inf, -np.inf, np.nan], "Comment": ["ok", np.nan, "low", "missing"]})
+    df = pd.DataFrame(
+        {
+            "Dose": [1.0, np.inf, -np.inf, np.nan],
+            "Comment": ["ok", np.nan, "low", "missing"],
+        }
+    )
 
     with pandas_future_warnings_as_errors():
         result = df.replace([np.inf, -np.inf], np.nan).fillna("")
 
-    expected = pd.DataFrame({"Dose": [1.0, "", "", ""], "Comment": ["ok", "", "low", "missing"]})
+    expected = pd.DataFrame(
+        {"Dose": [1.0, "", "", ""], "Comment": ["ok", "", "low", "missing"]}
+    )
     pd.testing.assert_frame_equal(result, expected)
 
 

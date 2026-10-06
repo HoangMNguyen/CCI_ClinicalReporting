@@ -48,13 +48,21 @@ def apply_static_filter(df, item, operator, value):
             return df[numeric_column != numeric_value]
         return df[df[item].astype(str).str.lower() != str(value).lower()]
     if operator == ">":
-        return df[numeric_column > numeric_value] if is_numeric else df[df[item] > value]
+        return (
+            df[numeric_column > numeric_value] if is_numeric else df[df[item] > value]
+        )
     if operator == ">=":
-        return df[numeric_column >= numeric_value] if is_numeric else df[df[item] >= value]
+        return (
+            df[numeric_column >= numeric_value] if is_numeric else df[df[item] >= value]
+        )
     if operator == "<":
-        return df[numeric_column < numeric_value] if is_numeric else df[df[item] < value]
+        return (
+            df[numeric_column < numeric_value] if is_numeric else df[df[item] < value]
+        )
     if operator == "<=":
-        return df[numeric_column <= numeric_value] if is_numeric else df[df[item] <= value]
+        return (
+            df[numeric_column <= numeric_value] if is_numeric else df[df[item] <= value]
+        )
     if operator == "Contains":
         return df[df[item].astype(str).str.contains(str(value), case=False, na=False)]
     if operator == "Does not contain":
@@ -63,14 +71,22 @@ def apply_static_filter(df, item, operator, value):
         value_list = [part.strip() for part in str(value).split(",")]
         if is_numeric:
             try:
-                matches = numeric_column.isin([pd.to_numeric(part) for part in value_list])
+                matches = numeric_column.isin(
+                    [pd.to_numeric(part) for part in value_list]
+                )
             except Exception:
-                matches = df[item].astype(str).str.lower().isin(
-                    [part.lower() for part in value_list]
+                matches = (
+                    df[item]
+                    .astype(str)
+                    .str.lower()
+                    .isin([part.lower() for part in value_list])
                 )
         else:
-            matches = df[item].astype(str).str.lower().isin(
-                [part.lower() for part in value_list]
+            matches = (
+                df[item]
+                .astype(str)
+                .str.lower()
+                .isin([part.lower() for part in value_list])
             )
         return df[matches] if operator == "In" else df[~matches]
     if operator == "is Null":
@@ -149,9 +165,7 @@ def apply_dynamic_filter(df, item1, operator, item2):
         "<=": lambda: left <= right,
     }
     result = df_copy[operations[operator]()] if operator in operations else df_copy
-    logger.debug(
-        "Dynamic filter reduced rows from %s to %s", len(df_copy), len(result)
-    )
+    logger.debug("Dynamic filter reduced rows from %s to %s", len(df_copy), len(result))
 
     for column in result.select_dtypes(include=[np.datetime64]).columns:
         result.loc[:, column] = result[column].dt.strftime("%m-%d-%Y")
@@ -233,7 +247,9 @@ class ReportEngine:
         """Prefix non-common columns of the first form with ``form_name.``."""
         report = self.report
         rename_cols = {
-            col: qualify(form_name, col) for col in form_df.columns if col not in report.selected_common_items
+            col: qualify(form_name, col)
+            for col in form_df.columns
+            if col not in report.selected_common_items
         }
         if rename_cols:
             form_df = form_df.rename(columns=rename_cols)
@@ -321,8 +337,12 @@ class ReportEngine:
             item1_col = self._resolve_filter_column(item1, result_df.columns)
             item2_col = self._resolve_filter_column(item2, result_df.columns)
             if item1_col is not None and item2_col is not None:
-                logger.debug("Applying filter: %s %s %s", item1_col, operator, item2_col)
-                result_df = apply_dynamic_filter(result_df, item1_col, operator, item2_col)
+                logger.debug(
+                    "Applying filter: %s %s %s", item1_col, operator, item2_col
+                )
+                result_df = apply_dynamic_filter(
+                    result_df, item1_col, operator, item2_col
+                )
             else:
                 logger.warning(
                     "Could not find columns for dynamic filter: %s %s %s (resolved item1=%s, item2=%s)",
@@ -373,7 +393,11 @@ class ReportEngine:
     def _format_date_columns(self, result_df):
         """Render date columns as ``m/d/yyyy`` strings (no leading zeros)."""
         # Datetime-typed columns, plus any 'date'-named column that parses as dates.
-        date_cols = list(result_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns)
+        date_cols = list(
+            result_df.select_dtypes(
+                include=["datetime64", "datetime", np.datetime64]
+            ).columns
+        )
 
         for col in result_df.columns:
             if "date" in col.lower() and col not in date_cols:
@@ -381,7 +405,9 @@ class ReportEngine:
                     if pd.api.types.is_datetime64_dtype(result_df[col]):
                         inferred_datetime = True
                     else:
-                        inferred_datetime = self._to_datetime_quiet(result_df[col]).notna().any()
+                        inferred_datetime = (
+                            self._to_datetime_quiet(result_df[col]).notna().any()
+                        )
                     if inferred_datetime:
                         date_cols.append(col)
                 except Exception:

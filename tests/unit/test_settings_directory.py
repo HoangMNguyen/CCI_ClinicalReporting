@@ -187,7 +187,9 @@ def test_additional_input_dialog_remembers_last_file_directory(monkeypatch, tmp_
         initial_directories.append(initial_directory)
         return next(selections), ""
 
-    monkeypatch.setattr(additional_input_tab.QFileDialog, "getOpenFileNames", choose_files)
+    monkeypatch.setattr(
+        additional_input_tab.QFileDialog, "getOpenFileNames", choose_files
+    )
     monkeypatch.setattr(data, "load_tabular_file", lambda _path: pd.DataFrame())
 
     widget.click_add_additional_files()

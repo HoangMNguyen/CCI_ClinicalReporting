@@ -113,7 +113,9 @@ def test_report_config_to_dict_returns_isolated_copy():
 
 
 def test_report_config_exposes_study_and_setting_name():
-    config = ReportConfig.from_dict({"study_name": "STUDY01", "setting_name": "baseline"})
+    config = ReportConfig.from_dict(
+        {"study_name": "STUDY01", "setting_name": "baseline"}
+    )
     assert config.study_name == "STUDY01"
     assert config.setting_name == "baseline"
 
@@ -180,7 +182,9 @@ def test_load_setting_from_json_delegates_to_dict(tmp_path):
     from_dict = CLReport()
     from_dict.load_setting_from_dict(settings)
 
-    assert from_json.get_selected_common_items() == from_dict.get_selected_common_items()
+    assert (
+        from_json.get_selected_common_items() == from_dict.get_selected_common_items()
+    )
     assert (
         from_json.selected_forms["VS"].get_join_items()
         == from_dict.selected_forms["VS"].get_join_items()
@@ -425,7 +429,9 @@ def test_full_chaining_pipeline_load_configure_run_export(tmp_path):
 
     # Persist a configuration the way the UI would.
     setting_path = tmp_path / "setting.json"
-    _configure_reference_report().save_setting_to_json(str(setting_path), setting_name="batch")
+    _configure_reference_report().save_setting_to_json(
+        str(setting_path), setting_name="batch"
+    )
 
     # 2. Load data + 3. apply config + 4. run.
     report = CLReport()
@@ -443,5 +449,7 @@ def test_full_chaining_pipeline_load_configure_run_export(tmp_path):
 
     payload = dataframe_to_xlsx_bytes(result)
     worksheet = openpyxl.load_workbook(io.BytesIO(payload)).active
-    headers = [worksheet.cell(row=1, column=c).value for c in range(1, result.shape[1] + 1)]
+    headers = [
+        worksheet.cell(row=1, column=c).value for c in range(1, result.shape[1] + 1)
+    ]
     assert headers == list(result.columns)

@@ -124,10 +124,9 @@ def read_data_dict_zip_corelisting(
                 last_token = file_stem.split("_")[-1]
                 is_eos = "EOS" in last_token and "EOSTCONF" not in last_token
 
-                has_event_date = (
-                    "Event Date" in df.columns
-                    and df["Event Date"].isnull().sum() != len(df["Event Date"])
-                )
+                has_event_date = "Event Date" in df.columns and df[
+                    "Event Date"
+                ].isnull().sum() != len(df["Event Date"])
                 if has_event_date or is_eos:
                     df["Event Date"] = pd.to_datetime(df["Event Date"])
                     if cut_off_date is not None and not is_eos:
@@ -143,9 +142,7 @@ def read_data_dict_zip_corelisting(
                         ]
 
                 df = df.loc[:, ~df.columns.str.contains("_RAW")]
-                df["Subject"] = df["Subject"].str.replace(
-                    "^100-", "", regex=True
-                )
+                df["Subject"] = df["Subject"].str.replace("^100-", "", regex=True)
                 df = df[df["Form Status"] == "Submitted"]
                 df = df[df["Form ILB Status"] == False]  # noqa: E712
 
@@ -168,9 +165,7 @@ def parse_study_name(file_path: str) -> str:
 def strip_subject_prefix(value):
     """Remove a leading ``UPCC`` or ``100-`` subject-site prefix."""
     if isinstance(value, str):
-        cleaned = re.sub(
-            r"^(?:UPCC[-\s]*|100-)", "", value, flags=re.IGNORECASE
-        )
+        cleaned = re.sub(r"^(?:UPCC[-\s]*|100-)", "", value, flags=re.IGNORECASE)
         return cleaned.lstrip()
     return value
 

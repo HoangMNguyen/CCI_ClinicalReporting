@@ -73,16 +73,16 @@ def _select_rows(widget, rows):
             QItemSelectionModel.SelectionFlag.Select
             | QItemSelectionModel.SelectionFlag.Rows,
         )
-    table.setCurrentCell(
-        rows[0], 0, QItemSelectionModel.SelectionFlag.NoUpdate
-    )
+    table.setCurrentCell(rows[0], 0, QItemSelectionModel.SelectionFlag.NoUpdate)
 
 
 def _selected_text(widget):
     table = widget.ui.tableWidget_rename
     return [
         table.item(index.row(), 0).text()
-        for index in sorted(table.selectionModel().selectedRows(), key=lambda index: index.row())
+        for index in sorted(
+            table.selectionModel().selectedRows(), key=lambda index: index.row()
+        )
     ]
 
 

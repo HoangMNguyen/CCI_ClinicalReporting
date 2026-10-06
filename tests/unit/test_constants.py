@@ -64,7 +64,10 @@ def test_qualify_and_split_roundtrip():
 
 def test_split_qualified_splits_on_first_separator_only():
     # Item names may themselves contain dots; only the first separator splits.
-    assert split_qualified("DM.Legal Sex (ig_DM1.SEX)") == ("DM", "Legal Sex (ig_DM1.SEX)")
+    assert split_qualified("DM.Legal Sex (ig_DM1.SEX)") == (
+        "DM",
+        "Legal Sex (ig_DM1.SEX)",
+    )
 
 
 # ---------------------------------------------------------------------------

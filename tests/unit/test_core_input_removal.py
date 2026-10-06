@@ -129,4 +129,3 @@ def test_remove_input_with_no_additional_forms_leaves_empty_report():
     assert widget.report.data == {}
     assert widget.report.available_forms == {}
     assert widget.report.selected_forms == {}
-

@@ -17,7 +17,9 @@ def _two_form_report():
     report.set_data(
         {
             "DM": pd.DataFrame({"Subject": ["001", "002", "003"], "Age": [75, 41, 29]}),
-            "VS": pd.DataFrame({"Subject": ["001", "002", "003"], "Pulse": [70, 90, 55]}),
+            "VS": pd.DataFrame(
+                {"Subject": ["001", "002", "003"], "Pulse": [70, 90, 55]}
+            ),
         }
     )
     report.add_selected_form("DM")

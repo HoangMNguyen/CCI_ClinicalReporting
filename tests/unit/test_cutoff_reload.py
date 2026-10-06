@@ -137,7 +137,9 @@ def test_reload_is_noop_without_input_file(monkeypatch):
         calls.append(path)
         return {}
 
-    monkeypatch.setattr(settings_module, "read_data_dict_zip_corelisting", tracking_loader)
+    monkeypatch.setattr(
+        settings_module, "read_data_dict_zip_corelisting", tracking_loader
+    )
 
     widget = DummySettingsWidget(checked=True, date_value=datetime.date(2024, 6, 1))
     widget._reload_with_current_cut_off()
@@ -153,7 +155,9 @@ def test_reload_is_noop_when_cutoff_unchanged(monkeypatch):
         calls.append(cut_off_date)
         return _loader(path, cut_off_date)
 
-    monkeypatch.setattr(settings_module, "read_data_dict_zip_corelisting", tracking_loader)
+    monkeypatch.setattr(
+        settings_module, "read_data_dict_zip_corelisting", tracking_loader
+    )
 
     # Checkbox unchecked -> effective cut-off is None, matching the applied None.
     widget = DummySettingsWidget(checked=False, date_value=datetime.date(2024, 6, 1))

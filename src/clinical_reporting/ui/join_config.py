@@ -70,7 +70,7 @@ class JoinConfigMixin:
             if form_name in join_data and join_data[form_name]["order"]:
                 try:
                     desired_order = int(join_data[form_name]["order"])
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     desired_order = 1
             clamped_order = min(max(1, desired_order), max_order)
             join_order_combo.setCurrentText(str(clamped_order))
