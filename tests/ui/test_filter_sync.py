@@ -10,7 +10,7 @@ import pandas as pd
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.filters_tab import FiltersMixin
+from clinical_reporting.ui.pages.filters import FiltersMixin
 
 
 class _Combo:

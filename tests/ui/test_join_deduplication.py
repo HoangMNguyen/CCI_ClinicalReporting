@@ -10,7 +10,7 @@ from cci_ui.theme.tokens import COMFORTABLE, DARK, Density, Scheme
 from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.join_config import JoinsMixin
+from clinical_reporting.ui.pages.joins import JoinsMixin
 
 
 class DummyJoinWidget(JoinsMixin, WidgetBaseMixin):

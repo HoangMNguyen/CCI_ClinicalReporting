@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.ordering_tab import OrderRenameMixin
+from clinical_reporting.ui.pages.order_rename import OrderRenameMixin
 
 
 class DummyOrderWidget(OrderRenameMixin, WidgetBaseMixin):

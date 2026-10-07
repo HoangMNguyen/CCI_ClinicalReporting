@@ -8,7 +8,7 @@ from tests.unit.fakes import FakeBanner
 from clinical_reporting.models import CLForm, JoinHow
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.run_save_tab import PreviewExportMixin
+from clinical_reporting.ui.pages.preview_export import PreviewExportMixin
 from clinical_reporting.validation import (
     ReportValidationError,
     ReportValidationIssue,

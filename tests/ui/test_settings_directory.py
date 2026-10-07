@@ -6,7 +6,7 @@ from tests.unit.fakes import FakeBanner, FakeCheckBox, FakePathPicker
 from clinical_reporting import data
 from clinical_reporting.ui import additional_input_tab, dialogs, settings_tab
 from clinical_reporting.ui.additional_input_tab import AdditionalInputMixin
-from clinical_reporting.ui.run_save_tab import PreviewExportMixin
+from clinical_reporting.ui.pages.preview_export import PreviewExportMixin
 from clinical_reporting.ui.settings_tab import SourceDataMixin
 
 

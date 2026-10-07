@@ -34,9 +34,9 @@ def _built_ui():
 
 
 def _names_used_by_mixins():
-    """Every ``<x>.ui.<name>`` and ``getattr(<x>.ui, "<name>")`` in ui/*.py."""
+    """Every ``<x>.ui.<name>`` and ``getattr(<x>.ui, "<name>")`` in ui/ and pages/."""
     used = {}
-    for path in sorted(UI_DIR.glob("*.py")):
+    for path in sorted(UI_DIR.rglob("*.py")):  # pages/ included
         if path.name in {"main_ui.py", "preview.py"}:
             continue
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):

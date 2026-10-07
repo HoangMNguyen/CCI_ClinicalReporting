@@ -19,12 +19,12 @@ from cci_ui.theme.manager import ThemeManager
 
 from .additional_input_tab import AdditionalInputMixin
 from .base import WidgetBaseMixin
-from .filters_tab import FiltersMixin
-from .join_config import JoinsMixin
 from .main_ui import ClinicalReportingUi
 from .navigation import NavigationMixin
-from .ordering_tab import OrderRenameMixin
-from .run_save_tab import PreviewExportMixin
+from .pages.filters import FiltersMixin
+from .pages.joins import JoinsMixin
+from .pages.order_rename import OrderRenameMixin
+from .pages.preview_export import PreviewExportMixin
 from .selection_tabs import CommonItemsMixin, FormItemsMixin, FormsMixin
 from .settings_tab import SourceDataMixin
 

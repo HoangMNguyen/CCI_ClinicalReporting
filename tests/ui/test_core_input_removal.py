@@ -7,7 +7,7 @@ from tests.unit.fakes import FakePathPicker, FakeSection, FakeTableView
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.run_save_tab import PreviewExportMixin
+from clinical_reporting.ui.pages.preview_export import PreviewExportMixin
 from clinical_reporting.ui.settings_tab import SourceDataMixin
 
 
