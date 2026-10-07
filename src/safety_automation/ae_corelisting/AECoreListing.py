@@ -14,12 +14,12 @@ import numpy as np
 import pandas as pd
 
 from clinical_reporting.export import get_named_excel_formats
-from clinical_reporting.filenames import output_file_name
 from clinical_reporting.workflow import (
     OutputFile,
     UnsupportedStudyError,
     input_name,
     missing_forms_error,
+    named_output,
     read_corelisting,
 )
 from safety_automation.util import get_dose_level, get_study_name
@@ -66,8 +66,9 @@ def run(corelisting, *, file_name: str = "", study: Optional[str] = None) -> Out
     if not needed <= set(data):
         raise missing_forms_error(WORKFLOW, needed - set(data))
     workbook = AECoreListing(data, study).to_excel_bytes()
-    name = (file_name or "").strip() or default_file_name(study)
-    return OutputFile(output_file_name(name), workbook)
+    return named_output(
+        workbook, file_name=file_name, default_name=default_file_name(study)
+    )
 
 
 class AECoreListing:
