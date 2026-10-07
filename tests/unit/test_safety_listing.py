@@ -125,6 +125,34 @@ def test_a_file_name_without_a_study_number_says_so():
         listing.run(_upload(_export_16321(), "export.zip"))
 
 
+@pytest.mark.parametrize(
+    "name",
+    [
+        "UPCC16321_CoreListing_20260901.zip",  # A date, not a study.
+        "Core_Listings_163211_x.zip",  # Six digits.
+        "Core_Listings_16321abc_x.zip",
+    ],
+)
+def test_a_name_whose_third_part_isnt_a_study_number_says_so(name):
+    with pytest.raises(
+        UnsupportedStudyError, match="study number isn't in the file name"
+    ):
+        listing.run(_upload(_export_16321(), name))
+
+
+@pytest.mark.parametrize(
+    ("name", "study"),
+    [
+        ("Core_Listings_16321 (1).zip", "16321"),  # A browser's second download.
+        ("Core_Listings_12423-TmCD19-IL18_2025_08_27_14_00_EDT.zip", "12423"),
+    ],
+)
+def test_the_study_is_read_from_a_copied_or_hyphenated_name(name, study):
+    output = listing.run(_upload(_export_for(study), name))
+
+    assert output.name.startswith(f"{study} AE DLT ")
+
+
 def test_an_export_without_the_ae_form_says_so():
     export = _upload(
         _export_16321(forms=("DSCA", "EXINF")), "Core_Listings_16321_x.zip"

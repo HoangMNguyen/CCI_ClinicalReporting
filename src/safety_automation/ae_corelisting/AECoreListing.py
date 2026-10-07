@@ -17,12 +17,11 @@ from clinical_reporting.export import get_named_excel_formats
 from clinical_reporting.workflow import (
     OutputFile,
     UnsupportedStudyError,
-    input_name,
     missing_forms_error,
     named_output,
     read_corelisting,
+    study_named_by,
 )
-from safety_automation.util import get_dose_level, get_study_name
 
 # The listing's pandas steps warn about things that don't matter here. Only
 # warnings raised from this module are ignored (a warnings.catch_warnings()
@@ -55,9 +54,10 @@ def run(corelisting, *, file_name: str = "", study: Optional[str] = None) -> Out
     study comes from its file name unless *study* is given. The workbook is
     named *file_name* (or :func:`default_file_name`) plus the date and time.
     Raises :class:`~clinical_reporting.workflow.WorkflowInputError` when the
-    study isn't supported or the export lacks a form the listing reads.
+    file name names no study, the study isn't supported, or the export lacks a
+    form the listing reads.
     """
-    study = study or get_study_name(input_name(corelisting))
+    study = study or study_named_by(corelisting)
     if study not in SUPPORTED_STUDIES:
         raise UnsupportedStudyError(WORKFLOW, study, SUPPORTED_STUDIES)
     data = read_corelisting(corelisting)
@@ -227,6 +227,15 @@ class AECoreListing:
             }
 
         return dose_level_mapping
+
+    @staticmethod
+    def get_dose_level(dose, power, dose_level_mapping):
+        """The dose level administered (DL1, DL2, …), or 'Not Matching'."""
+        actual_dose = dose * (10**power)
+        for dose_level, (p_dose, p_power) in dose_level_mapping.items():
+            if actual_dose == p_dose * (10**p_power):
+                return dose_level
+        return "Not Matching"
 
     def get_AE_header_list(self, study_name):
         if study_name in ("03325", "10325"):
@@ -670,9 +679,9 @@ class AECoreListing:
             EXINF_DLA_df = EXINF_DLA_df.drop(columns=[EXINF_DLA_header_list[1]])
             # get the dose level mapping
             dose_level_mapping = self.get_dose_level_mapping(self.study_name)
-            # calculate the dose level based on the dose and power using function get_dose_level, with first argument as dose (second column), second argument as power (third column), and third argument as dose_level_mapping
+            # The dose level as treated, from the dose and its power of ten.
             EXINF_DLA_df["Dose Level As Treated"] = EXINF_DLA_df.apply(
-                lambda row: get_dose_level(
+                lambda row: self.get_dose_level(
                     row[EXINF_DLA_header_list[2]],
                     row[EXINF_DLA_header_list[3]],
                     dose_level_mapping,
