@@ -42,7 +42,6 @@ class CLReport:
         self.available_common_items = []
         self.selected_common_items = []
         self.new_items = []
-        self.order_list = []
         self.rename_dict = {}
         self.static_available_common_items = []  # Initialize as empty, will be populated dynamically
         self.static_filter_items = []  # Filters: Item Name, Operator, Value
@@ -328,7 +327,7 @@ class CLReport:
 
         This first calls :meth:`sync_with_selection`, which changes the report:
         renames and filters for deselected items are set aside and the order
-        lists are trimmed, exactly as when the user deselects them.
+        list is trimmed, exactly as when the user deselects them.
         """
 
         # Never persist renames or filters for deselected forms/items.
@@ -356,7 +355,6 @@ class CLReport:
             "selected_common_items": deepcopy(self.selected_common_items),
             # User-configured settings
             "new_items": deepcopy(self.new_items),
-            "order_list": deepcopy(self.order_list),
             "rename_dict": deepcopy(self.rename_dict),
             "static_filter_items": [list(item) for item in self.static_filter_items],
             "dynamic_filter_items": [list(item) for item in self.dynamic_filter_items],
@@ -385,7 +383,6 @@ class CLReport:
         # Only selected common items are persisted; available/common pools are reconstructed later
         self.selected_common_items = list(settings.get("selected_common_items", []))
         self.new_items = list(settings.get("new_items", []))
-        self.order_list = list(settings.get("order_list", []))
         self.rename_dict = dict(settings.get("rename_dict", {}))
         # A newly loaded setting replaces anything parked from the previous one.
         self._inactive_rename_dict = {}
@@ -404,16 +401,23 @@ class CLReport:
         else:
             self.dynamic_filter_items = []
 
-        selected_items_order_list = settings.get("selected_items_order_list")
+        saved_order = settings.get("selected_items_order_list")
         # Settings saved before the flag existed carry a hand-tuned order, so a
         # non-empty saved list defaults to "customized" and replays exactly.
-        self.order_list_customized = bool(
-            settings.get("order_list_customized", bool(selected_items_order_list))
-        )
-        if selected_items_order_list is not None:
-            self.selected_items_order_list = list(selected_items_order_list)
+        customized = bool(settings.get("order_list_customized", bool(saved_order)))
+        # A column order kept in "order_list" (no current version writes one)
+        # is the setting's own arrangement unless its saved order counts as
+        # customized (above).
+        legacy_order = list(settings.get("order_list") or [])
+        if legacy_order and not customized:
+            self.selected_items_order_list = legacy_order
+            self.order_list_customized = True
         else:
-            self.update_selected_items_order_list()
+            self.order_list_customized = customized
+            if saved_order is not None:
+                self.selected_items_order_list = list(saved_order)
+            else:
+                self.update_selected_items_order_list()
 
         return settings
 
@@ -483,9 +487,6 @@ class CLReport:
         # Build a set of valid identifiers for filters and ordering.
         valid_identifiers = self._active_identifiers(include_unqualified=True)
 
-        self.order_list = [
-            item for item in self.order_list if item in valid_identifiers
-        ]
         self.selected_items_order_list = [
             item for item in self.selected_items_order_list if item in valid_identifiers
         ]
@@ -561,7 +562,7 @@ class CLReport:
         common item it now joins on) are parked: they are excluded from
         validation, report execution, and saved settings, but restored here
         once their columns are back. An active rename always wins over a parked
-        one for the same item. Order lists are simply pruned, since a column
+        one for the same item. The order list is simply pruned, since a column
         that comes back is re-inserted at its default position. Safe to call
         repeatedly.
 
@@ -597,7 +598,6 @@ class CLReport:
             )
         )
 
-        self.order_list = [item for item in self.order_list if item in selected]
         self.selected_items_order_list = [
             item for item in self.selected_items_order_list if item in selected
         ]
@@ -645,7 +645,7 @@ class CLReport:
 
     # The common items a form joins on decide which of them it puts out as
     # FORM.item (clinical_reporting.report_columns), so every join change
-    # re-syncs renames, filters and order lists with the columns that now
+    # re-syncs renames, filters and the column order with the columns that now
     # exist (sync_with_selection). Change several forms' joins with one
     # update_join_list call: a column that is gone between two calls loses
     # its place in a customized order.

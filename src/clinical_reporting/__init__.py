@@ -23,7 +23,7 @@ from .validation import (
 # Single source of truth for the release version. ``build_support.py`` reads
 # this string when building the executable, so bumping a release means editing
 # it here and nowhere else.
-__version__ = "2.14"
+__version__ = "2.15"
 
 __all__ = [
     "CLForm",

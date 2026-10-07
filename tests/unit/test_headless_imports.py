@@ -36,7 +36,6 @@ CORE_MODULES = [
     "cci_automation.enrollment_log.EnrollmentLog",
     "cci_automation.format_tools.change_type",
     "safety_automation",
-    "safety_automation.util",
     "safety_automation.ae_corelisting.AECoreListing",
     "peer_review_automation",
     "peer_review_automation.sds",

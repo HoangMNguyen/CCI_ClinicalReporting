@@ -130,7 +130,15 @@ def test_a_message_the_reading_raises_itself_passes_as_is():
     [
         ("C:/x/Core_Listings_15420_huCART_2026.zip", "15420"),
         ("Core_Listings_03325.zip", "03325"),
+        ("Core_Listings_15420 (1).zip", "15420"),  # A browser's second download.
+        ("Core_Listings_15420 (12).zip", "15420"),
+        ("Core_Listings_15420_x (1).zip", "15420"),
+        ("Core_Listings_12423-TmCD19-IL18_2025_08_27_14_00_EDT.zip", "12423"),
+        ("Core_Listings_12423-TmCD19-IL18 (1).zip", "12423"),
         ("Core_Listings_154201_x.zip", None),
+        ("Core_Listings_154201-x_2025.zip", None),
+        ("Core_Listings_15420abc_x.zip", None),
+        ("UPCC15420_CoreListing_20260901.zip", None),
         ("export.zip", None),
     ],
 )

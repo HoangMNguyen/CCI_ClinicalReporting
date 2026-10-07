@@ -48,7 +48,7 @@ def test_create_report_applies_filters_and_formatting():
 
     report.static_filter_items = [("Age", ">", "30")]
     report.dynamic_filter_items = [("VS.Pulse", ">", "DM.Age")]
-    report.order_list = ["Subject", "Visit", "DM.Age", "VS.Pulse"]
+    report.selected_items_order_list = ["Subject", "Visit", "DM.Age", "VS.Pulse"]
     report.rename_dict = {"VS.Pulse": "PulseBPM"}
 
     result = report.create_report()
