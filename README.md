@@ -166,6 +166,7 @@ tests/
   unit/                        # fast Qt-free logic tests
   integration/                 # Clinical Reporting end-to-end report/settings/API tests
   ui/                          # design-system, window and page tests (need Qt)
+infra/run_counter/             # AWS stack behind the usage counter (its README)
 docs/design/clinical-reporting-mockup.html  # the approved mockup the design follows
 *.spec, build_support.py       # PyInstaller builds (see Building the executables)
 ```

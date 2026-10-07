@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Clinical Reporting Usage</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --ink: #1f2933;
+    --muted: #616e7c;
+    --line: #d9e2ec;
+    --accent: #1f6feb;
+    --accent-2: #7c3aed;
+    --danger: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; }
+  .meta { color: var(--muted); font-size: 12px; margin-left: auto; }
+  button {
+    font: inherit;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+  }
+  /* Key entry */
+  #key-panel { max-width: 420px; margin: 12vh auto 0; }
+  #key-panel h2 { margin: 0 0 6px; font-size: 16px; }
+  #key-panel p { margin: 0 0 14px; color: var(--muted); }
+  #key-form { display: flex; gap: 8px; }
+  #key-input {
+    flex: 1;
+    font: inherit;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 10px;
+  }
+  #key-error { color: var(--danger); margin: 10px 0 0; min-height: 1.2em; }
+  /* Tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .tile .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .tile .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
+  .tile .value.small { font-size: 15px; font-weight: 500; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .chart-wrap { position: relative; height: 280px; }
+  .table-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td.name { white-space: normal; word-break: break-word; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); font-style: italic; }
+  .badge { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 12px; }
+  .badge.report { background: #dbeafe; color: #1e40af; }
+  .badge.setting { background: #ede9fe; color: #5b21b6; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <section id="key-panel" class="panel" hidden>
+    <h2>Clinical Reporting usage dashboard</h2>
+    <p>Enter the dashboard access key. It is remembered in this browser only.</p>
+    <form id="key-form">
+      <input id="key-input" type="password" autocomplete="off" placeholder="Access key" required>
+      <button class="primary" type="submit">View stats</button>
+    </form>
+    <p id="key-error"></p>
+  </section>
+
+  <section id="dashboard" hidden>
+    <header>
+      <h1>Clinical Reporting usage</h1>
+      <span class="meta" id="generated-at"></span>
+      <button id="refresh">Refresh</button>
+      <button id="forget">Forget key</button>
+    </header>
+
+    <div class="tiles">
+      <div class="tile"><div class="label">Reports saved (total)</div><div class="value" id="tile-reports">–</div></div>
+      <div class="tile"><div class="label">Settings saved (total)</div><div class="value" id="tile-settings">–</div></div>
+      <div class="tile"><div class="label">Users seen</div><div class="value" id="tile-users">–</div></div>
+      <div class="tile"><div class="label">Last activity (UTC)</div><div class="value small" id="tile-last">–</div></div>
+    </div>
+
+    <section class="panel">
+      <h2 id="trend-title">Daily saves</h2>
+      <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+      <p id="chart-fallback" class="empty" hidden>Chart library unavailable on this network; daily counts are listed below.</p>
+      <div class="table-scroll" id="daily-table-wrap" hidden>
+        <table>
+          <thead><tr><th>Date (UTC)</th><th class="num">Reports</th><th class="num">Settings</th></tr></thead>
+          <tbody id="daily-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Saves by user</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>User</th><th class="num">Reports</th><th class="num">Settings</th><th class="num">Total</th></tr></thead>
+          <tbody id="user-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 id="recent-title">Recent saves</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>When (UTC)</th><th>Type</th><th>User</th><th>Name</th></tr></thead>
+          <tbody id="event-rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+"use strict";
+(function () {
+  var STORAGE_KEY = "cci_stats_access_key";
+  var chart = null;
+
+  function readStoredKey() {
+    try { return window.localStorage.getItem(STORAGE_KEY) || ""; } catch (e) { return ""; }
+  }
+  function storeKey(value) {
+    try { window.localStorage.setItem(STORAGE_KEY, value); } catch (e) { /* per-browser convenience only */ }
+  }
+  function clearKey() {
+    try { window.localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+  }
+
+  function show(id, visible) { document.getElementById(id).hidden = !visible; }
+  function setText(id, text) { document.getElementById(id).textContent = text; }
+
+  function showKeyPanel(message) {
+    show("dashboard", false);
+    show("key-panel", true);
+    setText("key-error", message || "");
+    document.getElementById("key-input").focus();
+  }
+
+  function cell(text, className) {
+    var td = document.createElement("td");
+    if (className) td.className = className;
+    td.textContent = text;
+    return td;
+  }
+
+  function emptyRow(tbody, columns, message) {
+    var tr = document.createElement("tr");
+    var td = cell(message, "empty");
+    td.colSpan = columns;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  function typeBadge(eventType) {
+    var td = document.createElement("td");
+    var span = document.createElement("span");
+    var isReport = eventType === "report_saved";
+    span.className = "badge " + (isReport ? "report" : "setting");
+    span.textContent = isReport ? "report" : "setting";
+    td.appendChild(span);
+    return td;
+  }
+
+  function dailyByDate(rows) {
+    var map = {};
+    (rows || []).forEach(function (row) { map[row.date] = row.count; });
+    return map;
+  }
+
+  function dateRange(windowDays) {
+    var labels = [];
+    var now = new Date();
+    for (var i = windowDays - 1; i >= 0; i--) {
+      var day = new Date(now.getTime() - i * 86400000);
+      labels.push(day.toISOString().slice(0, 10));
+    }
+    return labels;
+  }
+
+  function renderTrend(stats) {
+    var windowDays = stats.daily_window_days || 90;
+    setText("trend-title", "Daily saves (last " + windowDays + " days, UTC)");
+    var labels = dateRange(windowDays);
+    var reports = dailyByDate(stats.report_saved.daily);
+    var settings = dailyByDate(stats.setting_saved.daily);
+
+    if (typeof Chart === "undefined") {
+      show("chart-fallback", true);
+      show("daily-table-wrap", true);
+      var tbody = document.getElementById("daily-rows");
+      tbody.textContent = "";
+      var any = false;
+      labels.slice().reverse().forEach(function (date) {
+        var r = reports[date] || 0;
+        var s = settings[date] || 0;
+        if (!r && !s) return;
+        any = true;
+        var tr = document.createElement("tr");
+        tr.appendChild(cell(date));
+        tr.appendChild(cell(String(r), "num"));
+        tr.appendChild(cell(String(s), "num"));
+        tbody.appendChild(tr);
+      });
+      if (!any) emptyRow(tbody, 3, "No saves recorded in this window.");
+      return;
+    }
+
+    show("chart-fallback", false);
+    show("daily-table-wrap", false);
+    var data = {
+      labels: labels,
+      datasets: [
+        {
+          label: "Reports saved",
+          data: labels.map(function (d) { return reports[d] || 0; }),
+          borderColor: "#1f6feb",
+          backgroundColor: "rgba(31, 111, 235, 0.12)",
+          fill: true,
+          tension: 0.25,
+          pointRadius: 0,
+          pointHitRadius: 8
+        },
+        {
+          label: "Settings saved",
+          data: labels.map(function (d) { return settings[d] || 0; }),
+          borderColor: "#7c3aed",
+          backgroundColor: "rgba(124, 58, 237, 0.10)",
+          fill: true,
+          tension: 0.25,
+          pointRadius: 0,
+          pointHitRadius: 8
+        }
+      ]
+    };
+    if (chart) {
+      chart.data = data;
+      chart.update();
+      return;
+    }
+    chart = new Chart(document.getElementById("trend-chart"), {
+      type: "line",
+      data: data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } },
+          x: { ticks: { maxTicksLimit: 12 } }
+        },
+        plugins: { legend: { position: "bottom" } }
+      }
+    });
+  }
+
+  function renderUsers(stats) {
+    var totals = {};
+    stats.report_saved.users.forEach(function (row) {
+      totals[row.username] = { reports: row.count, settings: 0 };
+    });
+    stats.setting_saved.users.forEach(function (row) {
+      if (!totals[row.username]) totals[row.username] = { reports: 0, settings: 0 };
+      totals[row.username].settings = row.count;
+    });
+    var usernames = Object.keys(totals).sort(function (a, b) {
+      var diff = (totals[b].reports + totals[b].settings) - (totals[a].reports + totals[a].settings);
+      return diff !== 0 ? diff : a.localeCompare(b);
+    });
+    var tbody = document.getElementById("user-rows");
+    tbody.textContent = "";
+    if (!usernames.length) {
+      emptyRow(tbody, 4, "No saves recorded yet.");
+    }
+    usernames.forEach(function (username) {
+      var row = totals[username];
+      var tr = document.createElement("tr");
+      tr.appendChild(cell(username));
+      tr.appendChild(cell(String(row.reports), "num"));
+      tr.appendChild(cell(String(row.settings), "num"));
+      tr.appendChild(cell(String(row.reports + row.settings), "num"));
+      tbody.appendChild(tr);
+    });
+    setText("tile-users", String(usernames.length));
+  }
+
+  function renderEvents(stats) {
+    var events = stats.recent_events || [];
+    setText("recent-title", "Recent saves (last " + (stats.recent_event_limit || 50) + ", detail rows expire after 90 days)");
+    var tbody = document.getElementById("event-rows");
+    tbody.textContent = "";
+    if (!events.length) {
+      emptyRow(tbody, 4, "No events in the last 90 days.");
+      setText("tile-last", "–");
+      return;
+    }
+    events.forEach(function (item) {
+      var tr = document.createElement("tr");
+      tr.appendChild(cell((item.recorded_at || "").replace("T", " ").slice(0, 19)));
+      tr.appendChild(typeBadge(item.event_type));
+      tr.appendChild(cell(item.username || ""));
+      tr.appendChild(cell(item.saved_name || "", "name"));
+      tbody.appendChild(tr);
+    });
+    setText("tile-last", (events[0].recorded_at || "").replace("T", " ").slice(0, 19));
+  }
+
+  function render(stats) {
+    show("key-panel", false);
+    show("dashboard", true);
+    setText("tile-reports", String(stats.report_saved.total));
+    setText("tile-settings", String(stats.setting_saved.total));
+    setText("generated-at", "As of " + (stats.generated_at || "").replace("T", " ").slice(0, 19) + " UTC");
+    renderTrend(stats);
+    renderUsers(stats);
+    renderEvents(stats);
+  }
+
+  function load(key) {
+    fetch("/stats/data", { headers: { Authorization: "Bearer " + key } })
+      .then(function (response) {
+        if (response.status === 401) {
+          clearKey();
+          showKeyPanel("That key was not accepted.");
+          return null;
+        }
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      })
+      .then(function (stats) {
+        if (!stats) return;
+        storeKey(key);
+        render(stats);
+      })
+      .catch(function () {
+        showKeyPanel("Could not load statistics. Check the connection and try again.");
+      });
+  }
+
+  document.getElementById("key-form").addEventListener("submit", function (event) {
+    event.preventDefault();
+    var key = document.getElementById("key-input").value.trim();
+    if (key) load(key);
+  });
+  document.getElementById("refresh").addEventListener("click", function () {
+    var key = readStoredKey();
+    if (key) load(key); else showKeyPanel("");
+  });
+  document.getElementById("forget").addEventListener("click", function () {
+    clearKey();
+    document.getElementById("key-input").value = "";
+    showKeyPanel("");
+  });
+
+  var storedKey = readStoredKey();
+  if (storedKey) load(storedKey); else showKeyPanel("");
+})();
+</script>
+</body>
+</html>

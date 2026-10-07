@@ -90,8 +90,9 @@ samconfig.toml
 *.csv
 *.xls*
 
-# Server-side infrastructure
-/infra/
+# Server-side infrastructure: tracked, except the live stats dashboard file
+# (it holds the StatsToken) and the SAM build/config output above.
+/infra/run_counter/stats_dashboard.json
 
 # Copied AWS CLI login session (never commit)
 /.aws/
