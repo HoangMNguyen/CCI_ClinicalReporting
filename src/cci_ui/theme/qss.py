@@ -261,32 +261,6 @@ QMenu::separator {
     background: ${separator};
     margin: 4px 8px;
 }
-QTabWidget::pane {
-    border: none;
-}
-QTabBar::tab {
-    background: transparent;
-    color: ${text_secondary};
-    padding: 6px 12px;
-    border: none;
-    border-bottom: 2px solid transparent;
-}
-QTabBar::tab:hover {
-    color: ${text_primary};
-}
-QTabBar::tab:selected {
-    color: ${text_primary};
-    border-bottom-color: ${accent};
-}
-QStatusBar {
-    background: ${bg_window};
-    color: ${text_secondary};
-    border-top: 1px solid ${separator};
-    font-size: 11px;
-}
-QStatusBar::item {
-    border: none;
-}
 /* A 1px line inside a 5px handle, so it's still easy to grab. */
 QSplitter::handle {
     background: transparent;

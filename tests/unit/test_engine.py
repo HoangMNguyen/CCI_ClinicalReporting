@@ -1,13 +1,14 @@
 """Tests for pipeline.ReportEngine and its decomposed helpers.
 
 The end-to-end report output is also covered by the integration suite; these
-focus on the individual steps the ~285-line ``create_report`` was broken into,
-and confirm ``CLReport.create_report`` still delegates to the engine.
+focus on the engine's individual steps, and confirm ``CLReport.create_report``
+still delegates to the engine.
 """
 
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
+from clinical_reporting import report_columns
 from clinical_reporting.pipeline import ReportEngine
 from clinical_reporting.report import CLReport
 
@@ -17,7 +18,9 @@ def _two_form_report():
     report.set_data(
         {
             "DM": pd.DataFrame({"Subject": ["001", "002", "003"], "Age": [75, 41, 29]}),
-            "VS": pd.DataFrame({"Subject": ["001", "002", "003"], "Pulse": [70, 90, 55]}),
+            "VS": pd.DataFrame(
+                {"Subject": ["001", "002", "003"], "Pulse": [70, 90, 55]}
+            ),
         }
     )
     report.add_selected_form("DM")
@@ -48,11 +51,11 @@ def test_create_report_delegates_to_engine():
     )
 
 
-def test_ordered_form_names_sorts_by_join_order():
+def test_forms_join_in_join_order():
     report = _two_form_report()
-    assert ReportEngine(report)._ordered_form_names() == ["DM", "VS"]
+    assert report_columns.forms_in_join_order(report.selected_forms) == ["DM", "VS"]
     report.selected_forms["DM"].set_join_order(5)
-    assert ReportEngine(report)._ordered_form_names() == ["VS", "DM"]
+    assert report_columns.forms_in_join_order(report.selected_forms) == ["VS", "DM"]
 
 
 def test_resolve_filter_column_direct_suffix_and_missing():

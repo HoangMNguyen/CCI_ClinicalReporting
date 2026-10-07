@@ -1,12 +1,17 @@
 """Tests for the second batch of components (step 1.4)."""
 
+import gc
+
 import pytest
 import shiboken6
-from PySide6.QtCore import QByteArray, QElapsedTimer, QRect, QSettings, Qt
+from PySide6.QtCore import QByteArray, QElapsedTimer, QPointF, QRect, QSettings, Qt
 from PySide6.QtGui import QInputMethodEvent, QKeySequence, QShortcut
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QGraphicsOpacityEffect,
     QLineEdit,
     QListWidget,
     QMainWindow,
@@ -261,6 +266,22 @@ def test_a_long_toast_stays_inside_the_window(shown):
     assert shown_text != text and shown_text.endswith("DSMB.json")
 
 
+def test_a_toast_keeps_its_fade_and_shadow(shown):
+    window = shown(QWidget(), 600, 400)
+
+    toast = show_toast(window, "Saved", duration_ms=60)
+    QApplication.processEvents()
+    # PySide keeps no reference to an installed effect, so the toast must:
+    # collect any effect that only a local held.
+    gc.collect()
+    pill = toast.findChild(QFrame, options=Qt.FindChildOption.FindDirectChildrenOnly)
+    shadow = pill.graphicsEffect()
+
+    assert isinstance(toast.graphicsEffect(), QGraphicsOpacityEffect)
+    assert isinstance(shadow, QGraphicsDropShadowEffect)
+    assert shadow.blurRadius() == 24 and shadow.offset() == QPointF(0, 6)
+
+
 def test_toasts_stack_up_to_a_limit_and_go_away(shown, shown_windows):
     window = shown(QWidget(), 600, 400)
     for number in range(MAX_TOASTS + 2):
@@ -274,6 +295,13 @@ def test_toasts_stack_up_to_a_limit_and_go_away(shown, shown_windows):
     assert _wait_until(lambda: host.toasts() == [])
 
 
+def test_a_toast_of_an_unknown_kind_is_refused(shown):
+    window = shown(QWidget(), 600, 400)
+
+    with pytest.raises(ValueError, match="Unknown message kind 'done'"):
+        show_toast(window, "Saved", "done")
+
+
 def test_show_error_puts_details_behind_the_button(qapp, monkeypatch):
     shown_box = {}
 
@@ -285,6 +313,24 @@ def test_show_error_puts_details_behind_the_button(qapp, monkeypatch):
     show_error(None, "Export failed", "Couldn't write the file.", "Traceback …")
 
     assert shown_box == {"text": "Couldn't write the file.", "details": "Traceback …"}
+
+
+def test_show_error_can_add_an_informative_sentence(qapp, monkeypatch):
+    shown_box = {}
+
+    def fake_exec(box):
+        shown_box["text"], shown_box["informative"] = box.text(), box.informativeText()
+        return 0
+
+    monkeypatch.setattr(QMessageBox, "exec", fake_exec)
+    show_error(
+        None, "Export failed", "Couldn't write the file.", informative="Try again."
+    )
+
+    assert shown_box == {
+        "text": "Couldn't write the file.",
+        "informative": "Try again.",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -745,29 +791,27 @@ def test_first_launch_on_a_screen_smaller_than_the_minimum(qapp):
     assert rect.size() == area.size()
 
 
-def test_window_geometry_survives_a_restart(qapp, tmp_path):
-    settings = QSettings(str(tmp_path / "windows.ini"), QSettings.Format.IniFormat)
-    state = WindowState("clinical-reporting", settings)
+def test_window_geometry_survives_a_restart(qapp, ini_settings):
+    state = WindowState("clinical-reporting", ini_settings)
     window = QWidget()
 
     used_saved = state.restore(window, first_size=(800, 600), min_size=(400, 300))
     window.setGeometry(QRect(50, 60, 700, 500))
     state.save(window)
     reopened = QWidget()
-    used_saved_again = WindowState("clinical-reporting", settings).restore(
+    used_saved_again = WindowState("clinical-reporting", ini_settings).restore(
         reopened, first_size=(800, 600), min_size=(400, 300)
     )
 
     assert not used_saved and used_saved_again
     assert reopened.size() == window.size()
     assert reopened.minimumSize().width() == 400
-    saved = settings.value("windows/clinical-reporting/geometry")
+    saved = ini_settings.value("windows/clinical-reporting/geometry")
     assert isinstance(saved, QByteArray)
 
 
-def test_window_state_keeps_other_values(qapp, tmp_path):
-    settings = QSettings(str(tmp_path / "windows.ini"), QSettings.Format.IniFormat)
-    state = WindowState("safety", settings)
+def test_window_state_keeps_other_values(qapp, ini_settings):
+    state = WindowState("safety", ini_settings)
 
     state.set_value("sidebar_width", 260)
 
@@ -776,13 +820,12 @@ def test_window_state_keeps_other_values(qapp, tmp_path):
 
 
 def test_remember_restores_the_window_and_sidebar_after_a_restart(
-    make_manager, qapp, tmp_path
+    make_manager, qapp, ini_settings
 ):
-    settings = QSettings(str(tmp_path / "windows.ini"), QSettings.Format.IniFormat)
     window = QMainWindow()
     shell = _shell(make_manager)
     window.setCentralWidget(shell)
-    WindowState("clinical-reporting", settings).remember(
+    WindowState("clinical-reporting", ini_settings).remember(
         window, first_size=(1300, 700), min_size=(900, 500), shell=shell
     )
     window.show()
@@ -794,7 +837,7 @@ def test_remember_restores_the_window_and_sidebar_after_a_restart(
     reopened = QMainWindow()
     reopened_shell = _shell(make_manager)
     reopened.setCentralWidget(reopened_shell)
-    WindowState("clinical-reporting", settings).remember(
+    WindowState("clinical-reporting", ini_settings).remember(
         reopened, first_size=(800, 600), min_size=(900, 500), shell=reopened_shell
     )
     reopened.show()
@@ -809,13 +852,14 @@ def test_remember_restores_the_window_and_sidebar_after_a_restart(
         shiboken6.delete(reopened)
 
 
-def test_window_state_reads_numbers_and_flags_stored_as_text(qapp, tmp_path):
-    settings = QSettings(str(tmp_path / "windows.ini"), QSettings.Format.IniFormat)
-    state = WindowState("safety", settings)
+def test_window_state_reads_numbers_and_flags_stored_as_text(qapp, ini_settings):
+    state = WindowState("safety", ini_settings)
     state.set_value(SIDEBAR_WIDTH_KEY, 260)
     state.set_value(SIDEBAR_COLLAPSED_KEY, False)
-    settings.sync()
-    reread = WindowState("safety", QSettings(settings.fileName(), settings.format()))
+    ini_settings.sync()
+    reread = WindowState(
+        "safety", QSettings(ini_settings.fileName(), ini_settings.format())
+    )
 
     assert reread.value(SIDEBAR_WIDTH_KEY, 0, int) == 260
     assert reread.value(SIDEBAR_COLLAPSED_KEY, True, bool) is False

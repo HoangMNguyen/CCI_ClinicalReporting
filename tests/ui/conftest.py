@@ -6,6 +6,7 @@ from PySide6.QtCore import QElapsedTimer, QEvent, QObject, QSettings
 from PySide6.QtWidgets import QApplication, QWidget
 
 from cci_ui.theme import manager as theme_manager
+from cci_ui.theme.tokens import LAYOUT
 
 
 @pytest.fixture
@@ -32,7 +33,7 @@ def themed_app(qapp, monkeypatch):
 
 @pytest.fixture
 def ini_settings(tmp_path):
-    """Appearance settings in a throwaway INI file instead of the registry."""
+    """Settings in a throwaway INI file instead of the registry."""
     return QSettings(str(tmp_path / "appearance.ini"), QSettings.Format.IniFormat)
 
 
@@ -117,7 +118,7 @@ def sample_window(make_manager, settle):
     theme = make_manager()
     theme.apply()
     window = build_preview_window(theme=theme)
-    window.resize(1280, 820)
+    window.resize(*LAYOUT.first_launch)
     window.show()
     QApplication.processEvents()
     yield window
@@ -136,3 +137,29 @@ def empty_window(qapp):
     QApplication.processEvents()
     yield window
     shiboken6.delete(window)
+
+
+@pytest.fixture
+def tool_window(make_manager, ini_settings, settle):
+    """Build a small tool's window on the cci_ui kit, shown and themed.
+
+    Pass the tool's ``app`` module (it supplies ``Widget`` and ``FIRST_SIZE``).
+    Every window built is closed, settled and deleted after the test.
+    """
+    built = []
+
+    def build(app_module):
+        theme = make_manager()
+        theme.apply()
+        window = app_module.Widget(theme, settings=ini_settings)
+        window.resize(*app_module.FIRST_SIZE)
+        window.show()
+        QApplication.processEvents()
+        built.append(window)
+        return window
+
+    yield build
+    for window in built:
+        window.close()
+        settle(window.task_runner)
+        shiboken6.delete(window)

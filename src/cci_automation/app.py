@@ -9,7 +9,6 @@ workflow's ``run()``, which returns the workbook; the page saves it.
 
 from __future__ import annotations
 
-import sys
 from datetime import date
 from functools import partial
 from typing import Callable, Optional, Sequence
@@ -263,7 +262,3 @@ def main() -> int:
         first_size=FIRST_SIZE,
         min_size=MIN_SIZE,
     )
-
-
-if __name__ == "__main__":
-    sys.exit(main())

@@ -1,18 +1,18 @@
 """The behavior mixins and the code-built pages agree on widget names.
 
 The mixins reach widgets as ``self.ui.<name>``; the pages provide them
-through ``EXPORTS`` (see ``clinical_reporting.ui.contract``). These tests
-fail when either side changes without the other.
+through ``EXPORTS``. These tests fail when either side changes without the
+other.
 """
 
 import ast
+import inspect
 from pathlib import Path
 
 from PySide6.QtWidgets import QMainWindow
 
 from clinical_reporting import steps
 from clinical_reporting.ui import window as window_module
-from clinical_reporting.ui.contract import UI_CONTRACT
 from clinical_reporting.ui.main_ui import (
     PAGE_CLASSES,
     WINDOW_NAMES,
@@ -22,6 +22,8 @@ from clinical_reporting.ui.main_ui import (
 UI_DIR = Path(window_module.__file__).parent
 #: ClinicalReportingUi's own methods, called by the window.
 UI_METHODS = {"setup"}
+#: Every name the mixins may use: the window's own and each page's EXPORTS.
+UI_CONTRACT = WINDOW_NAMES.union(*(page.EXPORTS for page in PAGE_CLASSES))
 
 
 def _built_ui():
@@ -32,10 +34,10 @@ def _built_ui():
 
 
 def _names_used_by_mixins():
-    """Every ``<x>.ui.<name>`` and ``getattr(<x>.ui, "<name>")`` in ui/*.py."""
+    """Every ``<x>.ui.<name>`` and ``getattr(<x>.ui, "<name>")`` in ui/ and pages/."""
     used = {}
-    for path in sorted(UI_DIR.glob("*.py")):
-        if path.name in {"main_ui.py", "contract.py", "preview.py"}:
+    for path in sorted(UI_DIR.rglob("*.py")):  # pages/ included
+        if path.name in {"main_ui.py", "preview.py"}:
             continue
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if (
@@ -95,14 +97,15 @@ def test_every_contract_name_is_used():
     assert UI_CONTRACT - set(_names_used_by_mixins()) == set()
 
 
-def test_no_behavior_method_is_hidden_by_the_window():
-    """compose_behaviors skips names the window already has; none may clash."""
-    hidden = []
-    for behavior in window_module.BEHAVIORS:
-        for name, value in behavior.__dict__.items():
-            if name.startswith("__") or not callable(value):
-                continue
-            if window_module.Widget.__dict__.get(name) is not value:
-                hidden.append(f"{behavior.__name__}.{name}")
+def test_no_behavior_method_is_hidden():
+    """Qt and the earlier mixins must not shadow any behavior method."""
+    hidden = [
+        f"{behavior.__name__}.{name}"
+        for behavior in window_module.BEHAVIORS
+        for name, value in vars(behavior).items()
+        if not name.startswith("__")
+        and callable(value)
+        and inspect.getattr_static(window_module.Widget, name) is not value
+    ]
 
     assert hidden == []

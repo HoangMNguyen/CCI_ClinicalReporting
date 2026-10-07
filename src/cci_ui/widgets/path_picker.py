@@ -23,6 +23,14 @@ from cci_ui.widgets.labels import ElidedLabel
 MODES = ("external", "file", "files", "dir")
 
 
+def downloads_folder() -> str:
+    """``~/Downloads``, where every tool's file dialogs start by default.
+
+    It isn't checked: the dialog opens there whether or not it exists.
+    """
+    return os.path.join(os.path.expanduser("~"), "Downloads")
+
+
 class PathPicker(QWidget):
     """Shows a chosen path, shortened in the middle when it doesn't fit."""
 
@@ -78,9 +86,6 @@ class PathPicker(QWidget):
     def path(self) -> str:
         """The chosen path ("" when nothing is chosen; the first in ``files`` mode)."""
         return self._paths[0] if self._paths else ""
-
-    def paths(self) -> List[str]:
-        return list(self._paths)
 
     def set_path(self, path: Optional[str]) -> None:
         self.set_paths([path] if path else [])
@@ -149,11 +154,13 @@ class PathPicker(QWidget):
         if self.path():
             current = Path(self.path())
             return str(current if self._mode == "dir" else current.parent)
-        return str(Path.home() / "Downloads")
+        # Through Path, as before downloads_folder() existed: it tidies an
+        # untidy HOME (repeated separators, "." parts) the way Path.home() did.
+        return str(Path(downloads_folder()))
 
     def _remember_folder(self, folder: str) -> None:
         if self._settings_key:
             self._settings_store().setValue(f"folders/{self._settings_key}", folder)
 
 
-__all__ = ["MODES", "PathPicker"]
+__all__ = ["MODES", "PathPicker", "downloads_folder"]

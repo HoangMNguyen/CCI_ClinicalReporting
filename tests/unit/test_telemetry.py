@@ -3,10 +3,31 @@
 from __future__ import annotations
 
 import json
+import threading
 
 import pytest
 
 from clinical_reporting import telemetry
+
+
+def test_the_tests_never_count_runs(monkeypatch):
+    """No test reaches the usage endpoint, even with telemetry.json in place.
+
+    A developer's checkout holds the bundled telemetry.json for the builds;
+    the suite must not count its exports and saves there.
+    """
+    posted = []
+    monkeypatch.setattr(
+        telemetry, "urlopen", lambda request, timeout: posted.append(request)
+    )
+    before = set(threading.enumerate())
+
+    telemetry.record_successful_export("monthly report.xlsx")
+    telemetry.record_successful_setting_save("monthly")
+    for worker in set(threading.enumerate()) - before:
+        worker.join(timeout=5)
+
+    assert posted == []
 
 
 def test_counter_is_disabled_without_configuration(monkeypatch):

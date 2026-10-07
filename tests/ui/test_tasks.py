@@ -8,7 +8,7 @@ from PySide6.QtCore import QThread
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QWidget
 
-from cci_ui.tasks import TaskRunner, defer_if_busy, run_task, when_idle
+from cci_ui.tasks import TaskRunner, defer_if_busy, run_task
 from cci_ui.widgets.busy import BusyOverlay
 
 
@@ -307,18 +307,3 @@ def test_a_shut_down_runner_ignores_its_job_and_starts_nothing(qapp):
     assert not runner.submit(lambda: None, on_success=results.append)
     runner.call_when_idle(lambda: results.append("idle"))
     assert results == []
-
-
-def test_when_idle_waits_for_the_runner_or_runs_now(qapp, settle):
-    class Host:
-        task_runner = TaskRunner()
-
-    shown = []
-    when_idle(object(), lambda: shown.append("no runner"))
-    Host.task_runner.submit(lambda: None, on_success=lambda _r: None)
-    when_idle(Host(), lambda: shown.append("after job"))
-    assert shown == ["no runner"]
-
-    settle(Host.task_runner)
-
-    assert shown == ["no runner", "after job"]

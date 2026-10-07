@@ -40,7 +40,7 @@ def _solid_pixel_color(pixmap):
 def test_every_icon_name_has_a_bundled_file_and_none_are_unused():
     bundled = {path.stem for path in asset("icons").glob("*.svg")}
 
-    assert set(IconName.all()) == bundled
+    assert set(IconName.all()) | {g.icon for g in GLYPHS.values()} == bundled
     assert asset("icons", "LICENSE").is_file()
 
 

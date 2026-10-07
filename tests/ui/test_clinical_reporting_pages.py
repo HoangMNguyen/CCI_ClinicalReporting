@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QApplication
 
 from cci_ui.widgets.status import ToastHost
 from clinical_reporting import steps
-from clinical_reporting.ui import settings_tab
+from clinical_reporting.ui.pages import source_data
 from clinical_reporting.ui.pages.preview_export import SUBTITLE
 from clinical_reporting.ui.preview_model import ReportPreviewModel
 from clinical_reporting.ui.sample_data import sample_forms
@@ -28,7 +28,7 @@ def _page(window, key):
 def test_pages_that_need_data_say_how_to_load_some(empty_window, monkeypatch):
     asked = []
     monkeypatch.setattr(
-        settings_tab.QFileDialog,
+        source_data.QFileDialog,
         "getOpenFileName",
         lambda *_args: asked.append(True) or ("", ""),
     )

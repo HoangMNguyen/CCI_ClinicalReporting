@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Silent report/setting usage tracker for CCI Clinical Reporting
+
+Parameters:
+  CounterToken:
+    Type: String
+    NoEcho: true
+    MinLength: 24
+    Description: Bearer token provisioned to approved desktop installations
+  StatsToken:
+    Type: String
+    NoEcho: true
+    MinLength: 24
+    Description: Read-only bearer token for the browser statistics dashboard
+
+Resources:
+  RunCounterTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
+  RunCounterApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 5
+
+  RunCounterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: function/
+      Handler: app.lambda_handler
+      Runtime: python3.14
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RunCounterTable
+          COUNTER_TOKEN: !Ref CounterToken
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:TransactWriteItems
+                - dynamodb:UpdateItem
+              Resource: !GetAtt RunCounterTable.Arn
+      Events:
+        CountRun:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RunCounterApi
+            Path: /run
+            Method: POST
+
+  StatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stats_function/
+      Handler: app.lambda_handler
+      Runtime: python3.14
+      Architectures:
+        - x86_64
+      MemorySize: 256
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref RunCounterTable
+          STATS_TOKEN: !Ref StatsToken
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !GetAtt RunCounterTable.Arn
+      Events:
+        StatsPage:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RunCounterApi
+            Path: /stats
+            Method: GET
+        StatsData:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RunCounterApi
+            Path: /stats/data
+            Method: GET
+
+Outputs:
+  RunCounterUrl:
+    Description: Configure this as CLINICAL_REPORTING_RUN_COUNTER_URL
+    Value: !Sub "https://${RunCounterApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/run"
+  RunCounterTableName:
+    Description: DynamoDB table containing usage events and counters
+    Value: !Ref RunCounterTable
+  StatsUrl:
+    Description: Browser dashboard showing current usage statistics
+    Value: !Sub "https://${RunCounterApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/stats"

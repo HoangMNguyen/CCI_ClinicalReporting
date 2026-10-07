@@ -1,4 +1,4 @@
-"""Stand-ins for widgets, shared by tests that drive the mixins without Qt."""
+"""Stand-ins for widgets and data tables, shared by tests that don't need real ones."""
 
 
 class FakePathPicker:
@@ -40,6 +40,16 @@ class FakeBanner:
         return getattr(self.value, "kind", "info")
 
 
+class FakeCheckBox:
+    """Like a ``QCheckBox``: checked or not."""
+
+    def __init__(self, checked: bool):
+        self._checked = checked
+
+    def isChecked(self) -> bool:  # noqa: N802 (Qt naming)
+        return self._checked
+
+
 class FakeTableView:
     """Like a ``QTableView``: keeps the model it is given (one to start with)."""
 
@@ -51,3 +61,10 @@ class FakeTableView:
 
     def model(self):
         return self._model
+
+
+class DummyTable:
+    """Like a ``DataFrame`` during form setup: only its columns."""
+
+    def __init__(self, columns):
+        self.columns = columns

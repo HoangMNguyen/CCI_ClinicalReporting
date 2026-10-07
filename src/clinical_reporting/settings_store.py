@@ -2,8 +2,8 @@
 
 The desktop app keeps each saved setting as a JSON file in a folder the user
 picks (``~/Documents`` by default). Callers list, load, and save settings
-through a :class:`SettingsStore`, so another backend (a database or object
-storage for a web version) can replace the folder without changing them.
+through a :class:`SettingsStore`. The JSON helpers work on text as well as
+files, so a setting's JSON can be read and written without a file.
 """
 
 from __future__ import annotations
@@ -48,6 +48,30 @@ def default_settings_folder() -> Path:
     return Path.home() / "Documents"
 
 
+def settings_to_json(settings: Dict[str, Any]) -> str:
+    """A setting as the JSON text saved for it (4-space indent)."""
+    return json.dumps(settings, indent=4)
+
+
+def settings_from_json(text: str) -> Dict[str, Any]:
+    """The setting a saved JSON text holds."""
+    return json.loads(text)
+
+
+def write_settings_json(
+    path: Union[str, os.PathLike], settings: Dict[str, Any]
+) -> None:
+    """Save *settings* to the JSON file at *path*."""
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(settings_to_json(settings))
+
+
+def read_settings_json(path: Union[str, os.PathLike]) -> Dict[str, Any]:
+    """The setting saved in the JSON file at *path*."""
+    with open(path, "r", encoding="utf-8") as handle:
+        return settings_from_json(handle.read())
+
+
 class LocalFolderStore:
     """Saved settings as ``<name>.json`` files in one folder.
 
@@ -65,8 +89,7 @@ class LocalFolderStore:
         found = []
         for settings_file in self.folder.glob("*.json"):
             try:
-                with settings_file.open("r", encoding="utf-8") as handle:
-                    data = json.load(handle)
+                data = read_settings_json(settings_file)
             except (OSError, json.JSONDecodeError) as exc:
                 logger.warning(
                     "Skipping invalid settings file %s: %s", settings_file, exc
@@ -84,15 +107,13 @@ class LocalFolderStore:
         return found
 
     def load(self, key: str) -> Dict[str, Any]:
-        with open(key, "r", encoding="utf-8") as handle:
-            return json.load(handle)
+        return read_settings_json(key)
 
     def save(self, name: str, settings: Dict[str, Any]) -> str:
         """Write *settings* to ``<name>.json``; the name is made file-safe first."""
         self.folder.mkdir(parents=True, exist_ok=True)
         path = self.folder / f"{safe_file_stem(name)}.json"
-        with path.open("w", encoding="utf-8") as handle:
-            json.dump(settings, handle, indent=4)
+        write_settings_json(path, settings)
         return str(path)
 
 
@@ -101,4 +122,8 @@ __all__ = [
     "SavedSetting",
     "SettingsStore",
     "default_settings_folder",
+    "read_settings_json",
+    "settings_from_json",
+    "settings_to_json",
+    "write_settings_json",
 ]

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -14,17 +13,19 @@ DM_LEGAL_SEX = "Legal Sex (IG_NS_NA_DM1.CL_NS_YH_SEX_cl_NS_DMSEX1)"
 DM_DOB = "Date of Birth (IG_NS_NA_DM1.DT_NS_NH_BRTHDAT)"
 
 # DSTA (Treatment Arm Assignment)
-DSTA_TREATMENT_ARM = "Treatment Arm Assignment (IG_NS_NA_DSTA1.CL_NS_NH_CACHASCOD_cl_NS_TXARM1)"
+DSTA_TREATMENT_ARM = (
+    "Treatment Arm Assignment (IG_NS_NA_DSTA1.CL_NS_NH_CACHASCOD_cl_NS_TXARM1)"
+)
 
 # DSDLA (Dose Level Assignment)
-DSDLA_DOSE_LEVEL = "Dose Level Assignment (IG_NS_NA_DSDLA1.CL_NS_YH_DLADOSELV_cl_NS_DOSELV1)"
+DSDLA_DOSE_LEVEL = (
+    "Dose Level Assignment (IG_NS_NA_DSDLA1.CL_NS_YH_DLADOSELV_cl_NS_DOSELV1)"
+)
 
 # IE (Eligibility)
 IE_CONSENT_DATE = "Consent Date (IG_NS_NA_IE1.DT_NS_NH_MAINCDAT)"
 IE_ELIGIBILITY_PI_DATE = "Date of Eligibility Confirmation by Physician-Investigator (IG_NS_NA_IE5.DT_NS_YH_ELIGPIDAT)"
-IE_ELIGIBILITY_MONITOR_DATE = (
-    "Date of Completion of Monitoring Visit for Eligibility (IG_NS_NA_IE5.DT_NS_YH_ELIGMONDAT)"
-)
+IE_ELIGIBILITY_MONITOR_DATE = "Date of Completion of Monitoring Visit for Eligibility (IG_NS_NA_IE5.DT_NS_YH_ELIGMONDAT)"
 
 # PRAPH (Apheresis)
 PRAPH_APHERESIS_TYPE = "Apheresis Type (IG_NS_NA_PRAPH1.CL_NS_YH_APHTP_cl_NS_APHTP1)"
@@ -37,35 +38,39 @@ EXINF_INFUSION_DATE = "Infusion Date (IG_NS_NA_EXINF1.DT_NS_NH_INFDAT)"
 EXCHMO_START_DATE = "Start Date (IG_NS_NA_EXCHMO2.DT_NS_NH_EXSTDAT)"
 
 # DSINITLF (Initiation of Long-Term Follow-Up)
-DSINITLF_PHASE = (
-    "From which Phase is the Subject entering Long-Term Follow-Up? (IG_NS_NA_DSINITLF1.CL_NS_NH_PHASELTFU_cl_NS_PHASE1)"
+DSINITLF_PHASE = "From which Phase is the Subject entering Long-Term Follow-Up? (IG_NS_NA_DSINITLF1.CL_NS_NH_PHASELTFU_cl_NS_PHASE1)"
+DSINITLF_LAST_VISIT_PFU = "Last Study Visit Completed in Primary Follow-Up (IG_NS_NA_DSINITLF1.CL_NS_NH_LVCPFU_cl_YS_LVCPFU1)"
+DSINITLF_PFU_END_DATE = (
+    "End of Primary Follow-Up Date (IG_NS_NA_DSINITLF1.DT_NS_YH_INITLFPFUENDDAT)"
 )
-DSINITLF_LAST_VISIT_PFU = (
-    "Last Study Visit Completed in Primary Follow-Up (IG_NS_NA_DSINITLF1.CL_NS_NH_LVCPFU_cl_YS_LVCPFU1)"
+DSINITLF_LAST_VISIT_RETX = "Last Study Visit Completed in Retreatment (IG_NS_NA_DSINITLF1.CL_NS_NH_LVCRETX_cl_NS_LVCPFUR1)"
+DSINITLF_RETX_END_DATE = (
+    "End of Retreatment Date (IG_NS_NA_DSINITLF1.DT_NS_YH_RETXENDDAT)"
 )
-DSINITLF_PFU_END_DATE = "End of Primary Follow-Up Date (IG_NS_NA_DSINITLF1.DT_NS_YH_INITLFPFUENDDAT)"
-DSINITLF_LAST_VISIT_RETX = (
-    "Last Study Visit Completed in Retreatment (IG_NS_NA_DSINITLF1.CL_NS_NH_LVCRETX_cl_NS_LVCPFUR1)"
-)
-DSINITLF_RETX_END_DATE = "End of Retreatment Date (IG_NS_NA_DSINITLF1.DT_NS_YH_RETXENDDAT)"
 
 # DSINITRT (Initiation of Retreatment)
-DSINITRT_LAST_VISIT_PFU = (
-    "Last Visit Completed in Primary Follow-Up (IG_NS_NA_DSINITRT1.CL_NS_NH_RELVCPFU_cl_YS_LVCPFU1)"
+DSINITRT_LAST_VISIT_PFU = "Last Visit Completed in Primary Follow-Up (IG_NS_NA_DSINITRT1.CL_NS_NH_RELVCPFU_cl_YS_LVCPFU1)"
+DSINITRT_PHASE = "From which Phase is the Subject entering Retreatment? (IG_NS_NA_DSINITRT1.CL_NS_NH_PHASER_cl_NS_PHASE2)"
+DSINITRT_PFU_END_DATE = (
+    "End of Primary Follow-Up Date (IG_NS_NA_DSINITRT1.DT_NS_YH_PFUENDDAT)"
 )
-DSINITRT_PHASE = (
-    "From which Phase is the Subject entering Retreatment? (IG_NS_NA_DSINITRT1.CL_NS_NH_PHASER_cl_NS_PHASE2)"
+DSINITRT_LTFU_END_DATE = (
+    "End of Long-Term Follow-Up Date (IG_NS_NA_DSINITRT1.DT_NS_YH_LTFUENDDAT)"
 )
-DSINITRT_PFU_END_DATE = "End of Primary Follow-Up Date (IG_NS_NA_DSINITRT1.DT_NS_YH_PFUENDDAT)"
-DSINITRT_LTFU_END_DATE = "End of Long-Term Follow-Up Date (IG_NS_NA_DSINITRT1.DT_NS_YH_LTFUENDDAT)"
 
 # DSEOS (End of Study)
 DSEOS_EOS_DATE = "End of Study Date (IG_NS_NA_DSEOS1.DT_NS_YH_EOSDAT)"
 
 # FPTMPADM (FP-TMP Administration)
-FPTMP_STUDY_PHASE_COL = "Study Phase (IG_YS_NA_FPTMPPHASETP.CL_YS_NH_STUDPSRS_cl_NS_STUDYPS2)"
-FPTMP_PRIMARY_TP_COL = "Primary Treatment Time Point (IG_YS_NA_FPTMPPHASETP.CL_YS_YH_IMGTPT_cl_NS_IMGTPT3)"
-FPTMP_RETX_TP_COL = "Retreatment Time Point (IG_YS_NA_FPTMPPHASETP.CL_YS_YH_IMGTPTR_cl_NS_IMGTPT4)"
+FPTMP_STUDY_PHASE_COL = (
+    "Study Phase (IG_YS_NA_FPTMPPHASETP.CL_YS_NH_STUDPSRS_cl_NS_STUDYPS2)"
+)
+FPTMP_PRIMARY_TP_COL = (
+    "Primary Treatment Time Point (IG_YS_NA_FPTMPPHASETP.CL_YS_YH_IMGTPT_cl_NS_IMGTPT3)"
+)
+FPTMP_RETX_TP_COL = (
+    "Retreatment Time Point (IG_YS_NA_FPTMPPHASETP.CL_YS_YH_IMGTPTR_cl_NS_IMGTPT4)"
+)
 FPTMP_ADMIN_DATE_COL = "Administration Date (IG_NS_NA_FPTMPADM1.DT_NS_NH_ADMDAT)"
 
 # FP-TMP Admin/PET output columns (static). Administrations are sorted by Administration
@@ -83,7 +88,9 @@ RETX_PET_COLUMNS = [
 ]
 
 
-def collect_fptmp_pet_columns(fptmp_df, study_phase, time_point_col, excluded_time_point, pet_columns):
+def collect_fptmp_pet_columns(
+    fptmp_df, study_phase, time_point_col, excluded_time_point, pet_columns
+):
     """Map FP-TMP administrations into the given static PET columns for one study phase.
 
     Rows are filtered to the given Study Phase, excluding the specified safety-visit
@@ -101,29 +108,45 @@ def collect_fptmp_pet_columns(fptmp_df, study_phase, time_point_col, excluded_ti
     Returns:
         DataFrame: a (Subject, *pet_columns) dataframe; empty when no administrations qualify
     """
-    pet_df = fptmp_df[[SUBJECT, FPTMP_STUDY_PHASE_COL, time_point_col, FPTMP_ADMIN_DATE_COL]].copy()
-    pet_df = pet_df[pet_df[FPTMP_STUDY_PHASE_COL].fillna("").astype(str).str.strip() == study_phase]
-    pet_df = pet_df[pet_df[time_point_col].fillna("").astype(str).str.strip() != excluded_time_point]
-    pet_df["Administration Date"] = pd.to_datetime(pet_df[FPTMP_ADMIN_DATE_COL], errors="coerce")
+    pet_df = fptmp_df[
+        [SUBJECT, FPTMP_STUDY_PHASE_COL, time_point_col, FPTMP_ADMIN_DATE_COL]
+    ].copy()
+    pet_df = pet_df[
+        pet_df[FPTMP_STUDY_PHASE_COL].fillna("").astype(str).str.strip() == study_phase
+    ]
+    pet_df = pet_df[
+        pet_df[time_point_col].fillna("").astype(str).str.strip() != excluded_time_point
+    ]
+    pet_df["Administration Date"] = pd.to_datetime(
+        pet_df[FPTMP_ADMIN_DATE_COL], errors="coerce"
+    )
     pet_df = pet_df.dropna(subset=["Administration Date"])
     if pet_df.empty:
         return pd.DataFrame(columns=[SUBJECT] + pet_columns)
     pet_df = pet_df.sort_values([SUBJECT, "Administration Date"])
     pet_df["PET Sequence"] = pet_df.groupby(SUBJECT).cumcount()
     pet_df = pet_df[pet_df["PET Sequence"] < len(pet_columns)]
-    pivot_df = pet_df.pivot(index=SUBJECT, columns="PET Sequence", values="Administration Date").reset_index()
-    pivot_df = pivot_df.rename(columns={seq: pet_columns[seq] for seq in pivot_df.columns if seq != SUBJECT})
+    pivot_df = pet_df.pivot(
+        index=SUBJECT, columns="PET Sequence", values="Administration Date"
+    ).reset_index()
+    pivot_df = pivot_df.rename(
+        columns={seq: pet_columns[seq] for seq in pivot_df.columns if seq != SUBJECT}
+    )
     for col in pet_columns:
         if col not in pivot_df.columns:
             pivot_df[col] = pd.NaT
-        pivot_df[col] = pd.to_datetime(pivot_df[col], errors="coerce").dt.strftime("%m/%d/%Y")
+        pivot_df[col] = pd.to_datetime(pivot_df[col], errors="coerce").dt.strftime(
+            "%m/%d/%Y"
+        )
     return pivot_df[[SUBJECT] + pet_columns]
 
 
 def EnrollmentLog30425(final_data):
     if "DM" in final_data and not final_data["DM"].empty:
         # DM (Demographics)
-        DM_df = final_data["DM"][[SUBJECT, DM_RACE, DM_ETHNICITY, DM_SEX_AT_BIRTH, DM_LEGAL_SEX, DM_DOB]].copy()
+        DM_df = final_data["DM"][
+            [SUBJECT, DM_RACE, DM_ETHNICITY, DM_SEX_AT_BIRTH, DM_LEGAL_SEX, DM_DOB]
+        ].copy()
         DM_df = DM_df.rename(
             columns={
                 DM_RACE: "Race",
@@ -141,20 +164,33 @@ def EnrollmentLog30425(final_data):
             DSTA_df = DSTA_df.rename(columns={DSTA_TREATMENT_ARM: "Treatment Arm"})
             merged_df = pd.merge(merged_df, DSTA_df, on=SUBJECT, how="left")
             index_reference = merged_df.columns.get_loc("Race")
-            merged_df.insert(index_reference, "Treatment Arm", merged_df.pop("Treatment Arm"))
+            merged_df.insert(
+                index_reference, "Treatment Arm", merged_df.pop("Treatment Arm")
+            )
 
         # DSDLA (Dose Level Assignment)
         if "DSDLA" in final_data and not final_data["DSDLA"].empty:
             DSDLA_df = final_data["DSDLA"][[SUBJECT, DSDLA_DOSE_LEVEL]].copy()
-            DSDLA_df = DSDLA_df.rename(columns={DSDLA_DOSE_LEVEL: "Assigned Dose Level"})
+            DSDLA_df = DSDLA_df.rename(
+                columns={DSDLA_DOSE_LEVEL: "Assigned Dose Level"}
+            )
             merged_df = pd.merge(merged_df, DSDLA_df, on=SUBJECT, how="left")
             index_reference = merged_df.columns.get_loc("Race")
-            merged_df.insert(index_reference, "Assigned Dose Level", merged_df.pop("Assigned Dose Level"))
+            merged_df.insert(
+                index_reference,
+                "Assigned Dose Level",
+                merged_df.pop("Assigned Dose Level"),
+            )
 
         # IE (Consent Date and eligibility confirmation dates)
         if "IE" in final_data and not final_data["IE"].empty:
             IE_df = final_data["IE"][
-                [SUBJECT, IE_CONSENT_DATE, IE_ELIGIBILITY_PI_DATE, IE_ELIGIBILITY_MONITOR_DATE]
+                [
+                    SUBJECT,
+                    IE_CONSENT_DATE,
+                    IE_ELIGIBILITY_PI_DATE,
+                    IE_ELIGIBILITY_MONITOR_DATE,
+                ]
             ].copy()
             IE_df = IE_df.rename(
                 columns={
@@ -171,25 +207,34 @@ def EnrollmentLog30425(final_data):
             merged_df["Date of Birth"] = pd.to_datetime(merged_df["Date of Birth"])
             mask = ~merged_df[["Consent Date", "Date of Birth"]].isnull().any(axis=1)
             merged_df.loc[mask, "Age at Consent"] = merged_df[mask].apply(
-                lambda x: relativedelta(x["Consent Date"], x["Date of Birth"]).years, axis=1
+                lambda x: relativedelta(x["Consent Date"], x["Date of Birth"]).years,
+                axis=1,
             )
-            merged_df["Consent Date"] = pd.to_datetime(merged_df["Consent Date"]).dt.strftime("%m/%d/%Y")
-            merged_df["Date Physician-Investigator Confirmed Eligibility"] = pd.to_datetime(
-                merged_df["Date Physician-Investigator Confirmed Eligibility"]
+            merged_df["Consent Date"] = pd.to_datetime(
+                merged_df["Consent Date"]
             ).dt.strftime("%m/%d/%Y")
+            merged_df["Date Physician-Investigator Confirmed Eligibility"] = (
+                pd.to_datetime(
+                    merged_df["Date Physician-Investigator Confirmed Eligibility"]
+                ).dt.strftime("%m/%d/%Y")
+            )
             merged_df["Date of Monitoring Visit for Eligibility"] = pd.to_datetime(
                 merged_df["Date of Monitoring Visit for Eligibility"]
             ).dt.strftime("%m/%d/%Y")
             # move "Age at Consent" right before "Consent Date"
             index_reference = merged_df.columns.get_loc("Consent Date")
-            merged_df.insert(index_reference, "Age at Consent", merged_df.pop("Age at Consent"))
+            merged_df.insert(
+                index_reference, "Age at Consent", merged_df.pop("Age at Consent")
+            )
 
         if "Date of Birth" in merged_df.columns:
             merged_df = merged_df.drop("Date of Birth", axis=1)
 
         # PRAPH (Apheresis)
         if "PRAPH" in final_data and not final_data["PRAPH"].empty:
-            APH_df = final_data["PRAPH"][[SUBJECT, PRAPH_APHERESIS_TYPE, PRAPH_APHERESIS_DATE]].copy()
+            APH_df = final_data["PRAPH"][
+                [SUBJECT, PRAPH_APHERESIS_TYPE, PRAPH_APHERESIS_DATE]
+            ].copy()
             APH_df = APH_df.rename(
                 columns={
                     PRAPH_APHERESIS_TYPE: "Apheresis Type (Fresh or Historical)",
@@ -203,9 +248,13 @@ def EnrollmentLog30425(final_data):
 
         # EXINF (CAR T cell infusion - Primary Treatment)
         if "EXINF" in final_data and not final_data["EXINF"].empty:
-            EXINF_df = final_data["EXINF"][[SUBJECT, EVENT_GROUP_LABEL, EXINF_INFUSION_DATE]].copy()
+            EXINF_df = final_data["EXINF"][
+                [SUBJECT, EVENT_GROUP_LABEL, EXINF_INFUSION_DATE]
+            ].copy()
             EXINF_df = EXINF_df[EXINF_df[EVENT_GROUP_LABEL] == "Study Treatment"]
-            EXINF_df = EXINF_df.rename(columns={EXINF_INFUSION_DATE: "CAR T cell Infusion Date [Day 0]"})
+            EXINF_df = EXINF_df.rename(
+                columns={EXINF_INFUSION_DATE: "CAR T cell Infusion Date [Day 0]"}
+            )
             EXINF_df = EXINF_df.drop(EVENT_GROUP_LABEL, axis=1)
             merged_df = pd.merge(merged_df, EXINF_df, on=SUBJECT, how="left")
             merged_df["CAR T cell Infusion Date [Day 0]"] = pd.to_datetime(
@@ -227,7 +276,12 @@ def EnrollmentLog30425(final_data):
         # DSINITLF (Initiation of Long-Term Follow-Up - from Primary Follow-Up)
         if "DSINITLF" in final_data and not final_data["DSINITLF"].empty:
             INITLF_df = final_data["DSINITLF"][
-                [SUBJECT, DSINITLF_PHASE, DSINITLF_LAST_VISIT_PFU, DSINITLF_PFU_END_DATE]
+                [
+                    SUBJECT,
+                    DSINITLF_PHASE,
+                    DSINITLF_LAST_VISIT_PFU,
+                    DSINITLF_PFU_END_DATE,
+                ]
             ].copy()
             INITLF_df = INITLF_df[INITLF_df[DSINITLF_PHASE] != "Retreatment"]
             INITLF_df = INITLF_df.rename(
@@ -238,48 +292,74 @@ def EnrollmentLog30425(final_data):
             )
             INITLF_df = INITLF_df.drop(DSINITLF_PHASE, axis=1)
             merged_df = pd.merge(merged_df, INITLF_df, on=SUBJECT, how="left")
-            merged_df["Initiation of LTFU Date"] = pd.to_datetime(merged_df["Initiation of LTFU Date"]).dt.strftime(
-                "%m/%d/%Y"
-            )
+            merged_df["Initiation of LTFU Date"] = pd.to_datetime(
+                merged_df["Initiation of LTFU Date"]
+            ).dt.strftime("%m/%d/%Y")
 
         # DSINITRT (Initiation of Retreatment)
         if "DSINITRT" in final_data and not final_data["DSINITRT"].empty:
             DSINITRT_df = final_data["DSINITRT"][
-                [SUBJECT, DSINITRT_LAST_VISIT_PFU, DSINITRT_PHASE, DSINITRT_PFU_END_DATE, DSINITRT_LTFU_END_DATE]
+                [
+                    SUBJECT,
+                    DSINITRT_LAST_VISIT_PFU,
+                    DSINITRT_PHASE,
+                    DSINITRT_PFU_END_DATE,
+                    DSINITRT_LTFU_END_DATE,
+                ]
             ].copy()
             DSINITRT_df = DSINITRT_df.rename(
-                columns={DSINITRT_PHASE: "Phase", DSINITRT_PFU_END_DATE: "Initiation of Retx Date"}
+                columns={
+                    DSINITRT_PHASE: "Phase",
+                    DSINITRT_PFU_END_DATE: "Initiation of Retx Date",
+                }
             )
-            DSINITRT_df["Initiation of Retx Date"] = DSINITRT_df["Initiation of Retx Date"].fillna(
-                DSINITRT_df[DSINITRT_LTFU_END_DATE]
-            )
+            DSINITRT_df["Initiation of Retx Date"] = DSINITRT_df[
+                "Initiation of Retx Date"
+            ].fillna(DSINITRT_df[DSINITRT_LTFU_END_DATE])
             DSINITRT_df = DSINITRT_df.drop(DSINITRT_LTFU_END_DATE, axis=1)
             DSINITRT_df = DSINITRT_df.drop_duplicates(subset=[SUBJECT])
             merged_df = pd.merge(merged_df, DSINITRT_df, on=SUBJECT, how="left")
             # if entering Retreatment directly from Primary Follow-Up, there is no LTFU
             if "Initiation of LTFU Date" in merged_df.columns:
-                merged_df.loc[merged_df["Phase"] == "Primary Follow-Up", "Initiation of LTFU Date"] = "N/A"
+                merged_df.loc[
+                    merged_df["Phase"] == "Primary Follow-Up", "Initiation of LTFU Date"
+                ] = "N/A"
             if "Last Study Visit Completed in Primary Follow-Up" in merged_df.columns:
-                merged_df["Last Study Visit Completed in Primary Follow-Up"] = merged_df[
-                    "Last Study Visit Completed in Primary Follow-Up"
-                ].fillna(merged_df[DSINITRT_LAST_VISIT_PFU])
+                merged_df["Last Study Visit Completed in Primary Follow-Up"] = (
+                    merged_df["Last Study Visit Completed in Primary Follow-Up"].fillna(
+                        merged_df[DSINITRT_LAST_VISIT_PFU]
+                    )
+                )
             else:
                 merged_df = merged_df.rename(
-                    columns={DSINITRT_LAST_VISIT_PFU: "Last Study Visit Completed in Primary Follow-Up"}
+                    columns={
+                        DSINITRT_LAST_VISIT_PFU: "Last Study Visit Completed in Primary Follow-Up"
+                    }
                 )
             merged_df = merged_df.drop(
-                columns=[col for col in [DSINITRT_LAST_VISIT_PFU, "Phase"] if col in merged_df.columns]
+                columns=[
+                    col
+                    for col in [DSINITRT_LAST_VISIT_PFU, "Phase"]
+                    if col in merged_df.columns
+                ]
             )
-            merged_df["Initiation of Retx Date"] = pd.to_datetime(merged_df["Initiation of Retx Date"]).dt.strftime(
-                "%m/%d/%Y"
-            )
+            merged_df["Initiation of Retx Date"] = pd.to_datetime(
+                merged_df["Initiation of Retx Date"]
+            ).dt.strftime("%m/%d/%Y")
 
         # EXCHMO (Retreatment Lymphodepleting Chemotherapy)
         if "EXCHMO" in final_data and not final_data["EXCHMO"].empty:
-            EXCHMO_df = final_data["EXCHMO"][[SUBJECT, EVENT_GROUP_LABEL, EXCHMO_START_DATE]].copy()
-            EXCHMO_df = EXCHMO_df[EXCHMO_df[EVENT_GROUP_LABEL] == "Retreatment Lymphodepleting Chemotherapy"]
+            EXCHMO_df = final_data["EXCHMO"][
+                [SUBJECT, EVENT_GROUP_LABEL, EXCHMO_START_DATE]
+            ].copy()
+            EXCHMO_df = EXCHMO_df[
+                EXCHMO_df[EVENT_GROUP_LABEL]
+                == "Retreatment Lymphodepleting Chemotherapy"
+            ]
             EXCHMO_df = EXCHMO_df.drop_duplicates(subset=[SUBJECT])
-            EXCHMO_df = EXCHMO_df.rename(columns={EXCHMO_START_DATE: "Date of Initiation of Retx LD Chemo"})
+            EXCHMO_df = EXCHMO_df.rename(
+                columns={EXCHMO_START_DATE: "Date of Initiation of Retx LD Chemo"}
+            )
             EXCHMO_df = EXCHMO_df.drop(EVENT_GROUP_LABEL, axis=1)
             merged_df = pd.merge(merged_df, EXCHMO_df, on=SUBJECT, how="left")
             merged_df["Date of Initiation of Retx LD Chemo"] = pd.to_datetime(
@@ -288,9 +368,13 @@ def EnrollmentLog30425(final_data):
 
         # EXINF (CAR T cell infusion - Retreatment)
         if "EXINF" in final_data and not final_data["EXINF"].empty:
-            INF_df = final_data["EXINF"][[SUBJECT, EVENT_GROUP_LABEL, EXINF_INFUSION_DATE]].copy()
+            INF_df = final_data["EXINF"][
+                [SUBJECT, EVENT_GROUP_LABEL, EXINF_INFUSION_DATE]
+            ].copy()
             INF_df = INF_df[INF_df[EVENT_GROUP_LABEL] == "Study Retreatment"]
-            INF_df = INF_df.rename(columns={EXINF_INFUSION_DATE: "CAR T cell Infusion Date [Day 0-R]"})
+            INF_df = INF_df.rename(
+                columns={EXINF_INFUSION_DATE: "CAR T cell Infusion Date [Day 0-R]"}
+            )
             INF_df = INF_df.drop(EVENT_GROUP_LABEL, axis=1)
             merged_df = pd.merge(merged_df, INF_df, on=SUBJECT, how="left")
             merged_df["CAR T cell Infusion Date [Day 0-R]"] = pd.to_datetime(
@@ -312,7 +396,12 @@ def EnrollmentLog30425(final_data):
         # DSINITLF (Initiation of Long-Term Follow-Up - from Retreatment)
         if "DSINITLF" in final_data and not final_data["DSINITLF"].empty:
             INITLF_df = final_data["DSINITLF"][
-                [SUBJECT, DSINITLF_PHASE, DSINITLF_LAST_VISIT_RETX, DSINITLF_RETX_END_DATE]
+                [
+                    SUBJECT,
+                    DSINITLF_PHASE,
+                    DSINITLF_LAST_VISIT_RETX,
+                    DSINITLF_RETX_END_DATE,
+                ]
             ].copy()
             INITLF_df = INITLF_df[INITLF_df[DSINITLF_PHASE] == "Retreatment"]
             INITLF_df = INITLF_df.rename(
@@ -331,13 +420,17 @@ def EnrollmentLog30425(final_data):
         if "DSEOS" in final_data and not final_data["DSEOS"].empty:
             EOS_df = final_data["DSEOS"][[SUBJECT, DSEOS_EOS_DATE]].copy()
             EOS_df = EOS_df.rename(columns={DSEOS_EOS_DATE: "End of Study Date"})
-            EOS_df["End of Study Date"] = pd.to_datetime(EOS_df["End of Study Date"], errors="coerce")
-            # a subject can have multiple EOS rows -> keep the one with the latest End of Study Date
-            EOS_df = EOS_df.sort_values([SUBJECT, "End of Study Date"], na_position="first").drop_duplicates(
-                subset=[SUBJECT], keep="last"
+            EOS_df["End of Study Date"] = pd.to_datetime(
+                EOS_df["End of Study Date"], errors="coerce"
             )
+            # a subject can have multiple EOS rows -> keep the one with the latest End of Study Date
+            EOS_df = EOS_df.sort_values(
+                [SUBJECT, "End of Study Date"], na_position="first"
+            ).drop_duplicates(subset=[SUBJECT], keep="last")
             merged_df = pd.merge(merged_df, EOS_df, on=SUBJECT, how="left")
-            merged_df["End of Study Date"] = pd.to_datetime(merged_df["End of Study Date"]).dt.strftime("%m/%d/%Y")
+            merged_df["End of Study Date"] = pd.to_datetime(
+                merged_df["End of Study Date"]
+            ).dt.strftime("%m/%d/%Y")
             merged_df.drop_duplicates(inplace=True)
 
         merged_df = merged_df.rename(columns={SUBJECT: "Subject ID#"})

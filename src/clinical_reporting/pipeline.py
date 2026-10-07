@@ -3,8 +3,7 @@
 Separates report *execution* (joining forms, applying filters, ordering,
 renaming, date formatting) from the report *state* held by
 :class:`~clinical_reporting.report.CLReport`. ``CLReport.create_report``
-delegates here, so public behaviour is unchanged while the previously
-~285-line method is broken into small, individually testable steps.
+delegates here; the steps are small and can be tested one at a time.
 """
 
 from __future__ import annotations
@@ -15,9 +14,12 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from clinical_reporting import report_columns
+from clinical_reporting.export import to_short_date_string
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
     JoinHow,
+    Operator,
     is_qualified,
     qualify,
     split_qualified,
@@ -39,43 +41,59 @@ def apply_static_filter(df, item, operator, value):
     except Exception:
         pass
 
-    if operator == "=":
+    if operator == Operator.EQ:
         if is_numeric:
             return df[numeric_column == numeric_value]
         return df[df[item].astype(str).str.lower() == str(value).lower()]
-    if operator == "!=":
+    if operator == Operator.NE:
         if is_numeric:
             return df[numeric_column != numeric_value]
         return df[df[item].astype(str).str.lower() != str(value).lower()]
-    if operator == ">":
-        return df[numeric_column > numeric_value] if is_numeric else df[df[item] > value]
-    if operator == ">=":
-        return df[numeric_column >= numeric_value] if is_numeric else df[df[item] >= value]
-    if operator == "<":
-        return df[numeric_column < numeric_value] if is_numeric else df[df[item] < value]
-    if operator == "<=":
-        return df[numeric_column <= numeric_value] if is_numeric else df[df[item] <= value]
-    if operator == "Contains":
+    if operator == Operator.GT:
+        return (
+            df[numeric_column > numeric_value] if is_numeric else df[df[item] > value]
+        )
+    if operator == Operator.GE:
+        return (
+            df[numeric_column >= numeric_value] if is_numeric else df[df[item] >= value]
+        )
+    if operator == Operator.LT:
+        return (
+            df[numeric_column < numeric_value] if is_numeric else df[df[item] < value]
+        )
+    if operator == Operator.LE:
+        return (
+            df[numeric_column <= numeric_value] if is_numeric else df[df[item] <= value]
+        )
+    if operator == Operator.CONTAINS:
         return df[df[item].astype(str).str.contains(str(value), case=False, na=False)]
-    if operator == "Does not contain":
+    if operator == Operator.NOT_CONTAINS:
         return df[~df[item].astype(str).str.contains(str(value), case=False, na=False)]
-    if operator in {"In", "Not in"}:
+    if operator in {Operator.IN, Operator.NOT_IN}:
         value_list = [part.strip() for part in str(value).split(",")]
         if is_numeric:
             try:
-                matches = numeric_column.isin([pd.to_numeric(part) for part in value_list])
+                matches = numeric_column.isin(
+                    [pd.to_numeric(part) for part in value_list]
+                )
             except Exception:
-                matches = df[item].astype(str).str.lower().isin(
-                    [part.lower() for part in value_list]
+                matches = (
+                    df[item]
+                    .astype(str)
+                    .str.lower()
+                    .isin([part.lower() for part in value_list])
                 )
         else:
-            matches = df[item].astype(str).str.lower().isin(
-                [part.lower() for part in value_list]
+            matches = (
+                df[item]
+                .astype(str)
+                .str.lower()
+                .isin([part.lower() for part in value_list])
             )
-        return df[matches] if operator == "In" else df[~matches]
-    if operator == "is Null":
+        return df[matches] if operator == Operator.IN else df[~matches]
+    if operator == Operator.IS_NULL:
         return df[df[item].isnull()]
-    if operator == "is not Null":
+    if operator == Operator.IS_NOT_NULL:
         return df[~df[item].isnull()]
     return df
 
@@ -136,22 +154,20 @@ def apply_dynamic_filter(df, item1, operator, item2):
     left = df_copy[item1]
     right = df_copy[item2]
     string_columns = not date_columns and not numeric_columns
-    if string_columns and operator in {"=", "!="}:
+    if string_columns and operator in {Operator.EQ, Operator.NE}:
         left = left.astype(str).str.lower().str.strip()
         right = right.astype(str).str.lower().str.strip()
 
     operations = {
-        "=": lambda: left == right,
-        "!=": lambda: left != right,
-        ">": lambda: left > right,
-        ">=": lambda: left >= right,
-        "<": lambda: left < right,
-        "<=": lambda: left <= right,
+        Operator.EQ: lambda: left == right,
+        Operator.NE: lambda: left != right,
+        Operator.GT: lambda: left > right,
+        Operator.GE: lambda: left >= right,
+        Operator.LT: lambda: left < right,
+        Operator.LE: lambda: left <= right,
     }
     result = df_copy[operations[operator]()] if operator in operations else df_copy
-    logger.debug(
-        "Dynamic filter reduced rows from %s to %s", len(df_copy), len(result)
-    )
+    logger.debug("Dynamic filter reduced rows from %s to %s", len(df_copy), len(result))
 
     for column in result.select_dtypes(include=[np.datetime64]).columns:
         result.loc[:, column] = result[column].dt.strftime("%m-%d-%Y")
@@ -186,12 +202,8 @@ class ReportEngine:
     # ------------------------------------------------------------------
     # Join phase
 
-    def _ordered_form_names(self):
-        """Return selected form names sorted by their configured join order."""
-        return self.report.get_forms_in_join_order()
-
     def _select_filtered_columns(self, form_name, form):
-        """Select a form's contributing columns and apply its static filters.
+        """Select a form's contributing columns and apply its filters.
 
         Returns the trimmed/filtered DataFrame, or ``None`` when the form
         contributes no columns.
@@ -208,7 +220,7 @@ class ReportEngine:
         for item in form.get_join_items():
             if item and item in source.columns and item not in columns_to_select:
                 columns_to_select.append(item)
-        # Form-specific selected items.
+        # Selected form items.
         for item in form.get_selected_form_items():
             if item in source.columns and item not in columns_to_select:
                 columns_to_select.append(item)
@@ -218,7 +230,7 @@ class ReportEngine:
 
         form_df = source[columns_to_select].copy()
 
-        # Apply static filters whose item belongs to this form.
+        # Apply the filters whose item belongs to this form.
         for item, operator, value in report.static_filter_items:
             if item in form_df.columns:
                 form_df = apply_static_filter(form_df, item, operator, value)
@@ -233,7 +245,9 @@ class ReportEngine:
         """Prefix non-common columns of the first form with ``form_name.``."""
         report = self.report
         rename_cols = {
-            col: qualify(form_name, col) for col in form_df.columns if col not in report.selected_common_items
+            col: qualify(form_name, col)
+            for col in form_df.columns
+            if col not in report.selected_common_items
         }
         if rename_cols:
             form_df = form_df.rename(columns=rename_cols)
@@ -287,7 +301,7 @@ class ReportEngine:
         """Join all selected forms in join order; return the merged DataFrame or ``None``."""
         report = self.report
         result_df = None
-        for form_name in self._ordered_form_names():
+        for form_name in report_columns.forms_in_join_order(report.selected_forms):
             form = report.selected_forms[form_name]
             form_df = self._select_filtered_columns(form_name, form)
             if form_df is None:
@@ -303,7 +317,7 @@ class ReportEngine:
 
     @staticmethod
     def _resolve_filter_column(name, columns):
-        """Resolve a dynamic-filter operand to an actual column name, or ``None``.
+        """Resolve a comparison operand to an actual column name, or ``None``.
 
         Matches a column directly, or (for an unqualified operand) a column whose
         item part equals ``name`` after stripping its form prefix.
@@ -321,8 +335,12 @@ class ReportEngine:
             item1_col = self._resolve_filter_column(item1, result_df.columns)
             item2_col = self._resolve_filter_column(item2, result_df.columns)
             if item1_col is not None and item2_col is not None:
-                logger.debug("Applying filter: %s %s %s", item1_col, operator, item2_col)
-                result_df = apply_dynamic_filter(result_df, item1_col, operator, item2_col)
+                logger.debug(
+                    "Applying filter: %s %s %s", item1_col, operator, item2_col
+                )
+                result_df = apply_dynamic_filter(
+                    result_df, item1_col, operator, item2_col
+                )
             else:
                 logger.warning(
                     "Could not find columns for dynamic filter: %s %s %s (resolved item1=%s, item2=%s)",
@@ -373,7 +391,11 @@ class ReportEngine:
     def _format_date_columns(self, result_df):
         """Render date columns as ``m/d/yyyy`` strings (no leading zeros)."""
         # Datetime-typed columns, plus any 'date'-named column that parses as dates.
-        date_cols = list(result_df.select_dtypes(include=["datetime64", "datetime", np.datetime64]).columns)
+        date_cols = list(
+            result_df.select_dtypes(
+                include=["datetime64", "datetime", np.datetime64]
+            ).columns
+        )
 
         for col in result_df.columns:
             if "date" in col.lower() and col not in date_cols:
@@ -381,7 +403,9 @@ class ReportEngine:
                     if pd.api.types.is_datetime64_dtype(result_df[col]):
                         inferred_datetime = True
                     else:
-                        inferred_datetime = self._to_datetime_quiet(result_df[col]).notna().any()
+                        inferred_datetime = (
+                            self._to_datetime_quiet(result_df[col]).notna().any()
+                        )
                     if inferred_datetime:
                         date_cols.append(col)
                 except Exception:
@@ -390,9 +414,7 @@ class ReportEngine:
         for col in date_cols:
             try:
                 result_df[col] = self._to_datetime_quiet(result_df[col])
-                result_df[col] = result_df[col].apply(
-                    lambda x: f"{x.month}/{x.day}/{x.year}" if pd.notnull(x) else ""
-                )
+                result_df[col] = result_df[col].apply(to_short_date_string)
             except Exception:
                 logger.debug("Could not format column %s as date", col)
         return result_df
