@@ -1,16 +1,20 @@
-import re
-
 import numpy as np
 import pandas as pd
 
 from cci_automation.dsmb.DSMB_util import (
+    combine_labs,
+    combine_reason,
     convert_float_2_sci_notation,
+    fill_na_reason,
+    format_date,
     get_stats_df,
     get_stats_perc_df,
     get_stats_percentage,
     get_stats_percentage2,
+    pick_last_visit,
 )
 from cci_automation.util import age_calculation, get_data_from_dict
+from clinical_reporting.export import get_named_excel_formats
 
 
 class DSMB03325:
@@ -397,41 +401,6 @@ class DSMB03325:
         EGFR_df = EGFR_df.rename(columns=EGFR_new_col_name)
 
         # Combine results by subject, giving NeoGenomics priority unless its value is "Not Done"
-        def combine_labs(group):
-            res = {"Subject": group.name}
-            labs = (
-                group.get("Laboratory Name", pd.Series([], dtype=str))
-                .fillna("")
-                .astype(str)
-                .str.strip()
-            )
-            neo_mask = labs.eq("NeoGenomics")
-            other_mask = ~neo_mask
-
-            for col in ["Amplification of EGFR", "EGFRvIII Mutation", "EGFR Mutation"]:
-                neo_vals = group.loc[neo_mask, col].fillna("").astype(str).str.strip()
-                other_vals = (
-                    group.loc[other_mask, col].fillna("").astype(str).str.strip()
-                )
-
-                neo_nonempty = neo_vals[neo_vals != ""]
-                other_nonempty = other_vals[other_vals != ""]
-                neo_choice = neo_nonempty.iloc[0] if not neo_nonempty.empty else ""
-                neo_has_not_done = (neo_nonempty.str.lower() == "not done").any()
-
-                if neo_has_not_done and not other_nonempty.empty:
-                    chosen = other_nonempty.iloc[0]
-                elif neo_choice:
-                    chosen = neo_choice
-                elif not other_nonempty.empty:
-                    chosen = other_nonempty.iloc[0]
-                else:
-                    chosen = ""
-
-                res[col] = chosen
-
-            return pd.Series(res)
-
         combined_EGFR_df = (
             EGFR_df.groupby("Subject", dropna=False)
             .apply(combine_labs, include_groups=False)
@@ -673,19 +642,6 @@ class DSMB03325:
                 "%scFV (IL13Ra2)",
             ]
         ]
-
-        def format_date(x):
-            if pd.isna(x):
-                return ""
-            # If already datetime
-            if isinstance(x, pd.Timestamp):
-                return f"{x.month}/{x.day}/{x.year}"
-            # If string, try parsing it
-            try:
-                dt = pd.to_datetime(x)
-                return f"{dt.month}/{dt.day}/{dt.year}"
-            except Exception:
-                return str(x)  # fallback, just keep original string
 
         # Apply formatting
         # format the date field to be no leading 0
@@ -1213,17 +1169,6 @@ class DSMB03325:
             }
         )
 
-        def _clean_str(val):
-            if pd.isna(val):
-                return ""
-            s = str(val).strip()
-            return "" if s.lower() == "nan" else s
-
-        def combine_reason(row):
-            reason = _clean_str(row.get("LTFU Reason", ""))
-            support = _clean_str(row.get("LTFU Support", ""))
-            return (reason + (" " + support if support else "")).strip()
-
         dsinit_df["Combined Reason"] = dsinit_df.apply(combine_reason, axis=1)
 
         primary_map = (
@@ -1246,16 +1191,12 @@ class DSMB03325:
             TXSUB_status_df["Subject"].map(retx_map).fillna("")
         )
 
-        def _fill_na_reason(val):
-            txt = _clean_str(val)
-            return txt if txt else "N/A"
-
         TXSUB_status_df["Reason for LTFU"] = TXSUB_status_df["Reason for LTFU"].apply(
-            _fill_na_reason
+            fill_na_reason
         )
         TXSUB_status_df["Reason for Retx LTFU"] = TXSUB_status_df[
             "Reason for Retx LTFU"
-        ].apply(_fill_na_reason)
+        ].apply(fill_na_reason)
         # replaces all occurrences of NaN, positive infinity, and negative infinity with empty strings.
         TXSUB_status_df = TXSUB_status_df.replace([np.nan, np.inf, -np.inf], "N/A")
         # Convert date column to string in M-D-YYYY format without leading zeros
@@ -1266,19 +1207,6 @@ class DSMB03325:
         TXSUB_status_df["Event Date_y"] = TXSUB_status_df["Event Date_y"].apply(
             lambda x: "N/A" if x == "N/A" else f"{x.month}-{x.day}-{x.year}"
         )
-
-        def format_date(x):
-            if pd.isna(x):
-                return ""
-            # If already datetime
-            if isinstance(x, pd.Timestamp):
-                return f"{x.month}/{x.day}/{x.year}"
-            # If string, try parsing it
-            try:
-                dt = pd.to_datetime(x)
-                return f"{dt.month}/{dt.day}/{dt.year}"
-            except Exception:
-                return str(x)  # fallback, just keep original string
 
         # Apply formatting
         TXSUB_status_df["Event Date_x Str"] = TXSUB_status_df["Event Date_x"].apply(
@@ -1320,44 +1248,8 @@ class DSMB03325:
             "End of Study Date"
         ].apply(format_date)
 
-        def _extract_last_date(val: str):
-            if not isinstance(val, str):
-                return pd.NaT
-            matches = re.findall(r"(\d{1,2}/\d{1,2}/\d{4})", val)
-            if not matches:
-                return pd.NaT
-            # pick the chronologically latest date in the string
-            parsed = []
-            for m in matches:
-                try:
-                    parsed.append(pd.to_datetime(m))
-                except Exception:
-                    continue
-            return max(parsed) if parsed else pd.NaT
-
-        def _pick_last_visit(row):
-            val_x = row.get("Event Combined_x", "")
-            val_y = row.get("Event Combined_y", "")
-
-            date_x = _extract_last_date(val_x)
-            date_y = _extract_last_date(val_y)
-
-            if pd.notna(date_x) and pd.notna(date_y):
-                return val_x if date_x >= date_y else val_y
-            if pd.notna(date_x):
-                return val_x
-            if pd.notna(date_y):
-                return val_y
-
-            # If neither has a parsable date, prefer the non-N/A value if present
-            if isinstance(val_x, str) and val_x.strip() not in ["", "N/A"]:
-                return val_x
-            if isinstance(val_y, str) and val_y.strip() not in ["", "N/A"]:
-                return val_y
-            return "N/A"
-
         TXSUB_status_df["Last Study Visit Completed"] = TXSUB_status_df.apply(
-            _pick_last_visit, axis=1
+            pick_last_visit, axis=1
         )
 
         # Separate End of Study date and reason for reporting
@@ -1430,66 +1322,12 @@ class DSMB03325:
             output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
         ) as writer:
             ## * FORMATING AND COLORING
-            bold_11_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            bold_12_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": False,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 12,
-                    "border": 1,
-                }
-            )
-            bold_12_wrap_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 12,
-                    "border": 1,
-                }
-            )
-            bold_11_wrap_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            normal_data_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": False,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": False,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
+            formats = get_named_excel_formats(writer.book)
+            bold_11_format = formats["bold_11_format"]
+            bold_12_format = formats["bold_12_format"]
+            bold_12_wrap_format = formats["bold_12_wrap_format"]
+            bold_11_wrap_format = formats["bold_11_wrap_format"]
+            normal_data_format = formats["normal_data_format"]
             # Create a format for a black cell
             if data["DM"]["Subject"].count() > 0:
                 # DSMB-Demo Stats Table

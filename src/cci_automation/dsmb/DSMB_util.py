@@ -1,4 +1,5 @@
 import math
+import re
 from decimal import ROUND_HALF_UP, Decimal
 
 import numpy as np
@@ -335,3 +336,107 @@ def convert_float_2_sci_notation(n):
         )
 
         return f"{mantissa_str}x10^{exponent}"
+
+
+def format_date(x):
+    if pd.isna(x):
+        return ""
+    # If already datetime
+    if isinstance(x, pd.Timestamp):
+        return f"{x.month}/{x.day}/{x.year}"
+    # If string, try parsing it
+    try:
+        dt = pd.to_datetime(x)
+        return f"{dt.month}/{dt.day}/{dt.year}"
+    except Exception:
+        return str(x)  # fallback, just keep original string
+
+
+def combine_labs(group):
+    res = {"Subject": group.name}
+    labs = (
+        group.get("Laboratory Name", pd.Series([], dtype=str))
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+    neo_mask = labs.eq("NeoGenomics")
+    other_mask = ~neo_mask
+
+    for col in ["Amplification of EGFR", "EGFRvIII Mutation", "EGFR Mutation"]:
+        neo_vals = group.loc[neo_mask, col].fillna("").astype(str).str.strip()
+        other_vals = group.loc[other_mask, col].fillna("").astype(str).str.strip()
+
+        neo_nonempty = neo_vals[neo_vals != ""]
+        other_nonempty = other_vals[other_vals != ""]
+        neo_choice = neo_nonempty.iloc[0] if not neo_nonempty.empty else ""
+        neo_has_not_done = (neo_nonempty.str.lower() == "not done").any()
+
+        if neo_has_not_done and not other_nonempty.empty:
+            chosen = other_nonempty.iloc[0]
+        elif neo_choice:
+            chosen = neo_choice
+        elif not other_nonempty.empty:
+            chosen = other_nonempty.iloc[0]
+        else:
+            chosen = ""
+
+        res[col] = chosen
+
+    return pd.Series(res)
+
+
+def clean_str(val):
+    if pd.isna(val):
+        return ""
+    s = str(val).strip()
+    return "" if s.lower() == "nan" else s
+
+
+def combine_reason(row):
+    reason = clean_str(row.get("LTFU Reason", ""))
+    support = clean_str(row.get("LTFU Support", ""))
+    return (reason + (" " + support if support else "")).strip()
+
+
+def fill_na_reason(val):
+    txt = clean_str(val)
+    return txt if txt else "N/A"
+
+
+def extract_last_date(val: str):
+    if not isinstance(val, str):
+        return pd.NaT
+    matches = re.findall(r"(\d{1,2}/\d{1,2}/\d{4})", val)
+    if not matches:
+        return pd.NaT
+    # pick the chronologically latest date in the string
+    parsed = []
+    for m in matches:
+        try:
+            parsed.append(pd.to_datetime(m))
+        except Exception:
+            continue
+    return max(parsed) if parsed else pd.NaT
+
+
+def pick_last_visit(row):
+    val_x = row.get("Event Combined_x", "")
+    val_y = row.get("Event Combined_y", "")
+
+    date_x = extract_last_date(val_x)
+    date_y = extract_last_date(val_y)
+
+    if pd.notna(date_x) and pd.notna(date_y):
+        return val_x if date_x >= date_y else val_y
+    if pd.notna(date_x):
+        return val_x
+    if pd.notna(date_y):
+        return val_y
+
+    # If neither has a parsable date, prefer the non-N/A value if present
+    if isinstance(val_x, str) and val_x.strip() not in ["", "N/A"]:
+        return val_x
+    if isinstance(val_y, str) and val_y.strip() not in ["", "N/A"]:
+        return val_y
+    return "N/A"

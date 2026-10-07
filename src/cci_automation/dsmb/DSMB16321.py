@@ -4,6 +4,7 @@ import pandas as pd
 from cci_automation.dsmb.DSMB_util import (
     add_rename_column_corelisting,
     convert_float_2_sci_notation,
+    format_date,
     get_stats_df,
     get_stats_perc_df,
     get_stats_percentage,
@@ -13,6 +14,7 @@ from cci_automation.util import (
     age_calculation,
     get_data_from_dict,
 )
+from clinical_reporting.export import get_named_excel_formats
 
 
 class DSMB16321:
@@ -737,19 +739,6 @@ class DSMB16321:
             ]
         ]
 
-        def format_date(x):
-            if pd.isna(x):
-                return ""
-            # If already datetime
-            if isinstance(x, pd.Timestamp):
-                return f"{x.month}/{x.day}/{x.year}"
-            # If string, try parsing it
-            try:
-                dt = pd.to_datetime(x)
-                return f"{dt.month}/{dt.day}/{dt.year}"
-            except Exception:
-                return str(x)  # fallback, just keep original string
-
         # Apply formatting
         # format the date field to be no leading 0
         infusion_df["Study Treatment Date"] = pd.to_datetime(
@@ -1450,19 +1439,6 @@ class DSMB16321:
             lambda x: "N/A" if x == "N/A" else f"{x.month}-{x.day}-{x.year}"
         )
 
-        def format_date(x):
-            if pd.isna(x):
-                return ""
-            # If already datetime
-            if isinstance(x, pd.Timestamp):
-                return f"{x.month}/{x.day}/{x.year}"
-            # If string, try parsing it
-            try:
-                dt = pd.to_datetime(x)
-                return f"{dt.month}/{dt.day}/{dt.year}"
-            except Exception:
-                return str(x)  # fallback, just keep original string
-
         # Apply formatting
         TXSUB_status_df["Event Date_x Str"] = TXSUB_status_df["Event Date_x"].apply(
             format_date
@@ -1542,66 +1518,12 @@ class DSMB16321:
             output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
         ) as writer:
             ## * FORMATING AND COLORING
-            bold_11_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            bold_12_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": False,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 12,
-                    "border": 1,
-                }
-            )
-            bold_12_wrap_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 12,
-                    "border": 1,
-                }
-            )
-            bold_11_wrap_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            normal_data_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": False,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": False,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
+            formats = get_named_excel_formats(writer.book)
+            bold_11_format = formats["bold_11_format"]
+            bold_12_format = formats["bold_12_format"]
+            bold_12_wrap_format = formats["bold_12_wrap_format"]
+            bold_11_wrap_format = formats["bold_11_wrap_format"]
+            normal_data_format = formats["normal_data_format"]
             # Create a format for a black cell
             if data["DM"]["Subject"].count() > 0:
                 # DSMB-Demo Stats Table

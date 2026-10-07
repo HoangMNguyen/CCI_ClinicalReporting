@@ -16,6 +16,7 @@ from cci_automation.util import (
     get_data_from_dict,
     remove_leading_zeros_from_dates,
 )
+from clinical_reporting.export import get_named_excel_formats
 
 
 class DSMB12423:
@@ -1797,66 +1798,12 @@ class DSMB12423:
             output_dir + "/" + output_file_name + ".xlsx", engine="xlsxwriter"
         ) as writer:
             ## * FORMATING AND COLORING
-            bold_11_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            bold_12_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": False,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 12,
-                    "border": 1,
-                }
-            )
-            bold_12_wrap_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 12,
-                    "border": 1,
-                }
-            )
-            bold_11_wrap_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": True,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": True,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
-            normal_data_format = writer.book.add_format(
-                {
-                    "bg_color": "#FFFFFF",
-                    "text_wrap": False,
-                    "valign": "vcenter",
-                    "align": "center",
-                    "bold": False,
-                    "font_name": "Calibri",
-                    "font_size": 11,
-                    "border": 1,
-                }
-            )
+            formats = get_named_excel_formats(writer.book)
+            bold_11_format = formats["bold_11_format"]
+            bold_12_format = formats["bold_12_format"]
+            bold_12_wrap_format = formats["bold_12_wrap_format"]
+            bold_11_wrap_format = formats["bold_11_wrap_format"]
+            normal_data_format = formats["normal_data_format"]
             # Create a format for a black cell
             if data["DM"]["Subject"].count() > 0:
                 # DSMB-Demo Stats Table
