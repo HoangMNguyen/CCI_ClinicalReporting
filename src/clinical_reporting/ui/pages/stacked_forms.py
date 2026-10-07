@@ -81,7 +81,7 @@ from clinical_reporting.stacking import (
     StackLayout,
 )
 
-from ._common import make_table
+from ._common import CellComboBox, make_table
 
 #: The Stacked forms table's columns: Name, Members, Items, Rows.
 _FORMS_COLUMNS = (
@@ -154,25 +154,7 @@ class _NameEdit(QLineEdit):
         self.focused.emit()
 
 
-class _GridComboBox(QComboBox):
-    """A combo box in the items grid.
-
-    Ignores the wheel unless it has the focus, so scrolling the grid never
-    changes it.
-    """
-
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    def wheelEvent(self, event) -> None:  # noqa: N802 (Qt override)
-        if self.hasFocus():
-            super().wheelEvent(event)
-        else:
-            event.ignore()
-
-
-class _MatchNameBox(_GridComboBox):
+class _MatchNameBox(CellComboBox):
     """A matched item's name: one of its items' names, or one typed."""
 
     def __init__(self, names: Sequence[str], name: str, parent=None) -> None:
@@ -186,7 +168,7 @@ class _MatchNameBox(_GridComboBox):
         self.setAccessibleName("Name of the matched item")
 
 
-class _MatchItemBox(_GridComboBox):
+class _MatchItemBox(CellComboBox):
     """A member's item in a match, as a dropdown.
 
     It lists "—" (none) and the member's current item, then the items it

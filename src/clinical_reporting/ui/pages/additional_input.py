@@ -78,7 +78,7 @@ from clinical_reporting.ui.table_actions import (
     copy_original_names_to_new_names,
 )
 
-from ._common import make_table
+from ._common import CellComboBox, make_table
 
 _NAME_COLUMNS = (ColumnSpec("stretch"), ColumnSpec("stretch"))
 #: The Form names columns: file names are long, form names are short, and
@@ -178,24 +178,6 @@ class AdditionalInputPage(Page):
         self.body.addWidget(self.banner_ignored_names)
         self.body.addWidget(files_card)
         self.body.addLayout(names, 1)
-
-
-class _SavedNamesComboBox(QComboBox):
-    """A Saved names dropdown that ignores the wheel unless it has focus.
-
-    Scrolling the table over it must not pick another entry, which would
-    replace the file's names.
-    """
-
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    def wheelEvent(self, event) -> None:  # noqa: N802 (Qt override)
-        if self.hasFocus():
-            super().wheelEvent(event)
-        else:
-            event.ignore()
 
 
 class AdditionalInputMixin:
@@ -664,7 +646,8 @@ class AdditionalInputMixin:
 
         Greyed out, with only None, when there are no *entries*.
         """
-        combo = _SavedNamesComboBox()
+        # Scrolling the table over it would otherwise replace the file's names.
+        combo = CellComboBox()
         combo.addItem(steps.SAVED_NAMES_NONE)
         for entry, label in zip(entries, steps.saved_names_labels(entries)):
             combo.addItem(label)
