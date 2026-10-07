@@ -194,10 +194,12 @@ def test_a_file_that_is_gone_says_so(tmp_path):
         format_tool.run(str(tmp_path / "labs.csv"))
 
 
-def test_a_dsmb_module_that_writes_nothing_says_why():
-    """03325's module reports only subjects with a submitted DM form."""
+@pytest.mark.parametrize("study", ["03325", "10325", "16321"])
+def test_a_dsmb_module_that_writes_nothing_says_why(study):
+    """These modules report only subjects with a submitted DM form."""
+    export = _renamed(_export_03325(dm_status="Draft"), study)
     with pytest.raises(WorkflowInputError, match="no submitted Demographics"):
-        dsmb.run(_export_03325(dm_status="Draft"), study="03325")
+        dsmb.run(export, study=study)
 
 
 def test_a_dsmb_export_without_demographics_says_so():
