@@ -12,13 +12,13 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from clinical_reporting.filenames import output_file_name
 from clinical_reporting.workflow import (
     OutputFile,
     UnsupportedStudyError,
     WorkflowInputError,
     check_study,
     missing_forms_error,
+    named_output,
     read_corelisting,
 )
 
@@ -115,8 +115,9 @@ def run(
                 )
             raise RuntimeError(f"The DSMB module of study {study} wrote no report.")
         workbook = report.read_bytes()
-    name = (file_name or "").strip() or default_file_name(study)
-    return OutputFile(output_file_name(name), workbook)
+    return named_output(
+        workbook, file_name=file_name, default_name=default_file_name(study)
+    )
 
 
 class DSMB:

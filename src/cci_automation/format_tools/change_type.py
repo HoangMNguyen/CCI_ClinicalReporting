@@ -16,12 +16,12 @@ import zipfile
 
 import pandas as pd
 
-from clinical_reporting.filenames import output_file_name
 from clinical_reporting.workflow import (
     OutputFile,
     WorkflowInputError,
     file_name_of,
     input_name,
+    named_output,
     reading_input,
 )
 
@@ -85,8 +85,9 @@ def run(source, *, file_name: str = "") -> OutputFile:
             all_data = pd.read_excel(source, sheet_name=None)
     buffer = io.BytesIO()
     write_formatted(all_data, buffer)
-    name = (file_name or "").strip() or default_file_name(source)
-    return OutputFile(output_file_name(name), buffer.getvalue())
+    return named_output(
+        buffer.getvalue(), file_name=file_name, default_name=default_file_name(source)
+    )
 
 
 def _read_csv(source):

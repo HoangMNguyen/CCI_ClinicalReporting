@@ -12,12 +12,12 @@ from typing import Optional
 
 import pandas as pd
 
-from clinical_reporting.filenames import output_file_name
 from clinical_reporting.workflow import (
     OutputFile,
     UnsupportedStudyError,
     check_study,
     missing_forms_error,
+    named_output,
     read_corelisting,
 )
 
@@ -66,8 +66,9 @@ def run(
     if "DM" not in data:  # Every study's log starts from the Demographics form.
         raise missing_forms_error(WORKFLOW, ["DM"])
     workbook = EnrollmentLog(data, study).to_excel_bytes()
-    name = (file_name or "").strip() or default_file_name(study)
-    return OutputFile(output_file_name(name), workbook)
+    return named_output(
+        workbook, file_name=file_name, default_name=default_file_name(study)
+    )
 
 
 class EnrollmentLog:
