@@ -22,9 +22,8 @@ from cci_ui.tool_window import ToolWindow, run_tool
 from cci_ui.widgets.path_picker import PathPicker
 from cci_ui.widgets.workflow_page import WorkflowPage
 from clinical_reporting.filenames import output_file_name
-from clinical_reporting.workflow import WorkflowInputError
+from clinical_reporting.workflow import WorkflowInputError, study_named_by
 from safety_automation import __version__
-from safety_automation.util import get_study_name
 
 #: Settings key and Windows taskbar id of this tool.
 APP_ID = "safety-automation"
@@ -79,7 +78,7 @@ class Widget(ToolWindow):
         self.corelisting.setFocus()  # Where a keyboard user starts.
 
     def _suggest_file_name(self, path: str) -> None:
-        study = get_study_name(path) if path else None
+        study = study_named_by(path) if path else None
         self.page.suggest_file_name(listing.default_file_name(study) if study else "")
 
     def run(self) -> None:

@@ -135,13 +135,26 @@ def reading_input(
         ) from exc
 
 
+#: A browser's " (n)" on a second download of the same file.
+_COPY_SUFFIX = re.compile(r"\s*\(\d+\)$")
+#: Five digits, alone or followed by "-" and a description.
+_STUDY_TOKEN = re.compile(r"(\d{5})(?:-.*)?")
+
+
 def study_named_by(source) -> Optional[str]:
     """The five-digit study number in a Corelisting export's file name, if any.
 
-    ("Core_Listings_15420_….zip" and "Core_Listings_15420.zip" name 15420.)
+    It is the third "_"-separated part of the name, or the whole name when it
+    has fewer parts (see :func:`~clinical_reporting.data.parse_study_name`):
+    five digits, alone or followed by "-" and a description, with a browser's
+    " (n)" copy suffix ignored. "Core_Listings_15420_….zip",
+    "Core_Listings_15420 (1).zip" and "Core_Listings_12423-TmCD19-IL18_….zip"
+    name 15420, 15420 and 12423; "Core_Listings_154201_….zip" and
+    "UPCC15420_CoreListing_20260901.zip" name none.
     """
     token = os.path.splitext(parse_study_name(input_name(source)))[0]
-    return token if re.fullmatch(r"\d{5}", token) else None
+    match = _STUDY_TOKEN.fullmatch(_COPY_SUFFIX.sub("", token))
+    return match.group(1) if match else None
 
 
 def check_study(source, study: str, workflow: str, supported: Iterable[str]) -> None:

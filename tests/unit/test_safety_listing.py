@@ -1,6 +1,7 @@
 """Safety Automation's AE & DLT listing as a plain function (made-up data)."""
 
 import io
+import re
 import zipfile
 
 import pandas as pd
@@ -125,6 +126,45 @@ def test_a_file_name_without_a_study_number_says_so():
         listing.run(_upload(_export_16321(), "export.zip"))
 
 
+def test_a_given_study_that_the_file_name_contradicts_is_refused():
+    export = _upload(_export_16321(), "Core_Listings_15420_x.zip")
+    message = (
+        "Core_Listings_15420_x.zip is an export of study 15420, but study 16321 "
+        "is chosen."
+    )
+
+    with pytest.raises(WorkflowInputError, match="^" + re.escape(message)):
+        listing.run(export, study="16321")
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "UPCC16321_CoreListing_20260901.zip",  # A date, not a study.
+        "Core_Listings_163211_x.zip",  # Six digits.
+        "Core_Listings_16321abc_x.zip",
+    ],
+)
+def test_a_name_whose_third_part_isnt_a_study_number_says_so(name):
+    with pytest.raises(
+        UnsupportedStudyError, match="study number isn't in the file name"
+    ):
+        listing.run(_upload(_export_16321(), name))
+
+
+@pytest.mark.parametrize(
+    ("name", "study"),
+    [
+        ("Core_Listings_16321 (1).zip", "16321"),  # A browser's second download.
+        ("Core_Listings_12423-TmCD19-IL18_2025_08_27_14_00_EDT.zip", "12423"),
+    ],
+)
+def test_the_study_is_read_from_a_copied_or_hyphenated_name(name, study):
+    output = listing.run(_upload(_export_for(study), name))
+
+    assert output.name.startswith(f"{study} AE DLT ")
+
+
 def test_an_export_without_the_ae_form_says_so():
     export = _upload(
         _export_16321(forms=("DSCA", "EXINF")), "Core_Listings_16321_x.zip"
@@ -175,8 +215,11 @@ def _value(column: str, subject: str):
     return "x"
 
 
-def _export_for(study: str, extra_forms=()) -> bytes:
-    """A one-subject export for *study*, built from the listing's column lists."""
+def _export_for(study: str, extra_forms=(), cohort=None) -> bytes:
+    """A one-subject export for *study*, built from the listing's column lists.
+
+    The subject's cohort assignment is *cohort*, or the study's first one.
+    """
     blank = _blank()
     keys = listing.AECoreListing.STUDY_KEY_MAP.get(study, {})
     subject = f"100-{study}-01"
@@ -197,7 +240,7 @@ def _export_for(study: str, extra_forms=()) -> bytes:
     add(keys.get("EXINF", "EXINF"), exinf)
     cohort_columns = blank.get_DSCA_header_list(study)
     if cohort_columns:
-        cohort = next(iter(blank.get_cohort_value_dict(study)))
+        cohort = cohort or next(iter(blank.get_cohort_value_dict(study)))
         add(keys.get("DSCA", "DSCA"), cohort_columns, {cohort_columns[1]: cohort})
     for form in extra_forms:
         add(form, ["Subject", "Cohort Assignment (made.up)"])
@@ -227,3 +270,15 @@ def test_a_cohort_form_the_study_has_no_columns_for_is_left_out(study):
 
     headers = [cell.value for cell in report[1]]
     assert "Cohort" not in headers
+
+
+def test_a_15420_subject_in_cohort_b_is_listed_as_b():
+    export = _upload(
+        _export_for("15420", cohort="Cohort B: Chronic Lymphocytic Leukemia (CLL)"),
+        "Core_Listings_15420_x.zip",
+    )
+
+    report = load_workbook(io.BytesIO(listing.run(export).data))["Reformated AE Report"]
+
+    headers = [cell.value for cell in report[1]]
+    assert report.cell(row=2, column=headers.index("Cohort") + 1).value == "B"

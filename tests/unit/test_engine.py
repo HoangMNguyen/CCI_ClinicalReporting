@@ -70,17 +70,8 @@ def test_resolve_filter_column_direct_suffix_and_missing():
     assert ReportEngine._resolve_filter_column("XX.Age", cols) is None
 
 
-def test_reorder_columns_prefers_order_list_over_selected_items():
+def test_reorder_columns_follows_selected_items_order_list():
     report = _two_form_report()
-    report.order_list = ["VS.Pulse", "Subject", "DM.Age"]
-    report.selected_items_order_list = ["DM.Age", "Subject", "VS.Pulse"]
-    df = report.create_report()
-    assert list(df.columns) == ["VS.Pulse", "Subject", "DM.Age"]
-
-
-def test_reorder_falls_back_to_selected_items_order_list():
-    report = _two_form_report()
-    report.order_list = []
     report.selected_items_order_list = ["VS.Pulse", "Subject", "DM.Age"]
     df = report.create_report()
     assert list(df.columns) == ["VS.Pulse", "Subject", "DM.Age"]

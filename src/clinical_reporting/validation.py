@@ -273,7 +273,7 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 )
 
     # The report's output columns (clinical_reporting.report_columns): what
-    # renames, filters and the order lists may refer to.
+    # renames, filters and the column order may refer to.
     logical_output = output_identifiers(report)
     active_identifiers = set(logical_output)
     qualified_items = active_identifiers - selected_common_set
@@ -400,15 +400,14 @@ def validate_report(report) -> list[ReportValidationIssue]:
             "rename_dict",
         )
 
-    for attribute in ("order_list", "selected_items_order_list"):
-        for identifier in getattr(report, attribute, None) or []:
-            if identifier not in active_identifiers:
-                _add_issue(
-                    issues,
-                    "unknown_order_item",
-                    f"Ordered item '{identifier}' is not selected in the report.",
-                    attribute,
-                )
+    for identifier in getattr(report, "selected_items_order_list", None) or []:
+        if identifier not in active_identifiers:
+            _add_issue(
+                issues,
+                "unknown_order_item",
+                f"Ordered item '{identifier}' is not selected in the report.",
+                "selected_items_order_list",
+            )
 
     return issues
 

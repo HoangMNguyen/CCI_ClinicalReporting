@@ -248,6 +248,13 @@ listed at the time, as the Additional input page shows them: re-saving a
 setting in a run without some of its files drops their names, just as the
 forms those files would bring drop out of the setting.
 
+The column order is `selected_items_order_list`, with `order_list_customized`
+set once the Order & rename page changed it (a setting saved before the flag
+existed counts as customized when it has an order). A setting may also keep
+an order in `order_list`, a key versions before 2.15 read first. That order
+is used unless the setting's own order is customized. New saves don't write
+`order_list`; older versions, finding none, use `selected_items_order_list`.
+
 ## Usage telemetry
 
 Saving a report or a setting is reported to a usage counter, silently and in

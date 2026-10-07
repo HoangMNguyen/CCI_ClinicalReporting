@@ -43,6 +43,21 @@ def test_choosing_a_zip_suggests_a_file_name_with_its_study(window):
     assert footnote.startswith("Saved as 16321 AE DLT ")
 
 
+@pytest.mark.parametrize(
+    ("path", "suggested"),
+    [
+        ("C:/Downloads/Core_Listings_12423-TmCD19-IL18_2025_08_27.zip", "12423 AE DLT"),
+        ("C:/Downloads/Core_Listings_163211_x.zip", ""),  # Six digits: no study.
+    ],
+)
+def test_the_suggested_name_reads_a_hyphenated_study_and_skips_six_digits(
+    window, path, suggested
+):
+    window.corelisting.set_path(path)
+
+    assert window.page.file_name.placeholderText() == suggested
+
+
 def test_a_keyboard_user_starts_on_the_zips_choose_button(window):
     assert window.focusWidget() is window.corelisting.button
 

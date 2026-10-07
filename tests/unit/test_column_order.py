@@ -176,6 +176,72 @@ def test_legacy_settings_with_saved_order_replay_exactly(report_with_data):
     assert report.update_selected_items_order_list() == ["DM.Weight", "Subject"]
 
 
+def _report_from_setting(order_settings):
+    """A DM report (VS loaded, not selected) from a setting with *order_settings*."""
+    report = CLReport()
+    report.set_data(
+        {
+            "DM": pd.DataFrame({"Subject": ["001"], "Weight": [70], "Age": [30]}),
+            "VS": pd.DataFrame({"Subject": ["001"], "Pulse": [60]}),
+        }
+    )
+    report.apply_config(
+        {
+            "selected_forms": {
+                "DM": {
+                    "name": "DM",
+                    "selected_form_items": ["Weight", "Age"],
+                    "join_items": [],
+                    "join_order": 1,
+                    "join_how": "Left join",
+                }
+            },
+            "selected_common_items": ["Subject"],
+            **order_settings,
+        }
+    )
+    return report
+
+
+def test_a_customized_order_wins_over_a_stale_order_list():
+    report = _report_from_setting(
+        {
+            "order_list": ["Subject", "DM.Weight", "DM.Age"],
+            "selected_items_order_list": ["DM.Age", "Subject", "DM.Weight"],
+            "order_list_customized": True,
+        }
+    )
+
+    assert list(report.create_report().columns) == ["DM.Age", "Subject", "DM.Weight"]
+
+
+def test_an_order_list_alone_is_read_as_the_custom_order():
+    report = _report_from_setting({"order_list": ["DM.Age", "Subject", "DM.Weight"]})
+
+    assert report.get_selected_items_order_list() == ["DM.Age", "Subject", "DM.Weight"]
+    assert report.order_list_customized is True
+    assert list(report.create_report().columns) == ["DM.Age", "Subject", "DM.Weight"]
+
+
+def test_an_order_list_beats_an_order_that_was_never_customized():
+    # A setting re-saved since the flag existed: the default order, not customized.
+    report = _report_from_setting(
+        {
+            "order_list": ["DM.Age", "Subject", "DM.Weight"],
+            "selected_items_order_list": ["Subject", "DM.Weight", "DM.Age"],
+            "order_list_customized": False,
+        }
+    )
+
+    assert report.get_selected_items_order_list() == ["DM.Age", "Subject", "DM.Weight"]
+
+
+def test_a_saved_setting_has_no_order_list():
+    report = _report_from_setting({"order_list": ["DM.Age", "Subject", "DM.Weight"]})
+
+    assert "order_list" not in report.settings_to_dict("x")
+
+
 def test_customization_resets_when_nothing_survives(report_with_data):
     report = report_with_data
     report.set_common_item_state("Subject", selected=True)

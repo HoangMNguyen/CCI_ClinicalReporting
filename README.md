@@ -110,13 +110,18 @@ than carrying their own copies:
     `WorkflowInputError` that names the file. `read_corelisting` reads a
     Corelisting export through it, with
     `clinical_reporting.data.read_data_dict_zip_corelisting`.
-  - `study_named_by` reads the study from a ZIP's file name, and
-    `check_study` refuses a ZIP named for another study than the one chosen
-    (CCI Automation).
+  - `study_named_by` reads the study from a Corelisting export's file name,
+    from its third `_`-separated part (or the whole name, if it has fewer):
+    five digits, alone or followed by `-` and a description
+    (`Core_Listings_12423-TmCD19-IL18_….zip` names 12423), with a browser's
+    ` (n)` copy suffix ignored (CCI Automation and Safety Automation).
+    `check_study` refuses an export named for another study than the one
+    chosen or given (CCI Automation, and Safety Automation's `run(study=...)`).
 - `clinical_reporting.filenames.output_file_name` makes the
   `<name> YYMMDD_HHMMSS.xlsx` file names.
 - `clinical_reporting.data.parse_study_name` reads the study from a file
-  name (Safety Automation directly; `study_named_by` builds on it).
+  name (Clinical Reporting's Source data page directly; `study_named_by`
+  builds on it).
 - `clinical_reporting.export.get_named_excel_formats` provides shared Excel
   cell styles (the DSMB modules and Safety Automation's AE & DLT listing).
 - `clinical_reporting.export.to_short_date_string` writes dates as
