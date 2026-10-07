@@ -168,6 +168,8 @@ tests/
   ui/                          # design-system, window and page tests (need Qt)
 infra/run_counter/             # AWS stack behind the usage counter (its README)
 docs/design/clinical-reporting-mockup.html  # the approved mockup the design follows
+docs/adr/                      # architecture decisions: what was decided and why
+GLOSSARY.md                    # the domain words the code and docs use
 *.spec, build_support.py       # PyInstaller builds (see Building the executables)
 ```
 
