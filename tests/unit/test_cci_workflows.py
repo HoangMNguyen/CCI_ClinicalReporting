@@ -127,6 +127,20 @@ def test_a_zip_named_for_another_study_is_refused():
 
 
 @pytest.mark.parametrize(
+    ("workflow", "study", "dm_status"),
+    # 11823's DSMB module builds its report from this made-up export.
+    [(enrollment, "03325", "Submitted"), (dsmb, "11823", "Draft")],
+)
+def test_an_export_named_with_a_description_after_its_study_is_checked_too(
+    workflow, study, dm_status
+):
+    export = _renamed(_export_03325(dm_status=dm_status), "12423-TmCD19-IL18")
+
+    with pytest.raises(WorkflowInputError, match="is an export of study 12423"):
+        workflow.run(export, study=study)
+
+
+@pytest.mark.parametrize(
     ("workflow", "module"),
     [(enrollment, "EnrollmentLog"), (dsmb, "DSMB")],
 )

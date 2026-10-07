@@ -110,9 +110,12 @@ than carrying their own copies:
     `WorkflowInputError` that names the file. `read_corelisting` reads a
     Corelisting export through it, with
     `clinical_reporting.data.read_data_dict_zip_corelisting`.
-  - `study_named_by` reads the study from a ZIP's file name, and
-    `check_study` refuses a ZIP named for another study than the one chosen
-    (CCI Automation).
+  - `study_named_by` reads the study from a Corelisting export's file name,
+    from its third `_`-separated part (or the whole name, if it has fewer):
+    five digits, alone or followed by `-` and a description
+    (`Core_Listings_12423-TmCD19-IL18_….zip` names 12423), with a browser's
+    ` (n)` copy suffix ignored. `check_study` refuses an export named for
+    another study than the one chosen (CCI Automation).
 - `clinical_reporting.filenames.output_file_name` makes the
   `<name> YYMMDD_HHMMSS.xlsx` file names.
 - `clinical_reporting.data.parse_study_name` reads the study from a file
