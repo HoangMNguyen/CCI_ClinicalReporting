@@ -10,7 +10,6 @@ import os
 import zipfile
 
 import pandas as pd
-import xlsxwriter
 
 from clinical_reporting.filenames import output_file_name
 from clinical_reporting.workflow import (
@@ -127,7 +126,6 @@ class SDSData:
         """
         self.SDSAllData = sds_sheets
         self.errorList = []
-        # self.df = pd.DataFrame(self.FDdata, columns= ['Form Name','Item Name', 'External ID', 'Label'])
         self.df = self.SDSAllData["Form Definitions"]
         self.df1 = self.SDSAllData["Codelists"]
         self.APR(nameCheck)
@@ -137,9 +135,7 @@ class SDSData:
 
     def validation(self, val_df):
         self.val_df = val_df
-        self.val_df = self.val_df[
-            ["Category", "Section", "Error Name", "Description", "Object"]
-        ]
+        self.val_df = self.val_df[VALIDATION_COLUMNS]
         to_remove = [
             "Item Group Tabular Display Contains Label",
             "Multiple dynamic rules on object",
@@ -233,7 +229,6 @@ class SDSData:
                             & (df1["Hidden"] == False)  # noqa: E712
                         ]
                     )
-                    # print(str(df.loc[i, "Form Label"]) + str(df.loc[i, "Label"]) + " Codelist display type is picklist " + df.loc[i, "Codelist"] +  str(count_options))
                     if (count_options == 1 or count_options == 2) and df.loc[
                         i, "Control Type"
                     ] == "Picklist":
@@ -322,7 +317,6 @@ class SDSData:
 
                 if nameCheck:
                     self.itemGroupNameCheck(i)
-        # print(*self.errorList,sep='\n')
 
     def itemNameCheck(self, i):
         df = self.df
@@ -754,49 +748,6 @@ class SDSData:
                 ]
             )
 
-    def codelistsCheck(self):
-        df1 = self.df1
-        for i in range(len(df1)):
-            if not pd.isnull(df1.loc[i, "Choice Code"]):
-                if (
-                    df1.loc[i, "Choice Label"] == "Yes"
-                    and df1.loc[i, "Choice Code"] != 1
-                ):
-                    self.errorList.append(
-                        [
-                            "",
-                            "",
-                            "",
-                            "Wrong Code for Codelist",
-                            "Codelist: "
-                            + df1.loc[i, "Item Group Name"]
-                            + " doesn't have NA as the 7th and 8th letters",
-                        ]
-                    )
-        pass
-
-    def name2Al(self, *args):
-        columnLetters = []
-        for columnName in args:
-            # convert column name to number first
-            columnNumber = self.df.columns.get_loc(columnName)
-            # convert column number to alphabetical letter
-            columnLetter = xlsxwriter.utility.xl_col_to_name(columnNumber)
-            columnLetters.append(columnLetter)
-
-        return ", ".join(columnLetters)
-
-    def name2Al_2(self, *args):
-        columnLetters = []
-        for columnName in args:
-            # convert column name to number first
-            columnNumber = self.df1.columns.get_loc(columnName)
-            # convert column number to alphabetical letter
-            columnLetter = xlsxwriter.utility.xl_col_to_name(columnNumber)
-            columnLetters.append(columnLetter)
-
-        return ", ".join(columnLetters)
-
     def output(self, target):
         """Write the findings workbook to *target* (a path or a binary file)."""
         output_df = pd.DataFrame(
@@ -832,16 +783,6 @@ class SDSData:
                     writer, sheet_name="Validation Review", index=False
                 )
                 worksheet2 = writer.sheets["Validation Review"]
-                blue_header_format = writer.book.add_format(
-                    {
-                        "bg_color": "#B7DEE8",
-                        "text_wrap": True,
-                        "valign": "vcenter",
-                        "align": "center",
-                        "bold": True,
-                        "border": 2,
-                    }
-                )
                 for i in range(5):
                     worksheet2.write(
                         0, i, self.val_df.columns.values[i], blue_header_format
