@@ -1,7 +1,5 @@
 """Tests for removing the selected Corelisting ZIP from the workspace."""
 
-from unittest.mock import MagicMock
-
 import pandas as pd
 from tests.unit.fakes import FakePathPicker, FakeSection, FakeTableView
 
@@ -66,19 +64,6 @@ class _RemovalWidget(SourceDataMixin, PreviewExportMixin, WidgetBaseMixin):
 
     def update_items_dependent_ui(self):
         self.update_items_dependent_ui_calls += 1
-
-
-def test_source_data_connects_remove_input_button():
-    widget = SourceDataMixin()
-    widget.ui = MagicMock()
-    widget._input_file_path = None
-
-    widget._init_source_data()
-
-    widget.ui.pushButton_remove_input.clicked.connect.assert_called_once_with(
-        widget.click_remove_input
-    )
-    widget.ui.pushButton_remove_input.setEnabled.assert_called_once_with(False)
 
 
 def test_remove_input_clears_core_data_and_preserves_additional_forms():

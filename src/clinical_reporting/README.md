@@ -1,8 +1,8 @@
 # Clinical Reporting Tool
 
 The suite's configurable report builder. Users pick source forms, choose
-common or per-form items, set joins, filters, and comparisons, preview the
-result, and export it, saving the configuration as a setting to reuse. The
+common items or form items, set joins, filters, and comparisons, preview the
+result, and export it, keeping the choices as a saved setting to reuse. The
 package is also the suite's Qt-free backend: the automation tools build on its
 [shared modules](../../README.md#shared-backend).
 
@@ -15,8 +15,8 @@ python -m clinical_reporting
 
 ## Using it
 
-- Use Core Listing and other sources from both Excel and CSV files.
-- Form, common, and per-form item pickers with regex-based case-insensitive
+- Use a Corelisting export plus additional inputs (Excel or CSV files).
+- Form, common item, and form item pickers with regex-based case-insensitive
   search filters.
 - Join, rename, comparison, and filter configuration tables tailored for
   clinical datasets.
@@ -74,9 +74,9 @@ The pipeline has four headless building blocks:
 
 | Step | Module | What it does |
 | --- | --- | --- |
-| Load data | `clinical_reporting.data` | Read a Corelisting zip / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
+| Load data | `clinical_reporting.data` | Read a Corelisting ZIP / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
 | Configure | `clinical_reporting.models.ReportConfig` | A typed wrapper over the same settings JSON the UI saves/loads. |
-| Run | `clinical_reporting.report.CLReport` | Apply the config to the data and execute `create_report()`. |
+| Run | `clinical_reporting.report.CLReport` | Apply the saved setting to the data and execute `create_report()`. |
 | Export | `clinical_reporting.export` | Write the result to xlsx/csv, or render it to bytes. |
 
 None of these import Qt, so they run anywhere Python + pandas are available.
@@ -92,7 +92,7 @@ from clinical_reporting.export import write_xlsx
 report = CLReport()
 report.set_data(read_data_dict_zip_corelisting("study_export.zip"))
 
-# 2. Apply a configuration saved from the UI (load + reconcile in one call)
+# 2. Apply a saved setting from the UI (load + reconcile in one call)
 missing = report.apply_config(ReportConfig.from_settings_json("setting.json"))
 if missing["forms"] or missing["items"]:
     print("Dropped (not present in current data):", missing)
@@ -107,16 +107,16 @@ write_xlsx(df, "report.xlsx")
 output names. Call `report.validate()` first when a program needs to present all
 issues at once; each issue exposes `code`, `message`, `field`, and `to_dict()`.
 
-`set_data()` must be called before `apply_config()` so the configuration can be
+`set_data()` must be called before `apply_config()` so the saved setting can be
 reconciled against the columns actually present. `apply_config()` returns a
 `{"forms": [...], "items": [...]}` report of anything dropped because the
 current data no longer supports it — the same information the UI shows as a
 warning label.
 
-### Building a configuration in code
+### Building a saved setting in code
 
-Any `.json` saved from the UI is a valid config, but you can also build one in
-memory using the same schema:
+Any `.json` saved from the UI is a valid saved setting, but you can also
+build one in memory using the same schema:
 
 ```python
 config = ReportConfig.from_dict(
@@ -147,7 +147,7 @@ config = ReportConfig.from_dict(
 report.apply_config(config)
 ```
 
-> Note: form-specific items only exist when more than one form is loaded. With a
+> Note: form items only exist when more than one form is loaded. With a
 > single form every column is treated as a common item, so a column selected as
 > a form item is reconciled into the common pool.
 
@@ -172,7 +172,7 @@ from clinical_reporting.data import (
 )
 from clinical_reporting.export import dataframe_to_xlsx_bytes, write_csv
 
-# Combine a Corelisting zip with extra CSV/Excel files
+# Combine a Corelisting ZIP with additional inputs (CSV/Excel files)
 base = read_data_dict_zip_corelisting("study_export.zip")
 inputs = load_additional_inputs(["labs.csv"])  # {resolved_path: DataFrame}
 # try_load_tabular_files(paths) skips unreadable files instead of raising and
@@ -209,9 +209,9 @@ write_csv(df, "report.csv")  # CSV on disk
 xlsx_bytes = dataframe_to_xlsx_bytes(df)  # in-memory bytes (e.g. stream over HTTP)
 ```
 
-### Persisting a configuration
+### Persisting a saved setting
 
-A programmatically built configuration can be written back to the same JSON the
+A saved setting built in code can be written back to the same JSON the
 UI reads, so headless runs and the UI stay interchangeable:
 
 ```python
@@ -350,7 +350,7 @@ Everything except `__main__.py` and `ui/` is Qt-free (see
 ```text
 src/clinical_reporting/
   __main__.py                  # runtime entry: python -m clinical_reporting
-  models.py                    # form/config models, labels, identifiers
+  models.py                    # forms, ReportConfig, labels, identifiers
   report.py                    # report state, persistence, reconciliation
   session.py                   # what happens to a report when the user acts; build/export
   settings_store.py            # saved settings as JSON files in a folder; their JSON text
@@ -361,8 +361,8 @@ src/clinical_reporting/
   workflow.py                  # the tools' workflows: OutputFile, input errors, reading inputs
   validation.py                # executable-report validation; "Cannot run" messages
   steps.py                     # the steps: titles, badges, and what they say
-  data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
-  additional_names.py          # extra inputs' form/column names kept with a saved setting
+  data.py                      # Corelisting ZIP, CSV, Excel, additional inputs (paths or uploads)
+  additional_names.py          # additional inputs' form/column names kept with a saved setting
   export.py                    # xlsx/csv/bytes rendering
   telemetry.py                 # reports saves to the usage counter (off unless configured)
   ui/                          # PySide6 desktop front end
