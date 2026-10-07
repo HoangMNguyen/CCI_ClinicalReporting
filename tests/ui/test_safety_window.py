@@ -6,7 +6,6 @@ asks for, runs, saves and says.
 """
 
 import pytest
-import shiboken6
 from PySide6.QtWidgets import QApplication
 
 import safety_automation.ae_corelisting.AECoreListing as listing
@@ -18,17 +17,8 @@ ZIP = "C:/Downloads/Core_Listings_16321_x_2026_01_31.zip"
 
 
 @pytest.fixture
-def window(make_manager, ini_settings, settle):
-    theme = make_manager()
-    theme.apply()
-    window = safety_app.Widget(theme, settings=ini_settings)
-    window.resize(*safety_app.FIRST_SIZE)
-    window.show()
-    QApplication.processEvents()
-    yield window
-    window.close()
-    settle(window.task_runner)
-    shiboken6.delete(window)
+def window(tool_window):
+    return tool_window(safety_app)
 
 
 def _workbook(path, *, file_name=""):

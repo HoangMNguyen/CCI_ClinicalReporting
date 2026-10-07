@@ -9,7 +9,6 @@ the page saves it.
 
 from __future__ import annotations
 
-import sys
 from functools import partial
 from typing import Optional
 
@@ -18,6 +17,7 @@ from PySide6.QtWidgets import QWidget
 
 from cci_ui.icons import IconName
 from cci_ui.theme.manager import ThemeManager
+from cci_ui.theme.tokens import LAYOUT
 from cci_ui.tool_window import ToolWindow, run_tool
 from cci_ui.widgets.path_picker import PathPicker
 from cci_ui.widgets.toggle import ToggleSwitch
@@ -32,7 +32,7 @@ APP_NAME = "Peer Review Automation"
 #: Smallest window that keeps the page usable (it scrolls); size on first
 #: launch, taller than the other small tools' 680x540 so the Options card and
 #: a three-line message fit without scrolling.
-MIN_SIZE = (560, 440)
+MIN_SIZE = LAYOUT.small_min_window
 FIRST_SIZE = (680, 660)
 PAGE_KEY = "sds-review"
 PAGE_TITLE = "SDS peer review"
@@ -128,7 +128,3 @@ def main() -> int:
         first_size=FIRST_SIZE,
         min_size=MIN_SIZE,
     )
-
-
-if __name__ == "__main__":
-    sys.exit(main())

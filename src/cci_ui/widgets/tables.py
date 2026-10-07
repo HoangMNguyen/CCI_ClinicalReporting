@@ -155,13 +155,8 @@ def table_card(view: QAbstractItemView) -> QFrame:
     return card
 
 
-def set_resize_precision(view: QTableView, rows: int = 200) -> None:
-    """Fit-to-contents columns measure only the first *rows* rows (big previews)."""
-    view.horizontalHeader().setResizeContentsPrecision(rows)
-
-
 class TableToolbar(QWidget):
-    """Joined +/− buttons under a table, then optional extras and a caption."""
+    """Joined +/− buttons under a table, then a caption."""
 
     def __init__(
         self,
@@ -187,16 +182,11 @@ class TableToolbar(QWidget):
         self.caption_label.setVisible(bool(caption))
         self._layout.addStretch(1)
 
-    def add_extra(self, widget: QWidget) -> None:
-        """Add a widget after the caption, e.g. a "Copy names" button."""
-        self._layout.addWidget(widget)
-
 
 __all__ = [
     "ColumnSpec",
     "TableToolbar",
     "configure_columns",
-    "set_resize_precision",
     "style_table",
     "table_card",
 ]

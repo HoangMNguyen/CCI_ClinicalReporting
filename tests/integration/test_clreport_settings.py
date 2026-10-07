@@ -6,7 +6,9 @@ from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
 
 
-def _make_form(name, *, selected_items=None, join_items=None, join_order=None, join_how=None):
+def _make_form(
+    name, *, selected_items=None, join_items=None, join_order=None, join_how=None
+):
     form = CLForm(name)
     form.selected_form_items = list(selected_items or [])
     form.join_items = list(join_items or [])
@@ -49,7 +51,9 @@ def test_save_and_load_settings_roundtrip(tmp_path):
     assert payload["dynamic_filter_items"] == [["DM.Age", ">", "DM.Weight"]]
 
     loaded_report = CLReport()
-    loaded_report.load_setting_from_json(str(output_file))
+    loaded_report.load_setting_from_dict(
+        json.loads(output_file.read_text(encoding="utf-8"))
+    )
 
     loaded_form = loaded_report.selected_forms["DM"]
     assert loaded_form.get_selected_form_items() == ["Age", "Weight"]
@@ -78,14 +82,19 @@ def test_reconcile_with_current_data_reports_missing_forms_and_items():
     )
     report.data = {"DM": dm_df, "VS": vs_df}
 
-    dm_form = _make_form("DM", selected_items=["Age", "DoesNotExist"], join_items=["Subject"])
+    dm_form = _make_form(
+        "DM", selected_items=["Age", "DoesNotExist"], join_items=["Subject"]
+    )
     orphan_form = _make_form("LB", selected_items=["LabValue"])
 
     report.selected_forms = {"DM": dm_form, "LB": orphan_form}
     report.selected_common_items = ["Subject", "Shared", "Legacy"]
     report.order_list = ["Subject", "DM.DoesNotExist"]
     report.selected_items_order_list = ["Legacy", "DM.DoesNotExist"]
-    report.static_filter_items = [("Legacy", "=", "foo"), ("DM.DoesNotExist", "=", "bar")]
+    report.static_filter_items = [
+        ("Legacy", "=", "foo"),
+        ("DM.DoesNotExist", "=", "bar"),
+    ]
     report.dynamic_filter_items = [("DM.Age", ">", "LB.LabValue")]
     report.rename_dict = {"Legacy": "Renamed"}
 

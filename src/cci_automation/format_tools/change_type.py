@@ -9,20 +9,23 @@ folder.
 """
 
 import io
+import logging
 import os
 import re
 import zipfile
 
 import pandas as pd
 
-from clinical_reporting.filenames import output_file_name
 from clinical_reporting.workflow import (
     OutputFile,
     WorkflowInputError,
     file_name_of,
     input_name,
+    named_output,
     reading_input,
 )
+
+logger = logging.getLogger(__name__)
 
 #: What the messages call this workflow (in the middle of a sentence).
 WORKFLOW = "the format tool"
@@ -82,8 +85,9 @@ def run(source, *, file_name: str = "") -> OutputFile:
             all_data = pd.read_excel(source, sheet_name=None)
     buffer = io.BytesIO()
     write_formatted(all_data, buffer)
-    name = (file_name or "").strip() or default_file_name(source)
-    return OutputFile(output_file_name(name), buffer.getvalue())
+    return named_output(
+        buffer.getvalue(), file_name=file_name, default_name=default_file_name(source)
+    )
 
 
 def _read_csv(source):
@@ -136,7 +140,11 @@ def write_formatted(all_data, target):
                         df.isetitem(col_index, dates)
                     except Exception as e:
                         # If conversion fails, keep original data
-                        print(f"Could not process date column '{col_name}': {e}")
+                        logger.warning(
+                            "Could not process date column %r (%s)",
+                            col_name,
+                            type(e).__name__,
+                        )
 
     # Create a Pandas Excel writer using XlsxWriter as the engine
     writer = pd.ExcelWriter(
@@ -158,7 +166,7 @@ def write_formatted(all_data, target):
         text_format = workbook.add_format({"num_format": "@"})
 
         # Apply formatting to columns based on their content
-        for col_num, col_name in enumerate(df.columns):
+        for col_num in range(len(df.columns)):
             if has_range_pattern(df.iloc[:, col_num]):
                 worksheet.set_column(col_num, col_num, None, text_format)
 

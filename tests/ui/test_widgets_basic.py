@@ -1,7 +1,7 @@
 """Tests for the first batch of components (step 1.3)."""
 
 import pytest
-from PySide6.QtCore import QPoint, QSettings, Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import (
     QContextMenuEvent,
     QKeySequence,
@@ -35,7 +35,7 @@ from cci_ui.widgets.labels import (
     text_label,
 )
 from cci_ui.widgets.page import Page, PageKind
-from cci_ui.widgets.path_picker import PathPicker
+from cci_ui.widgets.path_picker import PathPicker, downloads_folder
 from cci_ui.widgets.responsive import Breakpoint, ResponsiveSplit
 from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.section import Section
@@ -412,8 +412,7 @@ def test_external_picker_only_shows_the_path(qapp):
     assert picker.path() == "" and not picker.clear_button.isVisibleTo(picker)
 
 
-def test_file_picker_remembers_the_folder(qapp, monkeypatch, tmp_path):
-    settings = QSettings(str(tmp_path / "paths.ini"), QSettings.Format.IniFormat)
+def test_file_picker_remembers_the_folder(qapp, monkeypatch, tmp_path, ini_settings):
     chosen = tmp_path / "exports" / "data.zip"
     chosen.parent.mkdir()
     starts = []
@@ -423,9 +422,9 @@ def test_file_picker_remembers_the_folder(qapp, monkeypatch, tmp_path):
         return str(chosen), ""
 
     monkeypatch.setattr(QFileDialog, "getOpenFileName", get_open_file_name)
-    picker = PathPicker("file", settings_key="zip", settings=settings)
+    picker = PathPicker("file", settings_key="zip", settings=ini_settings)
     picker.button.click()
-    second = PathPicker("file", settings_key="zip", settings=settings)
+    second = PathPicker("file", settings_key="zip", settings=ini_settings)
     second.button.click()
 
     assert picker.path() == str(chosen)
@@ -728,6 +727,15 @@ def test_a_path_picker_names_what_its_remove_button_removes(qapp):
 
     assert picker.clear_button.toolTip() == "Remove file"
     assert PathPicker(removable=True).clear_button.toolTip() == "Remove"
+
+
+def test_dialogs_start_in_the_downloads_folder_in_the_home_folder(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))  # Windows reads this one.
+
+    assert downloads_folder() == str(tmp_path / "Downloads")
 
 
 def test_a_search_field_can_be_focused_ready_to_type_over(qapp):

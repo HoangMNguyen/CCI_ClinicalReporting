@@ -13,8 +13,6 @@ import pytest
 @pytest.fixture
 def lambda_app(monkeypatch):
     path = Path(__file__).parents[2] / "infra" / "run_counter" / "function" / "app.py"
-    if not path.is_file():  # infra/ is ignored by Git, so a clone has none
-        pytest.skip("infra/run_counter is not in this checkout")
     spec = importlib.util.spec_from_file_location("run_counter_lambda", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None

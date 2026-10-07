@@ -1,4 +1,4 @@
-"""Dialog workflows shared by more than one page.
+"""Dialog workflows, and the settings folder they open, shared by more than one page.
 
 Keeping these here avoids page-to-page imports: both the Source data page
 and the Preview & export page open the same settings-folder dialog, so the
@@ -22,6 +22,11 @@ def show_settings_folder(widget, folder: str) -> None:
             picker.set_path(folder)
 
 
+def settings_folder(widget) -> str:
+    """The folder saved settings go to: the chosen one, else the default."""
+    return widget.settings_directory or widget._get_default_settings_directory()
+
+
 def choose_settings_directory(widget) -> None:
     """Run the shared settings-folder selection workflow on *widget*.
 
@@ -31,7 +36,7 @@ def choose_settings_directory(widget) -> None:
     handler performs only its page-specific precondition before delegating
     here.
     """
-    initial_dir = widget.settings_directory or widget._get_default_settings_directory()
+    initial_dir = settings_folder(widget)
     settings_dir = QFileDialog.getExistingDirectory(
         widget,
         "Select Settings Folder",

@@ -75,7 +75,8 @@ def record_successful_setting_save(setting_name: str) -> None:
 def _record_event(event_type: str, saved_name: str) -> None:
     """Queue a supported usage event without blocking the application.
 
-    Telemetry is opt-in through environment configuration.  This function is
+    Counting is off unless an endpoint and a token are configured (by the
+    environment variables or the bundled ``telemetry.json``). This function is
     intentionally fail-closed and best-effort: configuration, thread creation,
     networking, and server failures never escape into the application.
     """

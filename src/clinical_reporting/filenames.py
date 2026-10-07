@@ -1,8 +1,7 @@
 """File names built from user-typed text.
 
 Every name the tools write (exports, saved settings) goes through here, so a
-typed name can never point outside the chosen folder, whether the file is
-written to a local folder today or to server storage later.
+typed name can never point outside the folder it is written to.
 """
 
 from __future__ import annotations

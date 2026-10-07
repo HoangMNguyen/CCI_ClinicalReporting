@@ -5,6 +5,7 @@
 
 import io
 import zipfile
+from datetime import datetime
 
 import pytest
 
@@ -13,10 +14,31 @@ from clinical_reporting.workflow import (
     WorkflowInputError,
     input_name,
     missing_forms_error,
+    named_output,
     read_corelisting,
     reading_input,
     study_named_by,
 )
+
+NEW_YEAR = datetime(2026, 1, 1)
+
+
+@pytest.mark.parametrize("file_name", ["", "   "])
+def test_a_blank_output_name_falls_back_to_the_default(file_name):
+    output = named_output(
+        b"xlsx", file_name=file_name, default_name="DSMB Report", now=NEW_YEAR
+    )
+
+    assert output.name == "DSMB Report 260101_000000.xlsx"
+
+
+def test_an_output_is_named_after_the_trimmed_file_name():
+    output = named_output(
+        b"xlsx", file_name="  Board ", default_name="DSMB Report", now=NEW_YEAR
+    )
+
+    assert output.name == "Board 260101_000000.xlsx"
+    assert output.data == b"xlsx"
 
 
 def test_an_unsupported_study_says_which_ones_are():

@@ -1,10 +1,9 @@
 import math
+import re
 from decimal import ROUND_HALF_UP, Decimal
 
 import numpy as np
 import pandas as pd
-
-# TODO: implement type hints for all functions
 
 
 def add_rename_column_corelisting(
@@ -16,15 +15,15 @@ def add_rename_column_corelisting(
     key1="Subject",
     key2=None,
 ):
-    """Adding a new column (merge left) to the current dataframe with an updated new name from the data of corelisting
+    """Adding a new column (merge left) to the current dataframe with an updated new name from a form of a Corelisting export
 
     Args:
         current_df (dataframe): current dataframe with subject ID list
         input_data (dict): dictionary of dataframe, with keys are form names
         form_name (string): form name
-        column_name (string): exact column name in corelisting
+        column_name (string): exact column name in the form
         new_column_name (string): the name of the column that would be updated
-        key (string): usually it's subject ID of the
+        key1, key2 (string): the columns to merge on (key1 is usually Subject)
 
     Returns:
         new_df (dataframe): the new dataframe that is added with the new column and renamed
@@ -130,26 +129,12 @@ def get_stats_percentage(column, *args):
         ]
     else:
         groupby = None
-    # create a dataframe to store the stats
-    main_df = pd.DataFrame()
-
-    for arg in args:
-        if groupby is not None:
-            temp_df = arg.groupby(column).agg({"Subject": "count"}).reindex(groupby, fill_value=0)
-        else:
-            temp_df = arg.groupby(column).agg({"Subject": "count"})
-        # combine the percentage and count column into 1 column for variables different than 0
-        temp_df = temp_df.apply(
-            lambda x: x.astype(str) + " (" + (x / sum(x)).apply(lambda y: "{:.1%}".format(y)) + ")"
-            if x.sum() != 0
-            else x.astype(str) + " (0.0%)"
-        )
-        # merge the temp_df to the main df
-        main_df = pd.concat([main_df, temp_df], axis=1)
-    return main_df
+    return get_stats_percentage2(column, groupby, *args)
 
 
-def get_stats_percentage2(column: str, groupby: list, *args: pd.DataFrame) -> pd.DataFrame:
+def get_stats_percentage2(
+    column: str, groupby: list, *args: pd.DataFrame
+) -> pd.DataFrame:
     """
     Calculate the percentage of each unique value in a specified column of a DataFrame, grouped by another column.
 
@@ -168,21 +153,28 @@ def get_stats_percentage2(column: str, groupby: list, *args: pd.DataFrame) -> pd
                       values from the specified column, and the 'Percentage' column contains the percentage of each
                       value relative to the total count within each group.
     """
-    # Your function implementation here
-
     # create a dataframe to store the stats
     main_df = pd.DataFrame()
 
     for arg in args:
         if groupby is not None:
-            temp_df = arg.groupby(column).agg({"Subject": "count"}).reindex(groupby, fill_value=0)
+            temp_df = (
+                arg.groupby(column)
+                .agg({"Subject": "count"})
+                .reindex(groupby, fill_value=0)
+            )
         else:
             temp_df = arg.groupby(column).agg({"Subject": "count"})
         # combine the percentage and count column into 1 column for variables different than 0
         temp_df = temp_df.apply(
-            lambda x: x.astype(str) + " (" + (x / sum(x)).apply(lambda y: "{:.1%}".format(y)) + ")"
-            if x.sum() != 0
-            else x.astype(str) + " (0.0%)"
+            lambda x: (
+                x.astype(str)
+                + " ("
+                + (x / sum(x)).apply(lambda y: "{:.1%}".format(y))
+                + ")"
+                if x.sum() != 0
+                else x.astype(str) + " (0.0%)"
+            )
         )
         # merge the temp_df to the main df
         main_df = pd.concat([main_df, temp_df], axis=1)
@@ -220,7 +212,12 @@ def get_stats_df(column, *dfs):
                 std = 0
 
             # Create a DataFrame for the current stats if non of the stats are NaN
-            if not np.isnan(mean) and not np.isnan(median) and not np.isnan(minimum) and not np.isnan(maximum):
+            if (
+                not np.isnan(mean)
+                and not np.isnan(median)
+                and not np.isnan(minimum)
+                and not np.isnan(maximum)
+            ):
                 # Format the mean and standard deviation
                 if mean < 100:
                     mean_std = f"{mean:.2f} ({std:.2f})"
@@ -231,17 +228,19 @@ def get_stats_df(column, *dfs):
                 if minimum < 100 and maximum < 100:
                     range = f"{minimum:.2f} - {maximum:.2f}"
                 else:
-                    range = (
-                        f"{convert_float_2_sci_notation(int(minimum))} - {convert_float_2_sci_notation(int(maximum))}"
-                    )
-                stats_df = pd.DataFrame({"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i])
+                    range = f"{convert_float_2_sci_notation(int(minimum))} - {convert_float_2_sci_notation(int(maximum))}"
+                stats_df = pd.DataFrame(
+                    {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
+                )
             else:
                 stats_df = pd.DataFrame(index=[i])
             # Append the stats DataFrame to the main DataFrame if it is not empty
             main_df = pd.concat([main_df, stats_df])
         else:
             # if the column is empty, fill the stats with '0 (0.0)'
-            stats_df = pd.DataFrame({"Mean ± SD": "0 (0.0)", "Median": 0, "Range": "0 - 0"}, index=[i])
+            stats_df = pd.DataFrame(
+                {"Mean ± SD": "0 (0.0)", "Median": 0, "Range": "0 - 0"}, index=[i]
+            )
             # Append the stats DataFrame to the main DataFrame if it is not empty
             main_df = pd.concat([main_df, stats_df])
     # Transpose the DataFrame to switch the axes
@@ -282,15 +281,18 @@ def get_stats_perc_df(column, *dfs):
             std = 0
 
         # Create a DataFrame for the current stats if non of the stats are NaN
-        if not np.isnan(mean) and not np.isnan(median) and not np.isnan(minimum) and not np.isnan(maximum):
+        if (
+            not np.isnan(mean)
+            and not np.isnan(median)
+            and not np.isnan(minimum)
+            and not np.isnan(maximum)
+        ):
             # Format the mean and standard deviation
             if mean < 100:
                 mean_std = f"{mean:.2f}% ({std:.2f}%)"
             else:
-                # mean_std = f"{convert_float_2_sci_notation(int(mean))}% ({convert_float_2_sci_notation(int(std))}%)"
                 mean_std = f"{convert_float_2_sci_notation(mean)}% ({convert_float_2_sci_notation(std)}%)"
             if median > 100:
-                # median = f"{convert_float_2_sci_notation(int(median))}%"
                 median = f"{convert_float_2_sci_notation(median)}%"
             else:
                 median = f"{median:.2f}%"
@@ -298,7 +300,9 @@ def get_stats_perc_df(column, *dfs):
                 range = f"{minimum:.2f}% - {maximum:.2f}%"
             else:
                 range = f"{convert_float_2_sci_notation(int(minimum))}% - {convert_float_2_sci_notation(int(maximum))}%"
-            stats_df = pd.DataFrame({"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i])
+            stats_df = pd.DataFrame(
+                {"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i]
+            )
         else:
             stats_df = pd.DataFrame(index=[i])
         # Append the stats DataFrame to the main DataFrame if it is not empty
@@ -306,35 +310,6 @@ def get_stats_perc_df(column, *dfs):
     # Transpose the DataFrame to switch the axes
     main_df = main_df.T
     return main_df
-
-
-# Hoang's original function which uses round half to even, Python’s built-in round() and :.2f formatting use banker’s rounding (also called “round half to even”)
-# def convert_float_2_sci_notation(n):
-#     """
-#     Convert a floating-point number to its scientific notation as a string.
-
-#     This function takes a floating-point number and converts it into a string that represents its scientific notation.
-#     Scientific notation expresses the number as a mantissa multiplied by 10 raised to an exponent. The mantissa is
-#     rounded to two decimal places unless it is an integer. If the input number is 0, it simply returns '0'.
-
-#     Args:
-#         n (float): The floating-point number to be converted into scientific notation.
-
-#     Returns:
-#         string: A string representing the scientific notation of the input number. The mantissa is formatted to
-#                 have two decimal places unless it is an integer, followed by 'x10' and the exponent.
-#     """
-#     if n == 0:
-#         return "0"
-#     else:
-#         exponent = int(math.floor(math.log10(abs(n))))
-#         mantissa = round(n / 10**exponent, 2)
-
-#         if mantissa.is_integer():
-#             mantissa = int(mantissa)
-#             return f"{mantissa}x10^{exponent}"
-#         else:
-#             return f"{mantissa:.2f}x10^{exponent}"
 
 
 # If you want round half up behavior (the usual "schoolbook rounding"), you should use the decimal module with ROUND_HALF_UP.
@@ -354,31 +329,114 @@ def convert_float_2_sci_notation(n):
         mantissa = n_decimal / (Decimal("10") ** exponent)
 
         # Round mantissa to 2 decimals (ROUND_HALF_UP)
-        mantissa_str = str(mantissa.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)).rstrip("0").rstrip(".")
+        mantissa_str = (
+            str(mantissa.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+            .rstrip("0")
+            .rstrip(".")
+        )
 
         return f"{mantissa_str}x10^{exponent}"
 
 
-def convert_sci_notation_2_float(s):
-    """
-    Convert a string representing a number in scientific notation to a floating-point number.
-
-    This function takes a string in the format 'mantissax10^exponent', where the mantissa and exponent are
-    separated by 'x10^', and converts it into a floating-point number. If the string is not in the correct format
-    or contains values that cannot be converted to floats, the function handles the error and returns NaN.
-
-    Args:
-        s (str): A string representing a number in scientific notation.
-
-    Returns:
-        float: The floating-point equivalent of the input string. If the string is not properly formatted or
-               contains invalid values, NaN (Not a Number) is returned.
-    """
+def format_date(x):
+    if pd.isna(x):
+        return ""
+    # If already datetime
+    if isinstance(x, pd.Timestamp):
+        return f"{x.month}/{x.day}/{x.year}"
+    # If string, try parsing it
     try:
-        parts = s.split("x10^")
-        mantissa = float(parts[0])
-        exponent = float(parts[1])
-        return mantissa * 10**exponent
+        dt = pd.to_datetime(x)
+        return f"{dt.month}/{dt.day}/{dt.year}"
+    except Exception:
+        return str(x)  # fallback, just keep original string
 
-    except ValueError:
-        return np.nan
+
+def combine_labs(group):
+    res = {"Subject": group.name}
+    labs = (
+        group.get("Laboratory Name", pd.Series([], dtype=str))
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+    neo_mask = labs.eq("NeoGenomics")
+    other_mask = ~neo_mask
+
+    for col in ["Amplification of EGFR", "EGFRvIII Mutation", "EGFR Mutation"]:
+        neo_vals = group.loc[neo_mask, col].fillna("").astype(str).str.strip()
+        other_vals = group.loc[other_mask, col].fillna("").astype(str).str.strip()
+
+        neo_nonempty = neo_vals[neo_vals != ""]
+        other_nonempty = other_vals[other_vals != ""]
+        neo_choice = neo_nonempty.iloc[0] if not neo_nonempty.empty else ""
+        neo_has_not_done = (neo_nonempty.str.lower() == "not done").any()
+
+        if neo_has_not_done and not other_nonempty.empty:
+            chosen = other_nonempty.iloc[0]
+        elif neo_choice:
+            chosen = neo_choice
+        elif not other_nonempty.empty:
+            chosen = other_nonempty.iloc[0]
+        else:
+            chosen = ""
+
+        res[col] = chosen
+
+    return pd.Series(res)
+
+
+def clean_str(val):
+    if pd.isna(val):
+        return ""
+    s = str(val).strip()
+    return "" if s.lower() == "nan" else s
+
+
+def combine_reason(row):
+    reason = clean_str(row.get("LTFU Reason", ""))
+    support = clean_str(row.get("LTFU Support", ""))
+    return (reason + (" " + support if support else "")).strip()
+
+
+def fill_na_reason(val):
+    txt = clean_str(val)
+    return txt if txt else "N/A"
+
+
+def extract_last_date(val: str):
+    if not isinstance(val, str):
+        return pd.NaT
+    matches = re.findall(r"(\d{1,2}/\d{1,2}/\d{4})", val)
+    if not matches:
+        return pd.NaT
+    # pick the chronologically latest date in the string
+    parsed = []
+    for m in matches:
+        try:
+            parsed.append(pd.to_datetime(m))
+        except Exception:
+            continue
+    return max(parsed) if parsed else pd.NaT
+
+
+def pick_last_visit(row):
+    val_x = row.get("Event Combined_x", "")
+    val_y = row.get("Event Combined_y", "")
+
+    date_x = extract_last_date(val_x)
+    date_y = extract_last_date(val_y)
+
+    if pd.notna(date_x) and pd.notna(date_y):
+        return val_x if date_x >= date_y else val_y
+    if pd.notna(date_x):
+        return val_x
+    if pd.notna(date_y):
+        return val_y
+
+    # If neither has a parsable date, prefer the non-N/A value if present
+    if isinstance(val_x, str) and val_x.strip() not in ["", "N/A"]:
+        return val_x
+    if isinstance(val_y, str) and val_y.strip() not in ["", "N/A"]:
+        return val_y
+    return "N/A"

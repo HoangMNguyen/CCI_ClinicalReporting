@@ -26,9 +26,10 @@ from cci_ui.widgets.views import EmptyState
 from clinical_reporting import steps
 
 from .pages.additional_input import AdditionalInputPage
+from .pages.filters import ComparisonsPage, FiltersPage
+from .pages.joins import JoinsPage
 from .pages.order_rename import OrderRenamePage
 from .pages.preview_export import PreviewExportPage
-from .pages.rules import ComparisonsPage, FiltersPage, JoinsPage
 from .pages.selection import CommonItemsPage, FormItemsPage, FormsPage
 from .pages.source_data import SourceDataPage
 
@@ -47,6 +48,10 @@ PAGE_CLASSES = (
     OrderRenamePage,
     PreviewExportPage,
 )
+
+# Legacy names are kept for the mixins: ``label_setting``,
+# ``label_run_confirmation`` and ``label_save_confirmation`` are status
+# banners (``cci_ui.widgets.status.StatusBanner``), like ``banner_input_file``.
 #: Names the mixins use that belong to the window rather than a page.
 WINDOW_NAMES = frozenset({"shell"})
 

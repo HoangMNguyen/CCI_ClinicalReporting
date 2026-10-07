@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QApplication
 
 from cci_ui.widgets.shell import SIDEBAR_SHORTCUT
 from clinical_reporting import feedback
-from clinical_reporting.ui import run_save_tab, settings_tab
+from clinical_reporting.ui.pages import preview_export, source_data
 from clinical_reporting.ui.window import Widget
 
 ZIP_NAME = "Core_Listings_DEMO01_260930.zip"
@@ -53,7 +53,7 @@ class _GatedReader:
 @pytest.fixture
 def reader(monkeypatch):
     gated = _GatedReader()
-    monkeypatch.setattr(settings_tab, "read_data_dict_zip_corelisting", gated)
+    monkeypatch.setattr(source_data, "read_data_dict_zip_corelisting", gated)
     return gated
 
 
@@ -61,7 +61,7 @@ def reader(monkeypatch):
 def window(qapp, monkeypatch, tmp_path):
     zip_path = str(tmp_path / ZIP_NAME)
     monkeypatch.setattr(
-        settings_tab.QFileDialog,
+        source_data.QFileDialog,
         "getOpenFileName",
         lambda *_args: (zip_path, "Zip files (*.zip)"),
     )
@@ -282,7 +282,7 @@ def test_a_preview_that_fails_shows_the_error_with_its_traceback(
     def broken_build(_report):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(run_save_tab, "build_report", broken_build)
+    monkeypatch.setattr(preview_export, "build_report", broken_build)
     _select_dm_age(opened)
 
     opened.preview_report()

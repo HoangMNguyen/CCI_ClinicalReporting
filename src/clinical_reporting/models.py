@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, TypeVar, Union
+
+from clinical_reporting.settings_store import read_settings_json, write_settings_json
 
 FORM_ITEM_SEPARATOR = "."
 SUBJECT_COLUMN = "Subject"
@@ -135,20 +136,8 @@ class CLForm:
         self.join_order = None
         self.join_how = None
 
-    def _move_item(
-        self,
-        source: Optional[List[str]],
-        target: Optional[List[str]],
-        item: str,
-        order: Optional[List[str]] = None,
-    ) -> bool:
-        return move_item(item, source, target, order)
-
     def get_name(self):
         return self.name
-
-    def set_name(self, name: str):
-        self.name = name
 
     def get_selected_form_items(self):
         return self.selected_form_items
@@ -159,14 +148,14 @@ class CLForm:
             if selected
             else (self.selected_form_items, self.available_form_items)
         )
-        return self._move_item(source, target, item, order=self.column_order)
+        return move_item(item, source, target, self.column_order)
 
     def get_available_form_items(self):
         return self.available_form_items
 
     def remove_form_item(self, item: str) -> bool:
-        removed_selected = self._move_item(self.selected_form_items, None, item)
-        removed_available = self._move_item(self.available_form_items, None, item)
+        removed_selected = move_item(item, self.selected_form_items, None)
+        removed_available = move_item(item, self.available_form_items, None)
         return removed_selected or removed_available
 
     def set_join_how(self, how: str):
@@ -174,14 +163,6 @@ class CLForm:
 
     def get_join_how(self):
         return self.join_how
-
-    def set_join_item_state(self, item: str, *, include: bool) -> bool:
-        if include:
-            return self._move_item(None, self.join_items, item)
-        return self._move_item(self.join_items, None, item)
-
-    def clear_join_items(self):
-        self.join_items = []
 
     def get_join_items(self):
         return self.join_items
@@ -194,9 +175,6 @@ class CLForm:
 
     def get_join_order(self):
         return self.join_order
-
-    def remove_join_order(self):
-        self.join_order = None
 
 
 @dataclass
@@ -211,12 +189,10 @@ class ReportConfig:
 
     @classmethod
     def from_settings_json(cls, file_path: PathLike) -> "ReportConfig":
-        with open(file_path, "r", encoding="utf-8") as handle:
-            return cls(json.load(handle))
+        return cls(read_settings_json(file_path))
 
     def to_settings_json(self, file_path: PathLike) -> None:
-        with open(file_path, "w", encoding="utf-8") as handle:
-            json.dump(self.raw, handle, indent=4)
+        write_settings_json(file_path, self.raw)
 
     def to_dict(self) -> Dict[str, Any]:
         return deepcopy(self.raw)

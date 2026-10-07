@@ -12,13 +12,13 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from clinical_reporting.filenames import output_file_name
 from clinical_reporting.workflow import (
     OutputFile,
     UnsupportedStudyError,
     WorkflowInputError,
     check_study,
     missing_forms_error,
+    named_output,
     read_corelisting,
 )
 
@@ -35,6 +35,38 @@ SUPPORTED_STUDIES = (
     "15420",
     "16321",
 )
+
+
+#: Studies whose module writes its report while it's built (no run()).
+_WRITES_WHEN_BUILT = frozenset({"03821", "15122", "15420"})
+
+
+def _report_builder(study: str):
+    """The study's DSMB module entry point.
+
+    One literal import per study: the PyInstaller builds find modules only
+    through imports they can see (hiddenimports is empty), and importing
+    lazily keeps start-up fast.
+    """
+    if study == "03325":
+        from .DSMB03325 import DSMB03325 as builder
+    elif study == "03821":
+        from .DSMB03821 import DSMB03821 as builder
+    elif study == "10325":
+        from .DSMB10325 import DSMB10325 as builder
+    elif study == "11823":
+        from .DSMB11823 import DSMB11823 as builder
+    elif study == "12423":
+        from .DSMB12423 import DSMB12423 as builder
+    elif study == "15122":
+        from .DSMB15122 import DSMB15122 as builder
+    elif study == "15420":
+        from .DSMB15420 import DSMB15420 as builder
+    elif study == "16321":
+        from .DSMB16321 import DSMB16321 as builder
+    else:
+        raise UnsupportedStudyError(WORKFLOW, study, SUPPORTED_STUDIES)
+    return builder
 
 
 def default_file_name(study: str) -> str:
@@ -83,8 +115,9 @@ def run(
                 )
             raise RuntimeError(f"The DSMB module of study {study} wrote no report.")
         workbook = report.read_bytes()
-    name = (file_name or "").strip() or default_file_name(study)
-    return OutputFile(output_file_name(name), workbook)
+    return named_output(
+        workbook, file_name=file_name, default_name=default_file_name(study)
+    )
 
 
 class DSMB:
@@ -107,82 +140,8 @@ class DSMB:
         The module writes the report to
         ``<self.output_dir>/<self.output_file_name>.xlsx``.
         """
-        if study_name not in SUPPORTED_STUDIES:
-            raise UnsupportedStudyError(WORKFLOW, study_name, SUPPORTED_STUDIES)
-        if study_name == "12423":
-            from .DSMB12423 import DSMB12423
-
-            x = DSMB12423(
-                data,
-                output_dir=self.output_dir,
-                output_file_name=self.output_file_name,
-            )
-            x.run()
-        if study_name == "11823":
-            from .DSMB11823 import DSMB11823
-
-            x = DSMB11823(
-                data,
-                output_dir=self.output_dir,
-                output_file_name=self.output_file_name,
-            )
-            x.run()
-
-        if study_name == "15122":
-            from .DSMB15122 import DSMB15122
-
-            DSMB15122(
-                data,
-                export=True,
-                output_dir=self.output_dir,
-                output_file_name=self.output_file_name,
-            )
-        if study_name == "03821":
-            from .DSMB03821 import DSMB03821
-
-            DSMB03821(
-                data,
-                export=True,
-                output_dir=self.output_dir,
-                output_file_name=self.output_file_name,
-                #   debug=self.debug,
-            )
-
-        if study_name == "15420":
-            from .DSMB15420 import DSMB15420
-
-            DSMB15420(
-                data,
-                output_dir=self.output_dir,
-                output_file_name=self.output_file_name,
-            )
-
-        if study_name == "16321":
-            from .DSMB16321 import DSMB16321
-
-            x = DSMB16321(
-                data,
-                output_dir=self.output_dir,
-                output_file_name=self.output_file_name,
-            )
-            x.run()
-
-        if study_name == "03325":
-            from .DSMB03325 import DSMB03325
-
-            x = DSMB03325(
-                data,
-                output_dir=self.output_dir,
-                output_file_name=self.output_file_name,
-            )
-            x.run()
-
-        if study_name == "10325":
-            from .DSMB10325 import DSMB10325
-
-            x = DSMB10325(
-                data,
-                output_dir=self.output_dir,
-                output_file_name=self.output_file_name,
-            )
-            x.run()
+        report = _report_builder(study_name)(
+            data, output_dir=self.output_dir, output_file_name=self.output_file_name
+        )
+        if study_name not in _WRITES_WHEN_BUILT:
+            report.run()

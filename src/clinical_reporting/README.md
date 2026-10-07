@@ -1,8 +1,8 @@
 # Clinical Reporting Tool
 
 The suite's configurable report builder. Users pick source forms, choose
-common or per-form items, set joins, filters, and comparisons, preview the
-result, and export it, saving the configuration as a setting to reuse. The
+common items or form items, set joins, filters, and comparisons, preview the
+result, and export it, keeping the choices as a saved setting to reuse. The
 package is also the suite's Qt-free backend: the automation tools build on its
 [shared modules](../../README.md#shared-backend).
 
@@ -15,8 +15,8 @@ python -m clinical_reporting
 
 ## Using it
 
-- Use Core Listing and other sources from both Excel and CSV files.
-- Form, common, and per-form item pickers with regex-based case-insensitive
+- Use a Corelisting export plus additional inputs (Excel or CSV files).
+- Form, common item, and form item pickers with regex-based case-insensitive
   search filters.
 - Join, rename, comparison, and filter configuration tables tailored for
   clinical datasets.
@@ -74,9 +74,9 @@ The pipeline has four headless building blocks:
 
 | Step | Module | What it does |
 | --- | --- | --- |
-| Load data | `clinical_reporting.data` | Read a Corelisting zip / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
+| Load data | `clinical_reporting.data` | Read a Corelisting ZIP / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
 | Configure | `clinical_reporting.models.ReportConfig` | A typed wrapper over the same settings JSON the UI saves/loads. |
-| Run | `clinical_reporting.report.CLReport` | Apply the config to the data and execute `create_report()`. |
+| Run | `clinical_reporting.report.CLReport` | Apply the saved setting to the data and execute `create_report()`. |
 | Export | `clinical_reporting.export` | Write the result to xlsx/csv, or render it to bytes. |
 
 None of these import Qt, so they run anywhere Python + pandas are available.
@@ -92,7 +92,7 @@ from clinical_reporting.export import write_xlsx
 report = CLReport()
 report.set_data(read_data_dict_zip_corelisting("study_export.zip"))
 
-# 2. Apply a configuration saved from the UI (load + reconcile in one call)
+# 2. Apply a saved setting from the UI (load + reconcile in one call)
 missing = report.apply_config(ReportConfig.from_settings_json("setting.json"))
 if missing["forms"] or missing["items"]:
     print("Dropped (not present in current data):", missing)
@@ -107,16 +107,16 @@ write_xlsx(df, "report.xlsx")
 output names. Call `report.validate()` first when a program needs to present all
 issues at once; each issue exposes `code`, `message`, `field`, and `to_dict()`.
 
-`set_data()` must be called before `apply_config()` so the configuration can be
+`set_data()` must be called before `apply_config()` so the saved setting can be
 reconciled against the columns actually present. `apply_config()` returns a
 `{"forms": [...], "items": [...]}` report of anything dropped because the
 current data no longer supports it — the same information the UI shows as a
 warning label.
 
-### Building a configuration in code
+### Building a saved setting in code
 
-Any `.json` saved from the UI is a valid config, but you can also build one in
-memory using the same schema:
+Any `.json` saved from the UI is a valid saved setting, but you can also
+build one in memory using the same schema:
 
 ```python
 config = ReportConfig.from_dict(
@@ -147,7 +147,7 @@ config = ReportConfig.from_dict(
 report.apply_config(config)
 ```
 
-> Note: form-specific items only exist when more than one form is loaded. With a
+> Note: form items only exist when more than one form is loaded. With a
 > single form every column is treated as a common item, so a column selected as
 > a form item is reconciled into the common pool.
 
@@ -172,7 +172,7 @@ from clinical_reporting.data import (
 )
 from clinical_reporting.export import dataframe_to_xlsx_bytes, write_csv
 
-# Combine a Corelisting zip with extra CSV/Excel files
+# Combine a Corelisting ZIP with additional inputs (CSV/Excel files)
 base = read_data_dict_zip_corelisting("study_export.zip")
 inputs = load_additional_inputs(["labs.csv"])  # {resolved_path: DataFrame}
 # try_load_tabular_files(paths) skips unreadable files instead of raising and
@@ -209,9 +209,9 @@ write_csv(df, "report.csv")  # CSV on disk
 xlsx_bytes = dataframe_to_xlsx_bytes(df)  # in-memory bytes (e.g. stream over HTTP)
 ```
 
-### Persisting a configuration
+### Persisting a saved setting
 
-A programmatically built configuration can be written back to the same JSON the
+A saved setting built in code can be written back to the same JSON the
 UI reads, so headless runs and the UI stay interchangeable:
 
 ```python
@@ -220,14 +220,20 @@ report.save_setting_to_json("my_setting.json", setting_name="batch-run")
 config.to_settings_json("my_setting.json")
 ```
 
-To store settings somewhere other than a JSON file, take the dictionary and
-hand it to a settings store (the desktop app uses the local-folder store):
+The settings dictionary can also go to a folder of saved settings (the store
+the desktop app uses), or become the saved JSON text without any file:
 
 ```python
-from clinical_reporting.settings_store import LocalFolderStore
+from clinical_reporting.settings_store import (
+    LocalFolderStore,
+    settings_from_json,
+    settings_to_json,
+)
 
 settings = report.settings_to_dict("batch-run")
 LocalFolderStore("C:/Reports/settings").save("batch-run", settings)
+text = settings_to_json(settings)  # the exact text a saved setting file holds
+assert settings_from_json(text) == settings
 ```
 
 A setting saved from the desktop app may also hold `additional_input_names`:
@@ -260,7 +266,8 @@ rotating it. Its token can only add counts, not read them.
 
 The window is built on the shared design system,
 [`cci_ui`](../cci_ui/README.md), in Python code (no Qt Designer files). Its
-pages are one module per step in `src/clinical_reporting/ui/pages/`;
+pages are one module per step in `src/clinical_reporting/ui/pages/`, each
+holding the page's widgets and its behavior (the mixin the window inherits);
 `ui/main_ui.py` lists them in step order (`PAGE_CLASSES`) and puts them in the
 shell: a sidebar of steps (an icon strip on narrow windows), a header, and a
 status bar. Each step's sidebar badge (a count, done, optional, or a problem)
@@ -285,11 +292,11 @@ python -m clinical_reporting.ui.preview --help                   # page names, o
 the saved appearance. (The sample isn't a real ZIP, so turning the cut-off
 date on shows a read error.)
 
-- **Change a page:** edit its module in `ui/pages/`, then check it with the
-  preview tool.
-- **Give the behavior mixins a new widget:** they reach widgets as
-  `self.ui.<name>`, so add the widget to its page and its name to that page's
-  `EXPORTS`.
+- **Change a page:** edit its module in `ui/pages/`, which holds both its
+  widgets and its behavior, then check it with the preview tool.
+- **Give a page's behavior mixin a new widget:** the mixins reach widgets as
+  `self.ui.<name>`, so add the widget to the page and its name to that page's
+  `EXPORTS`: both are in the page's module, so it is a one-module edit.
 - **Add or reorder a step:** add its key to `STEP_KEYS` (and its title to
   `TITLES`) in `clinical_reporting/steps.py`, and a page class (with that
   `KEY`, a `SECTION`, `ICON`, and `EXPORTS`) to `PAGE_CLASSES`, in the same
@@ -343,10 +350,10 @@ Everything except `__main__.py` and `ui/` is Qt-free (see
 ```text
 src/clinical_reporting/
   __main__.py                  # runtime entry: python -m clinical_reporting
-  models.py                    # form/config models, labels, identifiers
+  models.py                    # forms, ReportConfig, labels, identifiers
   report.py                    # report state, persistence, reconciliation
   session.py                   # what happens to a report when the user acts; build/export
-  settings_store.py            # where saved settings live (local folder today)
+  settings_store.py            # saved settings as JSON files in a folder; their JSON text
   feedback.py                  # status messages tagged info/success/warning/error
   filenames.py                 # safe file names; "<name> YYMMDD_HHMMSS.xlsx" outputs
   pipeline.py                  # joins, filters, ordering, renames, formatting
@@ -354,28 +361,27 @@ src/clinical_reporting/
   workflow.py                  # the tools' workflows: OutputFile, input errors, reading inputs
   validation.py                # executable-report validation; "Cannot run" messages
   steps.py                     # the steps: titles, badges, and what they say
-  data.py                      # Corelisting ZIP, CSV, Excel, extra inputs (paths or uploads)
-  additional_names.py          # extra inputs' form/column names kept with a saved setting
+  data.py                      # Corelisting ZIP, CSV, Excel, additional inputs (paths or uploads)
+  additional_names.py          # additional inputs' form/column names kept with a saved setting
   export.py                    # xlsx/csv/bytes rendering
   telemetry.py                 # reports saves to the usage counter (off unless configured)
   ui/                          # PySide6 desktop front end
     app.py                     # entry point: starts the app and opens the window
-    window.py                  # main window composed from feature mixins
-    controller.py              # puts the behavior classes' methods on the window
+    window.py                  # QMainWindow plus the behavior mixins
     main_ui.py                 # builds the pages into the window's shell
     navigation.py              # page changes; badges, header, status bar, toasts
-    contract.py                # widget names the mixins may use
-    pages/                     # one module per step, built in code
+    pages/                     # one module per step: its widgets and behavior mixin
+      source_data.py           # Corelisting ZIP, cut-off date, and saved settings
+      additional_input.py      # additional inputs, form and column names, saved names
+      selection.py             # forms, common items, and form items
+      filters.py               # filters and comparisons
+      joins.py                 # join order, type, and items
+      order_rename.py          # output order and renames
+      preview_export.py        # preview, export, and save a setting
+      _common.py               # the table helper the pages share
     preview.py                 # python -m clinical_reporting.ui.preview
     sample_data.py             # made-up DEMO01 data for previews and UI tests
-    base.py                    # helpers shared by the behavior mixins
-    settings_tab.py            # inputs, cutoff, and saved settings
-    additional_input_tab.py    # extra CSV/Excel inputs, form and column renames, saved names
-    selection_tabs.py          # forms, common items, and form items
-    filters_tab.py             # static and dynamic filters
-    join_config.py             # join order, type, and items
-    ordering_tab.py            # output order and renames
-    run_save_tab.py            # preview, run, and save
+    base.py                    # window-level mixin: shared state, refresh coordinators, helpers
     dialogs.py                 # dialogs shared by more than one page
     table_actions.py           # original-name/new-name tables (renames)
     preview_model.py           # Qt table model for the preview grid

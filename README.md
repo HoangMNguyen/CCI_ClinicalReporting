@@ -20,13 +20,13 @@ All four share the design system, [`cci_ui`](src/cci_ui/README.md).
 
 ## Setup
 
-Python 3.11 or newer is required (pandas 3 and numpy 2.4 need it). Create the
-environment once per machine:
+Python 3.14 is required; `requirements-lock.txt` is compiled for it. Create
+the environment once per machine:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt
+python -m pip install -r requirements-lock.txt
 ```
 
 On Windows cmd.exe, activate with `.venv\Scripts\activate.bat`. If
@@ -36,15 +36,19 @@ on PATH on Windows, use the `py` launcher (`py -m venv .venv`, etc.).
 
 The requirements files build on each other:
 
-| File | Contents | Install it to |
+| File | Contents | For |
 |---|---|---|
 | `requirements-core.txt` | The Qt-free processing engine (pandas, numpy, xlsxwriter, openpyxl, python-dateutil) | Run reports headless or on a server |
 | `requirements.txt` | Core + PySide6 | Run the desktop apps |
-| `requirements-dev.txt` | Desktop + `pytest` and `ruff` | Develop and test |
+| `requirements-dev.txt` | Desktop + `pytest`, `pytest-cov` and `ruff` | Develop and test |
 | `requirements-build.txt` | Desktop + PyInstaller | Build the executables |
 
-Each dependency is pinned to its current major version so DSMB and safety
-outputs stay reproducible; raise a bound deliberately after testing.
+Each dependency is bounded to its current major version so DSMB and safety
+outputs stay reproducible; raise a bound deliberately after testing. Those
+four files are the source of `requirements-lock.txt`, which pins one exact
+version per package for both Linux and Windows. Development and the builds
+install the lock, so everyone runs the same versions; it needs plain `pip`,
+not `uv`.
 
 The packages are not pip-installed; every app imports from `src/` directly.
 In each terminal session, activate the venv and put `src/` on the Python path
@@ -61,6 +65,20 @@ python -m peer_review_automation
 
 One-off alternative on bash without exporting:
 `PYTHONPATH=src python -m clinical_reporting`.
+
+### Upgrading a library
+
+Change the bound in the requirements file the package comes from and rerun
+the compile below; to move to newer versions within the existing bounds, add
+`--upgrade` to it. `uv` is needed only here:
+
+```bash
+uv pip compile requirements-dev.txt requirements-build.txt --universal \
+    --python-version 3.14 -o requirements-lock.txt
+```
+
+Install the new lock, run `python -m pytest -q`, and commit the lock on its
+own, with the reason for the change.
 
 ## How the tools fit together
 
@@ -82,6 +100,10 @@ than carrying their own copies:
 - `clinical_reporting.workflow`:
   - `OutputFile`, what every workflow returns: a file name and the
     workbook's bytes.
+  - `named_output(data, file_name=..., default_name=...)` wraps a
+    workbook's bytes in an `OutputFile` named
+    `<file name, or the default if blank> YYMMDD_HHMMSS.xlsx`; pass `now` to
+    stamp it with another time (a server passes the user's local time).
   - `WorkflowInputError` for problems the user can fix, and
     `UnsupportedStudyError` for a study a workflow doesn't cover.
   - `reading_input` turns a missing, locked or unreadable input file into a
@@ -96,7 +118,10 @@ than carrying their own copies:
 - `clinical_reporting.data.parse_study_name` reads the study from a file
   name (Safety Automation directly; `study_named_by` builds on it).
 - `clinical_reporting.export.get_named_excel_formats` provides shared Excel
-  cell styles (two of the DSMB modules).
+  cell styles (the DSMB modules and Safety Automation's AE & DLT listing).
+- `clinical_reporting.export.to_short_date_string` writes dates as
+  `m/d/yyyy` without leading zeros (CCI Automation's
+  `util.remove_leading_zeros_from_dates`).
 
 ### What the automation tools share
 
@@ -138,10 +163,13 @@ src/
   safety_automation/           # Corelisting AE & DLT report
   peer_review_automation/      # Medidata SDS peer review
 tests/
-  unit/                        # fast logic-focused tests
+  unit/                        # fast Qt-free logic tests
   integration/                 # Clinical Reporting end-to-end report/settings/API tests
-  ui/                          # design-system and whole-window tests
+  ui/                          # design-system, window and page tests (need Qt)
+infra/run_counter/             # AWS stack behind the usage counter (its README)
 docs/design/clinical-reporting-mockup.html  # the approved mockup the design follows
+docs/adr/                      # architecture decisions: what was decided and why
+GLOSSARY.md                    # the domain words the code and docs use
 *.spec, build_support.py       # PyInstaller builds (see Building the executables)
 ```
 
@@ -155,8 +183,9 @@ Each package's README describes its own files.
 python -m pytest -q                    # the full suite
 python -m pytest -q tests/unit         # unit tests only
 python -m pytest -q tests/integration  # integration tests only
-python -m pytest -q tests/ui           # design-system and window tests only
-python -m pytest -q tests/unit/test_join_deduplication.py  # one file
+python -m pytest -q tests/ui           # design-system, window and page tests only
+python -m pytest -q tests/unit tests/integration   # no Qt needed (requirements-core.txt + pytest)
+python -m pytest -q tests/ui/test_join_deduplication.py  # one file
 python -m pytest -x -vv                # stop at the first failure, verbose
 ```
 
@@ -171,20 +200,28 @@ python -m ruff format src tests        # an intentional repository-wide format p
 VS Code will recommend the Ruff extension and apply the same fixes whenever a
 Python file is saved. Unsafe Ruff fixes remain disabled by default.
 
+GitHub Actions (`.github/workflows/tests.yml`) runs the lint check and the
+full suite on Linux and Windows for every push and pull request, and
+`tests/unit` and `tests/integration` on `requirements-core.txt` alone.
+
 Testing notes:
 
 - `tests/conftest.py` inserts both project root and `src/` into `sys.path`, runs
-  Qt offscreen (no windows appear), and provides one shared `qapp` fixture.
+  Qt offscreen (no windows appear), blanks the usage counter's endpoint so no
+  test counts a run (even with a local `telemetry.json`), and provides one
+  shared `qapp` fixture.
 - Tests build their own made-up data in code (Clinical Reporting's
   `clinical_reporting/ui/sample_data.py`, small DataFrames, and tiny ZIPs
   written to pytest's `tmp_path`) and never read real study exports. Keep
   real exports outside the repository: Git ignores `tests/data/` and every
   `.zip`, `.csv` and Excel file so one can't be committed by accident, but
   the repository folder still syncs to Dropbox.
-- Keep logic tests in `tests/unit/` (the automation workflows' `run()` tests
-  are there too), Clinical Reporting's end-to-end report, settings and API
-  tests in `tests/integration/`, and tests of the shared design system
-  (`cci_ui`) and of whole windows in `tests/ui/`.
+- `tests/unit/` holds Qt-free logic (the automation workflows' `run()` tests
+  are there too) and `tests/integration/` Clinical Reporting's end-to-end
+  report, settings and API tests; both run on `requirements-core.txt` alone,
+  and `tests/unit/test_suites_are_qt_free.py` fails on a Qt import there.
+  Desktop behaviour (the shared design system `cci_ui`, whole windows and the
+  window's pages) goes in `tests/ui/`.
 - Slow work (reading inputs, previews, exports, the tools' workflows) runs on
   a background thread. Tests that wait for it use the `settle` fixture in
   `tests/ui/conftest.py`, which blocks in `TaskRunner.wait()` so the worker
@@ -202,10 +239,10 @@ Testing notes:
 ## Building the executables
 
 Each application has a PyInstaller spec file at the repository root. Install
-the build requirements, then build the app(s) you need:
+the locked versions, then build the app(s) you need:
 
 ```bash
-python -m pip install -r requirements-build.txt
+python -m pip install -r requirements-lock.txt
 python -m PyInstaller "CCI Clinical Reporting.spec"
 python -m PyInstaller "CCI Automation.spec"
 python -m PyInstaller "Safety Automation.spec"

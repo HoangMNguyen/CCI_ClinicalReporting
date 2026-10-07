@@ -116,11 +116,6 @@ def render_pixmap(name: str, color: Color, size: QSize, scale: float = 1.0) -> Q
     return pixmap
 
 
-def clear_cache() -> None:
-    """Forget rendered pixmaps (they are keyed by color, so this is only housekeeping)."""
-    _pixmap_cache.clear()
-
-
 def glyph_root() -> Path:
     """Folder that holds the exported stylesheet images."""
     override = os.environ.get(GLYPHS_ENV)
@@ -192,7 +187,6 @@ __all__ = [
     "GLYPHS",
     "GLYPHS_ENV",
     "Glyph",
-    "clear_cache",
     "export_glyphs",
     "glyph_root",
     "icon_path",

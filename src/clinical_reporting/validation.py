@@ -125,7 +125,9 @@ def validate_report(report) -> list[ReportValidationIssue]:
             "selected_forms",
         )
 
-    duplicate_common = sorted(item for item, count in Counter(selected_common).items() if count > 1)
+    duplicate_common = sorted(
+        item for item, count in Counter(selected_common).items() if count > 1
+    )
     for item in duplicate_common:
         _add_issue(
             issues,
@@ -184,7 +186,9 @@ def validate_report(report) -> list[ReportValidationIssue]:
             form_orders[form_name] = order
 
         selected_items = list(form.get_selected_form_items())
-        for item in sorted(item for item, count in Counter(selected_items).items() if count > 1):
+        for item in sorted(
+            item for item, count in Counter(selected_items).items() if count > 1
+        ):
             _add_issue(
                 issues,
                 "duplicate_form_item",
@@ -202,7 +206,9 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 )
 
         join_items = [item for item in form.get_join_items() if item]
-        for item in sorted(item for item, count in Counter(join_items).items() if count > 1):
+        for item in sorted(
+            item for item, count in Counter(join_items).items() if count > 1
+        ):
             _add_issue(
                 issues,
                 "duplicate_join_item",
@@ -272,14 +278,26 @@ def validate_report(report) -> list[ReportValidationIssue]:
     active_identifiers = set(logical_output)
     qualified_items = active_identifiers - selected_common_set
 
-    for index, raw_filter in enumerate(getattr(report, "static_filter_items", None) or []):
+    for index, raw_filter in enumerate(
+        getattr(report, "static_filter_items", None) or []
+    ):
         field = f"static_filter_items.{index}"
         if not isinstance(raw_filter, (list, tuple)) or len(raw_filter) != 3:
-            _add_issue(issues, "invalid_static_filter", f"Static filter {index + 1} must have item, operator, and value.", field)
+            _add_issue(
+                issues,
+                "invalid_static_filter",
+                f"Static filter {index + 1} must have item, operator, and value.",
+                field,
+            )
             continue
         item, operator, _ = raw_filter
         if operator not in Operator.STATIC:
-            _add_issue(issues, "invalid_static_operator", f"Static filter {index + 1} has an invalid operator: {operator!r}.", field)
+            _add_issue(
+                issues,
+                "invalid_static_operator",
+                f"Static filter {index + 1} has an invalid operator: {operator!r}.",
+                field,
+            )
         exists, ambiguous = _validate_filter_identifier(
             item,
             common_items=selected_common_set,
@@ -287,18 +305,40 @@ def validate_report(report) -> list[ReportValidationIssue]:
             item_forms=item_forms,
         )
         if ambiguous:
-            _add_issue(issues, "ambiguous_filter_item", f"Static filter item '{item}' is ambiguous; qualify it with a form name.", field)
+            _add_issue(
+                issues,
+                "ambiguous_filter_item",
+                f"Static filter item '{item}' is ambiguous; qualify it with a form name.",
+                field,
+            )
         elif not exists:
-            _add_issue(issues, "missing_filter_item", f"Static filter item '{item}' is not selected in the report.", field)
+            _add_issue(
+                issues,
+                "missing_filter_item",
+                f"Static filter item '{item}' is not selected in the report.",
+                field,
+            )
 
-    for index, raw_filter in enumerate(getattr(report, "dynamic_filter_items", None) or []):
+    for index, raw_filter in enumerate(
+        getattr(report, "dynamic_filter_items", None) or []
+    ):
         field = f"dynamic_filter_items.{index}"
         if not isinstance(raw_filter, (list, tuple)) or len(raw_filter) != 3:
-            _add_issue(issues, "invalid_dynamic_filter", f"Dynamic filter {index + 1} must have two items and an operator.", field)
+            _add_issue(
+                issues,
+                "invalid_dynamic_filter",
+                f"Dynamic filter {index + 1} must have two items and an operator.",
+                field,
+            )
             continue
         item1, operator, item2 = raw_filter
         if operator not in Operator.DYNAMIC:
-            _add_issue(issues, "invalid_dynamic_operator", f"Dynamic filter {index + 1} has an invalid operator: {operator!r}.", field)
+            _add_issue(
+                issues,
+                "invalid_dynamic_operator",
+                f"Dynamic filter {index + 1} has an invalid operator: {operator!r}.",
+                field,
+            )
         for operand_name, operand in (("left", item1), ("right", item2)):
             exists, ambiguous = _validate_filter_identifier(
                 operand,
@@ -307,9 +347,19 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 item_forms=item_forms,
             )
             if ambiguous:
-                _add_issue(issues, "ambiguous_filter_item", f"Dynamic filter {operand_name} item '{operand}' is ambiguous; qualify it with a form name.", field)
+                _add_issue(
+                    issues,
+                    "ambiguous_filter_item",
+                    f"Dynamic filter {operand_name} item '{operand}' is ambiguous; qualify it with a form name.",
+                    field,
+                )
             elif not exists:
-                _add_issue(issues, "missing_filter_item", f"Dynamic filter {operand_name} item '{operand}' is not selected in the report.", field)
+                _add_issue(
+                    issues,
+                    "missing_filter_item",
+                    f"Dynamic filter {operand_name} item '{operand}' is not selected in the report.",
+                    field,
+                )
 
     rename_dict = getattr(report, "rename_dict", None) or {}
     renamed_output: list[str] = []

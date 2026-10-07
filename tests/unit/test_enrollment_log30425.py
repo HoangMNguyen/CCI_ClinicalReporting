@@ -17,8 +17,12 @@ def _dm(subject):
         {
             "Subject": [subject],
             "Race (IG_NS_NA_DM1.CL_NS_YH_RACE_cl_NS_DMRACE1)": ["Asian"],
-            "Ethnicity (IG_NS_NA_DM1.CL_NS_NH_ETHNIC_cl_NS_DMETHNIC1)": ["Non-Hispanic"],
-            "Sex Assigned at Birth (IG_NS_NA_DM1.CL_NS_NH_BRTHSEX_cl_NS_DMSEX3)": ["Male"],
+            "Ethnicity (IG_NS_NA_DM1.CL_NS_NH_ETHNIC_cl_NS_DMETHNIC1)": [
+                "Non-Hispanic"
+            ],
+            "Sex Assigned at Birth (IG_NS_NA_DM1.CL_NS_NH_BRTHSEX_cl_NS_DMSEX3)": [
+                "Male"
+            ],
             "Legal Sex (IG_NS_NA_DM1.CL_NS_YH_SEX_cl_NS_DMSEX1)": ["Male"],
             "Date of Birth (IG_NS_NA_DM1.DT_NS_NH_BRTHDAT)": ["2000-01-01"],
         }
@@ -83,7 +87,13 @@ def test_enrollment_log30425_pet_columns_are_static():
             "Subject": [subject] * 5,
             FPTMP_STUDY_PHASE_COL: ["Retreatment"] * 5,
             FPTMP_PRIMARY_TP_COL: [None] * 5,
-            FPTMP_RETX_TP_COL: ["Day 7-R", "Day 10-R", "Day 14-R", "Day 21-R", "Day 28-R"],
+            FPTMP_RETX_TP_COL: [
+                "Day 7-R",
+                "Day 10-R",
+                "Day 14-R",
+                "Day 21-R",
+                "Day 28-R",
+            ],
             FPTMP_ADMIN_DATE_COL: [
                 "2026-05-28",
                 "2026-05-29",
