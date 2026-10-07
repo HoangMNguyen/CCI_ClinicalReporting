@@ -100,6 +100,10 @@ than carrying their own copies:
 - `clinical_reporting.workflow`:
   - `OutputFile`, what every workflow returns: a file name and the
     workbook's bytes.
+  - `named_output(data, file_name=..., default_name=...)` wraps a
+    workbook's bytes in an `OutputFile` named
+    `<file name, or the default if blank> YYMMDD_HHMMSS.xlsx`; pass `now` to
+    stamp it with another time (a server passes the user's local time).
   - `WorkflowInputError` for problems the user can fix, and
     `UnsupportedStudyError` for a study a workflow doesn't cover.
   - `reading_input` turns a missing, locked or unreadable input file into a

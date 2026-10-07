@@ -21,9 +21,11 @@ import re
 import zipfile
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Iterable, Iterator, Optional, Tuple, Type
 
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
+from clinical_reporting.filenames import output_file_name
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,17 @@ class OutputFile:
 
     name: str
     data: bytes
+
+
+def named_output(
+    data: bytes, *, file_name: str, default_name: str, now: Optional[datetime] = None
+) -> OutputFile:
+    """*data* saved as "<file_name or default_name> YYMMDD_HHMMSS.xlsx".
+
+    *now* stamps the name (a server passes the user's local time).
+    """
+    name = (file_name or "").strip() or default_name
+    return OutputFile(output_file_name(name, now=now), data)
 
 
 class WorkflowInputError(ValueError):
@@ -169,6 +182,7 @@ __all__ = [
     "file_name_of",
     "input_name",
     "missing_forms_error",
+    "named_output",
     "read_corelisting",
     "reading_input",
     "study_named_by",
