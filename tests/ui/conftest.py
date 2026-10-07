@@ -33,7 +33,7 @@ def themed_app(qapp, monkeypatch):
 
 @pytest.fixture
 def ini_settings(tmp_path):
-    """Appearance settings in a throwaway INI file instead of the registry."""
+    """Settings in a throwaway INI file instead of the registry."""
     return QSettings(str(tmp_path / "appearance.ini"), QSettings.Format.IniFormat)
 
 

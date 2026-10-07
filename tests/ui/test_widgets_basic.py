@@ -1,7 +1,7 @@
 """Tests for the first batch of components (step 1.3)."""
 
 import pytest
-from PySide6.QtCore import QPoint, QSettings, Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import (
     QContextMenuEvent,
     QKeySequence,
@@ -412,8 +412,7 @@ def test_external_picker_only_shows_the_path(qapp):
     assert picker.path() == "" and not picker.clear_button.isVisibleTo(picker)
 
 
-def test_file_picker_remembers_the_folder(qapp, monkeypatch, tmp_path):
-    settings = QSettings(str(tmp_path / "paths.ini"), QSettings.Format.IniFormat)
+def test_file_picker_remembers_the_folder(qapp, monkeypatch, tmp_path, ini_settings):
     chosen = tmp_path / "exports" / "data.zip"
     chosen.parent.mkdir()
     starts = []
@@ -423,9 +422,9 @@ def test_file_picker_remembers_the_folder(qapp, monkeypatch, tmp_path):
         return str(chosen), ""
 
     monkeypatch.setattr(QFileDialog, "getOpenFileName", get_open_file_name)
-    picker = PathPicker("file", settings_key="zip", settings=settings)
+    picker = PathPicker("file", settings_key="zip", settings=ini_settings)
     picker.button.click()
-    second = PathPicker("file", settings_key="zip", settings=settings)
+    second = PathPicker("file", settings_key="zip", settings=ini_settings)
     second.button.click()
 
     assert picker.path() == str(chosen)
