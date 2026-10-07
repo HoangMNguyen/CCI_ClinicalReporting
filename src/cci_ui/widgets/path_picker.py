@@ -154,7 +154,9 @@ class PathPicker(QWidget):
         if self.path():
             current = Path(self.path())
             return str(current if self._mode == "dir" else current.parent)
-        return downloads_folder()
+        # Through Path, as before downloads_folder() existed: it tidies an
+        # untidy HOME (repeated separators, "." parts) the way Path.home() did.
+        return str(Path(downloads_folder()))
 
     def _remember_folder(self, folder: str) -> None:
         if self._settings_key:
