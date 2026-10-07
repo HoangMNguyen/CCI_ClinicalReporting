@@ -81,6 +81,12 @@ QFrame[cciRole="toast"] {
 )
 
 
+def check_kind(kind: str) -> None:
+    """Raise ValueError unless *kind* is one of :data:`KINDS`."""
+    if kind not in KINDS:
+        raise ValueError(f"Unknown message kind {kind!r}; expected one of {KINDS}")
+
+
 def _kind_of(text) -> str:
     kind = getattr(text, "kind", "info")
     return kind if kind in KINDS else "info"
@@ -226,8 +232,7 @@ class StatusBanner(QFrame):
     def show_message(
         self, text: str, kind: str = "info", details: Optional[str] = None
     ) -> None:
-        if kind not in KINDS:
-            raise ValueError(f"Unknown message kind {kind!r}; expected one of {KINDS}")
+        check_kind(kind)
         self._text = text
         self._kind = kind
         self._details = details or ""
@@ -362,8 +367,7 @@ class ToastHost(QWidget):
         ]
 
     def show_toast(self, text: str, kind: str = "success", duration_ms: int = 3000):
-        if kind not in KINDS:
-            raise ValueError(f"Unknown message kind {kind!r}; expected one of {KINDS}")
+        check_kind(kind)
         for old in self.toasts()[: max(0, len(self.toasts()) - MAX_TOASTS + 1)]:
             old.hide()  # Before un-parenting (see cci_ui.widgets).
             old.setParent(None)
@@ -388,10 +392,20 @@ def show_toast(
 
 
 def show_error(
-    parent: Optional[QWidget], title: str, message: str, details: str = ""
+    parent: Optional[QWidget],
+    title: str,
+    message: str,
+    details: str = "",
+    *,
+    informative: str = "",
 ) -> None:
-    """A modal error; *details* (e.g. a traceback) sit behind "Show Details…"."""
+    """A modal error; *details* (e.g. a traceback) sit behind "Show Details…".
+
+    *informative* is a sentence under *message*, such as what to do next.
+    """
     box = QMessageBox(QMessageBox.Icon.Critical, title, message, parent=parent)
+    if informative:
+        box.setInformativeText(informative)
     if details:
         box.setDetailedText(details)
     box.exec()
@@ -404,6 +418,7 @@ __all__ = [
     "TOAST_MAX_W",
     "StatusBanner",
     "ToastHost",
+    "check_kind",
     "show_error",
     "show_toast",
 ]

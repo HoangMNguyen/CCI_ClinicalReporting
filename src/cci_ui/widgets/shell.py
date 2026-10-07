@@ -35,7 +35,7 @@ from cci_ui.widgets.display import DisplayButton
 from cci_ui.widgets.labels import ElidedLabel, IconLabel, text_label
 from cci_ui.widgets.responsive import Breakpoint
 from cci_ui.widgets.sidebar import Sidebar
-from cci_ui.widgets.status import KIND_ICONS, KINDS
+from cci_ui.widgets.status import KIND_ICONS, check_kind
 
 register_qss(
     """
@@ -152,8 +152,7 @@ class AppStatusBar(QFrame):
 
     def show_message(self, text: str, kind: str = "info") -> None:
         """Show *text* with the symbol for *kind* (info, success, warning, error)."""
-        if kind not in KINDS:
-            raise ValueError(f"Unknown message kind {kind!r}; expected one of {KINDS}")
+        check_kind(kind)
         self._kind = kind
         self.kind_icon.set_icon(*KIND_ICONS[kind])
         self.kind_icon.setVisible(True)

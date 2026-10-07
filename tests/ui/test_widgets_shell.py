@@ -295,6 +295,13 @@ def test_toasts_stack_up_to_a_limit_and_go_away(shown, shown_windows):
     assert _wait_until(lambda: host.toasts() == [])
 
 
+def test_a_toast_of_an_unknown_kind_is_refused(shown):
+    window = shown(QWidget(), 600, 400)
+
+    with pytest.raises(ValueError, match="Unknown message kind 'done'"):
+        show_toast(window, "Saved", "done")
+
+
 def test_show_error_puts_details_behind_the_button(qapp, monkeypatch):
     shown_box = {}
 
@@ -306,6 +313,24 @@ def test_show_error_puts_details_behind_the_button(qapp, monkeypatch):
     show_error(None, "Export failed", "Couldn't write the file.", "Traceback …")
 
     assert shown_box == {"text": "Couldn't write the file.", "details": "Traceback …"}
+
+
+def test_show_error_can_add_an_informative_sentence(qapp, monkeypatch):
+    shown_box = {}
+
+    def fake_exec(box):
+        shown_box["text"], shown_box["informative"] = box.text(), box.informativeText()
+        return 0
+
+    monkeypatch.setattr(QMessageBox, "exec", fake_exec)
+    show_error(
+        None, "Export failed", "Couldn't write the file.", informative="Try again."
+    )
+
+    assert shown_box == {
+        "text": "Couldn't write the file.",
+        "informative": "Try again.",
+    }
 
 
 # ---------------------------------------------------------------------------

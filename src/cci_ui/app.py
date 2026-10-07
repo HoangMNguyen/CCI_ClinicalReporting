@@ -17,12 +17,13 @@ from typing import Any, Callable, Dict, Optional, Sequence, Tuple
 
 from PySide6.QtCore import QSettings, Qt, QThread, QTimer
 from PySide6.QtGui import QFontInfo, QGuiApplication, QIcon
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication
 
 import cci_ui.widgets  # noqa: F401  (registers component styles before apply())
 from cci_ui.assets import app_icon_path, assets_root
 from cci_ui.theme.fonts import load_bundled, ui_font
 from cci_ui.theme.manager import SETTINGS_ORGANIZATION, ThemeManager
+from cci_ui.widgets.status import show_error
 
 logger = logging.getLogger(__name__)
 
@@ -146,17 +147,16 @@ class _ErrorDialogHook:
             return
         self.showing = True
         try:
-            box = QMessageBox(
-                QMessageBox.Icon.Critical,
+            show_error(
+                None,
                 "Something went wrong",
                 str(exc) or exc_type.__name__,
+                "".join(traceback.format_exception(exc_type, exc, tb)),
+                informative=(
+                    "The action didn't finish. If this keeps happening, copy the "
+                    "details and send them to the tool's maintainer."
+                ),
             )
-            box.setInformativeText(
-                "The action didn't finish. If this keeps happening, copy the "
-                "details and send them to the tool's maintainer."
-            )
-            box.setDetailedText("".join(traceback.format_exception(exc_type, exc, tb)))
-            box.exec()
         finally:
             self.showing = False
 
