@@ -79,9 +79,6 @@ class PathPicker(QWidget):
         """The chosen path ("" when nothing is chosen; the first in ``files`` mode)."""
         return self._paths[0] if self._paths else ""
 
-    def paths(self) -> List[str]:
-        return list(self._paths)
-
     def set_path(self, path: Optional[str]) -> None:
         self.set_paths([path] if path else [])
 

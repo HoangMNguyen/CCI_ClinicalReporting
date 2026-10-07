@@ -487,7 +487,7 @@ def _empty_page(_shell: AppShell) -> Page:
 def _icons_page(_shell: AppShell) -> Page:
     page = Page(
         "Icons",
-        "Every bundled icon (Lucide), in the secondary color.",
+        "Every IconName icon (Lucide), in the secondary color.",
         kind=PageKind.FORM,
     )
     holder = QWidget()

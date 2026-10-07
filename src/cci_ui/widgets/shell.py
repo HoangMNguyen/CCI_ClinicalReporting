@@ -185,8 +185,6 @@ class AppShell(QWidget):
 
     #: Emitted with the page key whenever the current page changes.
     currentPageChanged = Signal(str)
-    #: Emitted with True when the sidebar collapses to icons.
-    sidebarCollapsedChanged = Signal(bool)
     #: Emitted with the new width when the user drags the sidebar's edge.
     sidebarWidthChanged = Signal(int)
 
@@ -363,7 +361,6 @@ class AppShell(QWidget):
             return
         self.sidebar.set_collapsed(collapsed)
         self._apply_sidebar_width()
-        self.sidebarCollapsedChanged.emit(collapsed)
 
     def restore_sidebar(self, width: int, collapsed: bool) -> None:
         """Apply a remembered width and collapsed state (before the first show).

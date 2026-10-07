@@ -69,8 +69,9 @@ Slow work runs off the GUI thread through `cci_ui.tasks` (`run_task`,
 
 A new icon is a Lucide SVG copied into `src/cci_ui/assets/icons/` (from the
 version in `assets/icons/VERSION`) and a constant in `IconName`
-(`cci_ui/icons.py`); `tests/ui/test_icons.py` checks that every file has a
-name and every name a file.
+(`cci_ui/icons.py`). `tests/ui/test_icons.py` checks that every name has a
+file and that every file has an `IconName` or is a stylesheet glyph
+(`GLYPHS` in `cci_ui/theme/glyphs.py`).
 
 ## Checking the look: the gallery
 

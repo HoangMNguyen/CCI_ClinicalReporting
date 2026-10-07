@@ -147,10 +147,6 @@ class Section(QWidget):
         self._rows.addWidget(row)
         return row
 
-    def add_widget(self, widget: QWidget, stretch: int = 0) -> None:
-        """Add content that spans the whole card, such as a table."""
-        self._rows.addWidget(widget, stretch)
-
     def set_footnote(self, text: str) -> None:
         self.footnote_label.setText(text)
         self.footnote_label.setVisible(bool(text))
