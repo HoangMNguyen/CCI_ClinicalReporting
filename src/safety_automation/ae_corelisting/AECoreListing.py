@@ -149,7 +149,7 @@ class AECoreListing:
         elif study_name == "15420":
             cohort_value_dict = {
                 "Cohort A: Non-Hodgkin Lymphoma (NHL)": "A",
-                "Cohort B: Chronic Lymphocytic Leukemia (CLL)": " B",
+                "Cohort B: Chronic Lymphocytic Leukemia (CLL)": "B",
                 "Cohort C: Acute Lymphoblastic Leukemia (ALL)": "C",
                 "Cohort D": "D",
             }

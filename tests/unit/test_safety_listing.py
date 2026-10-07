@@ -215,8 +215,11 @@ def _value(column: str, subject: str):
     return "x"
 
 
-def _export_for(study: str, extra_forms=()) -> bytes:
-    """A one-subject export for *study*, built from the listing's column lists."""
+def _export_for(study: str, extra_forms=(), cohort=None) -> bytes:
+    """A one-subject export for *study*, built from the listing's column lists.
+
+    The subject's cohort assignment is *cohort*, or the study's first one.
+    """
     blank = _blank()
     keys = listing.AECoreListing.STUDY_KEY_MAP.get(study, {})
     subject = f"100-{study}-01"
@@ -237,7 +240,7 @@ def _export_for(study: str, extra_forms=()) -> bytes:
     add(keys.get("EXINF", "EXINF"), exinf)
     cohort_columns = blank.get_DSCA_header_list(study)
     if cohort_columns:
-        cohort = next(iter(blank.get_cohort_value_dict(study)))
+        cohort = cohort or next(iter(blank.get_cohort_value_dict(study)))
         add(keys.get("DSCA", "DSCA"), cohort_columns, {cohort_columns[1]: cohort})
     for form in extra_forms:
         add(form, ["Subject", "Cohort Assignment (made.up)"])
@@ -267,3 +270,15 @@ def test_a_cohort_form_the_study_has_no_columns_for_is_left_out(study):
 
     headers = [cell.value for cell in report[1]]
     assert "Cohort" not in headers
+
+
+def test_a_15420_subject_in_cohort_b_is_listed_as_b():
+    export = _upload(
+        _export_for("15420", cohort="Cohort B: Chronic Lymphocytic Leukemia (CLL)"),
+        "Core_Listings_15420_x.zip",
+    )
+
+    report = load_workbook(io.BytesIO(listing.run(export).data))["Reformated AE Report"]
+
+    headers = [cell.value for cell in report[1]]
+    assert report.cell(row=2, column=headers.index("Cohort") + 1).value == "B"
