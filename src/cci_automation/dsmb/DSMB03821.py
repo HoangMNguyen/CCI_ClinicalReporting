@@ -257,9 +257,6 @@ def DSMB03821(
             + enrollment_df["SF3"].fillna("")
             + enrollment_df["SF4"].fillna("")
         )
-        enrollment_df["Reason for Screen FailureIE"].fillna(
-            enrollment_df["Reason for Screen FailureIE"]
-        )
         enrollment_df = enrollment_df.drop(columns=["SF1", "SF2", "SF3", "SF4"])
 
         enrollment_df = add_rename_column_corelisting(
