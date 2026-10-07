@@ -69,8 +69,9 @@ Slow work runs off the GUI thread through `cci_ui.tasks` (`run_task`,
 
 A new icon is a Lucide SVG copied into `src/cci_ui/assets/icons/` (from the
 version in `assets/icons/VERSION`) and a constant in `IconName`
-(`cci_ui/icons.py`); `tests/ui/test_icons.py` checks that every file has a
-name and every name a file.
+(`cci_ui/icons.py`). `tests/ui/test_icons.py` checks that every name has a
+file and that every file has an `IconName` or is a stylesheet glyph
+(`GLYPHS` in `cci_ui/theme/glyphs.py`).
 
 ## Checking the look: the gallery
 
@@ -127,7 +128,7 @@ src/cci_ui/
   widgets/section.py           # Section: titled card of label/field rows
   widgets/page.py              # Page: title, body, footer, empty state; form/workspace/split
   widgets/responsive.py        # breakpoints; panel beside or below the main area
-  widgets/path_picker.py       # PathPicker: path + Choose… + Remove
+  widgets/path_picker.py       # PathPicker: path + Choose… + Remove; downloads_folder
   widgets/side_panel.py        # SidePanel: sections beside a grid, or below it
   widgets/toggle.py            # ToggleSwitch (a QCheckBox drawn as a switch)
   widgets/segmented.py         # SegmentedControl

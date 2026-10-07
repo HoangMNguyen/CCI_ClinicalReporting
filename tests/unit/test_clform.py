@@ -1,12 +1,9 @@
 from clinical_reporting.models import CLForm
 
 
-def test_get_and_set_name():
+def test_get_name():
     form = CLForm("Original")
     assert form.get_name() == "Original"
-
-    form.set_name("Updated")
-    assert form.get_name() == "Updated"
 
 
 def test_form_item_state_and_queries():
@@ -39,21 +36,10 @@ def test_move_item_helper_is_idempotent():
     assert form.set_form_item_state("HEIGHT", selected=True) is False
 
 
-def test_join_item_state_and_bulk_operations():
+def test_join_items_accessors():
     form = CLForm("DM")
-
-    assert form.set_join_item_state("Subject", include=True) is True
-    assert form.get_join_items() == ["Subject"]
-
-    assert form.set_join_item_state("Subject", include=True) is False
-    assert form.set_join_item_state("Subject", include=False) is True
-    assert form.get_join_items() == []
-
     form.set_join_items(["Subject", "Visit"])
     assert form.get_join_items() == ["Subject", "Visit"]
-
-    form.clear_join_items()
-    assert form.get_join_items() == []
 
 
 def test_join_order_and_how_accessors():
@@ -64,6 +50,3 @@ def test_join_order_and_how_accessors():
 
     form.set_join_how("Inner join")
     assert form.get_join_how() == "Inner join"
-
-    form.remove_join_order()
-    assert form.get_join_order() is None

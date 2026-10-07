@@ -3,7 +3,6 @@
 import pandas as pd
 import pytest
 
-from clinical_reporting import feedback
 from clinical_reporting.models import JoinHow
 from clinical_reporting.pipeline import ReportEngine
 from clinical_reporting.report import CLReport
@@ -45,7 +44,7 @@ def test_valid_report_has_no_issues():
 
 def test_missing_join_items_are_rejected_instead_of_silently_skipping_form():
     report = _valid_two_form_report()
-    report.selected_forms["VS"].clear_join_items()
+    report.selected_forms["VS"].set_join_items([])
 
     assert "missing_join_items" in _issue_codes(report)
     with pytest.raises(ReportValidationError) as exc_info:
@@ -116,4 +115,4 @@ def test_cannot_run_messages_list_what_blocks_the_report():
     assert joins_only == cannot_run_message(
         [i for i in report.validate() if i.code == "missing_join_items"]
     )
-    assert feedback.kind_of(joins_only) == "warning"
+    assert joins_only.kind == "warning"

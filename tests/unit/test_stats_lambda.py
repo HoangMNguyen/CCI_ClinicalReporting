@@ -21,8 +21,6 @@ def stats_app(monkeypatch):
         / "stats_function"
         / "app.py"
     )
-    if not path.is_file():  # infra/ is ignored by Git, so a clone has none
-        pytest.skip("infra/run_counter is not in this checkout")
     spec = importlib.util.spec_from_file_location("stats_lambda", path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None

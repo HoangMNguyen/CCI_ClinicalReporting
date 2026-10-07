@@ -4,6 +4,7 @@ import pandas as pd
 
 from clinical_reporting import session
 from clinical_reporting.report import CLReport
+from clinical_reporting.session import capture_selection, restore_selection
 
 
 def _forms():
@@ -82,3 +83,25 @@ def test_export_writes_the_rows_or_nothing(tmp_path):
     written = session.export_report(_StubReport(pd.DataFrame({"A": [1]})), str(target))
 
     assert written == str(target) and target.stat().st_size > 0
+
+
+def test_selection_is_restored_after_rebuilding_the_data():
+    data = {
+        "DM": pd.DataFrame({"Subject": ["01"], "Site": ["A"], "Age": [42]}),
+        "AE": pd.DataFrame({"Subject": ["01"], "Site": ["A"], "Term": ["Rash"]}),
+    }
+    report = CLReport()
+    report.set_data(data)
+    report.add_selected_form("DM")
+    report.selected_forms["DM"].set_form_item_state("Age", selected=True)
+    report.set_common_item_state("Subject", selected=True)
+    state = capture_selection(report)
+
+    # A rebuild (for example a cut-off reload) creates fresh form objects.
+    report.set_data({name: df.copy() for name, df in data.items()})
+    assert report.get_selected_forms_list() == []
+    restore_selection(report, state)
+
+    assert report.get_selected_forms_list() == ["DM"]
+    assert report.selected_forms["DM"].get_selected_form_items() == ["Age"]
+    assert "Subject" in report.get_selected_common_items()

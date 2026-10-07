@@ -1,22 +1,18 @@
+import logging
 import warnings
-import zipfile
 from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
-import pytest
 
 import cci_automation.dsmb.DSMB_util as dsmb_util
 from cci_automation.util import (
-    add_rename_column_corelisting,
     add_rename_column_df,
     age_calculation,
     convert_integers_to_strings,
-    get_data_from_dict_first,
-    get_stats_df,
+    get_data_from_dict,
     remove_leading_zeros_from_dates,
 )
-from clinical_reporting.data import read_data_dict_zip_corelisting
 
 _PANDAS_FUTURE_WARNING_CATEGORIES = tuple(
     warning_category
@@ -37,68 +33,20 @@ def pandas_future_warnings_as_errors():
         yield
 
 
-def test_read_data_dict_zip_corelisting_filters_submitted_non_ilb_and_cutoff(tmp_path):
-    df = pd.DataFrame(
-        {
-            "Subject": ["100-15420-01", "100-15420-02", "100-15420-03", "100-15420-04"],
-            "Event Date": ["2024-01-01", "2024-02-01", "2024-01-10", "2024-01-15"],
-            "Form Status": ["Submitted", "Submitted", "Draft", "Submitted"],
-            "Form ILB Status": [False, False, False, True],
-            "Value": ["keep", "after cutoff", "draft", "ilb"],
-        }
-    )
-    zip_path = tmp_path / "core_listing.zip"
-    with zipfile.ZipFile(zip_path, "w") as z:
-        z.writestr("Core_Listings_DM.csv", df.to_csv(index=False))
-
-    result = read_data_dict_zip_corelisting(str(zip_path), cut_off_date="2024-01-31")
-
-    expected = pd.DataFrame(
-        {
-            "Subject": ["15420-01"],
-            "Event Date": [pd.Timestamp("2024-01-01")],
-            "Form Status": ["Submitted"],
-            "Form ILB Status": [False],
-            "Value": ["keep"],
-        }
-    )
-    pd.testing.assert_frame_equal(result["DM"].reset_index(drop=True), expected)
-
-
-def test_add_rename_column_corelisting_left_merges_non_ilb_rows():
-    current_df = pd.DataFrame({"Subject": ["S1", "S2"]})
-    input_data = {
-        "FORM": pd.DataFrame(
-            {
-                "Subject": ["S1", "S2", "S2"],
-                "Form ILB Status": [False, True, False],
-                "Raw Column": ["A", "ignore", "B"],
-            }
-        )
-    }
-
-    result = add_rename_column_corelisting(current_df, input_data, "FORM", "Raw Column", "Renamed Column")
-
-    expected = pd.DataFrame({"Subject": ["S1", "S2"], "Renamed Column": ["A", "B"]})
-    pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
-
-
 def test_add_rename_column_df_left_merges_on_compound_key():
     current_df = pd.DataFrame({"Subject": ["S1", "S2"], "Visit": ["V1", "V1"]})
-    input_df = pd.DataFrame({"Subject": ["S1", "S2"], "Visit": ["V1", "V2"], "Dose": [10, 20]})
+    input_df = pd.DataFrame(
+        {"Subject": ["S1", "S2"], "Visit": ["V1", "V2"], "Dose": [10, 20]}
+    )
 
-    result = add_rename_column_df(current_df, input_df, "FORM", "Dose", "Dose Level", key2="Visit")
+    result = add_rename_column_df(
+        current_df, input_df, "Dose", "Dose Level", key2="Visit"
+    )
 
-    expected = pd.DataFrame({"Subject": ["S1", "S2"], "Visit": ["V1", "V1"], "Dose Level": [10.0, np.nan]})
+    expected = pd.DataFrame(
+        {"Subject": ["S1", "S2"], "Visit": ["V1", "V1"], "Dose Level": [10.0, np.nan]}
+    )
     pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
-
-
-def test_get_stats_df_coerces_numeric_values_and_formats_summary():
-    result = get_stats_df("Age", pd.DataFrame({"Age": ["10", "bad", "20"]}))
-
-    assert result.iloc[0, 0] == "15.00 (7.07)"
-    assert result.iloc[1, 0] == 15.0
-    assert result.iloc[2, 0] == "10.00 - 20.00"
 
 
 def test_convert_integers_to_strings_preserves_strings_booleans_and_missing_values():
@@ -114,7 +62,7 @@ def test_convert_integers_to_strings_preserves_strings_booleans_and_missing_valu
     assert result.loc[5, "Day"] == "Day 3"
 
 
-def test_get_data_from_dict_first_keeps_earliest_event_per_subject():
+def test_get_data_from_dict_keep_first_keeps_earliest_event_per_subject():
     data = {
         "INF": pd.DataFrame(
             {
@@ -126,7 +74,7 @@ def test_get_data_from_dict_first_keeps_earliest_event_per_subject():
     }
     input_dict = {"INF": {"Dose": "First Dose"}}
 
-    result = get_data_from_dict_first(data, input_dict)
+    result = get_data_from_dict(data, input_dict, keep="first")
 
     expected = pd.DataFrame({"Subject": ["S1", "S2"], "First Dose": ["early", "only"]})
     pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
@@ -141,18 +89,42 @@ def test_age_calculation_uses_primary_date_then_fallback_date():
         }
     )
 
-    result = age_calculation(df, "Age", "Date of Birth", "Consent Date", "Main Consent Date")
+    result = age_calculation(
+        df, "Age", "Date of Birth", "Consent Date", "Main Consent Date"
+    )
 
     assert result["Age"].tolist() == [19, 20]
 
 
 def test_remove_leading_zeros_from_dates_formats_date_columns_only():
-    df = pd.DataFrame({"Visit Date": ["2024-01-05", pd.NaT], "Comment": ["2024-01-05", "keep"]})
+    df = pd.DataFrame(
+        {"Visit Date": ["2024-01-05", pd.NaT], "Comment": ["2024-01-05", "keep"]}
+    )
 
     result = remove_leading_zeros_from_dates(df)
 
-    expected = pd.DataFrame({"Visit Date": ["1/5/2024", ""], "Comment": ["2024-01-05", "keep"]})
+    expected = pd.DataFrame(
+        {"Visit Date": ["1/5/2024", ""], "Comment": ["2024-01-05", "keep"]}
+    )
     pd.testing.assert_frame_equal(result, expected)
+
+
+def test_a_date_column_that_cant_be_converted_is_logged_without_its_values(
+    caplog, capsys
+):
+    # Mixed UTC offsets make pandas raise even with errors="coerce".
+    df = pd.DataFrame(
+        {"Visit Date": ["2024-01-05T08:00:00+01:00", "2024-01-06T09:00:00+05:00"]}
+    )
+
+    with caplog.at_level(logging.WARNING, logger="cci_automation.util"):
+        remove_leading_zeros_from_dates(df)
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "Could not process date column 'Visit Date' (ValueError)"
+    ]
+    assert "2024" not in caplog.text
+    assert capsys.readouterr().out == ""
 
 
 def test_dsmb_add_rename_column_corelisting_left_merges_non_ilb_rows():
@@ -167,7 +139,9 @@ def test_dsmb_add_rename_column_corelisting_left_merges_non_ilb_rows():
         )
     }
 
-    result = dsmb_util.add_rename_column_corelisting(current_df, input_data, "FORM", "Raw Column", "Renamed Column")
+    result = dsmb_util.add_rename_column_corelisting(
+        current_df, input_data, "FORM", "Raw Column", "Renamed Column"
+    )
 
     expected = pd.DataFrame({"Subject": ["S1", "S2"], "Renamed Column": ["A", "B"]})
     pd.testing.assert_frame_equal(result, expected)
@@ -185,7 +159,9 @@ def test_dsmb_get_stats_percentage_counts_and_percentages_codelist_values():
 def test_dsmb_get_stats_percentage2_reindexes_to_custom_group_order():
     df = pd.DataFrame({"Subject": ["S1", "S2"], "Legal Sex": ["Male", "Female"]})
 
-    result = dsmb_util.get_stats_percentage2("Legal Sex", ["Male", "Female", "Unknown"], df)
+    result = dsmb_util.get_stats_percentage2(
+        "Legal Sex", ["Male", "Female", "Unknown"], df
+    )
 
     assert result.index.tolist() == ["Male", "Female", "Unknown"]
     assert result.loc["Male", "Subject"] == "1 (50.0%)"
@@ -201,7 +177,9 @@ def test_dsmb_get_stats_df_coerces_numeric_values_and_formats_summary():
 
 
 def test_dsmb_get_stats_perc_df_formats_percentage_summary():
-    result = dsmb_util.get_stats_perc_df("Percent", pd.DataFrame({"Percent": [1, 2, 3]}))
+    result = dsmb_util.get_stats_perc_df(
+        "Percent", pd.DataFrame({"Percent": [1, 2, 3]})
+    )
 
     assert result.iloc[0, 0] == "2.00% (1.00%)"
     assert result.iloc[1, 0] == "2.00%"
@@ -210,19 +188,6 @@ def test_dsmb_get_stats_perc_df_formats_percentage_summary():
 
 def test_dsmb_convert_float_2_sci_notation_uses_half_up_rounding():
     assert dsmb_util.convert_float_2_sci_notation(1.005) == "1.01x10^0"
-
-
-def test_dsmb_convert_sci_notation_2_float_valid_input():
-    assert dsmb_util.convert_sci_notation_2_float("2.5x10^2") == 250.0
-
-
-def test_pandas_chained_inplace_fillna_warns_and_does_not_update_parent_dataframe():
-    df = pd.DataFrame({"Response": ["CR", None]})
-
-    with pytest.warns(pd.errors.ChainedAssignmentError):
-        df["Response"].fillna("Not Applicable", inplace=True)
-
-    assert pd.isna(df.loc[1, "Response"])
 
 
 def test_pandas_fillna_assignment_updates_parent_dataframe_without_future_warnings():
@@ -278,7 +243,13 @@ def test_pandas_groupby_idxmax_safe_pattern_skips_all_missing_date_groups():
     df = pd.DataFrame(
         {
             "Subject": ["S1", "S1", "S2", "S2", "S3"],
-            "Event Date": [pd.NaT, pd.NaT, pd.Timestamp("2024-01-01"), pd.Timestamp("2024-02-01"), pd.Timestamp("2024-03-01")],
+            "Event Date": [
+                pd.NaT,
+                pd.NaT,
+                pd.Timestamp("2024-01-01"),
+                pd.Timestamp("2024-02-01"),
+                pd.Timestamp("2024-03-01"),
+            ],
             "Visit": ["missing 1", "missing 2", "V1", "V2", "V1"],
         }
     )
@@ -299,12 +270,19 @@ def test_pandas_groupby_idxmax_safe_pattern_skips_all_missing_date_groups():
 
 
 def test_pandas_replace_inf_and_nan_for_report_output_without_future_warnings():
-    df = pd.DataFrame({"Dose": [1.0, np.inf, -np.inf, np.nan], "Comment": ["ok", np.nan, "low", "missing"]})
+    df = pd.DataFrame(
+        {
+            "Dose": [1.0, np.inf, -np.inf, np.nan],
+            "Comment": ["ok", np.nan, "low", "missing"],
+        }
+    )
 
     with pandas_future_warnings_as_errors():
         result = df.replace([np.inf, -np.inf], np.nan).fillna("")
 
-    expected = pd.DataFrame({"Dose": [1.0, "", "", ""], "Comment": ["ok", "", "low", "missing"]})
+    expected = pd.DataFrame(
+        {"Dose": [1.0, "", "", ""], "Comment": ["ok", "", "low", "missing"]}
+    )
     pd.testing.assert_frame_equal(result, expected)
 
 

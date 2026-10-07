@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -6,7 +5,6 @@ from dateutil.relativedelta import relativedelta
 
 def EnrollmentLog16321(final_data):
     # DM
-    # if 'DM' in final_data:
     DM_df = final_data["DM"][
         [
             "Subject",
@@ -31,13 +29,16 @@ def EnrollmentLog16321(final_data):
 
     # DSCAS
 
-    DSCA_df = final_data["DSCA"][["Subject", "Cohort Assignment (ig_DSCA1.CACHASCOD)"]].copy()
+    DSCA_df = final_data["DSCA"][
+        ["Subject", "Cohort Assignment (ig_DSCA1.CACHASCOD)"]
+    ].copy()
     DSCA_new_col_name = {"Cohort Assignment (ig_DSCA1.CACHASCOD)": "Assigned Cohort"}
     DSCA_df = DSCA_df.rename(columns=DSCA_new_col_name)
     merged_df = pd.merge(sorted_DM_df, DSCA_df, on="Subject", how="left")
     index_reference = merged_df.columns.get_loc("Race")
-    merged_df.insert(index_reference, "Assigned Cohort", merged_df.pop("Assigned Cohort"))
-    # print(merged_df)
+    merged_df.insert(
+        index_reference, "Assigned Cohort", merged_df.pop("Assigned Cohort")
+    )
 
     # IE
     IE_df = final_data["IE"][
@@ -56,7 +57,9 @@ def EnrollmentLog16321(final_data):
     IE_df = IE_df.rename(columns=IE_new_col_name)
     merged_df = pd.merge(merged_df, IE_df, on="Subject", how="left")
     # convert date columsn to datetime type
-    merged_df["Apheresis Consent Date"] = pd.to_datetime(merged_df["Apheresis Consent Date"])
+    merged_df["Apheresis Consent Date"] = pd.to_datetime(
+        merged_df["Apheresis Consent Date"]
+    )
     merged_df["Main Consent Date"] = pd.to_datetime(merged_df["Main Consent Date"])
     merged_df["Date of Birth"] = pd.to_datetime(merged_df["Date of Birth"])
     # Calculate time difference in days and convert to years
@@ -65,17 +68,32 @@ def EnrollmentLog16321(final_data):
 
     # apply relativedelta only to rows with non-NaT values in both columns
     merged_df.loc[mask, "Age at Consent"] = merged_df[mask].apply(
-        lambda x: relativedelta(x["Apheresis Consent Date"], x["Date of Birth"]).years, axis=1
+        lambda x: relativedelta(x["Apheresis Consent Date"], x["Date of Birth"]).years,
+        axis=1,
     )
     # for rows where 'Apheresis Consent Date' isnull but 'Main Consent Date' is not null, use 'Main Consent Date' to calculate age
     merged_df.loc[
-        (merged_df["Apheresis Consent Date"].isnull() & merged_df["Main Consent Date"].notnull()), "Age at Consent"
-    ] = merged_df.loc[(merged_df["Apheresis Consent Date"].isnull() & merged_df["Main Consent Date"].notnull())].apply(
-        lambda x: relativedelta(x["Main Consent Date"], x["Date of Birth"]).years, axis=1
+        (
+            merged_df["Apheresis Consent Date"].isnull()
+            & merged_df["Main Consent Date"].notnull()
+        ),
+        "Age at Consent",
+    ] = merged_df.loc[
+        (
+            merged_df["Apheresis Consent Date"].isnull()
+            & merged_df["Main Consent Date"].notnull()
+        )
+    ].apply(
+        lambda x: relativedelta(x["Main Consent Date"], x["Date of Birth"]).years,
+        axis=1,
     )
 
-    merged_df["Apheresis Consent Date"] = pd.to_datetime(merged_df["Apheresis Consent Date"]).dt.strftime("%m/%d/%Y")
-    merged_df["Main Consent Date"] = pd.to_datetime(merged_df["Main Consent Date"]).dt.strftime("%m/%d/%Y")
+    merged_df["Apheresis Consent Date"] = pd.to_datetime(
+        merged_df["Apheresis Consent Date"]
+    ).dt.strftime("%m/%d/%Y")
+    merged_df["Main Consent Date"] = pd.to_datetime(
+        merged_df["Main Consent Date"]
+    ).dt.strftime("%m/%d/%Y")
     merged_df["Date Physician-Investigator Confirmed Eligibility"] = pd.to_datetime(
         merged_df["Date Physician-Investigator Confirmed Eligibility"]
     ).dt.strftime("%m/%d/%Y")
@@ -89,7 +107,11 @@ def EnrollmentLog16321(final_data):
 
     # PRAPH
     APH_df = final_data["PRAPH"][
-        ["Subject", "Apheresis Type (ig_PRAPH1.APHCAT)", "Apheresis Date (ig_PRAPH1.APHDAT)"]
+        [
+            "Subject",
+            "Apheresis Type (ig_PRAPH1.APHCAT)",
+            "Apheresis Date (ig_PRAPH1.APHDAT)",
+        ]
     ].copy()
     APH_new_col_name = {
         "Apheresis Type (ig_PRAPH1.APHCAT)": "Apheresis Type (Fresh or Historical)",
@@ -97,34 +119,39 @@ def EnrollmentLog16321(final_data):
     }
     APH_df = APH_df.rename(columns=APH_new_col_name)
     merged_df = pd.merge(merged_df, APH_df, on="Subject", how="left")
-    merged_df["Date of Apheresis Collection"] = pd.to_datetime(merged_df["Date of Apheresis Collection"]).dt.strftime(
-        "%m/%d/%Y"
-    )
-    # print(merged_df)
+    merged_df["Date of Apheresis Collection"] = pd.to_datetime(
+        merged_df["Date of Apheresis Collection"]
+    ).dt.strftime("%m/%d/%Y")
 
     # EXINF
-    EXINF_df = final_data["EXINF"][["Subject", "Event Group Label", "Study Treatment Date (ig_EXINF1.INFDAT)"]].copy()
+    EXINF_df = final_data["EXINF"][
+        ["Subject", "Event Group Label", "Study Treatment Date (ig_EXINF1.INFDAT)"]
+    ].copy()
     EXINF_df = EXINF_df[EXINF_df["Event Group Label"] == "Day 0"]
-    EXINF_new_col_name = {"Study Treatment Date (ig_EXINF1.INFDAT)": "CAR T cell Injection #1 Date (Day 0)"}
+    EXINF_new_col_name = {
+        "Study Treatment Date (ig_EXINF1.INFDAT)": "CAR T cell Injection #1 Date (Day 0)"
+    }
     EXINF_df = EXINF_df.rename(columns=EXINF_new_col_name)
     EXINF_df = EXINF_df.drop("Event Group Label", axis=1)
     merged_df = pd.merge(merged_df, EXINF_df, on="Subject", how="left")
     merged_df["CAR T cell Injection #1 Date (Day 0)"] = pd.to_datetime(
         merged_df["CAR T cell Injection #1 Date (Day 0)"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # EXINF2
-    EXINF_df = final_data["EXINF"][["Subject", "Event Group Label", "Study Treatment Date (ig_EXINF1.INFDAT)"]].copy()
+    EXINF_df = final_data["EXINF"][
+        ["Subject", "Event Group Label", "Study Treatment Date (ig_EXINF1.INFDAT)"]
+    ].copy()
     EXINF_df = EXINF_df[EXINF_df["Event Group Label"] == "Injection 2"]
-    EXINF_new_col_name = {"Study Treatment Date (ig_EXINF1.INFDAT)": "CAR T cell Injection #2 Date (Day 14)"}
+    EXINF_new_col_name = {
+        "Study Treatment Date (ig_EXINF1.INFDAT)": "CAR T cell Injection #2 Date (Day 14)"
+    }
     EXINF_df = EXINF_df.rename(columns=EXINF_new_col_name)
     EXINF_df = EXINF_df.drop("Event Group Label", axis=1)
     merged_df = pd.merge(merged_df, EXINF_df, on="Subject", how="left")
     merged_df["CAR T cell Injection #2 Date (Day 14)"] = pd.to_datetime(
         merged_df["CAR T cell Injection #2 Date (Day 14)"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # DSINITLF
     INITLF_df = final_data["DSINITLF"][
@@ -136,7 +163,9 @@ def EnrollmentLog16321(final_data):
         ]
     ].copy()
     INITLF_df = INITLF_df[
-        INITLF_df["From which Phase is the Subject entering Long-Term Follow-Up? (ig_DSINITLF1.DSPHASE)"]
+        INITLF_df[
+            "From which Phase is the Subject entering Long-Term Follow-Up? (ig_DSINITLF1.DSPHASE)"
+        ]
         != "Retreatment"
     ]
     INITLF_new_col_name = {
@@ -145,11 +174,13 @@ def EnrollmentLog16321(final_data):
     }
     INITLF_df = INITLF_df.rename(columns=INITLF_new_col_name)
     INITLF_df = INITLF_df.drop(
-        "From which Phase is the Subject entering Long-Term Follow-Up? (ig_DSINITLF1.DSPHASE)", axis=1
+        "From which Phase is the Subject entering Long-Term Follow-Up? (ig_DSINITLF1.DSPHASE)",
+        axis=1,
     )
     merged_df = pd.merge(merged_df, INITLF_df, on="Subject", how="left")
-    merged_df["Initiation of LTFU Date"] = pd.to_datetime(merged_df["Initiation of LTFU Date"]).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
+    merged_df["Initiation of LTFU Date"] = pd.to_datetime(
+        merged_df["Initiation of LTFU Date"]
+    ).dt.strftime("%m/%d/%Y")
 
     # DSINITRT
     DSINITRT_df = final_data["DSINITRT"][
@@ -175,35 +206,48 @@ def EnrollmentLog16321(final_data):
 
     # Override "Retreatment?" and create "Second Retreatment?"
     DSINITRT_df.loc[
-        DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"] == "Retreatment-R1", "Retreatment?"
+        DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"]
+        == "Retreatment-R1",
+        "Retreatment?",
     ] = "Yes"
 
     DSINITRT_df["Second Retreatment?"] = None
     DSINITRT_df.loc[
-        DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"] == "Retreatment-R2",
+        DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"]
+        == "Retreatment-R2",
         "Second Retreatment?",
     ] = "Yes"
 
     # Fill Initiation of Retx Date conditionally
     DSINITRT_df.loc[
         (DSINITRT_df["Initiation of Retx Date"].isna())
-        & (DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"] != "Retreatment-R2"),
+        & (
+            DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"]
+            != "Retreatment-R2"
+        ),
         "Initiation of Retx Date",
     ] = DSINITRT_df["End of Long-Term Follow-Up Date (ig_DSINITRT1.DSRENLTFUDAT)"]
 
     DSINITRT_df.loc[
         (DSINITRT_df["Initiation of Retx Date"].isna())
-        & (DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"] == "Retreatment-R2"),
+        & (
+            DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"]
+            == "Retreatment-R2"
+        ),
         "Initiation of Retx Date",
-    ] = DSINITRT_df["End of Retreatment Long-Term Follow-Up Date (ig_DSINITRT1.DSRENRETXLTFUDAT)"]
+    ] = DSINITRT_df[
+        "End of Retreatment Long-Term Follow-Up Date (ig_DSINITRT1.DSRENRETXLTFUDAT)"
+    ]
 
     # Create separate columns for Retx 1 and Retx 2 dates
     DSINITRT_df["Initiation of Retx 1 Date"] = DSINITRT_df.loc[
-        DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"] == "Retreatment-R1",
+        DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"]
+        == "Retreatment-R1",
         "Initiation of Retx Date",
     ]
     DSINITRT_df["Initiation of Retx 2 Date"] = DSINITRT_df.loc[
-        DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"] == "Retreatment-R2",
+        DSINITRT_df["Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)"]
+        == "Retreatment-R2",
         "Initiation of Retx Date",
     ]
 
@@ -222,27 +266,31 @@ def EnrollmentLog16321(final_data):
 
     # Aggregate to one row per Subject
     DSINITRT_df = (
-        DSINITRT_df.groupby("Subject").agg(lambda x: x.dropna().iloc[0] if x.notna().any() else None).reset_index()
+        DSINITRT_df.groupby("Subject")
+        .agg(lambda x: x.dropna().iloc[0] if x.notna().any() else None)
+        .reset_index()
     )
 
     # Merge into main dataframe
     merged_df = pd.merge(merged_df, DSINITRT_df, on="Subject", how="left")
 
     # Apply your N/A rule
-    merged_df.loc[merged_df["Phase"] == "Primary Follow-Up", "Initiation of LTFU Date"] = "N/A"
+    merged_df.loc[
+        merged_df["Phase"] == "Primary Follow-Up", "Initiation of LTFU Date"
+    ] = "N/A"
 
     # Fill in visit completion data
     merged_df["Last Study Visit Completed in Primary Follow-Up"] = merged_df[
         "Last Study Visit Completed in Primary Follow-Up"
-    ].fillna(merged_df["Last Visit Completed in Primary Follow-Up (ig_DSINITRT1.DSLVCPFUR)"])
+    ].fillna(
+        merged_df["Last Visit Completed in Primary Follow-Up (ig_DSINITRT1.DSLVCPFUR)"]
+    )
 
     # Drop extra columns
     merged_df = merged_df.drop(
         [
             "Last Visit Completed in Primary Follow-Up (ig_DSINITRT1.DSLVCPFUR)",
             "Phase",
-            #  "Retreatment Cycle Number (ig_DSINITRT1.RETXCYCLEINITRT)",
-            #  "End of Retreatment Long-Term Follow-Up Date (ig_DSINITRT1.DSRENRETXLTFUDAT)",
         ],
         axis=1,
     )
@@ -250,31 +298,39 @@ def EnrollmentLog16321(final_data):
     # Format dates to m/d/yyyy (no leading zeros for month/day)
     date_cols = ["Initiation of Retx 1 Date", "Initiation of Retx 2 Date"]
     for col in date_cols:
-        merged_df[col] = pd.to_datetime(merged_df[col], errors="coerce").dt.strftime("%m/%d/%Y")
+        merged_df[col] = pd.to_datetime(merged_df[col], errors="coerce").dt.strftime(
+            "%m/%d/%Y"
+        )
 
     # EXINF Retx Day 0-R1
-    EXINF_df = final_data["EXINF"][["Subject", "Event Group Label", "Study Treatment Date (ig_EXINF1.INFDAT)"]].copy()
+    EXINF_df = final_data["EXINF"][
+        ["Subject", "Event Group Label", "Study Treatment Date (ig_EXINF1.INFDAT)"]
+    ].copy()
     EXINF_df = EXINF_df[EXINF_df["Event Group Label"] == "Day 0-R1"]
-    EXINF_new_col_name = {"Study Treatment Date (ig_EXINF1.INFDAT)": "CAR T Cell Retreatment Date (Day 0-R1)"}
+    EXINF_new_col_name = {
+        "Study Treatment Date (ig_EXINF1.INFDAT)": "CAR T Cell Retreatment Date (Day 0-R1)"
+    }
     EXINF_df = EXINF_df.rename(columns=EXINF_new_col_name)
     EXINF_df = EXINF_df.drop("Event Group Label", axis=1)
     merged_df = pd.merge(merged_df, EXINF_df, on="Subject", how="left")
     merged_df["CAR T Cell Retreatment Date (Day 0-R1)"] = pd.to_datetime(
         merged_df["CAR T Cell Retreatment Date (Day 0-R1)"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # EXINF Retx Day 0-R2
-    EXINF_df = final_data["EXINF"][["Subject", "Event Group Label", "Study Treatment Date (ig_EXINF1.INFDAT)"]].copy()
+    EXINF_df = final_data["EXINF"][
+        ["Subject", "Event Group Label", "Study Treatment Date (ig_EXINF1.INFDAT)"]
+    ].copy()
     EXINF_df = EXINF_df[EXINF_df["Event Group Label"] == "Day 0-R2"]
-    EXINF_new_col_name = {"Study Treatment Date (ig_EXINF1.INFDAT)": "CAR T Cell Retreatment Date (Day 0-R2)"}
+    EXINF_new_col_name = {
+        "Study Treatment Date (ig_EXINF1.INFDAT)": "CAR T Cell Retreatment Date (Day 0-R2)"
+    }
     EXINF_df = EXINF_df.rename(columns=EXINF_new_col_name)
     EXINF_df = EXINF_df.drop("Event Group Label", axis=1)
     merged_df = pd.merge(merged_df, EXINF_df, on="Subject", how="left")
     merged_df["CAR T Cell Retreatment Date (Day 0-R2)"] = pd.to_datetime(
         merged_df["CAR T Cell Retreatment Date (Day 0-R2)"]
     ).dt.strftime("%m/%d/%Y")
-    # print(merged_df)
 
     # INITLF Retx
     import re
@@ -291,7 +347,9 @@ def EnrollmentLog16321(final_data):
 
     # Filter for Retreatment phase only
     INITLF_df = INITLF_df[
-        INITLF_df["From which Phase is the Subject entering Long-Term Follow-Up? (ig_DSINITLF1.DSPHASE)"]
+        INITLF_df[
+            "From which Phase is the Subject entering Long-Term Follow-Up? (ig_DSINITLF1.DSPHASE)"
+        ]
         == "Retreatment"
     ]
 
@@ -302,7 +360,9 @@ def EnrollmentLog16321(final_data):
         - 'Last Study Visit Completed in Retreatment (-R1)' (keeps the R)
         - 'Initiation of Retreatment 1 LTFU Date' (number comes before LTFU)
         """
-        sub = df[df["Retreatment Cycle Number (ig_DSINITLF1.RETXCYCLEINITLT)"] == cycle_label].copy()
+        sub = df[
+            df["Retreatment Cycle Number (ig_DSINITLF1.RETXCYCLEINITLT)"] == cycle_label
+        ].copy()
         if sub.empty:
             return sub
 
@@ -330,33 +390,50 @@ def EnrollmentLog16321(final_data):
         )
 
         # Reformat date to MM/DD/YYYY
-        sub[ltfu_date_col] = pd.to_datetime(sub[ltfu_date_col], errors="coerce").dt.strftime("%m/%d/%Y")
+        sub[ltfu_date_col] = pd.to_datetime(
+            sub[ltfu_date_col], errors="coerce"
+        ).dt.strftime("%m/%d/%Y")
         return sub
 
     # Process and merge each cycle automatically
-    for cycle in INITLF_df["Retreatment Cycle Number (ig_DSINITLF1.RETXCYCLEINITLT)"].dropna().unique():
-        merged_df = pd.merge(merged_df, process_retx_cycle(INITLF_df, cycle), on="Subject", how="left")
+    for cycle in (
+        INITLF_df["Retreatment Cycle Number (ig_DSINITLF1.RETXCYCLEINITLT)"]
+        .dropna()
+        .unique()
+    ):
+        merged_df = pd.merge(
+            merged_df, process_retx_cycle(INITLF_df, cycle), on="Subject", how="left"
+        )
 
     # Safety pass: ensure any matching 'Initiation of Retreatment {n} LTFU Date' in merged_df are formatted
     for col in [
-        c for c in merged_df.columns if c.startswith("Initiation of Retreatment ") and c.endswith(" LTFU Date")
+        c
+        for c in merged_df.columns
+        if c.startswith("Initiation of Retreatment ") and c.endswith(" LTFU Date")
     ]:
-        merged_df[col] = pd.to_datetime(merged_df[col], errors="coerce").dt.strftime("%m/%d/%Y")
+        merged_df[col] = pd.to_datetime(merged_df[col], errors="coerce").dt.strftime(
+            "%m/%d/%Y"
+        )
 
     # EOS
-    EOS_df = final_data["DSEOS"][["Subject", "End of Study Date (ig_DSEOS1.EOSDAT)"]].copy()
+    EOS_df = final_data["DSEOS"][
+        ["Subject", "End of Study Date (ig_DSEOS1.EOSDAT)"]
+    ].copy()
     EOS_new_col_name = {"End of Study Date (ig_DSEOS1.EOSDAT)": "End of Study Date"}
     EOS_df = EOS_df.rename(columns=EOS_new_col_name)
     merged_df = pd.merge(merged_df, EOS_df, on="Subject", how="left")
-    merged_df["End of Study Date"] = pd.to_datetime(merged_df["End of Study Date"]).dt.strftime("%m/%d/%Y")
+    merged_df["End of Study Date"] = pd.to_datetime(
+        merged_df["End of Study Date"]
+    ).dt.strftime("%m/%d/%Y")
     # update headers and fill N/A
     merged_df = merged_df.rename(columns={"Subject": "Subject ID#"})
-    merged_df.loc[merged_df["End of Study Date"].notna(), merged_df.columns.tolist()] = merged_df.loc[
+    merged_df.loc[
+        merged_df["End of Study Date"].notna(), merged_df.columns.tolist()
+    ] = merged_df.loc[
         merged_df["End of Study Date"].notna(), merged_df.columns.tolist()
     ].fillna("N/A")
     # Remove duplicate rows based on both columns
     merged_df.drop_duplicates(inplace=True)
-    # return merged_df
     # select and reorder columns
     column_list = [
         "Subject ID#",
@@ -399,10 +476,4 @@ def EnrollmentLog16321(final_data):
     output_df = pd.concat([output_df, merged_df], ignore_index=True)
     # sort based on 'Subject ID#'
     output_df = output_df.sort_values(["Subject ID#"]).reset_index(drop=True)
-    # convert the date columns to string format
-    # for col in output_df.columns:
-    #     if "Date" in col:
-    #         output_df[col] = pd.to_datetime(output_df[col])
-    #         output_df[col] = output_df[col].dt.strftime("%m/%d/%Y")
-
     return output_df

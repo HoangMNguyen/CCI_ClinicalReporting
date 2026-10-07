@@ -8,7 +8,6 @@ for and what it hands them.
 from datetime import date
 
 import pytest
-import shiboken6
 from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QApplication
 
@@ -22,17 +21,8 @@ ZIP = "C:/Downloads/Core_Listings_15420_x_2026_01_31.zip"
 
 
 @pytest.fixture
-def window(make_manager, ini_settings, settle):
-    theme = make_manager()
-    theme.apply()
-    window = cci_app.Widget(theme, settings=ini_settings)
-    window.resize(*cci_app.FIRST_SIZE)
-    window.show()
-    QApplication.processEvents()
-    yield window
-    window.close()
-    settle(window.task_runner)
-    shiboken6.delete(window)
+def window(tool_window):
+    return tool_window(cci_app)
 
 
 def _recorder(calls, name="Report 260101_000000.xlsx"):

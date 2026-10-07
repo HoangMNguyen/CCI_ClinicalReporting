@@ -8,7 +8,6 @@ ZIP and returns the workbook; the page saves it.
 
 from __future__ import annotations
 
-import sys
 from functools import partial
 from typing import Optional
 
@@ -18,6 +17,7 @@ from PySide6.QtWidgets import QWidget
 import safety_automation.ae_corelisting.AECoreListing as listing
 from cci_ui.icons import IconName
 from cci_ui.theme.manager import ThemeManager
+from cci_ui.theme.tokens import LAYOUT
 from cci_ui.tool_window import ToolWindow, run_tool
 from cci_ui.widgets.path_picker import PathPicker
 from cci_ui.widgets.workflow_page import WorkflowPage
@@ -30,8 +30,8 @@ from safety_automation.util import get_study_name
 APP_ID = "safety-automation"
 APP_NAME = "Safety Automation"
 #: Smallest window that keeps the page usable; size on first launch.
-MIN_SIZE = (560, 440)
-FIRST_SIZE = (680, 540)
+MIN_SIZE = LAYOUT.small_min_window
+FIRST_SIZE = LAYOUT.small_first_launch
 PAGE_KEY = "ae-dlt-listing"
 PAGE_TITLE = "AE & DLT listing"
 PAGE_SUBTITLE = (
@@ -105,7 +105,3 @@ def main() -> int:
         first_size=FIRST_SIZE,
         min_size=MIN_SIZE,
     )
-
-
-if __name__ == "__main__":
-    sys.exit(main())

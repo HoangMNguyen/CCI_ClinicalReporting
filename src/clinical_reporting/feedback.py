@@ -57,11 +57,6 @@ def error(text: str, details: Optional[str] = None) -> Message:
     return Message(text, "error", details)
 
 
-def kind_of(text: Optional[str]) -> str:
-    """Return the kind of *text*; plain strings count as ``info``."""
-    return getattr(text, "kind", "info")
-
-
 def one_line(text: str) -> str:
     """*text* for a one-line status: lines joined, their "- " bullets dropped.
 
@@ -90,7 +85,6 @@ __all__ = [
     "Message",
     "error",
     "info",
-    "kind_of",
     "one_line",
     "short_list",
     "success",

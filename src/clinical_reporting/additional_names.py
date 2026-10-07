@@ -1,10 +1,11 @@
 """The names given to additional input files, kept with a saved setting.
 
-On the Additional input step each extra CSV or Excel file becomes a form: it
-gets a form name (its file name until renamed, and a name with a ``.`` can't
-be applied) and, optionally, new names for its columns. A saved setting
-keeps those names under :data:`SETTINGS_KEY`, one entry per renamed file, so
-the next run can offer them again instead of the user retyping them:
+On the Additional input step each additional input (a CSV or Excel file)
+becomes a form: it gets a form name (its file name until renamed, and a name
+with a ``.`` can't be applied) and, optionally, new names for its columns. A
+saved setting keeps those names under :data:`SETTINGS_KEY`, one entry per
+renamed file, so the next run can offer them again instead of the user
+retyping them:
 
 .. code-block:: json
 

@@ -52,8 +52,11 @@ with open(output.name, "wb") as file:  # "15420 DSMB Report YYMMDD_HHMMSS.xlsx"
 ## Adding a study
 
 Add its module under `src/cci_automation/enrollment_log/` or
-`src/cci_automation/dsmb/`, a branch for it in that workflow's dispatcher,
-and the study in its `SUPPORTED_STUDIES` (the page lists those).
+`src/cci_automation/dsmb/`, and the study in that workflow's
+`SUPPORTED_STUDIES` (the page lists those). The enrollment log needs a branch
+in `EnrollmentLog.collect_data`; the DSMB report needs a branch in
+`_report_builder` (`dsmb/DSMB.py`), plus an entry in `_WRITES_WHEN_BUILT` if
+the module writes its report while it is built instead of in `run()`.
 
 ## Package layout
 
@@ -61,8 +64,9 @@ and the study in its `SUPPORTED_STUDIES` (the page lists those).
 src/cci_automation/
   __main__.py                  # runtime entry: python -m cci_automation
   app.py                       # the window: a sidebar of three WorkflowPages
-  util.py                      # shared stats, Corelisting and formatting helpers
+  util.py                      # helpers shared by the DSMB and Enrollment Log modules
   enrollment_log/              # EnrollmentLog.run() and one module per study
   dsmb/                        # DSMB.run() and one module per study
+    DSMB_util.py               # DSMB statistics, number formatting and listing helpers
   format_tools/                # change_type.run(): the format tool
 ```

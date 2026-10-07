@@ -6,7 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtGui import QFontDatabase
+from PySide6.QtGui import QFontDatabase, QGuiApplication
+from PySide6.QtWidgets import QMessageBox
 
 from cci_ui import app as cci_app
 from cci_ui.assets import assets_root
@@ -62,6 +63,37 @@ def test_error_hook_is_installed_once_and_passes_ctrl_c_through(monkeypatch):
     # Offscreen (as in tests) the hook never opens a dialog; errors go on.
     hook(ValueError, ValueError("bad value"), None)
     assert seen == [KeyboardInterrupt, ValueError]
+
+
+def test_error_hook_shows_the_error_in_a_dialog(themed_app, ini_settings, monkeypatch):
+    monkeypatch.setattr(sys, "excepthook", lambda *args: None)
+    _, manager = cci_app.create_app(
+        app_id="test", name="Hook test", settings=ini_settings
+    )
+    # The hook falls back on the offscreen platform the tests use.
+    monkeypatch.setattr(QGuiApplication, "platformName", staticmethod(lambda: "xcb"))
+    shown = []
+    monkeypatch.setattr(QMessageBox, "exec", lambda box: shown.append(box) or 0)
+    try:
+        try:
+            raise ValueError("boom")
+        except ValueError as exc:
+            sys.excepthook(type(exc), exc, exc.__traceback__)
+
+        (box,) = shown
+        assert box.icon() == QMessageBox.Icon.Critical
+        assert box.windowTitle() == "Something went wrong"
+        assert box.text() == "boom"
+        assert box.informativeText() == (
+            "The action didn't finish. If this keeps happening, copy the "
+            "details and send them to the tool's maintainer."
+        )
+        assert box.detailedText().startswith("Traceback (most recent call last):")
+        assert box.detailedText().endswith("ValueError: boom\n")
+        assert box.parent() is None
+    finally:
+        manager.setParent(None)
+        manager.deleteLater()
 
 
 def _self_test_with(tmp_path, extra: str, app_id: str = "selftest"):

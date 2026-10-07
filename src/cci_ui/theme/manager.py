@@ -123,8 +123,6 @@ class ThemeManager(QObject):
 
     #: Emitted with ``"light"`` or ``"dark"`` when the colors on screen change.
     themeChanged = Signal(str)
-    #: Emitted with ``"comfortable"`` or ``"compact"`` when sizes change.
-    densityChanged = Signal(str)
 
     def __init__(
         self,
@@ -209,8 +207,6 @@ class ThemeManager(QObject):
         density_changed = previous is None or previous.density is not theme.density
         if scheme_changed:
             self.themeChanged.emit(theme.scheme.value)
-        if density_changed:
-            self.densityChanged.emit(theme.density.value)
         if scheme_changed or density_changed:
             theme_events().changed.emit()
 

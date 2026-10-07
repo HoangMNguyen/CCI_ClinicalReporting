@@ -1,67 +1,31 @@
+import logging
 import math
 
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-# TODO: implement type hints for all functions
+from clinical_reporting.export import to_short_date_string
 
-
-def add_rename_column_corelisting(
-    current_df,
-    input_data,
-    form_name,
-    column_name,
-    new_column_name,
-    key1="Subject",
-    key2=None,
-):
-    """Adding a new column (merge left) to the current dataframe with an updated new name from the data of corelisting
-
-    Args:
-        current_df (dataframe): current dataframe with subject ID list
-        input_data (dict): dictionary of dataframe, with keys are form names
-        form_name (string): form name
-        column_name (string): exact column name in corelisting
-        new_column_name (string): the name of the column that would be updated
-        key (string): usually it's subject ID of the
-
-    Returns:
-        new_df (dataframe): the new dataframe that is added with the new column and renamed
-    """
-    if key2 is None:
-        df = input_data[form_name][[key1, "Form ILB Status", column_name]].copy()
-    else:
-        df = input_data[form_name][[key1, key2, "Form ILB Status", column_name]].copy()
-    df = df[df["Form ILB Status"] == False]  # noqa: E712
-    new_col_name = {column_name: new_column_name}
-    df = df.rename(columns=new_col_name)
-    df = df.drop(columns=["Form ILB Status"])
-    if key2 is None:
-        new_df = pd.merge(current_df, df, on=key1, how="left")
-    else:
-        new_df = pd.merge(current_df, df, on=[key1, key2], how="left")
-    return new_df
+logger = logging.getLogger(__name__)
 
 
 def add_rename_column_df(
     current_df,
     input_df,
-    form_name,
     column_name,
     new_column_name,
     key1="Subject",
     key2=None,
 ):
-    """Adding a new column (merge left) to the current dataframe with an updated new name from the data of corelisting
+    """Adding a new column (merge left) to the current dataframe with an updated new name from a form of a Corelisting export
 
     Args:
         current_df (dataframe): current dataframe with subject ID list
-        input_df (dataframe):dataframe, with keys are form names
-        form_name (string): form name
-        column_name (string): exact column name in corelisting
+        input_df (dataframe): the form's dataframe
+        column_name (string): exact column name in the form
         new_column_name (string): the name of the column that would be updated
-        key (string): usually it's subject ID of the
+        key1, key2 (string): the columns to merge on (key1 is usually Subject)
 
     Returns:
         new_df (dataframe): the new dataframe that is added with the new column and renamed
@@ -70,11 +34,8 @@ def add_rename_column_df(
         df = input_df[[key1, column_name]].copy()
     else:
         df = input_df[[key1, key2, column_name]].copy()
-    # df = df[df['Form ILB Status'] == False]
-    # df = df[df['Form Status'] != 'Blank']
     new_col_name = {column_name: new_column_name}
     df = df.rename(columns=new_col_name)
-    # df = df.drop(columns = ['Form ILB Status'])
     if key2 is None:
         new_df = pd.merge(current_df, df, on=key1, how="left")
     else:
@@ -82,120 +43,14 @@ def add_rename_column_df(
     return new_df
 
 
-def get_stats_df(column, *dfs):
-    """
-    Compute and aggregate statistical measures for a specified column across multiple DataFrames.
-
-    This function calculates various statistical measures for a given column name that is present
-    across multiple pandas DataFrames. The statistics are calculated for each DataFrame and then aggregated.
-
-    Args:
-        column (str): The name of the column for which statistical measures are to be calculated.
-        *dfs (tuple of DataFrame): Variable number of DataFrame objects on which statistics are to be computed.
-
-    Returns:
-        DataFrame: A pandas DataFrame aggregating the calculated statistical measures from each input DataFrame.
-    """
-    # Initialize an empty DataFrame
-    main_df = pd.DataFrame()
-
-    for i, df in enumerate(dfs):
-        # Calculate the mean, standard deviation, median, and range of 'Age at Consent'
-        numeric_column = pd.to_numeric(df[column], errors="coerce")
-        mean = numeric_column.mean()
-        std = numeric_column.std()
-        median = numeric_column.median()
-        minimum = numeric_column.min()
-        maximum = numeric_column.max()
-
-        if np.isnan(std):
-            std = 0
-
-        # Create a DataFrame for the current stats if non of the stats are NaN
-        if not np.isnan(mean) and not np.isnan(median) and not np.isnan(minimum) and not np.isnan(maximum):
-            # Format the mean and standard deviation
-            if mean < 100:
-                mean_std = f"{mean:.2f} ({std:.2f})"
-            else:
-                mean_std = f"{convert_float_2_sci_notation(int(mean))} ({convert_float_2_sci_notation(int(std))})"
-            if median > 100:
-                median = f"{convert_float_2_sci_notation(int(median))}"
-            if minimum < 100 and maximum < 100:
-                range = f"{minimum:.2f} - {maximum:.2f}"
-            else:
-                range = f"{convert_float_2_sci_notation(int(minimum))} - {convert_float_2_sci_notation(int(maximum))}"
-            stats_df = pd.DataFrame({"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i])
-        else:
-            stats_df = pd.DataFrame(index=[i])
-        # Append the stats DataFrame to the main DataFrame if it is not empty
-        main_df = pd.concat([main_df, stats_df])
-    # Transpose the DataFrame to switch the axes
-    main_df = main_df.T
-    return main_df
-
-
-def get_stats_perc_df(column, *dfs):
-    """
-    Compute and aggregate percentage-based statistical measures for a specified column across multiple DataFrames.
-
-    This function calculates statistics related to the percentage distribution of values for a given column
-    that exists across multiple pandas DataFrames. It computes these statistics for each DataFrame individually
-    and then aggregates the results.
-
-    Args:
-        column (str): The name of the column for which percentage-based statistical measures are to be calculated.
-        *dfs (tuple of DataFrame): A variable number of DataFrame objects for which the statistics are to be computed.
-
-    Returns:
-        DataFrame: A pandas DataFrame aggregating the percentage-based statistical measures from each input DataFrame.
-    """
-    # Initialize an empty DataFrame
-    main_df = pd.DataFrame()
-
-    for i, df in enumerate(dfs):
-        # Calculate the mean, standard deviation, median, and range of 'Age at Consent'
-        numeric_column = pd.to_numeric(df[column], errors="coerce")
-        mean = numeric_column.mean()
-        std = numeric_column.std()
-        median = numeric_column.median()
-        minimum = numeric_column.min()
-        maximum = numeric_column.max()
-
-        if np.isnan(std):
-            std = 0
-
-        # Create a DataFrame for the current stats if non of the stats are NaN
-        if not np.isnan(mean) and not np.isnan(median) and not np.isnan(minimum) and not np.isnan(maximum):
-            # Format the mean and standard deviation
-            if mean < 100:
-                mean_std = f"{mean:.2f}% ({std:.2f}%)"
-            else:
-                mean_std = f"{convert_float_2_sci_notation(int(mean))}% ({convert_float_2_sci_notation(int(std))}%)"
-            if median > 100:
-                median = f"{convert_float_2_sci_notation(int(median))}%"
-            else:
-                median = f"{median:.2f}%"
-            if minimum < 100 and maximum < 100:
-                range = f"{minimum:.2f}% - {maximum:.2f}%"
-            else:
-                range = f"{convert_float_2_sci_notation(int(minimum))}% - {convert_float_2_sci_notation(int(maximum))}%"
-            stats_df = pd.DataFrame({"Mean ± SD": mean_std, "Median": median, "Range": range}, index=[i])
-        else:
-            stats_df = pd.DataFrame(index=[i])
-        # Append the stats DataFrame to the main DataFrame if it is not empty
-        main_df = pd.concat([main_df, stats_df])
-    # Transpose the DataFrame to switch the axes
-    main_df = main_df.T
-    return main_df
-
-
-def convert_float_2_sci_notation(n):
+def convert_float_2_sci_notation_2dp(n):
     """
     Convert a floating-point number to its scientific notation as a string.
 
     This function takes a floating-point number and converts it into a string that represents its scientific notation.
     Scientific notation expresses the number as a mantissa multiplied by 10 raised to an exponent. The mantissa is
     rounded to two decimal places unless it is an integer. If the input number is 0, it simply returns '0'.
+    For example, 250000000 gives '2.50x10^8' but 5 gives '5x10^0'.
 
     Args:
         n (float): The floating-point number to be converted into scientific notation.
@@ -214,33 +69,6 @@ def convert_float_2_sci_notation(n):
             return f"{mantissa}x10^{exponent}"
         else:
             return f"{mantissa:.2f}x10^{exponent}"
-
-
-def convert_sci_notation_2_float(s):
-    """
-    Convert a string representing a number in scientific notation to a floating-point number.
-
-    This function takes a string in the format 'mantissax10^exponent', where the mantissa and exponent are
-    separated by 'x10^', and converts it into a floating-point number. If the string is not in the correct format
-    or contains values that cannot be converted to floats, the function handles the error and returns NaN.
-
-    Args:
-        s (str): A string representing a number in scientific notation.
-
-    Returns:
-        float: The floating-point equivalent of the input string. If the string is not properly formatted or
-               contains invalid values, NaN (Not a Number) is returned.
-    """
-    try:
-        parts = s.split("x10^")
-        if len(parts) != 2:
-            return np.nan
-        mantissa = float(parts[0])
-        exponent = float(parts[1])
-        return mantissa * 10**exponent
-
-    except ValueError:
-        return np.nan
 
 
 def convert_integers_to_strings(df, column_name):
@@ -276,15 +104,20 @@ def stringify_numeric(value):
     return value
 
 
-def get_data_from_dict(data: dict, input_dict: dict, *exclude) -> pd.DataFrame:
+def get_data_from_dict(
+    data: dict, input_dict: dict, *exclude, keep: str = "last"
+) -> pd.DataFrame:
     """
     Retrieves and processes data from a dictionary based on specified keys.
     Subject and Event Date columns are always included in the output DataFrame.
-    For each subject, only the row with the latest 'Event Date' is kept.
+    For each subject, only the row with the latest 'Event Date' is kept, or the
+    earliest with keep="first" (the infusion CRF for primary treatment, Day 0).
 
     Args:
         data (dict): A dictionary containing the data.
         input_dict (dict): A dictionary specifying the keys to retrieve from `data`.
+        *exclude (str): Keys whose rows are all kept, without dropping duplicates.
+        keep (str): "last" or "first": which 'Event Date' row of a subject to keep.
 
     Returns:
         pandas.DataFrame: A DataFrame containing the collected and processed data.
@@ -303,62 +136,26 @@ def get_data_from_dict(data: dict, input_dict: dict, *exclude) -> pd.DataFrame:
             collected_data.rename(columns=input_dict[key], inplace=True)
             # input_key is not within the exclude list
             if key not in exclude:
-                # if there are more than one row for the same subject, keep the one with the last 'Event Date'
-                collected_data = collected_data.sort_values(["Subject", "Event Date"]).drop_duplicates(
-                    subset=["Subject"], keep="last"
+                # if there are more than one row for the same subject, keep the one with the last (or first) 'Event Date'
+                collected_data = collected_data.sort_values(
+                    ["Subject", "Event Date"]
+                ).drop_duplicates(subset=["Subject"], keep=keep)
+            # check if value contains 'Date' in the column name, then convert to datetime
+            for col in collected_data.columns:
+                if "Date" in col:
+                    collected_data[col] = pd.to_datetime(
+                        collected_data[col], errors="coerce"
+                    )
+            # drop 'Event Date' column
+            collected_data = collected_data.drop("Event Date", axis=1)
+            # merge dataframes
+            if keys_list.index(key) == 0:
+                merged_df = collected_data
+            else:
+                merged_df = pd.merge(
+                    merged_df, collected_data, on="Subject", how="left"
                 )
-            # check if value contains 'Date' in the column name, then convert to datetime
-            for col in collected_data.columns:
-                if "Date" in col:
-                    collected_data[col] = pd.to_datetime(collected_data[col], errors="coerce")
-            # drop 'Event Date' column
-            collected_data = collected_data.drop("Event Date", axis=1)
-            # merge dataframes
-            if keys_list.index(key) == 0:
-                merged_df = collected_data
-            else:
-                merged_df = pd.merge(merged_df, collected_data, on="Subject", how="left")
 
-    return merged_df
-
-
-def get_data_from_dict_first(data: dict, input_dict: dict) -> pd.DataFrame:
-    """
-    Retrieves and processes data from a dictionary based on specified keys.
-    Subject and Event Date columns are always included in the output DataFrame.
-    For each subject, only the row with the earliest 'Event Date' is kept for infusion CRF for primary treatment (Day 0).
-
-    Args:
-        data (dict): A dictionary containing the data.
-        input_dict (dict): A dictionary specifying the keys to retrieve from `data`.
-
-    Returns:
-        pandas.DataFrame: A DataFrame containing the collected and processed data.
-
-    """
-    # Convert dict_keys to a list to use index method
-    keys_list = list(input_dict.keys())
-
-    for key in input_dict.keys():
-        if key in data:
-            input_keys = ["Subject", "Event Date"] + list(input_dict[key].keys())
-            collected_data = data[key][input_keys].copy()
-            collected_data.rename(columns=input_dict[key], inplace=True)
-            # if there are more than one row for the same subject, keep the one with the last 'Event Date'
-            collected_data = collected_data.sort_values(["Subject", "Event Date"]).drop_duplicates(
-                subset=["Subject"], keep="first"
-            )
-            # check if value contains 'Date' in the column name, then convert to datetime
-            for col in collected_data.columns:
-                if "Date" in col:
-                    collected_data[col] = pd.to_datetime(collected_data[col], errors="coerce")
-            # drop 'Event Date' column
-            collected_data = collected_data.drop("Event Date", axis=1)
-            # merge dataframes
-            if keys_list.index(key) == 0:
-                merged_df = collected_data
-            else:
-                merged_df = pd.merge(merged_df, collected_data, on="Subject", how="left")
     return merged_df
 
 
@@ -387,7 +184,9 @@ def age_calculation(merged_df, output_column, DOB: str, CS1: str, CS2: str = "")
         if (CS2 in merged_df) and CS2 != "":
             # for rows that CS1 isnull but CS2 is not null, then use CS2 instead to calculate age
             if not merged_df[CS2].empty:
-                merged_df.loc[(merged_df[CS1].isnull() & merged_df[CS2].notnull()), output_column] = merged_df.loc[
+                merged_df.loc[
+                    (merged_df[CS1].isnull() & merged_df[CS2].notnull()), output_column
+                ] = merged_df.loc[
                     (merged_df[CS1].isnull() & merged_df[CS2].notnull())
                 ].apply(lambda x: relativedelta(x[CS2], x[DOB]).years, axis=1)
     return merged_df
@@ -417,35 +216,16 @@ def remove_leading_zeros_from_dates(df):
             try:
                 # First convert to datetime if not already
                 if not pd.api.types.is_datetime64_any_dtype(df_copy[col_name]):
-                    df_copy[col_name] = pd.to_datetime(df_copy[col_name], errors="coerce")
+                    df_copy[col_name] = pd.to_datetime(
+                        df_copy[col_name], errors="coerce"
+                    )
 
                 # Apply formatting to remove leading zeros if it's not ""
-                df_copy[col_name] = df_copy[col_name].apply(
-                    lambda date_obj: format_date_without_leading_zeros_util(date_obj)
-                )
+                df_copy[col_name] = df_copy[col_name].apply(to_short_date_string)
             except Exception as e:
                 # If conversion fails, keep original data
-                print(f"Could not process date column '{col_name}': {e}")
+                logger.warning(
+                    "Could not process date column %r (%s)", col_name, type(e).__name__
+                )
 
     return df_copy
-
-
-def format_date_without_leading_zeros_util(date_obj):
-    """
-    Format dates without leading zeros for Windows compatibility.
-
-    Args:
-        date_obj: A datetime object or NaT
-
-    Returns:
-        str or original: Formatted date string (M/D/YYYY) or original value if NaT
-    """
-    # if date_obj does not have
-    if pd.isna(date_obj):
-        return ""
-    elif pd.notnull(date_obj):
-        month = date_obj.month
-        day = date_obj.day
-        year = date_obj.year
-        return f"{month}/{day}/{year}"
-    return date_obj

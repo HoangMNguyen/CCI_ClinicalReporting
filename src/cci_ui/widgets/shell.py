@@ -35,7 +35,7 @@ from cci_ui.widgets.display import DisplayButton
 from cci_ui.widgets.labels import ElidedLabel, IconLabel, text_label
 from cci_ui.widgets.responsive import Breakpoint
 from cci_ui.widgets.sidebar import Sidebar
-from cci_ui.widgets.status import KIND_ICONS, KINDS
+from cci_ui.widgets.status import KIND_ICONS, check_kind
 
 register_qss(
     """
@@ -152,8 +152,7 @@ class AppStatusBar(QFrame):
 
     def show_message(self, text: str, kind: str = "info") -> None:
         """Show *text* with the symbol for *kind* (info, success, warning, error)."""
-        if kind not in KINDS:
-            raise ValueError(f"Unknown message kind {kind!r}; expected one of {KINDS}")
+        check_kind(kind)
         self._kind = kind
         self.kind_icon.set_icon(*KIND_ICONS[kind])
         self.kind_icon.setVisible(True)
@@ -185,8 +184,6 @@ class AppShell(QWidget):
 
     #: Emitted with the page key whenever the current page changes.
     currentPageChanged = Signal(str)
-    #: Emitted with True when the sidebar collapses to icons.
-    sidebarCollapsedChanged = Signal(bool)
     #: Emitted with the new width when the user drags the sidebar's edge.
     sidebarWidthChanged = Signal(int)
 
@@ -363,7 +360,6 @@ class AppShell(QWidget):
             return
         self.sidebar.set_collapsed(collapsed)
         self._apply_sidebar_width()
-        self.sidebarCollapsedChanged.emit(collapsed)
 
     def restore_sidebar(self, width: int, collapsed: bool) -> None:
         """Apply a remembered width and collapsed state (before the first show).

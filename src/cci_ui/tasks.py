@@ -15,7 +15,7 @@ callback contract.
 
 Callbacks run while the window is still blocked, so nothing can interleave
 with them. A dialog a callback wants to show should wait until the window
-is free: pass it to :func:`when_idle`.
+is free: pass it to :meth:`TaskRunner.call_when_idle`.
 
 The overlay drops clicks and keys, but some actions still arrive while a job
 runs. One user action can trigger two: a page change makes the date field on
@@ -257,19 +257,6 @@ def _report_error(exc: BaseException, details: str) -> None:
     sys.excepthook(type(exc), exc, exc.__traceback__)
 
 
-def when_idle(host: object, action: Callable[[], None]) -> None:
-    """Call *action* once ``host.task_runner`` is idle, or now if there's none.
-
-    For dialogs raised from a callback, which would otherwise open over the
-    busy overlay.
-    """
-    runner: Optional[TaskRunner] = getattr(host, "task_runner", None)
-    if runner is None:
-        action()
-    else:
-        runner.call_when_idle(action)
-
-
 def defer_if_busy(host: object, action: Callable[[], None]) -> bool:
     """If ``host.task_runner`` is busy, queue *action* for when it's idle.
 
@@ -333,5 +320,4 @@ __all__ = [
     "TaskRunner",
     "defer_if_busy",
     "run_task",
-    "when_idle",
 ]

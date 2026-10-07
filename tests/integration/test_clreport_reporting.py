@@ -28,7 +28,9 @@ def test_create_report_applies_filters_and_formatting():
             "Subject": ["001", "002", "003"],
             "Visit": ["Screening", "Screening", "Screening"],
             "Pulse": [70, 90, 55],
-            "Assessment Date": pd.to_datetime(["2024-01-05", "2024-02-10", "2024-02-11"]),
+            "Assessment Date": pd.to_datetime(
+                ["2024-01-05", "2024-02-10", "2024-02-11"]
+            ),
         }
     )
 
@@ -36,7 +38,12 @@ def test_create_report_applies_filters_and_formatting():
     report.selected_common_items = ["Subject", "Visit"]
 
     dm_form = _init_form("DM", selected_items=["Age"], join_order=1)
-    vs_form = _init_form("VS", selected_items=["Pulse", "Assessment Date"], join_order=2, join_how="Inner join")
+    vs_form = _init_form(
+        "VS",
+        selected_items=["Pulse", "Assessment Date"],
+        join_order=2,
+        join_how="Inner join",
+    )
     report.selected_forms = {"DM": dm_form, "VS": vs_form}
 
     report.static_filter_items = [("Age", ">", "30")]

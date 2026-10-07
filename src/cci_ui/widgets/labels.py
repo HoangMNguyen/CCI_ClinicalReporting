@@ -187,13 +187,6 @@ class ElidedLabel(QLabel):
             repolish(self)
         self._refresh()
 
-    def placeholderText(self) -> str:  # noqa: N802 (Qt naming)
-        return self._placeholder
-
-    def setPlaceholderText(self, text: str) -> None:  # noqa: N802 (Qt naming)
-        self._placeholder = text
-        self._refresh()
-
     def minimumSizeHint(self) -> QSize:  # noqa: N802 (Qt override)
         return QSize(0, super().minimumSizeHint().height())
 

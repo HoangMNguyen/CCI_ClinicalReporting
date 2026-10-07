@@ -549,7 +549,7 @@ def saved_names_hint(
 
     Says which additional files to add for the *missing_forms* that have
     saved names; for those whose file is already *added* (see
-    ``AdditionalInputTabMixin._saved_names_added``), to check its form name
+    ``AdditionalInputMixin._saved_names_added``), to check its form name
     and apply it. ``None`` when no missing form has saved names.
     """
     by_form = {entry.form_name: entry for entry in entries if entry.form_name}
