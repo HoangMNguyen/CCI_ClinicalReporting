@@ -366,8 +366,7 @@ src/clinical_reporting/
   telemetry.py                 # reports saves to the usage counter (off unless configured)
   ui/                          # PySide6 desktop front end
     app.py                     # entry point: starts the app and opens the window
-    window.py                  # main window composed from feature mixins
-    controller.py              # puts the behavior classes' methods on the window
+    window.py                  # QMainWindow plus the behavior mixins
     main_ui.py                 # builds the pages into the window's shell
     navigation.py              # page changes; badges, header, status bar, toasts
     contract.py                # widget names the mixins may use

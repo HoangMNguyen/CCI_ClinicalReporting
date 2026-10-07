@@ -6,6 +6,7 @@ fail when either side changes without the other.
 """
 
 import ast
+import inspect
 from pathlib import Path
 
 from PySide6.QtWidgets import QMainWindow
@@ -95,14 +96,15 @@ def test_every_contract_name_is_used():
     assert UI_CONTRACT - set(_names_used_by_mixins()) == set()
 
 
-def test_no_behavior_method_is_hidden_by_the_window():
-    """compose_behaviors skips names the window already has; none may clash."""
-    hidden = []
-    for behavior in window_module.BEHAVIORS:
-        for name, value in behavior.__dict__.items():
-            if name.startswith("__") or not callable(value):
-                continue
-            if window_module.Widget.__dict__.get(name) is not value:
-                hidden.append(f"{behavior.__name__}.{name}")
+def test_no_behavior_method_is_hidden():
+    """Qt and the earlier mixins must not shadow any behavior method."""
+    hidden = [
+        f"{behavior.__name__}.{name}"
+        for behavior in window_module.BEHAVIORS
+        for name, value in vars(behavior).items()
+        if not name.startswith("__")
+        and callable(value)
+        and inspect.getattr_static(window_module.Widget, name) is not value
+    ]
 
     assert hidden == []
