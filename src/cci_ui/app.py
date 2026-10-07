@@ -112,7 +112,7 @@ def _set_windows_app_id(app_id: str) -> None:
         import ctypes
 
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(f"CCI.{app_id}")
-    except (AttributeError, OSError):
+    except AttributeError, OSError:
         logger.debug("Could not set the Windows app id", exc_info=True)
 
 
