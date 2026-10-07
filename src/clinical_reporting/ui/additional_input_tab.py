@@ -56,10 +56,11 @@ from clinical_reporting.additional_names import (
 from clinical_reporting.data import (
     build_additional_data_map,
     named_columns,
-    strip_subject_prefix,
     try_load_tabular_files,
 )
+from clinical_reporting.models import is_qualified
 from clinical_reporting.report import CLReport
+from clinical_reporting.session import capture_selection, restore_selection
 from clinical_reporting.ui.pages.additional_input import SAVED_NAMES_COLUMN
 from clinical_reporting.ui.table_actions import (
     add_copy_original_name_action,
@@ -853,7 +854,9 @@ class AdditionalInputTabMixin:
         if not name_map:
             return False
 
-        dotted_names = sorted({name for name in name_map.values() if "." in name})
+        dotted_names = sorted(
+            {name for name in name_map.values() if is_qualified(name)}
+        )
         name_to_paths: Dict[str, list[str]] = {}
         for file_path, form_name in name_map.items():
             name_to_paths.setdefault(form_name, []).append(file_path)
@@ -915,7 +918,7 @@ class AdditionalInputTabMixin:
 
         # Capture current selections (forms/items/common/join) to restore after
         # ``set_data`` rebuilds fresh CLForm objects with defaults.
-        selection_state = self._capture_selection_state()
+        selection_state = capture_selection(self.report)
 
         base_data = dict(getattr(self.report, "data", {}) or {})
         # Remove previously injected additional forms.
@@ -961,15 +964,6 @@ class AdditionalInputTabMixin:
                 return
 
         # Restore the selections that survive in the rebuilt report.
-        self._restore_selection_state(selection_state)
+        restore_selection(self.report, selection_state)
 
         self.update_all_ui()
-
-    @staticmethod
-    def _strip_prefix(value):
-        """Remove leading 'UPCC' or '100-' (with optional separators) from a subject string.
-
-        Thin wrapper over
-        :func:`clinical_reporting.data.strip_subject_prefix`.
-        """
-        return strip_subject_prefix(value)

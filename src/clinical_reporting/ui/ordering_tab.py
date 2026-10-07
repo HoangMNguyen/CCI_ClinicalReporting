@@ -108,14 +108,6 @@ class OrderRenameTabMixin:
             self._refresh_order_search_status(search_edit.text())
         self._update_order_button_states()
 
-    def update_rename_table(self) -> None:
-        """Compatibility wrapper for the former rename-only refresh."""
-        self.update_order_rename_table()
-
-    def update_items_order_list(self) -> None:
-        """Compatibility wrapper for the former ordering-list refresh."""
-        self.update_order_rename_table()
-
     def search_order_items(self, search_text: str) -> None:
         """Select the first original-name match and display the match count."""
         query = search_text.strip().casefold()
@@ -347,12 +339,3 @@ class OrderRenameTabMixin:
         self.ui.pushButton_order_up.setEnabled(can_move_up)
         self.ui.pushButton_order_down.setEnabled(can_move_down)
         self.ui.pushButton_order_bottom.setEnabled(can_move_down)
-
-    def update_report_order_list_from_widget(self) -> None:
-        """Persist the current table ordering back to the report."""
-        new_order = [
-            identifier
-            for row in range(self.ui.tableWidget_rename.rowCount())
-            if (identifier := self._order_identifier_for_row(row)) is not None
-        ]
-        self.report.set_selected_items_order_list(new_order)

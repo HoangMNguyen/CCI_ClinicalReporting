@@ -85,7 +85,6 @@ class Widget(QMainWindow):
         self._controllers["rules"].call("_init_comparison_and_order_tab")
         self._controllers["rules"].call("_init_join_table")
         self._controllers["output"].call("_init_run_and_save_controls")
-        self._controllers["shared"].call("_initialize_list_views")
         self._controllers["shared"].call("_init_navigation")
         # The shell's overlay covers the sidebar too while work runs.
         self.task_runner = TaskRunner(self, overlay=self.ui.shell.busy)

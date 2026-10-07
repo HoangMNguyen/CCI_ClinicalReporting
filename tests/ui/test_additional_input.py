@@ -93,15 +93,6 @@ def test_context_action_copies_selected_new_columns_to_updated_names(qapp):
     }
 
 
-def test_strip_prefix():
-    widget = DummyWidget()
-    assert widget._strip_prefix("UPCC-12345") == "12345"
-    assert widget._strip_prefix("UPCC 987") == "987"
-    assert widget._strip_prefix("100-555") == "555"
-    assert widget._strip_prefix("NO_PREFIX") == "NO_PREFIX"
-    assert widget._strip_prefix(123) == 123  # non-string unaffected
-
-
 def test_build_additional_data_map_cleans_subject_and_drops_unnamed():
     widget = DummyWidget()
     file_path = "/tmp/sample.csv"

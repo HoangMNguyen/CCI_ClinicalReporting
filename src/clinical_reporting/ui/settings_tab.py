@@ -35,8 +35,9 @@ from cci_ui.tasks import defer_if_busy, run_task
 from clinical_reporting import feedback, steps
 from clinical_reporting.additional_names import from_settings
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
+from clinical_reporting.models import is_qualified, split_qualified
 from clinical_reporting.session import new_report, replace_base_data, without_base_data
-from clinical_reporting.ui.dialogs import choose_settings_directory
+from clinical_reporting.ui.dialogs import choose_settings_directory, settings_folder
 
 logger = logging.getLogger(__name__)
 
@@ -136,8 +137,7 @@ class SettingsTabMixin:
         self._show_data_read(data)
 
         if self.ui.checkBox_saved_setting.isChecked():
-            if self.settings_directory is None:
-                self.settings_directory = self._get_default_settings_directory()
+            self.settings_directory = settings_folder(self)
             self._refresh_saved_settings()
 
     def click_remove_input(self) -> None:
@@ -315,8 +315,7 @@ class SettingsTabMixin:
         self.ui.comboBox_saved_setting.setEnabled(enabled)
         self.ui.pushButton_setting_location.setEnabled(enabled)
         if enabled:
-            if self.settings_directory is None:
-                self.settings_directory = self._get_default_settings_directory()
+            self.settings_directory = settings_folder(self)
             self._refresh_saved_settings()
         else:
             self.ui.comboBox_saved_setting.clear()
@@ -396,8 +395,8 @@ class SettingsTabMixin:
                 form_items: dict[str, list[str]] = {}
                 for item in missing_items:
                     item_str = str(item)
-                    if "." in item_str:
-                        form_name, item_name = item_str.split(".", 1)
+                    if is_qualified(item_str):
+                        form_name, item_name = split_qualified(item_str)
                         if form_name and item_name:
                             form_items.setdefault(form_name, []).append(item_name)
                         else:
@@ -437,7 +436,7 @@ class SettingsTabMixin:
         try:
             stored = self._settings_store().load(file_path)
             settings_data = self.report.load_setting_from_dict(stored)
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             logger.exception("Failed to load settings from %s", file_path)
             self._set_label_text(
                 self.label_save_confirmation,

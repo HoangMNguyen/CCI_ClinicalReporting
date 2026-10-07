@@ -143,6 +143,18 @@ def test_settings_folder_selection_is_shared_between_first_and_last_tabs(monkeyp
     assert widget.settings_directory == "E:/Updated/Settings"
 
 
+def test_turning_on_saved_settings_remembers_the_default_folder(
+    sample_window, monkeypatch, tmp_path
+):
+    """With no folder chosen yet, turning saved settings on remembers ~/Documents."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+
+    sample_window.ui.checkBox_saved_setting.setChecked(True)
+
+    assert sample_window.settings_directory == str(tmp_path / "Documents")
+
+
 def test_output_folder_dialog_remembers_last_selection(monkeypatch):
     widget = _WorkspaceWidget()
     initial_directories = []

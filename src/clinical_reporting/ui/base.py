@@ -14,14 +14,14 @@ import re
 import warnings
 from typing import Iterable, Optional
 
+from clinical_reporting.models import is_qualified, split_qualified
 from clinical_reporting.report import CLReport
-from clinical_reporting.session import capture_selection, restore_selection
 from clinical_reporting.settings_store import (
     LocalFolderStore,
     SettingsStore,
     default_settings_folder,
 )
-from clinical_reporting.ui.dialogs import show_settings_folder
+from clinical_reporting.ui.dialogs import settings_folder, show_settings_folder
 
 
 class WidgetBaseMixin:
@@ -50,7 +50,7 @@ class WidgetBaseMixin:
         self._in_coordinated_refresh = False
 
         # Cache confirmation labels so they can be updated from individual pages
-        # without repeatedly resolving attribute names on the UI form.
+        # without repeatedly resolving attribute names on ``self.ui``.
         self.label_run_confirmation = getattr(self.ui, "label_run_confirmation", None)
         self.label_save_confirmation = getattr(self.ui, "label_save_confirmation", None)
         self.label_setting = getattr(self.ui, "label_setting", None)
@@ -61,13 +61,6 @@ class WidgetBaseMixin:
 
     # ------------------------------------------------------------------
     # Shared helpers used by multiple pages
-
-    def _initialize_list_views(self) -> None:
-        """Populate list widgets with their initial contents."""
-        self.add_listWidget_form_available()
-        self.add_listWidget_form_selected()
-        self.add_listWidget_common_item_available()
-        self.add_listWidget_common_item_selected()
 
     def update_all_ui(self) -> None:
         """Refresh every UI area in the correct dependency order.
@@ -118,23 +111,6 @@ class WidgetBaseMixin:
             refresh.start()
 
     # ------------------------------------------------------------------
-    # Selection state capture / restore
-    #
-    # Rebuilding the report's data (here: merging additional inputs) discards
-    # the CLForm objects that hold the user's selections. The Qt-free logic
-    # lives in :mod:`clinical_reporting.session`, which also uses it for the
-    # cut-off reload and removing the input; these wrappers bind it to this
-    # window's report.
-
-    def _capture_selection_state(self) -> dict:
-        """Snapshot current form/item/common/join selections for later restore."""
-        return capture_selection(self.report)
-
-    def _restore_selection_state(self, state: dict) -> None:
-        """Re-apply a snapshot from :meth:`_capture_selection_state`."""
-        restore_selection(self.report, state)
-
-    # ------------------------------------------------------------------
     # Saved-settings storage (shared by the Source data and Preview & export pages)
 
     def _get_default_settings_directory(self) -> str:
@@ -143,7 +119,7 @@ class WidgetBaseMixin:
 
     def _settings_store(self) -> SettingsStore:
         """The store for the currently chosen settings folder."""
-        folder = self.settings_directory or self._get_default_settings_directory()
+        folder = settings_folder(self)
         return LocalFolderStore(folder)
 
     def _apply_form_selection_action(self, action: str) -> bool:
@@ -225,8 +201,8 @@ class WidgetBaseMixin:
         """Yield ``(form_name, item_name)`` tuples from the widget selections."""
         for item in widget.selectedItems():
             item_text = item.text()
-            if "." in item_text:
-                yield item_text.split(".", 1)
+            if is_qualified(item_text):
+                yield split_qualified(item_text)
 
     def _toggle_form_item_selection(self, widget, *, selected: bool) -> bool:
         """Update per-form item state for all entries selected in ``widget``."""

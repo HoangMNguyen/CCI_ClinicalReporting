@@ -40,11 +40,7 @@ class JoinConfigMixin:
         theme_events().changed.connect(self._paint_missing_join_items)
 
     def update_join_table_ui(self) -> None:
-        """Refresh join controls when selections change."""
-        self.update_selected_forms_table()
-
-    def update_selected_forms_table(self) -> None:
-        """Populate the join configuration table."""
+        """Populate the join configuration table when selections change."""
         # No handler is connected to ``tableWidget_join.cellChanged`` (join edits
         # are captured via the per-cell combo boxes), so there is nothing to
         # disconnect here before repopulating the table.

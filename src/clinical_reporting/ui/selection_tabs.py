@@ -9,8 +9,9 @@ used by :class:`ui.base.WidgetBaseMixin`.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QListWidgetItem
+
+from clinical_reporting.models import qualify
 
 
 class FormsTabMixin:
@@ -224,7 +225,7 @@ class FormItemsTabMixin:
                     form_name
                 ].get_available_form_items()
                 for item in form_items:
-                    display_text = f"{form_name}.{item}"
+                    display_text = qualify(form_name, item)
                     if pattern is not None and not pattern.search(display_text):
                         continue
                     available_entries.append((display_text, form_name, item))
@@ -232,7 +233,6 @@ class FormItemsTabMixin:
         # Entries stay grouped by form with items in the input column order.
         for display_text, form_name, item in available_entries:
             list_item = QListWidgetItem(display_text)
-            list_item.setData(Qt.UserRole, (form_name, item))
             self.ui.listWidget_form_item_available.addItem(list_item)
 
     def add_listWidget_form_item_selected(self) -> None:
@@ -249,11 +249,10 @@ class FormItemsTabMixin:
                     form_name
                 ].get_selected_form_items()
                 for item in form_items:
-                    combined_items.append((f"{form_name}.{item}", form_name, item))
+                    combined_items.append((qualify(form_name, item), form_name, item))
 
         for display_text, form_name, item in combined_items:
             list_item = QListWidgetItem(display_text)
-            list_item.setData(Qt.UserRole, (form_name, item))
             self.ui.listWidget_form_item_selected.addItem(list_item)
 
     def click_select_form_item(self) -> None:

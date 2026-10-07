@@ -29,7 +29,7 @@ from clinical_reporting.telemetry import (
     record_successful_export,
     record_successful_setting_save,
 )
-from clinical_reporting.ui.dialogs import choose_settings_directory
+from clinical_reporting.ui.dialogs import choose_settings_directory, settings_folder
 from clinical_reporting.ui.preview_model import ReportPreviewModel
 from clinical_reporting.validation import (
     CANNOT_RUN_PREFIX,
@@ -103,9 +103,7 @@ class RunAndSaveMixin:
             return
 
         # Remember the folder so both settings-folder buttons open there next.
-        self.settings_directory = (
-            self.settings_directory or self._get_default_settings_directory()
-        )
+        self.settings_directory = settings_folder(self)
         try:
             settings = self.report.settings_to_dict(settings_name)
             add_to_settings(
@@ -115,7 +113,7 @@ class RunAndSaveMixin:
                 getattr(self, "additional_column_names", {}),
             )
             settings_path = self._settings_store().save(settings_name, settings)
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             self._set_label_text(
                 self.label_save_confirmation,
                 feedback.error(
