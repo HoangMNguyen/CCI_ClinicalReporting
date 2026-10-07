@@ -26,7 +26,6 @@ its result says so. Nothing is applied until "Apply to report".
 
 from __future__ import annotations
 
-import os
 from functools import partial
 from pathlib import Path
 from typing import Collection, Dict, List, Optional, Sequence, Set, Tuple
@@ -49,6 +48,7 @@ from cci_ui.tasks import defer_if_busy, run_task
 from cci_ui.widgets.buttons import make_button
 from cci_ui.widgets.labels import section_label
 from cci_ui.widgets.page import Page
+from cci_ui.widgets.path_picker import downloads_folder
 from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.tables import ColumnSpec, table_card
 from cci_ui.widgets.views import PlaceholderListWidget
@@ -263,9 +263,9 @@ class AdditionalInputMixin:
         """Open a dialog and load user-selected additional input files."""
         if defer_if_busy(self, self.click_add_additional_files):
             return
-        initial_dir = getattr(
-            self, "_additional_input_directory", None
-        ) or os.path.join(os.path.expanduser("~"), "Downloads")
+        initial_dir = (
+            getattr(self, "_additional_input_directory", None) or downloads_folder()
+        )
         file_paths, _ = QFileDialog.getOpenFileNames(
             self,
             "Select Additional Input Files",

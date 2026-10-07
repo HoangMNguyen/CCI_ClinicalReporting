@@ -35,7 +35,7 @@ from cci_ui.widgets.labels import (
     text_label,
 )
 from cci_ui.widgets.page import Page, PageKind
-from cci_ui.widgets.path_picker import PathPicker
+from cci_ui.widgets.path_picker import PathPicker, downloads_folder
 from cci_ui.widgets.responsive import Breakpoint, ResponsiveSplit
 from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.section import Section
@@ -727,6 +727,15 @@ def test_a_path_picker_names_what_its_remove_button_removes(qapp):
 
     assert picker.clear_button.toolTip() == "Remove file"
     assert PathPicker(removable=True).clear_button.toolTip() == "Remove"
+
+
+def test_dialogs_start_in_the_downloads_folder_in_the_home_folder(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))  # Windows reads this one.
+
+    assert downloads_folder() == str(tmp_path / "Downloads")
 
 
 def test_a_search_field_can_be_focused_ready_to_type_over(qapp):

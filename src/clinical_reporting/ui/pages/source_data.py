@@ -33,7 +33,7 @@ from PySide6.QtWidgets import QComboBox, QDateEdit, QFileDialog, QWidget
 from cci_ui.icons import IconName
 from cci_ui.tasks import defer_if_busy, run_task
 from cci_ui.widgets.page import Page, PageKind
-from cci_ui.widgets.path_picker import PathPicker
+from cci_ui.widgets.path_picker import PathPicker, downloads_folder
 from cci_ui.widgets.section import Section
 from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.toggle import ToggleSwitch
@@ -175,7 +175,7 @@ class SourceDataMixin:
         """Open a file dialog to choose the input Corelisting ZIP file."""
         if defer_if_busy(self, self.click_input_file):
             return
-        default_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+        default_dir = downloads_folder()
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select the input Corelisting zip file",
@@ -266,10 +266,7 @@ class SourceDataMixin:
 
     def click_output_file(self) -> None:
         """Allow the user to choose the output directory for reports."""
-        initial_dir = self.output_folder_name or os.path.join(
-            os.path.expanduser("~"),
-            "Downloads",
-        )
+        initial_dir = self.output_folder_name or downloads_folder()
         folder = QFileDialog.getExistingDirectory(
             self,
             "Select Output Folder",

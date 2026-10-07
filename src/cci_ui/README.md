@@ -128,7 +128,7 @@ src/cci_ui/
   widgets/section.py           # Section: titled card of label/field rows
   widgets/page.py              # Page: title, body, footer, empty state; form/workspace/split
   widgets/responsive.py        # breakpoints; panel beside or below the main area
-  widgets/path_picker.py       # PathPicker: path + Choose… + Remove
+  widgets/path_picker.py       # PathPicker: path + Choose… + Remove; downloads_folder
   widgets/side_panel.py        # SidePanel: sections beside a grid, or below it
   widgets/toggle.py            # ToggleSwitch (a QCheckBox drawn as a switch)
   widgets/segmented.py         # SegmentedControl
