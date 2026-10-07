@@ -6,6 +6,7 @@ import logging
 from typing import Any, Dict
 
 from cci_ui.app import create_app
+from cci_ui.theme.tokens import LAYOUT
 from cci_ui.window_state import WindowState
 from clinical_reporting import __version__, telemetry
 from clinical_reporting.ui.main_ui import APP_NAME
@@ -14,9 +15,9 @@ from clinical_reporting.ui.window import Widget
 #: Settings key and Windows taskbar id of this tool.
 APP_ID = "clinical-reporting"
 #: Smallest window that keeps every page usable (a 1080p laptop at 150%).
-MIN_SIZE = (960, 600)
+MIN_SIZE = LAYOUT.min_window
 #: Size on first launch (at most 90% of the screen).
-FIRST_SIZE = (1280, 820)
+FIRST_SIZE = LAYOUT.first_launch
 
 
 def _self_test_extra() -> Dict[str, Any]:

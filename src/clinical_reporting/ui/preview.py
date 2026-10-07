@@ -23,7 +23,7 @@ from typing import List, Optional, Sequence, Tuple
 from PySide6.QtCore import QSettings, QTemporaryDir
 
 from cci_ui.theme.manager import ThemeManager, ThemeMode
-from cci_ui.theme.tokens import Density
+from cci_ui.theme.tokens import LAYOUT, Density
 from clinical_reporting.ui.main_ui import PAGE_CLASSES
 
 #: Page names on the command line, in step order.
@@ -62,7 +62,7 @@ def _parse(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     parser.add_argument(
         "--size",
         type=_sizes,
-        default=[(1280, 820)],
+        default=[LAYOUT.first_launch],
         help="window size(s), e.g. 1000x620 or 1000x620,1920x1001",
     )
     parser.add_argument(

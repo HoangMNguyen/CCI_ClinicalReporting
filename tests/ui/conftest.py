@@ -6,6 +6,7 @@ from PySide6.QtCore import QElapsedTimer, QEvent, QObject, QSettings
 from PySide6.QtWidgets import QApplication, QWidget
 
 from cci_ui.theme import manager as theme_manager
+from cci_ui.theme.tokens import LAYOUT
 
 
 @pytest.fixture
@@ -117,7 +118,7 @@ def sample_window(make_manager, settle):
     theme = make_manager()
     theme.apply()
     window = build_preview_window(theme=theme)
-    window.resize(1280, 820)
+    window.resize(*LAYOUT.first_launch)
     window.show()
     QApplication.processEvents()
     yield window
