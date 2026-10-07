@@ -61,6 +61,21 @@ def test_a_study_page_lists_its_studies_and_takes_one_from_the_zip(window):
     assert page.file_name.placeholderText() == "15420 DSMB Report"
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "C:/Downloads/Core_Listings_12423-TmCD19-IL18_2025_08_27_14_00_EDT.zip",
+        "C:/Downloads/Core_Listings_12423 (1).zip",
+    ],
+)
+def test_a_hyphenated_or_copied_zip_name_gives_its_study(window, path):
+    page = window.dsmb
+
+    page.corelisting.set_path(path)
+
+    assert page.study.currentText() == "12423"
+
+
 def test_the_cut_off_date_shows_and_counts_only_when_switched_on(window):
     page = window.enrollment
     row = page.rows["Cut-off date"]
