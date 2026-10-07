@@ -2,7 +2,7 @@
 
 :class:`DualListPicker` only provides the widgets; the code that fills the
 lists and reacts to the buttons stays where it is (for Clinical Reporting,
-the selection-tab mixins), because the lists are ordinary ``QListWidget``
+the selection page mixins), because the lists are ordinary ``QListWidget``
 objects and the buttons ordinary buttons. The count next to each title
 updates by itself.
 """

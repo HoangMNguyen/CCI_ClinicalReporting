@@ -114,7 +114,7 @@ def test_output_settings_folder_dialog_remembers_last_selection(monkeypatch):
     )
 
 
-def test_settings_folder_selection_is_shared_between_first_and_last_tabs(monkeypatch):
+def test_settings_folder_selection_is_shared_between_first_and_last_pages(monkeypatch):
     class _LinkedWidget(_WorkspaceWidget, PreviewExportMixin):
         def __init__(self):
             super().__init__()

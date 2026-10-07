@@ -1,11 +1,12 @@
-"""Shared utilities for the Clinical Reporting main widget.
+"""The window-level behavior mixin of the Clinical Reporting window.
 
-This module defines :class:`WidgetBaseMixin`, a collection of helper
-methods that are used across multiple pages.  The mixin centralizes the
-state initialization and provides shared routines for working with forms,
-common items, and per-form items.  The per-page mixins use these
-helpers to keep their logic narrowly focused on UI responsibilities
-instead of duplicating low-level list management code.
+:class:`WidgetBaseMixin` holds the window's shared state (set up in
+``_initialize_state``), the refresh coordinators
+(:meth:`~WidgetBaseMixin.update_all_ui` and the other ``update_*_ui``
+methods here), which call the ``update_*`` refreshes the page modules in
+:mod:`ui.pages` define, and small helpers more than one page uses: the
+saved-settings folder and store, status labels, ``_report_changed``, and
+quiet signal disconnects.
 """
 
 from __future__ import annotations

@@ -266,7 +266,8 @@ rotating it. Its token can only add counts, not read them.
 
 The window is built on the shared design system,
 [`cci_ui`](../cci_ui/README.md), in Python code (no Qt Designer files). Its
-pages are one module per step in `src/clinical_reporting/ui/pages/`;
+pages are one module per step in `src/clinical_reporting/ui/pages/`, each
+holding the page's widgets and its behavior (the mixin the window inherits);
 `ui/main_ui.py` lists them in step order (`PAGE_CLASSES`) and puts them in the
 shell: a sidebar of steps (an icon strip on narrow windows), a header, and a
 status bar. Each step's sidebar badge (a count, done, optional, or a problem)
@@ -291,11 +292,11 @@ python -m clinical_reporting.ui.preview --help                   # page names, o
 the saved appearance. (The sample isn't a real ZIP, so turning the cut-off
 date on shows a read error.)
 
-- **Change a page:** edit its module in `ui/pages/`, then check it with the
-  preview tool.
-- **Give the behavior mixins a new widget:** they reach widgets as
-  `self.ui.<name>`, so add the widget to its page and its name to that page's
-  `EXPORTS`.
+- **Change a page:** edit its module in `ui/pages/`, which holds both its
+  widgets and its behavior, then check it with the preview tool.
+- **Give a page's behavior mixin a new widget:** the mixins reach widgets as
+  `self.ui.<name>`, so add the widget to the page and its name to that page's
+  `EXPORTS`: both are in the page's module, so it is a one-module edit.
 - **Add or reorder a step:** add its key to `STEP_KEYS` (and its title to
   `TITLES`) in `clinical_reporting/steps.py`, and a page class (with that
   `KEY`, a `SECTION`, `ICON`, and `EXPORTS`) to `PAGE_CLASSES`, in the same
@@ -369,17 +370,18 @@ src/clinical_reporting/
     window.py                  # QMainWindow plus the behavior mixins
     main_ui.py                 # builds the pages into the window's shell
     navigation.py              # page changes; badges, header, status bar, toasts
-    pages/                     # one module per step, built in code
+    pages/                     # one module per step: its widgets and behavior mixin
+      source_data.py           # Corelisting ZIP, cut-off date, and saved settings
+      additional_input.py      # additional inputs, form and column names, saved names
+      selection.py             # forms, common items, and form items
+      filters.py               # filters and comparisons
+      joins.py                 # join order, type, and items
+      order_rename.py          # output order and renames
+      preview_export.py        # preview, export, and save a setting
+      _common.py               # the table helper the pages share
     preview.py                 # python -m clinical_reporting.ui.preview
     sample_data.py             # made-up DEMO01 data for previews and UI tests
-    base.py                    # helpers shared by the behavior mixins
-    settings_tab.py            # inputs, cutoff, and saved settings
-    additional_input_tab.py    # extra CSV/Excel inputs, form and column renames, saved names
-    selection_tabs.py          # forms, common items, and form items
-    filters_tab.py             # static and dynamic filters
-    join_config.py             # join order, type, and items
-    ordering_tab.py            # output order and renames
-    run_save_tab.py            # preview, run, and save
+    base.py                    # window-level mixin: shared state, refresh coordinators, helpers
     dialogs.py                 # dialogs shared by more than one page
     table_actions.py           # original-name/new-name tables (renames)
     preview_model.py           # Qt table model for the preview grid

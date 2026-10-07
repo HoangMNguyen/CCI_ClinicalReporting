@@ -68,7 +68,7 @@ class _RemovalWidget(SourceDataMixin, PreviewExportMixin, WidgetBaseMixin):
         self.update_items_dependent_ui_calls += 1
 
 
-def test_settings_tab_connects_remove_input_button():
+def test_source_data_connects_remove_input_button():
     widget = SourceDataMixin()
     widget.ui = MagicMock()
     widget._input_file_path = None
