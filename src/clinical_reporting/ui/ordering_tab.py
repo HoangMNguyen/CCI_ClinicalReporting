@@ -3,7 +3,7 @@
 This mixin owns the combined order/rename table: rename mapping
 management, item ordering controls, and the original-name search. The
 join table lives in :mod:`ui.join_config`; its
-:meth:`JoinConfigMixin.update_join_list` re-derives this table because the
+:meth:`JoinsMixin.update_join_list` re-derives this table because the
 default column order follows the join order.
 """
 
@@ -20,10 +20,10 @@ from clinical_reporting.ui.table_actions import (
 )
 
 
-class OrderRenameTabMixin:
+class OrderRenameMixin:
     """Behavior for the rename and ordering controls."""
 
-    def _init_comparison_and_order_tab(self) -> None:
+    def _init_order_rename(self) -> None:
         """Wire signals for rename and ordering widgets."""
         table = self.ui.tableWidget_rename
         table.setSelectionBehavior(QAbstractItemView.SelectRows)

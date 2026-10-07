@@ -17,30 +17,30 @@ from PySide6.QtWidgets import QMainWindow
 from cci_ui.tasks import TaskRunner
 from cci_ui.theme.manager import ThemeManager
 
-from .additional_input_tab import AdditionalInputTabMixin
+from .additional_input_tab import AdditionalInputMixin
 from .base import WidgetBaseMixin
-from .filters_tab import FiltersTabMixin
-from .join_config import JoinConfigMixin
+from .filters_tab import FiltersMixin
+from .join_config import JoinsMixin
 from .main_ui import ClinicalReportingUi
 from .navigation import NavigationMixin
-from .ordering_tab import OrderRenameTabMixin
-from .run_save_tab import RunAndSaveMixin
-from .selection_tabs import CommonItemsTabMixin, FormItemsTabMixin, FormsTabMixin
-from .settings_tab import SettingsTabMixin
+from .ordering_tab import OrderRenameMixin
+from .run_save_tab import PreviewExportMixin
+from .selection_tabs import CommonItemsMixin, FormItemsMixin, FormsMixin
+from .settings_tab import SourceDataMixin
 
 #: The behavior mixins the window inherits, in resolution order.
 BEHAVIORS = (
     WidgetBaseMixin,
     NavigationMixin,
-    SettingsTabMixin,
-    AdditionalInputTabMixin,
-    FormsTabMixin,
-    CommonItemsTabMixin,
-    FormItemsTabMixin,
-    FiltersTabMixin,
-    JoinConfigMixin,
-    OrderRenameTabMixin,
-    RunAndSaveMixin,
+    SourceDataMixin,
+    AdditionalInputMixin,
+    FormsMixin,
+    CommonItemsMixin,
+    FormItemsMixin,
+    FiltersMixin,
+    JoinsMixin,
+    OrderRenameMixin,
+    PreviewExportMixin,
 )
 
 
@@ -57,15 +57,15 @@ class Widget(QMainWindow, *BEHAVIORS):
         self.ui.setup(self, theme)
 
         self._initialize_state()
-        self._init_settings_tab()
-        self._init_additional_input_tab()
-        self._init_form_tab()
-        self._init_common_items_tab()
-        self._init_form_items_tab()
-        self._init_filters_tab()
-        self._init_comparison_and_order_tab()
-        self._init_join_table()
-        self._init_run_and_save_controls()
+        self._init_source_data()
+        self._init_additional_input()
+        self._init_forms()
+        self._init_common_items()
+        self._init_form_items()
+        self._init_filters()
+        self._init_order_rename()
+        self._init_joins()
+        self._init_preview_export()
         self._init_navigation()
         # The shell's overlay covers the sidebar too while work runs.
         self.task_runner = TaskRunner(self, overlay=self.ui.shell.busy)

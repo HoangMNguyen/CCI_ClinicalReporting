@@ -7,7 +7,7 @@ module per step (:mod:`ui.settings_tab`, :mod:`ui.additional_input_tab`,
 (:mod:`ui.dialogs`, :mod:`ui.table_actions`, :mod:`ui.preview_model`,
 :mod:`ui.navigation`). The widgets are built in code: one module per page
 in :mod:`ui.pages`, assembled by :mod:`ui.main_ui` into a shell with a
-sidebar of steps, with the names the mixins use listed in :mod:`ui.contract`.
+sidebar of steps.
 :mod:`ui.window` is the window that inherits those behaviors, :mod:`ui.app`
 is the entry point, and :mod:`ui.preview` shows the pages on sample data
 (:mod:`ui.sample_data`).

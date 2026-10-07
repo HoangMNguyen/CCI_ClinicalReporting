@@ -47,6 +47,10 @@ PAGE_CLASSES = (
     OrderRenamePage,
     PreviewExportPage,
 )
+
+# Legacy names are kept for the mixins: ``label_setting``,
+# ``label_run_confirmation`` and ``label_save_confirmation`` are status
+# banners (``cci_ui.widgets.status.StatusBanner``), like ``banner_input_file``.
 #: Names the mixins use that belong to the window rather than a page.
 WINDOW_NAMES = frozenset({"shell"})
 

@@ -5,7 +5,7 @@ file. It offers the names a loaded saved setting keeps for additional files,
 and shows None, greyed out, while no loaded setting has any. A second banner
 lists the setting's files that aren't added yet, and a third the saved
 column names the files can't use (see
-:class:`clinical_reporting.ui.additional_input_tab.AdditionalInputTabMixin`).
+:class:`clinical_reporting.ui.additional_input_tab.AdditionalInputMixin`).
 """
 
 from __future__ import annotations

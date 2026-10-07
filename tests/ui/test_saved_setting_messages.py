@@ -11,7 +11,7 @@ from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import SavedSetting
 from clinical_reporting.ui import dialogs
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.settings_tab import SettingsTabMixin
+from clinical_reporting.ui.settings_tab import SourceDataMixin
 
 
 class _Store:
@@ -25,7 +25,7 @@ class _Store:
         return self.stored
 
 
-class _SettingsWidget(SettingsTabMixin, WidgetBaseMixin):
+class _SettingsWidget(SourceDataMixin, WidgetBaseMixin):
     def __init__(self, store=None):
         self.report = CLReport()
         self.report.set_data({"DM": pd.DataFrame({"Subject": ["001"], "Age": [54]})})

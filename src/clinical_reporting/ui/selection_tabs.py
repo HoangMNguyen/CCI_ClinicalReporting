@@ -9,15 +9,29 @@ used by :class:`ui.base.WidgetBaseMixin`.
 
 from __future__ import annotations
 
+import re
+from typing import Iterable, Optional
+
 from PySide6.QtWidgets import QListWidgetItem
 
-from clinical_reporting.models import qualify
+from clinical_reporting.models import is_qualified, qualify, split_qualified
 
 
-class FormsTabMixin:
+def _compile_search_pattern(pattern_text: str) -> Optional[re.Pattern[str]]:
+    """Compile a case-insensitive search regex; return ``None`` if empty/invalid."""
+    if not pattern_text:
+        return None
+
+    try:
+        return re.compile(pattern_text, flags=re.IGNORECASE)
+    except re.error:
+        return None
+
+
+class FormsMixin:
     """Behavior for the Forms page."""
 
-    def _init_form_tab(self) -> None:
+    def _init_forms(self) -> None:
         """Attach handlers used to manage form selection widgets."""
         self.ui.pushButton_select_form.clicked.connect(self.click_select_form)
         self.ui.pushButton_remove_form.clicked.connect(self.click_remove_form)
@@ -48,7 +62,7 @@ class FormsTabMixin:
     def add_listWidget_form_available(self) -> None:
         """Populate the available forms list widget."""
         self.ui.listWidget_form_available.clear()
-        pattern = self._compile_search_pattern(self.ui.lineEdit_form_search.text())
+        pattern = _compile_search_pattern(self.ui.lineEdit_form_search.text())
         available_forms = sorted(self.report.get_available_forms_list())
         for form in available_forms:
             if pattern is not None and not pattern.search(form):
@@ -94,11 +108,45 @@ class FormsTabMixin:
         self.ui.listWidget_form_selected.setCurrentItem(item)
         self.click_remove_form()
 
+    def _apply_form_selection_action(self, action: str) -> bool:
+        """Mutate report form selections based on the requested action."""
+        if action == "select":
+            selected_items = self.ui.listWidget_form_available.selectedItems()
+            if not selected_items:
+                return False
+            for item in selected_items:
+                self.report.add_selected_form(item.text())
+            return True
 
-class CommonItemsTabMixin:
+        if action == "remove":
+            selected_items = self.ui.listWidget_form_selected.selectedItems()
+            if not selected_items:
+                return False
+            for item in selected_items:
+                self.report.add_available_form(item.text())
+            return True
+
+        if action == "select_all":
+            available_forms = self.report.get_available_forms_list()
+            if not available_forms:
+                return False
+            self.report.add_all_selected_forms()
+            return True
+
+        if action == "remove_all":
+            selected_forms = self.report.get_selected_forms_list()
+            if not selected_forms:
+                return False
+            self.report.add_all_available_forms()
+            return True
+
+        raise ValueError(f"Unknown form selection action: {action}")
+
+
+class CommonItemsMixin:
     """Behavior for the Common items page."""
 
-    def _init_common_items_tab(self) -> None:
+    def _init_common_items(self) -> None:
         """Connect signals for the Common items page."""
         self.ui.pushButton_select_common_item.clicked.connect(
             self.click_select_common_item
@@ -131,9 +179,7 @@ class CommonItemsTabMixin:
     def add_listWidget_common_item_available(self) -> None:
         """Populate the available common item list widget."""
         self.ui.listWidget_common_item_available.clear()
-        pattern = self._compile_search_pattern(
-            self.ui.lineEdit_common_item_search.text()
-        )
+        pattern = _compile_search_pattern(self.ui.lineEdit_common_item_search.text())
         # Items are kept in the input column order by the report model.
         for item in self.report.get_available_common_items():
             if pattern is not None and not pattern.search(item):
@@ -176,15 +222,56 @@ class CommonItemsTabMixin:
         self.ui.listWidget_common_item_selected.setCurrentItem(item)
         self.click_remove_common_item()
 
+    def _toggle_common_item_selection(self, widget, *, selected: bool) -> bool:
+        """Update common item state for all entries selected in ``widget``."""
+        selected_items = widget.selectedItems()
+        if not selected_items:
+            return False
 
-class FormItemsTabMixin:
+        for item in selected_items:
+            self.report.set_common_item_state(item.text(), selected=selected)
+
+        return True
+
+    def _apply_common_item_action(self, action: str) -> bool:
+        """Mutate common item selections using a shared implementation."""
+        if action == "select":
+            return self._toggle_common_item_selection(
+                self.ui.listWidget_common_item_available, selected=True
+            )
+
+        if action == "remove":
+            return self._toggle_common_item_selection(
+                self.ui.listWidget_common_item_selected, selected=False
+            )
+
+        if action == "select_all":
+            available_items = list(self.report.get_available_common_items())
+            if not available_items:
+                return False
+            for item in available_items:
+                self.report.set_common_item_state(item, selected=True)
+            return True
+
+        if action == "remove_all":
+            selected_items = list(self.report.get_selected_common_items())
+            if not selected_items:
+                return False
+            for item in selected_items:
+                self.report.set_common_item_state(item, selected=False)
+            return True
+
+        raise ValueError(f"Unknown common item action: {action}")
+
+
+class FormItemsMixin:
     """Behavior for the Form items page.
 
     Mirrors the common-item behavior but keeps the form name prefix to
     disambiguate items originating from different forms.
     """
 
-    def _init_form_items_tab(self) -> None:
+    def _init_form_items(self) -> None:
         """Connect signals for selecting items that belong to specific forms."""
         self.ui.pushButton_select_form_item.clicked.connect(self.click_select_form_item)
         self.ui.pushButton_remove_form_item.clicked.connect(self.click_remove_form_item)
@@ -217,7 +304,7 @@ class FormItemsTabMixin:
         if not selected_forms:
             return
 
-        pattern = self._compile_search_pattern(self.ui.lineEdit_form_item_search.text())
+        pattern = _compile_search_pattern(self.ui.lineEdit_form_item_search.text())
         available_entries = []
         for form_name in selected_forms:
             if form_name in self.report.selected_forms:
@@ -288,3 +375,67 @@ class FormItemsTabMixin:
         """Double-click shortcut to remove a per-form item."""
         self.ui.listWidget_form_item_selected.setCurrentItem(item)
         self.click_remove_form_item()
+
+    def _iter_form_item_pairs(self, widget) -> Iterable[tuple[str, str]]:
+        """Yield ``(form_name, item_name)`` tuples from the widget selections."""
+        for item in widget.selectedItems():
+            item_text = item.text()
+            if is_qualified(item_text):
+                yield split_qualified(item_text)
+
+    def _toggle_form_item_selection(self, widget, *, selected: bool) -> bool:
+        """Update per-form item state for all entries selected in ``widget``."""
+        changed = False
+        for form_name, item_name in self._iter_form_item_pairs(widget):
+            if form_name in self.report.selected_forms:
+                self.report.selected_forms[form_name].set_form_item_state(
+                    item_name, selected=selected
+                )
+                changed = True
+        return changed
+
+    def _apply_form_item_action(self, action: str) -> bool:
+        """Mutate form item selections using a shared implementation."""
+        if action == "select":
+            return self._toggle_form_item_selection(
+                self.ui.listWidget_form_item_available, selected=True
+            )
+
+        if action == "remove":
+            return self._toggle_form_item_selection(
+                self.ui.listWidget_form_item_selected, selected=False
+            )
+
+        if action == "select_all":
+            changed = False
+            for form_name in self.report.get_selected_forms_list():
+                if form_name in self.report.selected_forms:
+                    available_items = self.report.selected_forms[
+                        form_name
+                    ].get_available_form_items()
+                    if not available_items:
+                        continue
+                    for item in available_items[:]:
+                        self.report.selected_forms[form_name].set_form_item_state(
+                            item, selected=True
+                        )
+                    changed = True
+            return changed
+
+        if action == "remove_all":
+            changed = False
+            for form_name in self.report.get_selected_forms_list():
+                if form_name in self.report.selected_forms:
+                    selected_items = self.report.selected_forms[
+                        form_name
+                    ].get_selected_form_items()
+                    if not selected_items:
+                        continue
+                    for item in selected_items[:]:
+                        self.report.selected_forms[form_name].set_form_item_state(
+                            item, selected=False
+                        )
+                    changed = True
+            return changed
+
+        raise ValueError(f"Unknown form item action: {action}")

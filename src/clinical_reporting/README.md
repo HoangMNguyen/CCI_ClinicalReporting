@@ -369,7 +369,6 @@ src/clinical_reporting/
     window.py                  # QMainWindow plus the behavior mixins
     main_ui.py                 # builds the pages into the window's shell
     navigation.py              # page changes; badges, header, status bar, toasts
-    contract.py                # widget names the mixins may use
     pages/                     # one module per step, built in code
     preview.py                 # python -m clinical_reporting.ui.preview
     sample_data.py             # made-up DEMO01 data for previews and UI tests

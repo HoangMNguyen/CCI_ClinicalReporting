@@ -2,7 +2,7 @@
 
 The cut-off filters rows while the ZIP is read, so changing the checkbox or
 the date after loading must re-read the data. These tests exercise
-``SettingsTabMixin._reload_with_current_cut_off`` without Qt by faking the
+``SourceDataMixin._reload_with_current_cut_off`` without Qt by faking the
 few UI widgets it touches and monkeypatching the loader.
 """
 
@@ -15,7 +15,7 @@ from clinical_reporting import feedback
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import settings_tab as settings_module
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.settings_tab import SettingsTabMixin
+from clinical_reporting.ui.settings_tab import SourceDataMixin
 
 
 class _FakeQDate:
@@ -55,8 +55,8 @@ class _BusyRunner:
         self.deferred.append(action)
 
 
-class DummySettingsWidget(SettingsTabMixin, WidgetBaseMixin):
-    """Stand-in exercising the settings mixin logic without Qt."""
+class DummySettingsWidget(SourceDataMixin, WidgetBaseMixin):
+    """Stand-in exercising the Source data mixin logic without Qt."""
 
     def __init__(self, checked, date_value):
         self.report = CLReport()

@@ -10,11 +10,9 @@ instead of duplicating low-level list management code.
 
 from __future__ import annotations
 
-import re
 import warnings
-from typing import Iterable, Optional
+from typing import Optional
 
-from clinical_reporting.models import is_qualified, split_qualified
 from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import (
     LocalFolderStore,
@@ -55,8 +53,6 @@ class WidgetBaseMixin:
         self.label_save_confirmation = getattr(self.ui, "label_save_confirmation", None)
         self.label_setting = getattr(self.ui, "label_setting", None)
 
-        # Disable settings directory selector until persistence is enabled.
-        self.ui.pushButton_setting_location.setEnabled(False)
         show_settings_folder(self, self._get_default_settings_directory())
 
     # ------------------------------------------------------------------
@@ -122,145 +118,6 @@ class WidgetBaseMixin:
         folder = settings_folder(self)
         return LocalFolderStore(folder)
 
-    def _apply_form_selection_action(self, action: str) -> bool:
-        """Mutate report form selections based on the requested action."""
-        if action == "select":
-            selected_items = self.ui.listWidget_form_available.selectedItems()
-            if not selected_items:
-                return False
-            for item in selected_items:
-                self.report.add_selected_form(item.text())
-            return True
-
-        if action == "remove":
-            selected_items = self.ui.listWidget_form_selected.selectedItems()
-            if not selected_items:
-                return False
-            for item in selected_items:
-                self.report.add_available_form(item.text())
-            return True
-
-        if action == "select_all":
-            available_forms = self.report.get_available_forms_list()
-            if not available_forms:
-                return False
-            self.report.add_all_selected_forms()
-            return True
-
-        if action == "remove_all":
-            selected_forms = self.report.get_selected_forms_list()
-            if not selected_forms:
-                return False
-            self.report.add_all_available_forms()
-            return True
-
-        raise ValueError(f"Unknown form selection action: {action}")
-
-    def _toggle_common_item_selection(self, widget, *, selected: bool) -> bool:
-        """Update common item state for all entries selected in ``widget``."""
-        selected_items = widget.selectedItems()
-        if not selected_items:
-            return False
-
-        for item in selected_items:
-            self.report.set_common_item_state(item.text(), selected=selected)
-
-        return True
-
-    def _apply_common_item_action(self, action: str) -> bool:
-        """Mutate common item selections using a shared implementation."""
-        if action == "select":
-            return self._toggle_common_item_selection(
-                self.ui.listWidget_common_item_available, selected=True
-            )
-
-        if action == "remove":
-            return self._toggle_common_item_selection(
-                self.ui.listWidget_common_item_selected, selected=False
-            )
-
-        if action == "select_all":
-            available_items = list(self.report.get_available_common_items())
-            if not available_items:
-                return False
-            for item in available_items:
-                self.report.set_common_item_state(item, selected=True)
-            return True
-
-        if action == "remove_all":
-            selected_items = list(self.report.get_selected_common_items())
-            if not selected_items:
-                return False
-            for item in selected_items:
-                self.report.set_common_item_state(item, selected=False)
-            return True
-
-        raise ValueError(f"Unknown common item action: {action}")
-
-    def _iter_form_item_pairs(self, widget) -> Iterable[tuple[str, str]]:
-        """Yield ``(form_name, item_name)`` tuples from the widget selections."""
-        for item in widget.selectedItems():
-            item_text = item.text()
-            if is_qualified(item_text):
-                yield split_qualified(item_text)
-
-    def _toggle_form_item_selection(self, widget, *, selected: bool) -> bool:
-        """Update per-form item state for all entries selected in ``widget``."""
-        changed = False
-        for form_name, item_name in self._iter_form_item_pairs(widget):
-            if form_name in self.report.selected_forms:
-                self.report.selected_forms[form_name].set_form_item_state(
-                    item_name, selected=selected
-                )
-                changed = True
-        return changed
-
-    def _apply_form_item_action(self, action: str) -> bool:
-        """Mutate form item selections using a shared implementation."""
-        if action == "select":
-            return self._toggle_form_item_selection(
-                self.ui.listWidget_form_item_available, selected=True
-            )
-
-        if action == "remove":
-            return self._toggle_form_item_selection(
-                self.ui.listWidget_form_item_selected, selected=False
-            )
-
-        if action == "select_all":
-            changed = False
-            for form_name in self.report.get_selected_forms_list():
-                if form_name in self.report.selected_forms:
-                    available_items = self.report.selected_forms[
-                        form_name
-                    ].get_available_form_items()
-                    if not available_items:
-                        continue
-                    for item in available_items[:]:
-                        self.report.selected_forms[form_name].set_form_item_state(
-                            item, selected=True
-                        )
-                    changed = True
-            return changed
-
-        if action == "remove_all":
-            changed = False
-            for form_name in self.report.get_selected_forms_list():
-                if form_name in self.report.selected_forms:
-                    selected_items = self.report.selected_forms[
-                        form_name
-                    ].get_selected_form_items()
-                    if not selected_items:
-                        continue
-                    for item in selected_items[:]:
-                        self.report.selected_forms[form_name].set_form_item_state(
-                            item, selected=False
-                        )
-                    changed = True
-            return changed
-
-        raise ValueError(f"Unknown form item action: {action}")
-
     def _set_label_text(self, label, message: Optional[str]) -> None:
         """Show *message* in a status label, if the label exists.
 
@@ -271,16 +128,6 @@ class WidgetBaseMixin:
         """
         if label is not None:
             label.setText(message or "")
-
-    def _compile_search_pattern(self, pattern_text: str) -> Optional[re.Pattern[str]]:
-        """Compile a case-insensitive search regex; return ``None`` if empty/invalid."""
-        if not pattern_text:
-            return None
-
-        try:
-            return re.compile(pattern_text, flags=re.IGNORECASE)
-        except re.error:
-            return None
 
     @staticmethod
     def _safe_disconnect(signal, slot=None) -> None:

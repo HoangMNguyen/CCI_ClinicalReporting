@@ -28,10 +28,10 @@ from clinical_reporting import report_columns, steps
 from clinical_reporting.models import JoinHow
 
 
-class JoinConfigMixin:
+class JoinsMixin:
     """Behavior for the join configuration controls."""
 
-    def _init_join_table(self) -> None:
+    def _init_joins(self) -> None:
         """Recolor forms missing a join item when the theme changes.
 
         (The stylesheet restyles the invalid join orders by itself.)
@@ -157,7 +157,7 @@ class JoinConfigMixin:
 
         # Keep the Run button and its inline hint in sync with the conflict
         # state.  Guarded because this mixin is exercised in isolation by tests
-        # that do not compose the run/save behaviour.
+        # that do not compose the Preview & export behaviour.
         refresh_run = getattr(self, "_refresh_run_availability", None)
         if callable(refresh_run):
             refresh_run()
@@ -270,7 +270,7 @@ class JoinConfigMixin:
         self._refresh_joins_banner()
 
         # The default column order follows the join order, so rebuild the
-        # order/rename table (owned by OrderRenameTabMixin) after join changes;
+        # order/rename table (owned by OrderRenameMixin) after join changes;
         # when the report's columns changed too (a form's own copy of a common
         # item came or went), rebuild the filter tables as well. Not on every
         # change: rebuilding drops a filter row that is still half filled in.

@@ -86,10 +86,10 @@ class _SavedNamesComboBox(QComboBox):
             event.ignore()
 
 
-class AdditionalInputTabMixin:
+class AdditionalInputMixin:
     """Behavior for the Additional input page."""
 
-    def _init_additional_input_tab(self) -> None:
+    def _init_additional_input(self) -> None:
         """Attach handlers and prepare state for the Additional input page."""
         self.additional_inputs: Dict[str, pd.DataFrame] = {}
         self.additional_form_names: Dict[str, str] = {}

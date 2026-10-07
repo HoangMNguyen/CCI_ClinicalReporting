@@ -14,10 +14,10 @@ from PySide6.QtWidgets import (
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.ordering_tab import OrderRenameTabMixin
+from clinical_reporting.ui.ordering_tab import OrderRenameMixin
 
 
-class DummyOrderWidget(OrderRenameTabMixin, WidgetBaseMixin):
+class DummyOrderWidget(OrderRenameMixin, WidgetBaseMixin):
     """Minimal Order & rename page host used to exercise the mixin."""
 
     def __init__(self, items, renames=None):
@@ -38,7 +38,7 @@ class DummyOrderWidget(OrderRenameTabMixin, WidgetBaseMixin):
             pushButton_select_next=QPushButton(),
             pushButton_select_all=QPushButton(),
         )
-        self._init_comparison_and_order_tab()
+        self._init_order_rename()
         self.update_order_rename_table()
 
 

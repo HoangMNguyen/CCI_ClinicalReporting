@@ -14,12 +14,12 @@ from clinical_reporting import data, steps
 from clinical_reporting.additional_names import Match, SavedFileNames
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui import additional_input_tab as additional_input_module
-from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
+from clinical_reporting.ui.additional_input_tab import AdditionalInputMixin
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.pages.additional_input import SAVED_NAMES_COLUMN
 
 
-class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
+class DummyWidget(AdditionalInputMixin, WidgetBaseMixin):
     """Lightweight stand-in to exercise the mixin logic without Qt."""
 
     def __init__(self):
@@ -42,7 +42,7 @@ class DummyWidget(AdditionalInputTabMixin, WidgetBaseMixin):
 _ALIVE = []
 
 
-class DummyAdditionalInputUiWidget(AdditionalInputTabMixin, WidgetBaseMixin):
+class DummyAdditionalInputUiWidget(AdditionalInputMixin, WidgetBaseMixin):
     """Qt-backed stand-in for additional-input table interactions."""
 
     def __init__(self):
@@ -61,7 +61,7 @@ class DummyAdditionalInputUiWidget(AdditionalInputTabMixin, WidgetBaseMixin):
             tableWidget_update_column_name=column_table,
             banner_additional=FakeBanner(),
         )
-        self._init_additional_input_tab()
+        self._init_additional_input()
 
 
 def test_context_action_copies_selected_new_columns_to_updated_names(qapp):
@@ -849,7 +849,7 @@ def test_a_two_column_form_table_still_gets_the_names(qapp):
 
 
 def test_a_window_without_this_page_ignores_saved_names():
-    AdditionalInputTabMixin._offer_saved_additional_names(
+    AdditionalInputMixin._offer_saved_additional_names(
         types.SimpleNamespace(), SAVED_NAMES, "Monthly AE review"
     )
 

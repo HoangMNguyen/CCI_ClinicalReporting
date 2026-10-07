@@ -5,10 +5,10 @@ from PySide6.QtWidgets import QListWidget
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.selection_tabs import FormItemsTabMixin
+from clinical_reporting.ui.selection_tabs import FormItemsMixin
 
 
-class DummyFormItemsWidget(FormItemsTabMixin, WidgetBaseMixin):
+class DummyFormItemsWidget(FormItemsMixin, WidgetBaseMixin):
     def __init__(self, report: CLReport):
         # Only the attributes used by the form item helpers are initialized.
         self.report = report

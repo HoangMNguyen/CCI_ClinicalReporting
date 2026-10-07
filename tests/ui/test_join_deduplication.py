@@ -10,10 +10,10 @@ from cci_ui.theme.tokens import COMFORTABLE, DARK, Density, Scheme
 from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.join_config import JoinConfigMixin
+from clinical_reporting.ui.join_config import JoinsMixin
 
 
-class DummyJoinWidget(JoinConfigMixin, WidgetBaseMixin):
+class DummyJoinWidget(JoinsMixin, WidgetBaseMixin):
     def __init__(self, report: CLReport, table: QTableWidget):
         self.report = report
         self.ui = types.SimpleNamespace(tableWidget_join=table)

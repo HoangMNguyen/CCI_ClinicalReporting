@@ -7,8 +7,8 @@ from tests.unit.fakes import FakePathPicker, FakeSection, FakeTableView
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
-from clinical_reporting.ui.settings_tab import SettingsTabMixin
+from clinical_reporting.ui.run_save_tab import PreviewExportMixin
+from clinical_reporting.ui.settings_tab import SourceDataMixin
 
 
 class _TextWidget:
@@ -45,7 +45,7 @@ class _Ui:
         self.comboBox_saved_setting = _ComboBox()
 
 
-class _RemovalWidget(SettingsTabMixin, RunAndSaveMixin, WidgetBaseMixin):
+class _RemovalWidget(SourceDataMixin, PreviewExportMixin, WidgetBaseMixin):
     def __init__(self):
         self.ui = _Ui()
         self.report = CLReport()
@@ -69,11 +69,11 @@ class _RemovalWidget(SettingsTabMixin, RunAndSaveMixin, WidgetBaseMixin):
 
 
 def test_settings_tab_connects_remove_input_button():
-    widget = SettingsTabMixin()
+    widget = SourceDataMixin()
     widget.ui = MagicMock()
     widget._input_file_path = None
 
-    widget._init_settings_tab()
+    widget._init_source_data()
 
     widget.ui.pushButton_remove_input.clicked.connect.assert_called_once_with(
         widget.click_remove_input

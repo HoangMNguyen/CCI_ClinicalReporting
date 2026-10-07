@@ -8,7 +8,7 @@ from tests.unit.fakes import FakeBanner
 from clinical_reporting.models import CLForm, JoinHow
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
+from clinical_reporting.ui.run_save_tab import PreviewExportMixin
 from clinical_reporting.validation import (
     ReportValidationError,
     ReportValidationIssue,
@@ -65,7 +65,7 @@ class _FakeButton:
         self.enabled = value
 
 
-class DummyRunWidget(RunAndSaveMixin, WidgetBaseMixin):
+class DummyRunWidget(PreviewExportMixin, WidgetBaseMixin):
     """Compose just enough of the widget to exercise the run guard."""
 
     def __init__(self, report: CLReport):

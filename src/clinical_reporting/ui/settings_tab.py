@@ -42,11 +42,13 @@ from clinical_reporting.ui.dialogs import choose_settings_directory, settings_fo
 logger = logging.getLogger(__name__)
 
 
-class SettingsTabMixin:
+class SourceDataMixin:
     """Behavior for the Source data page and saved-setting management."""
 
-    def _init_settings_tab(self) -> None:
+    def _init_source_data(self) -> None:
         """Wire up controls on the Source data page."""
+        # Disable settings directory selector until persistence is enabled.
+        self.ui.pushButton_setting_location.setEnabled(False)
         self.ui.pushButton_input_file.clicked.connect(self.click_input_file)
         self.ui.pushButton_remove_input.clicked.connect(self.click_remove_input)
         self.ui.pushButton_remove_input.setEnabled(bool(self._input_file_path))

@@ -20,10 +20,10 @@ from clinical_reporting.models import Operator
 logger = logging.getLogger(__name__)
 
 
-class FiltersTabMixin:
+class FiltersMixin:
     """Behavior for managing static and dynamic filters."""
 
-    def _init_filters_tab(self) -> None:
+    def _init_filters(self) -> None:
         """Attach filter-related button handlers."""
         self.ui.pushButton_static_filter_add.clicked.connect(self.static_filter_add)
         self.ui.pushButton_static_filter_remove.clicked.connect(

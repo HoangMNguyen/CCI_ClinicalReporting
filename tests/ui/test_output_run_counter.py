@@ -49,7 +49,7 @@ class _LineEdit:
         return self.value
 
 
-class _RunWidget(WidgetBaseMixin, run_save_tab.RunAndSaveMixin):
+class _RunWidget(WidgetBaseMixin, run_save_tab.PreviewExportMixin):
     def __init__(self, output_folder):
         self.report = _Report()
         self.output_folder_name = str(output_folder)

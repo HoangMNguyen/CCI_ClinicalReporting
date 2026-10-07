@@ -5,12 +5,12 @@ from tests.unit.fakes import FakeBanner, FakeCheckBox, FakePathPicker
 
 from clinical_reporting import data
 from clinical_reporting.ui import additional_input_tab, dialogs, settings_tab
-from clinical_reporting.ui.additional_input_tab import AdditionalInputTabMixin
-from clinical_reporting.ui.run_save_tab import RunAndSaveMixin
-from clinical_reporting.ui.settings_tab import SettingsTabMixin
+from clinical_reporting.ui.additional_input_tab import AdditionalInputMixin
+from clinical_reporting.ui.run_save_tab import PreviewExportMixin
+from clinical_reporting.ui.settings_tab import SourceDataMixin
 
 
-class _WorkspaceWidget(SettingsTabMixin):
+class _WorkspaceWidget(SourceDataMixin):
     def __init__(self):
         self.settings_directory = None
         self.output_folder_name = None
@@ -32,7 +32,7 @@ class _WorkspaceWidget(SettingsTabMixin):
         pass
 
 
-class _OutputWidget(RunAndSaveMixin):
+class _OutputWidget(PreviewExportMixin):
     def __init__(self):
         self.settings_directory = None
         self.label_save_confirmation = None
@@ -52,7 +52,7 @@ class _OutputWidget(RunAndSaveMixin):
         pass
 
 
-class _AdditionalInputWidget(AdditionalInputTabMixin):
+class _AdditionalInputWidget(AdditionalInputMixin):
     def __init__(self):
         self._additional_input_directory = None
         self.additional_inputs = {}
@@ -96,7 +96,7 @@ def test_saved_settings_folder_dialog_remembers_last_selection(monkeypatch):
         monkeypatch,
         dialogs,
         widget,
-        SettingsTabMixin.click_setting_location,
+        SourceDataMixin.click_setting_location,
     )
 
 
@@ -109,12 +109,12 @@ def test_output_settings_folder_dialog_remembers_last_selection(monkeypatch):
         monkeypatch,
         dialogs,
         widget,
-        RunAndSaveMixin.click_output_setting_folder,
+        PreviewExportMixin.click_output_setting_folder,
     )
 
 
 def test_settings_folder_selection_is_shared_between_first_and_last_tabs(monkeypatch):
-    class _LinkedWidget(_WorkspaceWidget, RunAndSaveMixin):
+    class _LinkedWidget(_WorkspaceWidget, PreviewExportMixin):
         def __init__(self):
             super().__init__()
             self.ui.checkBox_save_current_setting = FakeCheckBox(True)

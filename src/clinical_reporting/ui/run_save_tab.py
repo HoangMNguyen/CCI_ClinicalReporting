@@ -42,10 +42,10 @@ from clinical_reporting.validation import (
 logger = logging.getLogger(__name__)
 
 
-class RunAndSaveMixin:
+class PreviewExportMixin:
     """Behavior for previewing reports and persisting settings/results."""
 
-    def _init_run_and_save_controls(self) -> None:
+    def _init_preview_export(self) -> None:
         """Connect run, save, and persistence-related buttons."""
         self.ui.pushButton_run.clicked.connect(self.click_run)
         self.ui.pushButton_refresh_preview.clicked.connect(self.preview_report)
