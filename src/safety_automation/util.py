@@ -5,8 +5,6 @@ def get_dose_level(dose, power, dose_level_mapping):
     """
     Helper function to compute dose level administered.
 
-    Parameters:
-
     Returns:
     str: The correct Dose Level (e.g., DL1, DL2, etc.) or 'Not Matching' if no match found.
     """
@@ -36,7 +34,6 @@ def get_study_name(input_dir) -> str:
 
     # Check if the extracted study name is a digit
     if not study_name.isdigit():
-        print(f"It's not a study name: {study_name}")
         return None
     else:
         return study_name
