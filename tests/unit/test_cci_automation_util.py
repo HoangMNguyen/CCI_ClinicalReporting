@@ -2,44 +2,44 @@ import pandas as pd
 import pytest
 
 from cci_automation.util import (
-    convert_float_2_sci_notation,
+    convert_float_2_sci_notation_2dp,
     get_data_from_dict,
 )
 
 
-def test_convert_float_2_sci_notation_zero():
+def test_convert_float_2_sci_notation_2dp_zero():
     # Test when input is zero
-    assert convert_float_2_sci_notation(0) == "0"
+    assert convert_float_2_sci_notation_2dp(0) == "0"
 
 
-def test_convert_float_2_sci_notation_positive_integer():
+def test_convert_float_2_sci_notation_2dp_positive_integer():
     # Test when input is a positive integer
-    assert convert_float_2_sci_notation(100) == "1x10^2"
+    assert convert_float_2_sci_notation_2dp(100) == "1x10^2"
 
 
-def test_convert_float_2_sci_notation_negative_integer():
+def test_convert_float_2_sci_notation_2dp_negative_integer():
     # Test when input is a negative integer
-    assert convert_float_2_sci_notation(-100) == "-1x10^2"
+    assert convert_float_2_sci_notation_2dp(-100) == "-1x10^2"
 
 
-def test_convert_float_2_sci_notation_positive_float():
+def test_convert_float_2_sci_notation_2dp_positive_float():
     # Test when input is a positive float
-    assert convert_float_2_sci_notation(0.0256) == "2.56x10^-2"
+    assert convert_float_2_sci_notation_2dp(0.0256) == "2.56x10^-2"
 
 
-def test_convert_float_2_sci_notation_negative_float():
+def test_convert_float_2_sci_notation_2dp_negative_float():
     # Test when input is a negative float
-    assert convert_float_2_sci_notation(-0.0256) == "-2.56x10^-2"
+    assert convert_float_2_sci_notation_2dp(-0.0256) == "-2.56x10^-2"
 
 
-def test_convert_float_2_sci_notation_positive_float_integer_mantissa():
+def test_convert_float_2_sci_notation_2dp_positive_float_integer_mantissa():
     # Test when input is a positive float with integer mantissa
-    assert convert_float_2_sci_notation(5) == "5x10^0"
+    assert convert_float_2_sci_notation_2dp(5) == "5x10^0"
 
 
-def test_convert_float_2_sci_notation_negative_float_integer_mantissa():
+def test_convert_float_2_sci_notation_2dp_negative_float_integer_mantissa():
     # Test when input is a negative float with integer mantissa
-    assert convert_float_2_sci_notation(-5) == "-5x10^0"
+    assert convert_float_2_sci_notation_2dp(-5) == "-5x10^0"
 
 
 def test_get_data_from_dict_single_key():

@@ -64,8 +64,9 @@ the module writes its report while it is built instead of in `run()`.
 src/cci_automation/
   __main__.py                  # runtime entry: python -m cci_automation
   app.py                       # the window: a sidebar of three WorkflowPages
-  util.py                      # shared stats, Corelisting and formatting helpers
+  util.py                      # helpers shared by the DSMB and Enrollment Log modules
   enrollment_log/              # EnrollmentLog.run() and one module per study
   dsmb/                        # DSMB.run() and one module per study
+    DSMB_util.py               # DSMB statistics, number formatting and listing helpers
   format_tools/                # change_type.run(): the format tool
 ```

@@ -7,11 +7,10 @@ import pandas as pd
 
 import cci_automation.dsmb.DSMB_util as dsmb_util
 from cci_automation.util import (
-    add_rename_column_corelisting,
     add_rename_column_df,
     age_calculation,
     convert_integers_to_strings,
-    get_data_from_dict_first,
+    get_data_from_dict,
     remove_leading_zeros_from_dates,
 )
 
@@ -32,26 +31,6 @@ def pandas_future_warnings_as_errors():
         for warning_category in _PANDAS_FUTURE_WARNING_CATEGORIES:
             warnings.simplefilter("error", warning_category)
         yield
-
-
-def test_add_rename_column_corelisting_left_merges_non_ilb_rows():
-    current_df = pd.DataFrame({"Subject": ["S1", "S2"]})
-    input_data = {
-        "FORM": pd.DataFrame(
-            {
-                "Subject": ["S1", "S2", "S2"],
-                "Form ILB Status": [False, True, False],
-                "Raw Column": ["A", "ignore", "B"],
-            }
-        )
-    }
-
-    result = add_rename_column_corelisting(
-        current_df, input_data, "FORM", "Raw Column", "Renamed Column"
-    )
-
-    expected = pd.DataFrame({"Subject": ["S1", "S2"], "Renamed Column": ["A", "B"]})
-    pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
 
 
 def test_add_rename_column_df_left_merges_on_compound_key():
@@ -83,7 +62,7 @@ def test_convert_integers_to_strings_preserves_strings_booleans_and_missing_valu
     assert result.loc[5, "Day"] == "Day 3"
 
 
-def test_get_data_from_dict_first_keeps_earliest_event_per_subject():
+def test_get_data_from_dict_keep_first_keeps_earliest_event_per_subject():
     data = {
         "INF": pd.DataFrame(
             {
@@ -95,7 +74,7 @@ def test_get_data_from_dict_first_keeps_earliest_event_per_subject():
     }
     input_dict = {"INF": {"Dose": "First Dose"}}
 
-    result = get_data_from_dict_first(data, input_dict)
+    result = get_data_from_dict(data, input_dict, keep="first")
 
     expected = pd.DataFrame({"Subject": ["S1", "S2"], "First Dose": ["early", "only"]})
     pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)

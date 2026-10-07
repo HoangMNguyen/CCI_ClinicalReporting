@@ -10,11 +10,7 @@ from cci_automation.dsmb.DSMB_util import (
     get_stats_percentage,
     get_stats_percentage2,
 )
-from cci_automation.util import (
-    age_calculation,
-    get_data_from_dict,
-    get_data_from_dict_first,
-)
+from cci_automation.util import age_calculation, get_data_from_dict
 
 
 class DSMB03325:
@@ -513,7 +509,7 @@ class DSMB03325:
             },
         }
 
-        raw_infusion_df1 = get_data_from_dict_first(data, input_dict1)
+        raw_infusion_df1 = get_data_from_dict(data, input_dict1, keep="first")
         raw_infusion_df2 = get_data_from_dict(data, input_dict2)
         raw_infusion_df3 = get_data_from_dict(data, input_dict3)
         raw_infusion_df_TEMP = pd.merge(

@@ -128,32 +128,7 @@ def get_stats_percentage(column, *args):
         ]
     else:
         groupby = None
-    # create a dataframe to store the stats
-    main_df = pd.DataFrame()
-
-    for arg in args:
-        if groupby is not None:
-            temp_df = (
-                arg.groupby(column)
-                .agg({"Subject": "count"})
-                .reindex(groupby, fill_value=0)
-            )
-        else:
-            temp_df = arg.groupby(column).agg({"Subject": "count"})
-        # combine the percentage and count column into 1 column for variables different than 0
-        temp_df = temp_df.apply(
-            lambda x: (
-                x.astype(str)
-                + " ("
-                + (x / sum(x)).apply(lambda y: "{:.1%}".format(y))
-                + ")"
-                if x.sum() != 0
-                else x.astype(str) + " (0.0%)"
-            )
-        )
-        # merge the temp_df to the main df
-        main_df = pd.concat([main_df, temp_df], axis=1)
-    return main_df
+    return get_stats_percentage2(column, groupby, *args)
 
 
 def get_stats_percentage2(

@@ -5,44 +5,9 @@ import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
+from clinical_reporting.export import to_short_date_string
+
 logger = logging.getLogger(__name__)
-
-
-def add_rename_column_corelisting(
-    current_df,
-    input_data,
-    form_name,
-    column_name,
-    new_column_name,
-    key1="Subject",
-    key2=None,
-):
-    """Adding a new column (merge left) to the current dataframe with an updated new name from the data of corelisting
-
-    Args:
-        current_df (dataframe): current dataframe with subject ID list
-        input_data (dict): dictionary of dataframe, with keys are form names
-        form_name (string): form name
-        column_name (string): exact column name in corelisting
-        new_column_name (string): the name of the column that would be updated
-        key (string): usually it's subject ID of the
-
-    Returns:
-        new_df (dataframe): the new dataframe that is added with the new column and renamed
-    """
-    if key2 is None:
-        df = input_data[form_name][[key1, "Form ILB Status", column_name]].copy()
-    else:
-        df = input_data[form_name][[key1, key2, "Form ILB Status", column_name]].copy()
-    df = df[df["Form ILB Status"] == False]  # noqa: E712
-    new_col_name = {column_name: new_column_name}
-    df = df.rename(columns=new_col_name)
-    df = df.drop(columns=["Form ILB Status"])
-    if key2 is None:
-        new_df = pd.merge(current_df, df, on=key1, how="left")
-    else:
-        new_df = pd.merge(current_df, df, on=[key1, key2], how="left")
-    return new_df
 
 
 def add_rename_column_df(
@@ -78,13 +43,14 @@ def add_rename_column_df(
     return new_df
 
 
-def convert_float_2_sci_notation(n):
+def convert_float_2_sci_notation_2dp(n):
     """
     Convert a floating-point number to its scientific notation as a string.
 
     This function takes a floating-point number and converts it into a string that represents its scientific notation.
     Scientific notation expresses the number as a mantissa multiplied by 10 raised to an exponent. The mantissa is
     rounded to two decimal places unless it is an integer. If the input number is 0, it simply returns '0'.
+    For example, 250000000 gives '2.50x10^8' but 5 gives '5x10^0'.
 
     Args:
         n (float): The floating-point number to be converted into scientific notation.
@@ -138,15 +104,20 @@ def stringify_numeric(value):
     return value
 
 
-def get_data_from_dict(data: dict, input_dict: dict, *exclude) -> pd.DataFrame:
+def get_data_from_dict(
+    data: dict, input_dict: dict, *exclude, keep: str = "last"
+) -> pd.DataFrame:
     """
     Retrieves and processes data from a dictionary based on specified keys.
     Subject and Event Date columns are always included in the output DataFrame.
-    For each subject, only the row with the latest 'Event Date' is kept.
+    For each subject, only the row with the latest 'Event Date' is kept, or the
+    earliest with keep="first" (the infusion CRF for primary treatment, Day 0).
 
     Args:
         data (dict): A dictionary containing the data.
         input_dict (dict): A dictionary specifying the keys to retrieve from `data`.
+        *exclude (str): Keys whose rows are all kept, without dropping duplicates.
+        keep (str): "last" or "first": which 'Event Date' row of a subject to keep.
 
     Returns:
         pandas.DataFrame: A DataFrame containing the collected and processed data.
@@ -165,10 +136,10 @@ def get_data_from_dict(data: dict, input_dict: dict, *exclude) -> pd.DataFrame:
             collected_data.rename(columns=input_dict[key], inplace=True)
             # input_key is not within the exclude list
             if key not in exclude:
-                # if there are more than one row for the same subject, keep the one with the last 'Event Date'
+                # if there are more than one row for the same subject, keep the one with the last (or first) 'Event Date'
                 collected_data = collected_data.sort_values(
                     ["Subject", "Event Date"]
-                ).drop_duplicates(subset=["Subject"], keep="last")
+                ).drop_duplicates(subset=["Subject"], keep=keep)
             # check if value contains 'Date' in the column name, then convert to datetime
             for col in collected_data.columns:
                 if "Date" in col:
@@ -185,50 +156,6 @@ def get_data_from_dict(data: dict, input_dict: dict, *exclude) -> pd.DataFrame:
                     merged_df, collected_data, on="Subject", how="left"
                 )
 
-    return merged_df
-
-
-def get_data_from_dict_first(data: dict, input_dict: dict) -> pd.DataFrame:
-    """
-    Retrieves and processes data from a dictionary based on specified keys.
-    Subject and Event Date columns are always included in the output DataFrame.
-    For each subject, only the row with the earliest 'Event Date' is kept for infusion CRF for primary treatment (Day 0).
-
-    Args:
-        data (dict): A dictionary containing the data.
-        input_dict (dict): A dictionary specifying the keys to retrieve from `data`.
-
-    Returns:
-        pandas.DataFrame: A DataFrame containing the collected and processed data.
-
-    """
-    # Convert dict_keys to a list to use index method
-    keys_list = list(input_dict.keys())
-
-    for key in input_dict.keys():
-        if key in data:
-            input_keys = ["Subject", "Event Date"] + list(input_dict[key].keys())
-            collected_data = data[key][input_keys].copy()
-            collected_data.rename(columns=input_dict[key], inplace=True)
-            # if there are more than one row for the same subject, keep the one with the last 'Event Date'
-            collected_data = collected_data.sort_values(
-                ["Subject", "Event Date"]
-            ).drop_duplicates(subset=["Subject"], keep="first")
-            # check if value contains 'Date' in the column name, then convert to datetime
-            for col in collected_data.columns:
-                if "Date" in col:
-                    collected_data[col] = pd.to_datetime(
-                        collected_data[col], errors="coerce"
-                    )
-            # drop 'Event Date' column
-            collected_data = collected_data.drop("Event Date", axis=1)
-            # merge dataframes
-            if keys_list.index(key) == 0:
-                merged_df = collected_data
-            else:
-                merged_df = pd.merge(
-                    merged_df, collected_data, on="Subject", how="left"
-                )
     return merged_df
 
 
@@ -294,9 +221,7 @@ def remove_leading_zeros_from_dates(df):
                     )
 
                 # Apply formatting to remove leading zeros if it's not ""
-                df_copy[col_name] = df_copy[col_name].apply(
-                    lambda date_obj: format_date_without_leading_zeros_util(date_obj)
-                )
+                df_copy[col_name] = df_copy[col_name].apply(to_short_date_string)
             except Exception as e:
                 # If conversion fails, keep original data
                 logger.warning(
@@ -304,24 +229,3 @@ def remove_leading_zeros_from_dates(df):
                 )
 
     return df_copy
-
-
-def format_date_without_leading_zeros_util(date_obj):
-    """
-    Format dates without leading zeros for Windows compatibility.
-
-    Args:
-        date_obj: A datetime object or NaT
-
-    Returns:
-        str or original: Formatted date string (M/D/YYYY) or original value if NaT
-    """
-    # if date_obj does not have
-    if pd.isna(date_obj):
-        return ""
-    elif pd.notnull(date_obj):
-        month = date_obj.month
-        day = date_obj.day
-        year = date_obj.year
-        return f"{month}/{day}/{year}"
-    return date_obj

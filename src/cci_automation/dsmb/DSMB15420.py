@@ -3,14 +3,14 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 
 from cci_automation.dsmb.DSMB_util import (
+    add_rename_column_corelisting,
     get_stats_df,
     get_stats_perc_df,
     get_stats_percentage,
 )
 from cci_automation.util import (
-    add_rename_column_corelisting,
     add_rename_column_df,
-    convert_float_2_sci_notation,
+    convert_float_2_sci_notation_2dp,
     convert_integers_to_strings,
     remove_leading_zeros_from_dates,
 )
@@ -835,14 +835,16 @@ def DSMB15420(
     # Convert the columns to scientific notation if the value is not NaN
     infusion_df["Target Cell Dose"] = infusion_df["Target Cell Dose"].apply(
         lambda x: (
-            convert_float_2_sci_notation(x) if isinstance(x, int) and pd.notna(x) else x
+            convert_float_2_sci_notation_2dp(x)
+            if isinstance(x, int) and pd.notna(x)
+            else x
         )
     )
     infusion_df["Total huCAR T Cell Dose Administered"] = infusion_df[
         "Total huCAR T Cell Dose Administered"
     ].apply(
         lambda x: (
-            convert_float_2_sci_notation(x)
+            convert_float_2_sci_notation_2dp(x)
             if isinstance(x, float) and pd.notna(x)
             else x
         )
@@ -851,7 +853,7 @@ def DSMB15420(
         "Total Cell Dose Administered"
     ].apply(
         lambda x: (
-            convert_float_2_sci_notation(x)
+            convert_float_2_sci_notation_2dp(x)
             if isinstance(x, float) and pd.notna(x)
             else x
         )
@@ -867,7 +869,7 @@ def DSMB15420(
         "Total huCAR T Cell Dose Administered"
     ].apply(
         lambda x: (
-            convert_float_2_sci_notation(x)
+            convert_float_2_sci_notation_2dp(x)
             if isinstance(x, float) and pd.notna(x)
             else x
         )
@@ -876,7 +878,7 @@ def DSMB15420(
         "Total Cell Dose Administered"
     ].apply(
         lambda x: (
-            convert_float_2_sci_notation(x)
+            convert_float_2_sci_notation_2dp(x)
             if isinstance(x, float) and pd.notna(x)
             else x
         )

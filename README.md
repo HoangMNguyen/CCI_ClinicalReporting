@@ -119,6 +119,9 @@ than carrying their own copies:
   name (Safety Automation directly; `study_named_by` builds on it).
 - `clinical_reporting.export.get_named_excel_formats` provides shared Excel
   cell styles (two of the DSMB modules).
+- `clinical_reporting.export.to_short_date_string` writes dates as
+  `m/d/yyyy` without leading zeros (CCI Automation's
+  `util.remove_leading_zeros_from_dates`).
 
 ### What the automation tools share
 
