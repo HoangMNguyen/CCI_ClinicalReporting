@@ -1,17 +1,20 @@
 """The report's steps and where each one stands (no Qt needed).
 
-A report is built in ten steps, from loading the data to exporting it
+A report is built in eleven steps, from loading the data to exporting it
 (:data:`STEP_KEYS`, titled :data:`TITLES`). :func:`step_statuses` says, for
 each step, what its sidebar badge shows: nothing, a count (forms selected,
-filters added, ...), done, optional, or a problem. Problems come from
-:func:`clinical_reporting.validation.validate_report` by issue code
+filters added, ...), done, optional, a warning, or a problem. Problems come
+from :func:`clinical_reporting.validation.validate_report` by issue code
 (:data:`ISSUE_STEPS`), so every front end points the user to the step that
 fixes each one. The other functions word what the steps show:
 :func:`report_summary` (the line under the window), :func:`source_summary`,
-:func:`preview_caption`, :func:`joins_message`, and the Additional input
+:func:`preview_caption`, :func:`joins_message`, the Additional input
 step's messages (:func:`additional_applied_message`, the constants, and the
 ``saved_names_*`` wording for the names a loaded setting saved for its
-additional files; see :mod:`clinical_reporting.additional_names`).
+additional files; see :mod:`clinical_reporting.additional_names`), and the
+Stacked forms step's (the ``stacked_*`` ones and :data:`STACKED_NOT_APPLIED`,
+:data:`APPLY_STACKED_AGAIN`, :data:`STACKED_NOT_SAVED_NOTE`; see
+:mod:`clinical_reporting.stacking`).
 """
 
 from __future__ import annotations
@@ -39,11 +42,13 @@ from clinical_reporting.additional_names import (
     SavedFileNames,
 )
 from clinical_reporting.models import qualify
+from clinical_reporting.stacking import StackedForm, layout
 from clinical_reporting.validation import ReportValidationIssue
 
 # The steps, in order. The desktop pages use these as their keys.
 SOURCE = "source"
 ADDITIONAL = "additional"
+STACKED = "stacked"
 FORMS = "forms"
 COMMON = "common"
 FORM_ITEMS = "formitems"
@@ -55,6 +60,7 @@ PREVIEW = "preview"
 STEP_KEYS = (
     SOURCE,
     ADDITIONAL,
+    STACKED,
     FORMS,
     COMMON,
     FORM_ITEMS,
@@ -69,6 +75,7 @@ STEP_KEYS = (
 TITLES = {
     SOURCE: "Source data",
     ADDITIONAL: "Additional input",
+    STACKED: "Stacked forms",
     FORMS: "Forms",
     COMMON: "Common items",
     FORM_ITEMS: "Form items",
@@ -94,6 +101,19 @@ APPLY_ADDITIONAL_AGAIN = feedback.info(
     "The new Corelisting ZIP started a new report. Apply the files again to add "
     "their forms to it."
 )
+#: The Stacked forms step, while the page's stacked forms differ from the report's.
+STACKED_NOT_APPLIED = feedback.info(
+    "Not applied yet. Apply to report to use your changes."
+)
+#: The Stacked forms step, once a new Corelisting ZIP started a new report.
+APPLY_STACKED_AGAIN = feedback.info(
+    "The new Corelisting ZIP started a new report. Apply the stacked forms again "
+    "to add them to it."
+)
+#: Added to the save message when the Stacked forms step has unapplied changes.
+STACKED_NOT_SAVED_NOTE = (
+    f"{TITLES[STACKED]} has changes that aren't applied, so they weren't saved."
+)
 #: The first entry of a file's Saved names dropdown: no saved names used.
 SAVED_NAMES_NONE = "None"
 #: The tooltip of a Saved names dropdown while there are none to pick.
@@ -105,6 +125,7 @@ SAVED_NAMES_UNAVAILABLE_TIP = (
 # What a badge shows (the values of cci_ui's StepState).
 NONE = "none"
 DONE = "done"
+WARNING = "warning"
 ERROR = "error"
 OPTIONAL = "optional"
 
@@ -135,6 +156,8 @@ ISSUE_STEPS = {
     "invalid_output_name": ORDER,
     "duplicate_output_name": ORDER,
     "unknown_order_item": ORDER,
+    "stacked_form_name_clash": STACKED,
+    "stacked_form_conflict": STACKED,
 }
 #: Issues that belong to a filter step, found by their field.
 FILTER_ITEM_ISSUE_CODES = frozenset({"ambiguous_filter_item", "missing_filter_item"})
@@ -170,6 +193,11 @@ _MONTHS = (
 
 def _plural(count: int, word: str) -> str:
     return f"{count:,} {word}" if count == 1 else f"{count:,} {word}s"
+
+
+def row_count(count: int) -> str:
+    """A number of rows as the pages say it: "1 row", "1,514 rows"."""
+    return _plural(count, "row")
 
 
 def _problems(issues: List[ReportValidationIssue]) -> StepStatus:
@@ -241,6 +269,7 @@ def step_statuses(
     statuses[COMPARISONS] = _counted(comparisons, _plural(comparisons, "comparison"))
     renamed = _renamed_count(report)
     statuses[ORDER] = _counted(renamed, f"{renamed} renamed")
+    statuses[STACKED] = _stacked_status(report)
     if len(selected_forms) > 1:
         statuses[JOINS] = StepStatus(DONE, tip="Ready")
     elif selected_forms:
@@ -251,6 +280,16 @@ def step_statuses(
     for step, issues in _issues_by_step(report.validate()).items():
         statuses[step] = _problems(issues)
     return statuses
+
+
+def _stacked_status(report) -> StepStatus:
+    """The Stacked forms badge: warning, done or optional (validation aside)."""
+    built = report.stacked_build
+    if built.missing_members or built.missing_items or built.replaced:
+        return StepStatus(WARNING, tip=str(stacked_missing_message(report)))
+    if report.stacked_forms:
+        return StepStatus(DONE, tip=_plural(len(report.stacked_forms), "stacked form"))
+    return StepStatus(OPTIONAL)
 
 
 def _issues_by_step(
@@ -585,10 +624,119 @@ def saved_names_hint(
     return " ".join(hints)
 
 
+def stacked_form_tooltip(stacked: StackedForm) -> str:
+    """How a stacked form says what it is, e.g. "Stacked from SV, DSSVLTFU"."""
+    return f"Stacked from {', '.join(stacked.members)}"
+
+
+def stacked_clear_tooltip(clears: Sequence[str], item: str) -> str:
+    """What choosing "—" in a match's cell also clears: the members sharing its *item*.
+
+    For example "Choosing — also clears DS, which gives Status too."
+    """
+    gives = "gives" if len(clears) == 1 else "give"
+    return f"Choosing — also clears {_and_list(clears)}, which {gives} {item} too."
+
+
+def stacked_applied_message(report) -> feedback.Message:
+    """What applying the stacked forms did: each one's rows and members.
+
+    For example "Applied. Stacked forms: VISITS (1,514 rows from SV,
+    DSSVLTFU)."; a stacked form that couldn't be built (see
+    :func:`stacked_missing_message` and the validation issues) says so.
+    """
+    if not report.stacked_forms:
+        return feedback.success("The stacked forms were removed from the report.")
+    parts = []
+    for stacked in report.stacked_forms:
+        rows = report.stacked_build.forms.get(stacked.name)
+        if rows is None:
+            parts.append(f"{stacked.name} (not built)")
+            continue
+        present = layout(stacked, report.loaded_data).present
+        parts.append(
+            f"{stacked.name} ({_plural(len(rows), 'row')} from {', '.join(present)})"
+        )
+    return feedback.success(f"Applied. Stacked forms: {'; '.join(parts)}.")
+
+
+def stacked_problems_message(problems: Sequence[str]) -> feedback.Message:
+    """Applying the stacked forms was refused for these *problems*."""
+    what = "this problem" if len(problems) == 1 else f"these {len(problems)} problems"
+    return feedback.error(
+        f"Not applied. Fix {what} first, then apply again.", "\n".join(problems)
+    )
+
+
+def stacked_missing_message(report) -> str:
+    """The members and matched items the report's stacked forms lack.
+
+    A warning, for example "VISITS is built without DSSVLTFU, which isn't
+    loaded. In VISITS, SV has no Visit Status: the matched item is blank on
+    its rows."; a matched item a member replaced with another of the match's
+    items says so ("Visit Name takes its Event Group Name instead"); ``""``
+    when nothing is missing.
+    """
+    built = report.stacked_build
+    sentences = []
+    for stacked in report.stacked_forms:
+        name = stacked.name
+        members = list(built.missing_members.get(name, ()))
+        if members:
+            loaded = "isn't loaded" if len(members) == 1 else "aren't loaded"
+            if name in built.forms:
+                sentences.append(
+                    f"{name} is built without {_and_list(members)}, which {loaded}."
+                )
+            else:
+                sentences.append(f"{name} isn't built: {_and_list(members)} {loaded}.")
+        items = built.missing_items.get(name, ())
+        if items:
+            lacks = _and_list([f"{member} has no {item}" for member, item in items])
+            blank = (
+                "the matched item is blank on its rows"
+                if len(items) == 1
+                else "the matched items are blank on their rows"
+            )
+            sentences.append(f"In {name}, {lacks}: {blank}.")
+        for member, saved, used in built.replaced.get(name, ()):
+            match = next(
+                match for match in stacked.matches if match.items.get(member) == saved
+            )
+            sentences.append(
+                f"In {name}, {member} has no {saved}: {match.name} takes its {used} "
+                "instead."
+            )
+    if not sentences:
+        return ""
+    return feedback.warning(" ".join(sentences))
+
+
+def stacked_conflict_message(report) -> str:
+    """What makes the report's stacked forms ambiguous since they were applied.
+
+    An error, for example "VISITS: SV now has both Event Group Name and Event
+    Label, which the match Visit Name lines up. Unmatch it and match again on
+    Stacked forms. The report can't be exported until this is fixed."; ``""``
+    when nothing does (see :attr:`clinical_reporting.stacking.Built.conflicts`).
+    """
+    found = [
+        message
+        for messages in report.stacked_build.conflicts.values()
+        for message in messages
+    ]
+    if not found:
+        return ""
+    return feedback.error(
+        f"{' '.join(found)} The report can't be exported until this is fixed."
+    )
+
+
 __all__ = [
     "ADDITIONAL",
     "ADD_FILES_FIRST",
     "APPLY_ADDITIONAL_AGAIN",
+    "APPLY_STACKED_AGAIN",
     "COMMON",
     "COMPARISONS",
     "DONE",
@@ -609,15 +757,20 @@ __all__ = [
     "SAVED_NAMES_NONE",
     "SAVED_NAMES_UNAVAILABLE_TIP",
     "SOURCE",
+    "STACKED",
+    "STACKED_NOT_APPLIED",
+    "STACKED_NOT_SAVED_NOTE",
     "STEP_KEYS",
     "TITLES",
     "UNPLACED_ISSUE_CODES",
+    "WARNING",
     "StepStatus",
     "additional_applied_message",
     "issue_step",
     "joins_message",
     "preview_caption",
     "report_summary",
+    "row_count",
     "saved_names_cleared_message",
     "saved_names_entry_tip",
     "saved_names_filled_message",
@@ -631,5 +784,11 @@ __all__ = [
     "saved_names_tip",
     "selected_item_count",
     "source_summary",
+    "stacked_applied_message",
+    "stacked_clear_tooltip",
+    "stacked_conflict_message",
+    "stacked_form_tooltip",
+    "stacked_missing_message",
+    "stacked_problems_message",
     "step_statuses",
 ]

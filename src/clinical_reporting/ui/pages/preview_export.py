@@ -6,9 +6,12 @@ preview and the export runs in the background
 (:func:`cci_ui.tasks.run_task`).
 
 A saved setting holds the report's settings
-(:meth:`~clinical_reporting.report.CLReport.settings_to_dict`) plus the
-names given to the additional input files on the Additional input page
-(:func:`clinical_reporting.additional_names.add_to_settings`).
+(:meth:`~clinical_reporting.report.CLReport.settings_to_dict`, its applied
+stacked forms included) plus the names given to the additional input files
+on the Additional input page
+(:func:`clinical_reporting.additional_names.add_to_settings`). When the
+Stacked forms page has changes that aren't applied, the save message says
+they weren't saved.
 """
 
 from __future__ import annotations
@@ -269,10 +272,16 @@ class PreviewExportMixin:
         except Exception:  # Defensive isolation from telemetry regressions.
             pass
 
-        self._set_label_text(
-            self.label_save_confirmation,
-            feedback.success(f"Settings saved to {settings_path}"),
-        )
+        # A setting keeps what's applied: say so if the Stacked forms page
+        # has changes that aren't.
+        unapplied = getattr(self, "_has_unapplied_stacked_forms", None)
+        if unapplied is not None and unapplied():
+            saved = feedback.warning(
+                f"Settings saved to {settings_path}. {steps.STACKED_NOT_SAVED_NOTE}"
+            )
+        else:
+            saved = feedback.success(f"Settings saved to {settings_path}")
+        self._set_label_text(self.label_save_confirmation, saved)
         if self.ui.checkBox_saved_setting.isChecked():
             self._refresh_saved_settings()
 

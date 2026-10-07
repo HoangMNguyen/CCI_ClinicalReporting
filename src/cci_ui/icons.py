@@ -26,6 +26,7 @@ class IconName:
     # Clinical Reporting steps
     SOURCE_DATA = "database"
     ADDITIONAL_INPUT = "file-plus-2"
+    STACKED_FORMS = "layers"
     FORMS = "clipboard-list"
     COMMON_ITEMS = "list-checks"
     FORM_ITEMS = "list-tree"

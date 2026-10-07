@@ -32,6 +32,7 @@ from .pages.order_rename import OrderRenamePage
 from .pages.preview_export import PreviewExportPage
 from .pages.selection import CommonItemsPage, FormItemsPage, FormsPage
 from .pages.source_data import SourceDataPage
+from .pages.stacked_forms import StackedFormsPage
 
 #: The tool's name, as the sidebar and the window title show it.
 APP_NAME = "Clinical Reporting"
@@ -39,6 +40,7 @@ APP_NAME = "Clinical Reporting"
 PAGE_CLASSES = (
     SourceDataPage,
     AdditionalInputPage,
+    StackedFormsPage,
     FormsPage,
     CommonItemsPage,
     FormItemsPage,

@@ -22,6 +22,7 @@ builds the gallery and checks this, so add new components to the gallery.
 from cci_ui.widgets import (  # noqa: F401  (imported for their stylesheet rules)
     busy,
     buttons,
+    checklist,
     display,
     dual_list,
     labels,
@@ -40,3 +41,4 @@ from cci_ui.widgets import (  # noqa: F401  (imported for their stylesheet rules
     views,
     workflow_page,
 )
+from cci_ui.widgets.checklist import ChecklistComboBox, ChecklistItem  # noqa: F401

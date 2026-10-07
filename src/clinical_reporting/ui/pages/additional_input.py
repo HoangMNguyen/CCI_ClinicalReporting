@@ -5,8 +5,10 @@ files, manage the selected list, and rename forms/columns. Reading the files
 runs in the background (:func:`cci_ui.tasks.run_task`). The banner on the
 page says what applying did (the wording is in
 :mod:`clinical_reporting.steps`), which files couldn't be read, and which
-form names clash; after a new Corelisting ZIP it asks to apply the files
-again.
+form names clash (with the loaded forms, each other, or a stacked form);
+after a new Corelisting ZIP it asks to apply the files again. Applying
+starts from the report's forms as loaded (``CLReport.loaded_data``), so the
+report rebuilds its stacked forms from the new set.
 
 A saved setting keeps the form and column names given to its additional
 files (:mod:`clinical_reporting.additional_names`). The Form names table's
@@ -1030,12 +1032,16 @@ class AdditionalInputMixin:
         # ``set_data`` rebuilds fresh CLForm objects with defaults.
         selection_state = capture_selection(self.report)
 
-        base_data = dict(getattr(self.report, "data", {}) or {})
+        # The forms as loaded: ``data`` also holds the stacked forms, which
+        # are rebuilt from these.
+        base_data = dict(getattr(self.report, "loaded_data", {}) or {})
         # Remove previously injected additional forms.
         for form_key in getattr(self, "_additional_form_keys", set()):
             base_data.pop(form_key, None)
 
-        if self._warn_on_additional_form_conflicts(set(base_data)):
+        # A stacked form's name is taken too.
+        stacked_names = {stacked.name for stacked in self.report.stacked_forms}
+        if self._warn_on_additional_form_conflicts(set(base_data) | stacked_names):
             return
 
         additional_data = self._build_additional_data_map()
