@@ -39,6 +39,10 @@ with open(output.name, "wb") as file:  # "15420 AE DLT YYMMDD_HHMMSS.xlsx"
     file.write(output.data)
 ```
 
+Pass `study="15420"` to name the study yourself (an upload may have no file
+name). When the file name names another study, `run()` refuses it, as CCI
+Automation's workflows do.
+
 ## Adding a study
 
 All of it is in `AECoreListing.py`. Add the study to `SUPPORTED_STUDIES`,

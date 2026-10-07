@@ -116,7 +116,7 @@ than carrying their own copies:
     (`Core_Listings_12423-TmCD19-IL18_….zip` names 12423), with a browser's
     ` (n)` copy suffix ignored (CCI Automation and Safety Automation).
     `check_study` refuses an export named for another study than the one
-    chosen (CCI Automation).
+    chosen or given (CCI Automation, and Safety Automation's `run(study=...)`).
 - `clinical_reporting.filenames.output_file_name` makes the
   `<name> YYMMDD_HHMMSS.xlsx` file names.
 - `clinical_reporting.data.parse_study_name` reads the study from a file

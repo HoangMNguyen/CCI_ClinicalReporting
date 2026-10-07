@@ -17,6 +17,7 @@ from clinical_reporting.export import get_named_excel_formats
 from clinical_reporting.workflow import (
     OutputFile,
     UnsupportedStudyError,
+    check_study,
     missing_forms_error,
     named_output,
     read_corelisting,
@@ -53,13 +54,16 @@ def run(corelisting, *, file_name: str = "", study: Optional[str] = None) -> Out
     *corelisting* is the ZIP: its path, or a file-like object (an upload). The
     study comes from its file name unless *study* is given. The workbook is
     named *file_name* (or :func:`default_file_name`) plus the date and time.
-    Raises :class:`~clinical_reporting.workflow.WorkflowInputError` when the
-    file name names no study, the study isn't supported, or the export lacks a
-    form the listing reads.
+    Raises :class:`~clinical_reporting.workflow.WorkflowInputError` when no
+    *study* is given and the file name names none, the study (given or named)
+    isn't supported, the file name names another study than a given *study*,
+    the file is gone or can't be read, or the export lacks a form the listing
+    reads.
     """
     study = study or study_named_by(corelisting)
     if study not in SUPPORTED_STUDIES:
         raise UnsupportedStudyError(WORKFLOW, study, SUPPORTED_STUDIES)
+    check_study(corelisting, study, WORKFLOW, SUPPORTED_STUDIES)
     data = read_corelisting(corelisting)
     ae_key, _, _, exinf_key = _form_keys(AECoreListing.STUDY_KEY_MAP.get(study, {}))
     needed = {ae_key, exinf_key}

@@ -1,6 +1,7 @@
 """Safety Automation's AE & DLT listing as a plain function (made-up data)."""
 
 import io
+import re
 import zipfile
 
 import pandas as pd
@@ -123,6 +124,17 @@ def test_a_file_name_without_a_study_number_says_so():
         UnsupportedStudyError, match="study number isn't in the file name"
     ):
         listing.run(_upload(_export_16321(), "export.zip"))
+
+
+def test_a_given_study_that_the_file_name_contradicts_is_refused():
+    export = _upload(_export_16321(), "Core_Listings_15420_x.zip")
+    message = (
+        "Core_Listings_15420_x.zip is an export of study 15420, but study 16321 "
+        "is chosen."
+    )
+
+    with pytest.raises(WorkflowInputError, match="^" + re.escape(message)):
+        listing.run(export, study="16321")
 
 
 @pytest.mark.parametrize(
