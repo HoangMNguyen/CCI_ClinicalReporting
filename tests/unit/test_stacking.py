@@ -96,7 +96,9 @@ def test_a_match_takes_each_members_item_and_sits_where_its_first_item_appears()
 
 
 def test_a_single_item_match_keeps_an_item_not_every_member_has():
-    plan = stacking.layout(_visits(Match("Visit Status", {"SV": "Visit Status"})), _data())
+    plan = stacking.layout(
+        _visits(Match("Visit Status", {"SV": "Visit Status"})), _data()
+    )
 
     assert dict(plan.matched[0].cells) == {"SV": "Visit Status", "DSSVLTFU": None}
     assert plan.matched[0].missing == ()
@@ -119,8 +121,12 @@ def test_a_match_never_splits_a_same_name_group():
 
 
 def test_a_member_added_later_joins_a_match_by_name():
-    data = {**_data(), "EXTRA": pd.DataFrame({"Subject": ["004"], "Visit": [3],
-                                              "Event Label": ["Unscheduled"]})}
+    data = {
+        **_data(),
+        "EXTRA": pd.DataFrame(
+            {"Subject": ["004"], "Visit": [3], "Event Label": ["Unscheduled"]}
+        ),
+    }
     stacked = stacking.with_members(_visits(VISIT_NAME), ["SV", "DSSVLTFU", "EXTRA"])
 
     plan = stacking.layout(stacked, data)
@@ -293,10 +299,14 @@ def test_build_all_says_when_a_member_gives_another_of_the_matchs_items():
 
 
 def test_add_match_lines_up_left_out_groups_named_after_the_first():
-    stacked = stacking.add_match(_visits(), _data(), ["Event Label", "Event Group Name"])
+    stacked = stacking.add_match(
+        _visits(), _data(), ["Event Label", "Event Group Name"]
+    )
 
     assert stacked.matches == (
-        Match("Event Group Name", {"SV": "Event Group Name", "DSSVLTFU": "Event Label"}),
+        Match(
+            "Event Group Name", {"SV": "Event Group Name", "DSSVLTFU": "Event Label"}
+        ),
     )
 
 
@@ -418,7 +428,9 @@ def test_picking_an_item_brings_in_every_member_with_that_name():
 
     picked = stacking.set_match_item(stacked, _cells_data(), 0, "B", "Remark")
 
-    assert picked.matches == (Match("Note", {"A": "Note", "B": "Remark", "C": "Remark"}),)
+    assert picked.matches == (
+        Match("Note", {"A": "Note", "B": "Remark", "C": "Remark"}),
+    )
 
 
 def test_clearing_an_item_takes_its_whole_same_name_group_out():
@@ -623,7 +635,10 @@ def test_damaged_entries_are_skipped_and_the_rest_kept(caplog):
         "name": " VISITS ",
         "members": [" SV", 3, "DSSVLTFU", "SV"],
         "matches": [
-            {"name": " Visit Name ", "items": {"SV": "Event Group Name", "DSSVLTFU": 5}},
+            {
+                "name": " Visit Name ",
+                "items": {"SV": "Event Group Name", "DSSVLTFU": 5},
+            },
             {"name": "Lost", "items": {"GONE": "Item"}},
             "junk",
         ],
@@ -634,7 +649,9 @@ def test_damaged_entries_are_skipped_and_the_rest_kept(caplog):
 
     assert stacked_forms == [
         StackedForm(
-            "VISITS", ("SV", "DSSVLTFU"), (Match("Visit Name", {"SV": "Event Group Name"}),)
+            "VISITS",
+            ("SV", "DSSVLTFU"),
+            (Match("Visit Name", {"SV": "Event Group Name"}),),
         )
     ]
     assert caplog.text.count("Skipping saved stacked_forms entry") == len(junk)

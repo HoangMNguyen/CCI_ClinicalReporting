@@ -25,7 +25,11 @@ VISITS = StackedForm(
 def _data():
     return {
         "DM": pd.DataFrame(
-            {"Subject": ["001", "002", "003"], "Site": ["A", "A", "B"], "Age": [41, 62, 35]}
+            {
+                "Subject": ["001", "002", "003"],
+                "Site": ["A", "A", "B"],
+                "Age": [41, 62, 35],
+            }
         ),
         "SV": pd.DataFrame(
             {

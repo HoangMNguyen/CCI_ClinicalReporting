@@ -213,7 +213,13 @@ def test_match_lines_up_left_out_items_and_unmatch_takes_them_back(sample_window
     window.click_unmatch_stacked_items()
 
     assert ready == (True, "Match Reason with Status into one stacked item")
-    assert matched == ["In every member", "Matched", "Reason", "Left out", "Nothing left out."]
+    assert matched == [
+        "In every member",
+        "Matched",
+        "Reason",
+        "Left out",
+        "Nothing left out.",
+    ]
     assert selected == [("matched", 0)]
     assert choices == ["Reason", "Status"]
     assert unmatch and items == "4"
@@ -232,7 +238,10 @@ def test_match_refuses_two_items_of_one_member_and_double_click_keeps_one(
 
     _click_item(window, "Pulse", double=True)
 
-    assert refused == (False, "Pick at most one item from each member: DM has both Age and Sex.")
+    assert refused == (
+        False,
+        "Pick at most one item from each member: DM has both Age and Sex.",
+    )
     rows = _grid_rows(window)
     assert rows[rows.index("Matched") + 1] == "Pulse"
     assert _ticks(window, "Age") == [True, False]
@@ -474,7 +483,9 @@ def test_additional_input_refuses_a_file_named_like_a_stacked_form(sample_window
     assert banner.text() == (
         "These form names can't be used: DISP. Rename them in the table and try again."
     )
-    assert "Conflicts with existing report forms:\n  - DISP: lab.csv" in banner.details()
+    assert (
+        "Conflicts with existing report forms:\n  - DISP: lab.csv" in banner.details()
+    )
     assert list(window.report.data["DISP"].columns)[-1] == "Disposition"
 
 
@@ -536,9 +547,7 @@ def test_a_setting_whose_stacked_member_is_missing_says_what_to_add(
 
 def test_the_first_column_stays_when_the_members_scroll_sideways(sample_window):
     window = sample_window
-    _new_stacked_form(
-        window, "ALL", "DM", "VS", "AE", "LB", "CM", "EX", "EOT", "DS"
-    )
+    _new_stacked_form(window, "ALL", "DM", "VS", "AE", "LB", "CM", "EX", "EOT", "DS")
     window.resize(960, 600)
     QApplication.processEvents()
     grid = window.ui.tableView_stacked_items
@@ -550,7 +559,9 @@ def test_the_first_column_stays_when_the_members_scroll_sideways(sample_window):
     bar.setValue(bar.maximum())
     QApplication.processEvents()
     headers = _headers(window)
-    tip = grid.model().headerData(1, Qt.Orientation.Horizontal, Qt.ItemDataRole.ToolTipRole)
+    tip = grid.model().headerData(
+        1, Qt.Orientation.Horizontal, Qt.ItemDataRole.ToolTipRole
+    )
 
     assert bar.maximum() > 0 and bar.value() == bar.maximum()
     assert headers == ["Stacked item", "DM", "VS", "AE", "LB", "CM", "EX", "EOT", "DS"]

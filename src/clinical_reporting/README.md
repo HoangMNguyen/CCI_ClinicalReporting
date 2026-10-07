@@ -243,7 +243,9 @@ from clinical_reporting.stacking import (
 visits = StackedForm(
     "VISITS",
     members=("SV", "DSSVLTFU"),
-    matches=(Match("Visit Name", {"SV": "Event Group Name", "DSSVLTFU": "Event Label"}),),
+    matches=(
+        Match("Visit Name", {"SV": "Event Group Name", "DSSVLTFU": "Event Label"}),
+    ),
 )
 report.set_stacked_forms([visits])  # rebuilds report.data; VISITS is a form now
 lined_up = layout(visits, report.loaded_data)  # every / matched / left_out, item order

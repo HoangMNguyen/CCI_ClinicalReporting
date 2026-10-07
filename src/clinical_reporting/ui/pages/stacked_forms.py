@@ -104,7 +104,9 @@ NARROW_MEMBER_COLUMN_W = 92
 NARROW_FROM = 5
 
 NO_STACKED_FORMS = "No stacked forms. Use New stacked form to stack two or more forms."
-SELECT_A_STACKED_FORM = "Select a stacked form above, or make one with New stacked form."
+SELECT_A_STACKED_FORM = (
+    "Select a stacked form above, or make one with New stacked form."
+)
 PICK_MEMBERS = "Pick two or more forms in Members to see how their items line up."
 ITEMS_HINT = (
     "Select left-out items from different members (Ctrl-click for several), then "
@@ -421,7 +423,9 @@ class StackedItemsGrid(QTableView):
             self.frozen.setVerticalScrollBarPolicy,
         ):
             policy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.frozen.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.frozen.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
         self.verticalScrollBar().valueChanged.connect(
             self.frozen.verticalScrollBar().setValue
         )
@@ -440,7 +444,9 @@ class StackedItemsGrid(QTableView):
         model.setRowCount(0)
         self.clearSpans()
         model.setColumnCount(1 + len(headers))
-        model.setHorizontalHeaderLabels(["Stacked item", *(text for text, _ in headers)])
+        model.setHorizontalHeaderLabels(
+            ["Stacked item", *(text for text, _ in headers)]
+        )
         narrow = len(headers) >= NARROW_FROM
         # Narrow columns center their names, as their ticks are.
         align = (
@@ -453,7 +459,10 @@ class StackedItemsGrid(QTableView):
                 column, Qt.Orientation.Horizontal, tip, Qt.ItemDataRole.ToolTipRole
             )
             model.setHeaderData(
-                column, Qt.Orientation.Horizontal, align, Qt.ItemDataRole.TextAlignmentRole
+                column,
+                Qt.Orientation.Horizontal,
+                align,
+                Qt.ItemDataRole.TextAlignmentRole,
             )
         self._delegate.center_ticks = narrow
         header = self.horizontalHeader()
@@ -602,7 +611,7 @@ class StackedItemsGrid(QTableView):
 
 
 class _ItemsPanel(QWidget):
-    """"Items of NAME": its search and buttons, the grid or why there is none."""
+    """The "Items of NAME" panel: search, buttons, then the grid or a message."""
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -690,7 +699,9 @@ class StackedFormsPage(Page):
             "New stacked form", icon_name=IconName.ADD
         )
         self.pushButton_stacked_remove = make_button("Remove")
-        self.pushButton_stacked_apply = make_button("Apply to report", variant="primary")
+        self.pushButton_stacked_apply = make_button(
+            "Apply to report", variant="primary"
+        )
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
         toolbar.addWidget(self.pushButton_stacked_new)
@@ -709,7 +720,8 @@ class StackedFormsPage(Page):
             placeholder=NO_STACKED_FORMS,
         )
         for column in (_ITEMS_COLUMN, _ROWS_COLUMN):
-            self.tableWidget_stacked_forms.horizontalHeaderItem(column).setTextAlignment(
+            header = self.tableWidget_stacked_forms.horizontalHeaderItem(column)
+            header.setTextAlignment(
                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
             )
         self._forms_card = table_card(self.tableWidget_stacked_forms)
@@ -777,12 +789,8 @@ class StackedFormsMixin:
         self.ui.pushButton_stacked_remove.clicked.connect(
             self.click_remove_stacked_form
         )
-        self.ui.pushButton_stacked_apply.clicked.connect(
-            self.click_apply_stacked_forms
-        )
-        self.ui.pushButton_stacked_match.clicked.connect(
-            self.click_match_stacked_items
-        )
+        self.ui.pushButton_stacked_apply.clicked.connect(self.click_apply_stacked_forms)
+        self.ui.pushButton_stacked_match.clicked.connect(self.click_match_stacked_items)
         self.ui.pushButton_stacked_unmatch.clicked.connect(
             self.click_unmatch_stacked_items
         )
@@ -942,7 +950,9 @@ class StackedFormsMixin:
                 for column in range(table.columnCount()):
                     # Under the cell widgets, so a double-click opens no editor.
                     cell = QTableWidgetItem("")
-                    cell.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+                    cell.setFlags(
+                        Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+                    )
                     if column in (_ITEMS_COLUMN, _ROWS_COLUMN):
                         cell.setTextAlignment(
                             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
@@ -1121,7 +1131,9 @@ class StackedFormsMixin:
         headers = []
         for member in plan.present:
             rows = steps.row_count(len(loaded[member]))
-            headers.append((member if narrow else f"{member}  {rows}", f"{member} · {rows}"))
+            headers.append(
+                (member if narrow else f"{member}  {rows}", f"{member} · {rows}")
+            )
         grid.set_members(headers)
 
         query = self.ui.lineEdit_stacked_item_search.text().strip().casefold()
