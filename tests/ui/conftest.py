@@ -137,3 +137,29 @@ def empty_window(qapp):
     QApplication.processEvents()
     yield window
     shiboken6.delete(window)
+
+
+@pytest.fixture
+def tool_window(make_manager, ini_settings, settle):
+    """Build a small tool's window on the cci_ui kit, shown and themed.
+
+    Pass the tool's ``app`` module (it supplies ``Widget`` and ``FIRST_SIZE``).
+    Every window built is closed, settled and deleted after the test.
+    """
+    built = []
+
+    def build(app_module):
+        theme = make_manager()
+        theme.apply()
+        window = app_module.Widget(theme, settings=ini_settings)
+        window.resize(*app_module.FIRST_SIZE)
+        window.show()
+        QApplication.processEvents()
+        built.append(window)
+        return window
+
+    yield build
+    for window in built:
+        window.close()
+        settle(window.task_runner)
+        shiboken6.delete(window)

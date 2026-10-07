@@ -6,7 +6,6 @@ for and what it hands the review.
 """
 
 import pytest
-import shiboken6
 from PySide6.QtWidgets import QApplication
 
 from clinical_reporting.workflow import OutputFile
@@ -17,17 +16,8 @@ SDS = "C:/Downloads/STUDY01-SDS v3.xlsx"
 
 
 @pytest.fixture
-def window(make_manager, ini_settings, settle):
-    theme = make_manager()
-    theme.apply()
-    window = review_app.Widget(theme, settings=ini_settings)
-    window.resize(*review_app.FIRST_SIZE)
-    window.show()
-    QApplication.processEvents()
-    yield window
-    window.close()
-    settle(window.task_runner)
-    shiboken6.delete(window)
+def window(tool_window):
+    return tool_window(review_app)
 
 
 def test_it_is_one_page_with_the_naming_check_as_an_option(window):
