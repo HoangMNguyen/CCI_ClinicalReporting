@@ -11,12 +11,12 @@ import zipfile
 
 import pandas as pd
 
-from clinical_reporting.filenames import output_file_name
 from clinical_reporting.workflow import (
     OutputFile,
     WorkflowInputError,
     file_name_of,
     input_name,
+    named_output,
     reading_input,
 )
 
@@ -112,8 +112,11 @@ def run(
         ) from exc
     buffer = io.BytesIO()
     review.output(buffer)
-    name = (file_name or "").strip() or default_file_name(sds_workbook)
-    return OutputFile(output_file_name(name), buffer.getvalue())
+    return named_output(
+        buffer.getvalue(),
+        file_name=file_name,
+        default_name=default_file_name(sds_workbook),
+    )
 
 
 class SDSData:
