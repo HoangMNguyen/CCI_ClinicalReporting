@@ -1,4 +1,4 @@
-"""Additional input: extra CSV or Excel files, their form and column names.
+"""Additional input: additional CSV or Excel files, their form and column names.
 
 :class:`AdditionalInputMixin` wires the page's buttons to load CSV/Excel
 files, manage the selected list, and rename forms/columns. Reading the files
@@ -91,7 +91,7 @@ SAVED_NAMES_COLUMN = 2
 
 
 class AdditionalInputPage(Page):
-    """Optional files added to the report as extra forms."""
+    """Optional CSV or Excel files (additional inputs) added to the report as forms."""
 
     KEY = steps.ADDITIONAL
     SECTION = "Data"

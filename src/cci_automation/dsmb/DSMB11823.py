@@ -1162,7 +1162,7 @@ class DSMB11823:
         with pd.ExcelWriter(
             self.output_dir + "/" + self.output_file_name + ".xlsx", engine="xlsxwriter"
         ) as writer:
-            # Get formatting options from util.py
+            # The shared Excel formats (clinical_reporting.export)
             formats = get_named_excel_formats(writer.book)
 
             # ==================== Demographics Statistics Tab (FIRST) ====================

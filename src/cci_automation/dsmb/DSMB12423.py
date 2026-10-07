@@ -1804,7 +1804,6 @@ class DSMB12423:
             bold_12_wrap_format = formats["bold_12_wrap_format"]
             bold_11_wrap_format = formats["bold_11_wrap_format"]
             normal_data_format = formats["normal_data_format"]
-            # Create a format for a black cell
             if data["DM"]["Subject"].count() > 0:
                 # DSMB-Demo Stats Table
                 if self.enrollment_listing_df_output["Subject"].count() > 0:

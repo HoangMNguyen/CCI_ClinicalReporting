@@ -95,7 +95,7 @@ class ComparisonsPage(Page):
 
 
 class FiltersMixin:
-    """Behavior for managing static and dynamic filters."""
+    """Behavior for managing filters and comparisons."""
 
     def _init_filters(self) -> None:
         """Attach filter-related button handlers."""
@@ -109,10 +109,10 @@ class FiltersMixin:
         )
 
     # ------------------------------------------------------------------
-    # Static filters
+    # Filters
 
     def update_static_filter_table(self) -> None:
-        """Populate the static filter table using report data."""
+        """Populate the Filters table using report data."""
         self._safe_disconnect(self.ui.tableWidget_static_filter.itemChanged)
 
         self.ui.tableWidget_static_filter.setRowCount(0)
@@ -194,7 +194,7 @@ class FiltersMixin:
         dropdown_type: str,
         selected_value: Optional[str] = None,
     ) -> None:
-        """Add an item or operator dropdown to the static filter table."""
+        """Add an item or operator dropdown to the Filters table."""
         combo = QComboBox()
 
         if dropdown_type == "item":
@@ -232,7 +232,7 @@ class FiltersMixin:
             )
 
     def static_filter_add(self) -> None:
-        """Add a fresh, empty static filter row.
+        """Add a fresh, empty filter row.
 
         The item field starts blank (and is searchable), so the row applies no
         filter until the user picks an item.
@@ -267,7 +267,7 @@ class FiltersMixin:
         return sorted(selected_rows, reverse=True)
 
     def static_filter_remove(self) -> None:
-        """Remove highlighted static filter rows."""
+        """Remove highlighted filter rows."""
         rows = self._selected_filter_rows(self.ui.tableWidget_static_filter)
         if not rows:
             logger.debug("No rows selected for removal")
@@ -291,7 +291,7 @@ class FiltersMixin:
         self._report_changed()
 
     def _on_filter_changed(self, *args) -> None:
-        """Rebuild the report's static filters from the current table state.
+        """Rebuild the report's filters from the current table state.
 
         Rebuilding the whole list (rather than patching a single row) keeps the
         report correct while the user types a partial item name, and naturally
@@ -301,10 +301,10 @@ class FiltersMixin:
         self.synchronize_static_filters()
 
     # ------------------------------------------------------------------
-    # Dynamic filters
+    # Comparisons
 
     def update_dynamic_filter_table(self) -> None:
-        """Populate the dynamic filter table."""
+        """Populate the Comparisons table."""
         self.ui.tableWidget_dynamic_filter.setRowCount(0)
         for item1, operator, item2 in self.report.get_dynamic_filter_items():
             row = self.ui.tableWidget_dynamic_filter.rowCount()
@@ -320,7 +320,7 @@ class FiltersMixin:
         dropdown_type: str,
         selected_value: Optional[str] = None,
     ) -> None:
-        """Add item/operator dropdowns to the dynamic filter table."""
+        """Add item/operator dropdowns to the Comparisons table."""
         combo = QComboBox()
 
         if dropdown_type == "item":
@@ -335,7 +335,7 @@ class FiltersMixin:
         self.ui.tableWidget_dynamic_filter.setCellWidget(row, column, combo)
 
     def dynamic_filter_add(self) -> None:
-        """Insert a new dynamic filter row."""
+        """Insert a new comparison row."""
         row = self.ui.tableWidget_dynamic_filter.rowCount()
         self.ui.tableWidget_dynamic_filter.insertRow(row)
         self._add_dynamic_dropdown(row, 0, "item")
@@ -343,10 +343,10 @@ class FiltersMixin:
         self._add_dynamic_dropdown(row, 2, "item")
 
     def dynamic_filter_remove(self) -> None:
-        """Remove the selected dynamic filter rows.
+        """Remove the selected comparison rows.
 
-        No rebuild is needed afterwards: the dynamic change handlers ignore
-        their captured row index and resynchronize the whole filter list.
+        No rebuild is needed afterwards: the comparison change handlers ignore
+        their captured row index and resynchronize the whole comparison list.
         """
         rows = self._selected_filter_rows(self.ui.tableWidget_dynamic_filter)
         if not rows:
@@ -366,9 +366,9 @@ class FiltersMixin:
         self._report_changed()
 
     def synchronize_dynamic_filters(self) -> None:
-        """Rebuild the report's dynamic filters from the table, skipping empty rows.
+        """Rebuild the report's comparisons from the table, skipping empty rows.
 
-        A row only contributes a filter once both item fields and the operator
+        A row only contributes a comparison once both item fields and the operator
         are filled in, so partially-filled or empty rows apply nothing.
         """
         new_filters = []
@@ -390,5 +390,5 @@ class FiltersMixin:
         self._report_changed()
 
     def _on_dynamic_filter_changed(self, *args) -> None:
-        """Rebuild the report's dynamic filters from the current table state."""
+        """Rebuild the report's comparisons from the current table state."""
         self.synchronize_dynamic_filters()

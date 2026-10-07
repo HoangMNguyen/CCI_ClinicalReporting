@@ -118,7 +118,7 @@ than carrying their own copies:
 - `clinical_reporting.data.parse_study_name` reads the study from a file
   name (Safety Automation directly; `study_named_by` builds on it).
 - `clinical_reporting.export.get_named_excel_formats` provides shared Excel
-  cell styles (the DSMB modules).
+  cell styles (the DSMB modules and Safety Automation's AE & DLT listing).
 - `clinical_reporting.export.to_short_date_string` writes dates as
   `m/d/yyyy` without leading zeros (CCI Automation's
   `util.remove_leading_zeros_from_dates`).

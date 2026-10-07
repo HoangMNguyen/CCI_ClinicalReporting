@@ -224,7 +224,7 @@ class PreviewExportMixin:
         choose_settings_directory(self)
 
     def click_save_setting(self) -> None:
-        """Persist the current report configuration to disk."""
+        """Save the current report to disk as a saved setting."""
         if not self.ui.checkBox_save_current_setting.isChecked():
             self._set_label_text(
                 self.label_save_confirmation,

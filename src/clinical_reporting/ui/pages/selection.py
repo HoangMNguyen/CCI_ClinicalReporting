@@ -424,12 +424,12 @@ class FormItemsMixin:
         )
 
     def update_form_items_ui(self) -> None:
-        """Refresh the available and selected per-form item lists."""
+        """Refresh the available and selected form item lists."""
         self.add_listWidget_form_item_available()
         self.add_listWidget_form_item_selected()
 
     def add_listWidget_form_item_available(self) -> None:
-        """Populate the per-form available item list with all selected forms."""
+        """Populate the available form item list with all selected forms."""
         self.ui.listWidget_form_item_available.clear()
         selected_forms = self.report.get_selected_forms_list()
         if not selected_forms:
@@ -454,7 +454,7 @@ class FormItemsMixin:
             self.ui.listWidget_form_item_available.addItem(list_item)
 
     def add_listWidget_form_item_selected(self) -> None:
-        """Populate the per-form selected item list."""
+        """Populate the selected form item list."""
         self.ui.listWidget_form_item_selected.clear()
         selected_forms = self.report.get_selected_forms_list()
         if not selected_forms:
@@ -474,36 +474,36 @@ class FormItemsMixin:
             self.ui.listWidget_form_item_selected.addItem(list_item)
 
     def click_select_form_item(self) -> None:
-        """Move highlighted per-form items into the selected list."""
+        """Move highlighted form items into the selected list."""
         if self._apply_form_item_action("select"):
             self.update_form_items_ui()
             self.update_items_dependent_ui()
 
     def click_remove_form_item(self) -> None:
-        """Return highlighted per-form items to the available list."""
+        """Return highlighted form items to the available list."""
         if self._apply_form_item_action("remove"):
             self.update_form_items_ui()
             self.update_items_dependent_ui()
 
     def click_select_all_form_item(self) -> None:
-        """Select every available per-form item."""
+        """Select every available form item."""
         self._apply_form_item_action("select_all")
         self.update_form_items_ui()
         self.update_items_dependent_ui()
 
     def click_remove_all_form_item(self) -> None:
-        """Return every selected per-form item to the available list."""
+        """Return every selected form item to the available list."""
         self._apply_form_item_action("remove_all")
         self.update_form_items_ui()
         self.update_items_dependent_ui()
 
     def on_form_item_available_double_clicked(self, item: QListWidgetItem) -> None:
-        """Double-click shortcut to select a per-form item."""
+        """Double-click shortcut to select a form item."""
         self.ui.listWidget_form_item_available.setCurrentItem(item)
         self.click_select_form_item()
 
     def on_form_item_selected_double_clicked(self, item: QListWidgetItem) -> None:
-        """Double-click shortcut to remove a per-form item."""
+        """Double-click shortcut to remove a form item."""
         self.ui.listWidget_form_item_selected.setCurrentItem(item)
         self.click_remove_form_item()
 
@@ -515,7 +515,7 @@ class FormItemsMixin:
                 yield split_qualified(item_text)
 
     def _toggle_form_item_selection(self, widget, *, selected: bool) -> bool:
-        """Update per-form item state for all entries selected in ``widget``."""
+        """Update form item state for all entries selected in ``widget``."""
         changed = False
         for form_name, item_name in self._iter_form_item_pairs(widget):
             if form_name in self.report.selected_forms:

@@ -45,8 +45,8 @@ class CLReport:
         self.order_list = []
         self.rename_dict = {}
         self.static_available_common_items = []  # Initialize as empty, will be populated dynamically
-        self.static_filter_items = []  # Static filter items: Item Name, Operator, Value
-        self.dynamic_filter_items = []  # Dynamic filter items: Item Name 1 , Operator, Item Name 2
+        self.static_filter_items = []  # Filters: Item Name, Operator, Value
+        self.dynamic_filter_items = []  # Comparisons: Item Name 1, Operator, Item Name 2
         self.selected_items_order_list = []
         # True once the user rearranged items on the Order & rename page. Until
         # then the order list is re-derived from the default layout (common
@@ -605,7 +605,7 @@ class CLReport:
     def apply_config(self, config: "ReportConfig") -> Dict[str, list]:
         """Apply a :class:`ReportConfig` and reconcile it against the loaded data.
 
-        ``set_data`` must be called first so the configuration can be aligned
+        ``set_data`` must be called first so the saved setting can be aligned
         with the columns actually present. This bundles the
         load-then-reconcile sequence the UI performs into a single call, which
         is the natural entry point for headless/tool-chained runs.
@@ -668,11 +668,11 @@ class CLReport:
         self.sync_with_selection()
 
     def get_static_filter_items(self):
-        """Get the list of static filter items."""
+        """Get the list of filters."""
         return self.static_filter_items
 
     def add_static_filter_item(self, item: str, operator: str, value: str):
-        """Add a static filter item."""
+        """Add a filter."""
         # Check if the item is a common item or a form-prefixed item
         if item in self.get_selected_common_items():
             # Item is a common item
@@ -697,7 +697,7 @@ class CLReport:
     def remove_static_filter_item(
         self, item: str, operator: str = None, value: str = None
     ):
-        """Remove a static filter item."""
+        """Remove a filter."""
         self.static_filter_items = [
             f
             for f in self.static_filter_items
@@ -709,31 +709,31 @@ class CLReport:
         ]
 
     def set_static_filter_items(self, items: list):
-        """Set the static filter items."""
+        """Set the filters."""
         self.static_filter_items = deepcopy(items)
 
     def get_dynamic_filter_items(self):
-        """Get the list of dynamic filter items."""
+        """Get the list of comparisons."""
         return self.dynamic_filter_items
 
     def add_dynamic_filter_item(self, item1: str, operator: str, item2: str):
-        """Add a dynamic filter item.
+        """Add a comparison.
 
-        This creates a filter between two items with the specified operator.
+        This keeps the rows where *item1* compares with *item2* by *operator*.
         """
         # Both items need to exist either as common items or form items (with or without prefix)
         # For form items, they can be in format "form_name.item_name" or just "item_name"
 
-        # Always add the filter - we'll validate it at runtime when the report is created
+        # Always add the comparison - we'll validate it at runtime when the report is created
         if (item1, operator, item2) not in self.dynamic_filter_items:
-            # Add the item to the dynamic filter items
+            # Add the comparison
             self.dynamic_filter_items.append((item1, operator, item2))
             logger.debug("Added dynamic filter: %s %s %s", item1, operator, item2)
 
     def remove_dynamic_filter_item(
         self, item1: str = None, operator: str = None, item2: str = None
     ):
-        """Remove a dynamic filter item.
+        """Remove a comparison.
 
         If any parameter is None, it matches any value for that position.
         """
@@ -748,7 +748,7 @@ class CLReport:
         ]
 
     def set_dynamic_filter_items(self, items: list):
-        """Set the dynamic filter items."""
+        """Set the comparisons."""
         self.dynamic_filter_items = deepcopy(items)
 
     def create_report(self):
@@ -756,8 +756,8 @@ class CLReport:
 
         Execution is delegated to
         :class:`clinical_reporting.pipeline.ReportEngine`, which performs the
-        join -> dynamic-filter -> reorder -> rename -> date-format -> finalize
-        pipeline. See that class for the step-by-step details.
+        join (with filters) -> comparisons -> reorder -> rename -> date-format
+        -> finalize pipeline. See that class for the step-by-step details.
 
         Returns:
             The assembled report DataFrame, or ``None`` if nothing was produced.

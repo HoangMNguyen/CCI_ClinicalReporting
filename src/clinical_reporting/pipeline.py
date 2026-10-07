@@ -203,7 +203,7 @@ class ReportEngine:
     # Join phase
 
     def _select_filtered_columns(self, form_name, form):
-        """Select a form's contributing columns and apply its static filters.
+        """Select a form's contributing columns and apply its filters.
 
         Returns the trimmed/filtered DataFrame, or ``None`` when the form
         contributes no columns.
@@ -220,7 +220,7 @@ class ReportEngine:
         for item in form.get_join_items():
             if item and item in source.columns and item not in columns_to_select:
                 columns_to_select.append(item)
-        # Form-specific selected items.
+        # Selected form items.
         for item in form.get_selected_form_items():
             if item in source.columns and item not in columns_to_select:
                 columns_to_select.append(item)
@@ -230,7 +230,7 @@ class ReportEngine:
 
         form_df = source[columns_to_select].copy()
 
-        # Apply static filters whose item belongs to this form.
+        # Apply the filters whose item belongs to this form.
         for item, operator, value in report.static_filter_items:
             if item in form_df.columns:
                 form_df = apply_static_filter(form_df, item, operator, value)
@@ -317,7 +317,7 @@ class ReportEngine:
 
     @staticmethod
     def _resolve_filter_column(name, columns):
-        """Resolve a dynamic-filter operand to an actual column name, or ``None``.
+        """Resolve a comparison operand to an actual column name, or ``None``.
 
         Matches a column directly, or (for an unqualified operand) a column whose
         item part equals ``name`` after stripping its form prefix.

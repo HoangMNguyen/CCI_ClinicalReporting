@@ -4561,7 +4561,7 @@ def DSMB15420(
     ) as writer:
         # Get the workbook
         workbook = writer.book
-        # Get all format objects from util.py function
+        # The shared Excel formats (clinical_reporting.export)
         formats = get_named_excel_formats(workbook)
         ## * FORMATING AND COLORING
         # Extract individual formats for easier use

@@ -15,15 +15,15 @@ def add_rename_column_corelisting(
     key1="Subject",
     key2=None,
 ):
-    """Adding a new column (merge left) to the current dataframe with an updated new name from the data of corelisting
+    """Adding a new column (merge left) to the current dataframe with an updated new name from a form of a Corelisting export
 
     Args:
         current_df (dataframe): current dataframe with subject ID list
         input_data (dict): dictionary of dataframe, with keys are form names
         form_name (string): form name
-        column_name (string): exact column name in corelisting
+        column_name (string): exact column name in the form
         new_column_name (string): the name of the column that would be updated
-        key (string): usually it's subject ID of the
+        key1, key2 (string): the columns to merge on (key1 is usually Subject)
 
     Returns:
         new_df (dataframe): the new dataframe that is added with the new column and renamed
