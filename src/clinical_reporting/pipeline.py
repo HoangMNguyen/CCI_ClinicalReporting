@@ -353,9 +353,8 @@ class ReportEngine:
         return result_df
 
     def _reorder_columns(self, result_df):
-        """Reorder by ``order_list`` (preferred) or ``selected_items_order_list``."""
-        report = self.report
-        order = report.order_list or report.selected_items_order_list
+        """Put the columns in ``selected_items_order_list`` order; others go last."""
+        order = self.report.selected_items_order_list
         if not order:
             return result_df
         valid_order = [col for col in order if col in result_df.columns]

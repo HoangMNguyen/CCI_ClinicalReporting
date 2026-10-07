@@ -22,7 +22,6 @@ def test_save_and_load_settings_roundtrip(tmp_path):
     report.study_name = "TestStudy"
     report.selected_common_items = ["Subject"]
     report.new_items = ["BMI"]
-    report.order_list = ["Subject", "DM.Age"]
     report.selected_items_order_list = ["Subject", "DM.Age"]
     report.rename_dict = {"DM.Age": "Age"}
     report.static_filter_items = [("Age", ">", "30")]
@@ -89,7 +88,6 @@ def test_reconcile_with_current_data_reports_missing_forms_and_items():
 
     report.selected_forms = {"DM": dm_form, "LB": orphan_form}
     report.selected_common_items = ["Subject", "Shared", "Legacy"]
-    report.order_list = ["Subject", "DM.DoesNotExist"]
     report.selected_items_order_list = ["Legacy", "DM.DoesNotExist"]
     report.static_filter_items = [
         ("Legacy", "=", "foo"),
@@ -109,7 +107,6 @@ def test_reconcile_with_current_data_reports_missing_forms_and_items():
     assert report.available_forms["VS"].get_name() == "VS"
     assert report.selected_common_items == ["Subject", "Shared"]
     assert report.selected_forms["DM"].get_selected_form_items() == ["Age"]
-    assert report.order_list == ["Subject"]
     assert report.selected_items_order_list == []
     assert report.static_filter_items == []
     assert report.dynamic_filter_items == []

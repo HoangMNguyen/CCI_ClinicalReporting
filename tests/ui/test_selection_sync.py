@@ -126,14 +126,12 @@ def test_active_rename_wins_over_parked_copy(report):
     assert report.rename_dict["AE.TERM"] == "Event Term"
 
 
-def test_order_lists_are_pruned(report):
-    report.order_list = ["Subject", "AE.TERM", "DM.AGE"]
+def test_the_order_list_is_pruned(report):
     report.set_selected_items_order_list(["AE.TERM", "Subject", "DM.AGE"])
 
     report.add_available_form("AE")
     report.sync_with_selection()
 
-    assert report.order_list == ["Subject", "DM.AGE"]
     assert report.selected_items_order_list == ["Subject", "DM.AGE"]
     assert "unknown_order_item" not in _issue_codes(report)
 
