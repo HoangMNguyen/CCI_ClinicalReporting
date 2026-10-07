@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QListWidget
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.selection_tabs import FormItemsMixin
+from clinical_reporting.ui.pages.selection import FormItemsMixin
 
 
 class DummyFormItemsWidget(FormItemsMixin, WidgetBaseMixin):

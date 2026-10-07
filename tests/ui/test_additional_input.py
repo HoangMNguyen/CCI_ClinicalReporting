@@ -13,10 +13,12 @@ from tests.unit.fakes import FakeBanner
 from clinical_reporting import data, steps
 from clinical_reporting.additional_names import Match, SavedFileNames
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui import additional_input_tab as additional_input_module
-from clinical_reporting.ui.additional_input_tab import AdditionalInputMixin
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.pages.additional_input import SAVED_NAMES_COLUMN
+from clinical_reporting.ui.pages import additional_input as additional_input_module
+from clinical_reporting.ui.pages.additional_input import (
+    SAVED_NAMES_COLUMN,
+    AdditionalInputMixin,
+)
 
 
 class DummyWidget(AdditionalInputMixin, WidgetBaseMixin):

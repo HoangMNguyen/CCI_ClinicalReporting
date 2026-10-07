@@ -4,10 +4,11 @@ import pandas as pd
 from tests.unit.fakes import FakeBanner, FakeCheckBox, FakePathPicker
 
 from clinical_reporting import data
-from clinical_reporting.ui import additional_input_tab, dialogs, settings_tab
-from clinical_reporting.ui.additional_input_tab import AdditionalInputMixin
+from clinical_reporting.ui import dialogs
+from clinical_reporting.ui.pages import additional_input, source_data
+from clinical_reporting.ui.pages.additional_input import AdditionalInputMixin
 from clinical_reporting.ui.pages.preview_export import PreviewExportMixin
-from clinical_reporting.ui.settings_tab import SourceDataMixin
+from clinical_reporting.ui.pages.source_data import SourceDataMixin
 
 
 class _WorkspaceWidget(SourceDataMixin):
@@ -165,7 +166,7 @@ def test_output_folder_dialog_remembers_last_selection(monkeypatch):
         return next(selections)
 
     monkeypatch.setattr(
-        settings_tab.QFileDialog,
+        source_data.QFileDialog,
         "getExistingDirectory",
         choose_directory,
     )
@@ -191,9 +192,7 @@ def test_additional_input_dialog_remembers_last_file_directory(monkeypatch, tmp_
         initial_directories.append(initial_directory)
         return next(selections), ""
 
-    monkeypatch.setattr(
-        additional_input_tab.QFileDialog, "getOpenFileNames", choose_files
-    )
+    monkeypatch.setattr(additional_input.QFileDialog, "getOpenFileNames", choose_files)
     monkeypatch.setattr(data, "load_tabular_file", lambda _path: pd.DataFrame())
 
     widget.click_add_additional_files()

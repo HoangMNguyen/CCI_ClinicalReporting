@@ -11,7 +11,7 @@ from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import SavedSetting
 from clinical_reporting.ui import dialogs
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.settings_tab import SourceDataMixin
+from clinical_reporting.ui.pages.source_data import SourceDataMixin
 
 
 class _Store:

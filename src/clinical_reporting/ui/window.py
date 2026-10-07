@@ -17,16 +17,16 @@ from PySide6.QtWidgets import QMainWindow
 from cci_ui.tasks import TaskRunner
 from cci_ui.theme.manager import ThemeManager
 
-from .additional_input_tab import AdditionalInputMixin
 from .base import WidgetBaseMixin
 from .main_ui import ClinicalReportingUi
 from .navigation import NavigationMixin
+from .pages.additional_input import AdditionalInputMixin
 from .pages.filters import FiltersMixin
 from .pages.joins import JoinsMixin
 from .pages.order_rename import OrderRenameMixin
 from .pages.preview_export import PreviewExportMixin
-from .selection_tabs import CommonItemsMixin, FormItemsMixin, FormsMixin
-from .settings_tab import SourceDataMixin
+from .pages.selection import CommonItemsMixin, FormItemsMixin, FormsMixin
+from .pages.source_data import SourceDataMixin
 
 #: The behavior mixins the window inherits, in resolution order.
 BEHAVIORS = (

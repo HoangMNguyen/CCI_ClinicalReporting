@@ -13,9 +13,9 @@ from tests.unit.fakes import FakeBanner, FakeCheckBox, FakePathPicker, FakeSecti
 
 from clinical_reporting import feedback
 from clinical_reporting.report import CLReport
-from clinical_reporting.ui import settings_tab as settings_module
 from clinical_reporting.ui.base import WidgetBaseMixin
-from clinical_reporting.ui.settings_tab import SourceDataMixin
+from clinical_reporting.ui.pages import source_data as settings_module
+from clinical_reporting.ui.pages.source_data import SourceDataMixin
 
 
 class _FakeQDate:
