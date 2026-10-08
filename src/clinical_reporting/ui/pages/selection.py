@@ -198,13 +198,21 @@ class FormsMixin:
         for form in available_forms:
             if pattern is not None and not pattern.search(form):
                 continue
-            self.ui.listWidget_form_available.addItem(form)
+            self.ui.listWidget_form_available.addItem(self._form_list_item(form))
 
     def add_listWidget_form_selected(self) -> None:
         """Populate the selected forms list widget."""
         self.ui.listWidget_form_selected.clear()
         for form in self.report.get_selected_forms_list():
-            self.ui.listWidget_form_selected.addItem(form)
+            self.ui.listWidget_form_selected.addItem(self._form_list_item(form))
+
+    def _form_list_item(self, form: str) -> QListWidgetItem:
+        """*form*'s entry; a stacked form's tooltip names its members."""
+        item = QListWidgetItem(form)
+        if form in self.report.stacked_build.forms:
+            stacked = next(s for s in self.report.stacked_forms if s.name == form)
+            item.setToolTip(steps.stacked_form_tooltip(stacked))
+        return item
 
     # ------------------------------------------------------------------
     # Slots for button and double-click interactions

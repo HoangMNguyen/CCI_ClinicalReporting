@@ -10,11 +10,13 @@ thread.
 
 Picking a saved setting also hands the names it saved for additional input
 files to the Additional input page, which offers them in its Saved names
-dropdowns; when forms the setting needs are missing, the warning names the
+dropdowns ("Still to add" counts the files of the forms the setting selects
+or stacks); when forms the setting needs are missing, the warning names the
 files that bring them (or, for files already added, says to check and apply
 them). Forgetting the loaded setting greys those dropdowns out again, back
 to None: a new ZIP, removing the ZIP, turning the toggle off, picking
-"Choose a setting…", or a setting that fails to load.
+"Choose a setting…", or a setting that fails to load. A new ZIP, or removing
+it, also tells the Stacked forms page to ask for Apply again.
 """
 
 from __future__ import annotations
@@ -219,8 +221,11 @@ class SourceDataMixin:
         self._input_file_path = file_path
         self._applied_cut_off_date = cut_off_date
         self._failed_cut_off_reload = None
-        # The new report has none of the applied additional forms.
+        # The new report has none of the applied additional or stacked forms.
         self._forget_applied_additional_forms()
+        forget_stacked_forms = getattr(self, "_forget_applied_stacked_forms", None)
+        if forget_stacked_forms is not None:
+            forget_stacked_forms()
         self._forget_export_results()
         self.ui.pushButton_remove_input.setEnabled(True)
 
@@ -252,6 +257,10 @@ class SourceDataMixin:
         self._failed_cut_off_reload = None
         self._forget_loaded_setting()
         self._forget_export_results()
+        # The fresh report has no stacked forms; the page asks to apply them.
+        forget_stacked_forms = getattr(self, "_forget_applied_stacked_forms", None)
+        if forget_stacked_forms is not None:
+            forget_stacked_forms()
 
         self._show_input_file()
         self._show_data_read(None)
@@ -543,8 +552,13 @@ class SourceDataMixin:
                 stored.get("setting_name")
                 or os.path.splitext(os.path.basename(file_path))[0]
             )
-            # Only forms the setting selects need their files added.
+            # Only forms the setting selects, or stacks, need their files added.
             used_forms = set(stored.get("selected_forms") or ())
+            used_forms.update(
+                member
+                for stacked in self.report.stacked_forms
+                for member in stacked.members
+            )
             offer(from_settings(stored), setting_name, used_forms)
 
         loaded_study_name = (

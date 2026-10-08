@@ -46,6 +46,7 @@ from cci_ui.theme.manager import (
 from cci_ui.theme.palette import qcolor
 from cci_ui.theme.tokens import TYPE_SCALE, Color, ColorTokens, Density
 from cci_ui.widgets.buttons import VARIANTS, icon_button, make_button
+from cci_ui.widgets.checklist import ChecklistComboBox, ChecklistItem
 from cci_ui.widgets.dual_list import DualListPicker
 from cci_ui.widgets.labels import IconLabel, text_label
 from cci_ui.widgets.page import Page, PageKind
@@ -211,6 +212,41 @@ def _buttons_page(_shell: AppShell) -> Page:
     return page
 
 
+_SAMPLE_FORMS = (
+    ("SV", "Subject visits", 1203),
+    ("DSSVLTFU", "Long-term follow-up visits", 311),
+    ("AE", "Adverse events", 92),
+    ("CM", "Concomitant medications", 455),
+    ("VS", "Vital signs", 2840),
+    ("LB", "Laboratory results", 12406),
+)
+
+
+def _members_checklist() -> ChecklistComboBox:
+    """A checklist combo that keeps its own ticks, like the Members box."""
+    picked: List[str] = ["SV", "DSSVLTFU"]
+    combo = ChecklistComboBox(search_placeholder="Search forms", empty_text="Choose…")
+
+    def show() -> None:
+        combo.set_items(
+            ChecklistItem(code, code, f"{name} · {rows:,} rows", code in picked)
+            for code, name, rows in _SAMPLE_FORMS
+        )
+        combo.set_summary(", ".join(picked))
+        combo.set_footer(f"{len(picked)} picked.")
+
+    def toggle(key: str, checked: bool) -> None:
+        if checked:
+            picked.append(key)
+        else:
+            picked.remove(key)
+        show()
+
+    combo.itemToggled.connect(toggle)
+    show()
+    return combo
+
+
 def _inputs_page(_shell: AppShell) -> Page:
     page = Page("Inputs", "Text, choices, dates, and files.", kind=PageKind.FORM)
     section = Section("Fields", "Invalid combos turn red; disabled fields dim.")
@@ -231,6 +267,8 @@ def _inputs_page(_shell: AppShell) -> Page:
     section.add_row("Placeholder", placeholder)
     section.add_row("Disabled", disabled)
     section.add_row("Search", SearchField("Search columns"))
+    section.add_row("Checklist", _members_checklist())
+    section.add_row("Nothing ticked", ChecklistComboBox(empty_text="Choose…"))
     section.add_row("Join type", combo)
     section.add_row("Invalid", invalid)
     section.add_row("Cut-off", date, end_aligned=True)
