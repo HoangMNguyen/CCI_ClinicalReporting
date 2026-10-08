@@ -27,6 +27,7 @@ from .pages.order_rename import OrderRenameMixin
 from .pages.preview_export import PreviewExportMixin
 from .pages.selection import CommonItemsMixin, FormItemsMixin, FormsMixin
 from .pages.source_data import SourceDataMixin
+from .pages.stacked_forms import StackedFormsMixin
 
 #: The behavior mixins the window inherits, in resolution order.
 BEHAVIORS = (
@@ -34,6 +35,7 @@ BEHAVIORS = (
     NavigationMixin,
     SourceDataMixin,
     AdditionalInputMixin,
+    StackedFormsMixin,
     FormsMixin,
     CommonItemsMixin,
     FormItemsMixin,
@@ -59,6 +61,7 @@ class Widget(QMainWindow, *BEHAVIORS):
         self._initialize_state()
         self._init_source_data()
         self._init_additional_input()
+        self._init_stacked_forms()
         self._init_forms()
         self._init_common_items()
         self._init_form_items()

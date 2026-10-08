@@ -26,6 +26,7 @@ class IconName:
     # Clinical Reporting steps
     SOURCE_DATA = "database"
     ADDITIONAL_INPUT = "file-plus-2"
+    STACKED_FORMS = "layers"
     FORMS = "clipboard-list"
     COMMON_ITEMS = "list-checks"
     FORM_ITEMS = "list-tree"
@@ -70,6 +71,10 @@ class IconName:
     SAVE = "save"
     ZIP_FILE = "file-archive"
     RUN = "play"
+    # Tables and grids
+    TICK = "check"
+    SECTION_OPEN = "chevron-down"
+    SECTION_CLOSED = "chevron-right"
     # App icon glyphs (see cci_ui.app_icons)
     APP_CLINICAL_REPORTING = "table-2"
     APP_CCI_AUTOMATION = "workflow"

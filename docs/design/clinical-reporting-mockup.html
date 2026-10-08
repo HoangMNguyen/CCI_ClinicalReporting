@@ -529,7 +529,7 @@ input[type="date"].input { width: 150px; }
 .list-item { display: flex; align-items: center; gap: 10px; height: var(--row-h); padding: 0 10px; border-radius: 6px; cursor: default; user-select: none; white-space: nowrap; }
 .list-item:hover { background: var(--bg-hover); }
 .list-item[aria-selected="true"] { background: var(--selection); }
-.list-item .code { width: 40px; flex: none; font-weight: 600; }
+.list-item .code { min-width: 40px; flex: none; font-weight: 600; }
 .list-item .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .list-item .meta { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
 .list-item svg.lucide { color: var(--text-secondary); }
@@ -593,6 +593,56 @@ input[type="date"].input { width: 150px; }
 .empty p { margin: 0 0 8px; color: var(--text-secondary); max-width: 40ch; }
 .app[data-loaded="false"] .needs-data { display: none !important; }
 .app[data-loaded="true"] .empty { display: none; }
+
+/* Stacked forms: the stacked forms table, the Members checklist, the items grid */
+.stack-group { flex: none; min-height: 0; }
+.stack-card { flex: none; max-height: calc(var(--row-h) * 3.5 + 2px); }
+.cell .input.invalid, .input.invalid { border-color: var(--danger); color: var(--danger-text); }
+.members-btn {
+  width: 100%; height: calc(var(--row-h) - 6px); display: flex; align-items: center; gap: 6px; padding: 0 6px 0 8px;
+  border: 1px solid transparent; border-radius: var(--radius-control); background: transparent; color: var(--text-primary);
+  font: 400 13px var(--font-ui); text-align: left; cursor: pointer;
+}
+.grid-table tbody tr:hover .members-btn, .members-btn[aria-expanded="true"] { border-color: var(--border-control); background: var(--bg-control); }
+.members-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 0; }
+.members-btn .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.members-btn > svg.lucide { width: 14px; height: 14px; color: var(--text-secondary); }
+.warn-text { color: var(--warning-text); }
+.popover.checklist-pop { top: 0; right: auto; width: 300px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; }
+.checklist-pop .list { max-height: 248px; padding: 0; }
+.checklist-pop .list-item { gap: 8px; cursor: pointer; }
+.checklist-pop .list-item .code { min-width: 76px; }
+.checklist-pop input[type="checkbox"] { margin: 0; accent-color: var(--accent); pointer-events: none; }
+.stack-items { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.items-head { display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; }
+.items-head .section-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.items-head .search { flex: 0 1 220px; }
+.items-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.items-empty { flex: 1; display: grid; place-items: center; padding: 18px; color: var(--text-tertiary); text-align: center; }
+.items-empty p { margin: 0; }
+.stack-items tr[data-key] { user-select: none; }
+.mname-wrap { width: 100%; }
+.mname::-webkit-calendar-picker-indicator { display: none !important; }
+.grid-table tr.sec td { height: 30px; background: var(--bg-surface-alt); }
+.grid-table tbody tr.sec:hover td { background: var(--bg-surface-alt); }
+.grid-table tr.sec[data-sec="every"] td { cursor: pointer; }
+.sec-in { position: sticky; left: 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.sec-in svg.lucide { width: 14px; height: 14px; }
+.sec-note { margin-left: 4px; font-weight: 400; color: var(--text-tertiary); }
+.grid-table tr.note td { padding-left: 30px; color: var(--text-tertiary); }
+.grid-table tbody tr.note:hover td, .grid-table tbody tr.every:hover td { background: var(--bg-surface); }
+.stack-grid-card { flex: 1; }
+.stack-grid th:first-child, .stack-grid td:first-child { position: sticky; left: 0; z-index: 1; background: var(--bg-surface); box-shadow: inset -1px 0 0 var(--separator); }
+.stack-grid thead th:first-child { z-index: 3; background: var(--bg-surface-alt); }
+.stack-grid tr.sec td:first-child { position: static; box-shadow: none; background: var(--bg-surface-alt); }
+.stack-grid th .rows { margin-left: 5px; font-weight: 400; color: var(--text-tertiary); }
+.stack-grid th.c, .stack-grid td.c { text-align: center; }
+.stack-grid td.mark { color: var(--success); }
+.stack-grid td.mark svg.lucide { display: block; width: 15px; height: 15px; }
+.stack-grid td.mark.c svg.lucide { margin: 0 auto; }
+.stack-grid tr.left td:first-child { color: var(--text-secondary); }
+.stack-grid tr.every td:first-child, .stack-grid tr.left td:first-child { padding-left: 30px; }
+.stack-grid tr.matched td.cell:first-child { padding-left: 24px; }
 
 @media (prefers-reduced-motion: reduce) {
   .spin, .toast, .toast.out { animation: none; }
@@ -671,7 +721,7 @@ input[type="date"].input { width: 150px; }
                           <button type="button" class="btn icon ghost" id="remove-zip" title="Remove file" aria-label="Remove file"><i data-lucide="x"></i></button>
                         </div>
                       </div>
-                      <p class="footnote needs-data">18 forms · 2,431 rows · read today at 10:12</p>
+                      <p class="footnote needs-data">19 forms · 2,431 rows · read today at 10:12</p>
                     </div>
                     <div class="group">
                       <h2 class="section-label">Cut-off date</h2>
@@ -723,6 +773,31 @@ input[type="date"].input { width: 150px; }
                       </tbody></table></div>
                     </div>
                   </div>
+                </div>
+              </section>
+
+              <section class="page" data-page="stacked" data-kind="workspace" hidden>
+                <div class="page-head"><div><h1 class="page-title">Stacked forms</h1><p class="page-sub">Optional. Put the rows of several forms one under another as one new form, then apply it to the report.</p></div></div>
+                <div class="page-body needs-data">
+                  <div class="toolbar">
+                    <button type="button" class="btn" id="stack-new"><i data-lucide="plus"></i>New stacked form</button>
+                    <button type="button" class="btn" id="stack-remove">Remove</button>
+                    <span class="spacer"></span>
+                    <button type="button" class="btn primary" id="stack-apply">Apply to report</button>
+                  </div>
+                  <div class="banner-slot" id="stacked-banner"></div>
+                  <div class="banner-slot" id="stacked-state"></div>
+                  <div class="group stack-group">
+                    <h2 class="section-label">Stacked forms</h2>
+                    <div class="table-card stack-card"><table class="grid-table" style="min-width: 560px"><colgroup><col style="width: 26%"><col><col style="width: 76px"><col style="width: 92px"></colgroup>
+                      <thead><tr><th>Name</th><th>Members</th><th class="num">Items</th><th class="num">Rows</th></tr></thead><tbody id="stacks-body"></tbody></table></div>
+                  </div>
+                  <div class="stack-items" id="stack-items"></div>
+                </div>
+                <div class="popover checklist-pop" id="stack-pop" role="dialog" aria-label="Members" hidden>
+                  <div class="search"><i data-lucide="search"></i><input class="input" type="search" id="stack-pop-q" placeholder="Search forms" aria-label="Search forms"></div>
+                  <ul class="list" id="stack-pop-list" role="listbox" aria-multiselectable="true" aria-label="Loaded forms"></ul>
+                  <p class="hint" id="stack-pop-foot"></p>
                 </div>
               </section>
 
@@ -893,13 +968,14 @@ input[type="date"].input { width: 150px; }
   const KIND_ICON = { success: 'circle-check', warning: 'triangle-alert', error: 'circle-x', info: 'info' };
 
   // ---------- sample data (synthetic) ----------
-  const FORMS = [['AE', 'Adverse Events'], ['CM', 'Concomitant Medications'], ['DD', 'Death Details'], ['DLT', 'Dose-Limiting Toxicity'], ['DM', 'Demographics'], ['DS', 'End of Study Disposition'], ['EG', '12-Lead ECG'], ['ENR', 'Enrollment'], ['EX', 'Study Drug Administration'], ['IE', 'Eligibility Criteria'], ['LB', 'Local Laboratory'], ['MH', 'Medical History'], ['PE', 'Physical Examination'], ['RS', 'Response Assessment'], ['SV', 'Subject Visits'], ['TL', 'Target Lesions'], ['TU', 'Tumor Identification'], ['VS', 'Vital Signs']];
+  const FORMS = [['AE', 'Adverse Events'], ['CM', 'Concomitant Medications'], ['DD', 'Death Details'], ['DLT', 'Dose-Limiting Toxicity'], ['DM', 'Demographics'], ['DS', 'End of Study Disposition'], ['DSSVLTFU', 'Long-Term Follow-Up Visits'], ['EG', '12-Lead ECG'], ['ENR', 'Enrollment'], ['EX', 'Study Drug Administration'], ['IE', 'Eligibility Criteria'], ['LB', 'Local Laboratory'], ['MH', 'Medical History'], ['PE', 'Physical Examination'], ['RS', 'Response Assessment'], ['SV', 'Subject Visits'], ['TL', 'Target Lesions'], ['TU', 'Tumor Identification'], ['VS', 'Vital Signs']];
   const FORM_NAME = Object.fromEntries(FORMS);
   const COMMON = ['Subject', 'SiteNumber', 'Site', 'SiteGroup', 'InstanceName', 'FolderName', 'FolderSeq', 'DataPageName', 'RecordPosition', 'RecordDate', 'MinCreated', 'MaxUpdated', 'SaveTS', 'StudyEnvironmentSiteNumber'];
   const FORM_ITEMS = {
     AE: ['AETERM', 'AESTDAT', 'AEENDAT', 'AETOXGR', 'AESER', 'AEREL', 'AEOUT', 'AEACN'],
     CM: ['CMTRT', 'CMSTDAT', 'CMENDAT', 'CMINDC'], DD: ['DTHDAT', 'DTHCAUS'], DLT: ['DLTYN', 'DLTTERM', 'DLTDAT'],
-    DM: ['BRTHDAT', 'AGE', 'SEX', 'RACE', 'ETHNIC', 'DMCONDAT'], DS: ['DSDECOD', 'DSSTDAT'], EG: ['EGDAT', 'EGQTCF', 'EGINTP'],
+    DM: ['BRTHDAT', 'AGE', 'SEX', 'RACE', 'ETHNIC', 'DMCONDAT'], DS: ['DSDECOD', 'DSSTDAT'], DSSVLTFU: ['LTFUDAT', 'LTFUVISIT', 'LTFUCONT'],
+    EG: ['EGDAT', 'EGQTCF', 'EGINTP'],
     ENR: ['ENRDAT', 'COHORT', 'DOSELVL'], EX: ['EXSTDAT', 'EXDOSE', 'EXDOSU', 'EXADJ'], IE: ['IECAT', 'IETESTCD', 'IEORRES'],
     LB: ['LBDAT', 'LBTEST', 'LBORRES', 'LBORRESU', 'LBNRIND'], MH: ['MHTERM', 'MHSTDAT', 'MHONGO'], PE: ['PEDAT', 'PEBODSYS', 'PEORRES'],
     RS: ['RSDAT', 'RSORRES', 'RSOVRL'], SV: ['SVSTDAT', 'SVVISIT'], TL: ['TLDAT', 'TLDIAM'], TU: ['TULOC', 'TUMETHOD'],
@@ -911,6 +987,7 @@ input[type="date"].input { width: 150px; }
   const STEPS = [
     { id: 'source', section: 'Data', title: 'Source data', icon: 'database' },
     { id: 'additional', section: 'Data', title: 'Additional input', icon: 'file-plus-2' },
+    { id: 'stacked', section: 'Data', title: 'Stacked forms', icon: 'layers' },
     { id: 'forms', section: 'Selection', title: 'Forms', icon: 'clipboard-list' },
     { id: 'common', section: 'Selection', title: 'Common items', icon: 'list-checks' },
     { id: 'formitems', section: 'Selection', title: 'Form items', icon: 'list-tree' },
@@ -941,11 +1018,17 @@ input[type="date"].input { width: 150px; }
       order: [],
       renames: { 'Subject': 'Subject ID', 'AE.AETERM': 'AE term', 'AE.AETOXGR': 'CTCAE grade' },
       selRow: { filters: -1, comparisons: -1 },
-      orderSel: new Set(), orderQ: '', orderCursor: -1
+      orderSel: new Set(), orderQ: '', orderCursor: -1,
+      // Stacked forms: the page's definitions, and the ones the report uses since the last Apply.
+      stacks: demoStacks(), stacksApplied: demoStacks(), stackSel: 1, stackRowSel: new Set(), stackQ: '', stackEveryOpen: false
     };
   }
   let S = freshState();
   syncOrder();
+  let stackPop = null;
+  let stackPopQ = '';
+  let stackFocus = null;
+  let stackNextId = 2;
 
   function rng(seed) {
     return function () {
@@ -1043,7 +1126,8 @@ input[type="date"].input { width: 150px; }
   });
   function closePopovers() {
     $$('.popover').forEach((p) => { p.hidden = true; });
-    $$('.display-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    $$('.display-btn, .members-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    stackPop = null;
   }
 
   // ---------- window size simulation ----------
@@ -1281,6 +1365,8 @@ input[type="date"].input { width: 150px; }
     const ji = joinIssues();
     st.source = { kind: 'done', tip: 'loaded' };
     st.additional = S.additionalApplied ? { kind: 'done', tip: 'applied' } : { kind: 'opt' };
+    const nStacked = S.stacksApplied.length;
+    st.stacked = nStacked ? { kind: 'done', tip: nStacked + (nStacked === 1 ? ' stacked form' : ' stacked forms') } : { kind: 'opt' };
     st.forms = { kind: 'count', n: S.sel.forms.length, tip: S.sel.forms.length + ' selected' };
     st.common = { kind: 'count', n: S.sel.common.length, tip: S.sel.common.length + ' selected' };
     st.formitems = { kind: 'count', n: S.sel.formitems.length, tip: S.sel.formitems.length + ' selected' };
@@ -1384,7 +1470,7 @@ input[type="date"].input { width: 150px; }
 
   // ---------- Source data ----------
   function loadZip() {
-    runBusy(appCr, [['Reading Corelisting ZIP…', 900], ['Reading 18 forms…', 700]], () => {
+    runBusy(appCr, [['Reading Corelisting ZIP…', 900], ['Reading 19 forms…', 700]], () => {
       const keepPage = currentPage;
       S = freshState();
       syncOrder();
@@ -1452,14 +1538,497 @@ input[type="date"].input { width: 150px; }
       S.additionalApplied = true;
       S.dirty = true;
       banner($('#additional-banner'), { kind: 'success', text: files.length + (files.length === 1 ? ' file' : ' files') + ' applied. New forms: SITEACT, LBRANGE.' });
+      publishStacks();
+      renderStackedPage();
       renderStepStates();
       setStatus('Additional input applied', 'success');
     });
   });
 
+  // ---------- Stacked forms ----------
+  // A stacked form puts its members' rows one under another. An item every
+  // member has under the same name is stacked by itself; any other item is
+  // left out unless the user matches it. A match lines up item names (never
+  // splitting a same-name group), so a member added later joins it by name.
+  const ADDITIONAL_ITEMS = { SITEACT: ['SiteNumber', 'ACTDAT'], LBRANGE: ['LBTEST', 'LBORNRLO', 'LBORNRHI'] };
+  const FORM_ROWS = { AE: 300, CM: 214, DD: 3, DLT: 9, DM: 40, DS: 12, DSSVLTFU: 96, EG: 118, ENR: 40, EX: 236, IE: 520, LB: 1180, MH: 151, PE: 160, RS: 88, SV: 412, TL: 134, TU: 61, VS: 302, SITEACT: 48, LBRANGE: 312 };
+  const fmtN = (n) => n.toLocaleString('en-US');
+  function demoStacks() {
+    return [{ id: 1, name: 'VISITS', members: ['SV', 'DSSVLTFU'], matches: [{ name: 'VISITDAT', from: ['SVSTDAT', 'LTFUDAT'] }, { name: 'VISIT', from: ['SVVISIT'] }] }];
+  }
+  function loadedForms() { return FORMS.map((f) => f[0]).concat(S.additionalApplied ? Object.keys(ADDITIONAL_ITEMS) : []); }
+  function itemsOf(f) { return ADDITIONAL_ITEMS[f] || COMMON.concat(FORM_ITEMS[f] || []); }
+  function curStack() { return S.stacks.find((s) => s.id === S.stackSel) || null; }
+  function stacksDirty() { return JSON.stringify(S.stacks) !== JSON.stringify(S.stacksApplied); }
+  function deriveStack(st) {
+    const loaded = loadedForms();
+    const present = st.members.filter((m) => loaded.indexOf(m) !== -1);
+    const matchOf = new Map();
+    st.matches.forEach((mt, i) => mt.from.forEach((n) => matchOf.set(n, i)));
+    const matches = st.matches.map((mt, i) => {
+      const cells = {};
+      present.forEach((m) => { cells[m] = mt.from.find((n) => itemsOf(m).indexOf(n) !== -1) || null; });
+      return { name: mt.name, from: mt.from, i: i, cells: cells };
+    });
+    const groups = new Map();
+    present.forEach((m) => itemsOf(m).forEach((n) => {
+      if (matchOf.has(n)) return;
+      if (!groups.has(n)) groups.set(n, []);
+      groups.get(n).push(m);
+    }));
+    const every = [];
+    const left = [];
+    groups.forEach((ms, n) => (ms.length === present.length ? every : left).push({ name: n, members: ms }));
+    // The stacked form's item order: where each item first appears across the members.
+    const order = [];
+    present.forEach((m) => itemsOf(m).forEach((n) => {
+      const name = matchOf.has(n) ? st.matches[matchOf.get(n)].name : (groups.get(n).length === present.length ? n : null);
+      if (name !== null && order.indexOf(name) === -1) order.push(name);
+    }));
+    return { present: present, every: every, left: left, matches: matches, order: order, rows: present.reduce((a, m) => a + (FORM_ROWS[m] || 0), 0) };
+  }
+  function stackNameIssue(st) {
+    const n = st.name.trim();
+    if (!n) return 'Give it a name.';
+    if (n.indexOf('.') !== -1) return 'A form name can’t contain “.”.';
+    if (loadedForms().indexOf(n) !== -1) return n + ' is already a loaded form.';
+    if (S.stacks.some((o) => o !== st && o.name.trim() === n)) return 'Another stacked form is called ' + n + '.';
+    return '';
+  }
+  function stackMatchIssue(st, d, mt) {
+    const n = mt.name.trim();
+    if (!n) return 'Give the matched item a name.';
+    const taken = d.every.map((g) => g.name).concat(st.matches.filter((o) => o !== mt).map((o) => o.name.trim()));
+    if (taken.indexOf(n) !== -1) return (st.name.trim() || 'This stacked form') + ' already has an item called ' + n + '.';
+    return '';
+  }
+  function stackIssues(st) {
+    const d = deriveStack(st);
+    const out = [];
+    const ni = stackNameIssue(st);
+    if (ni) out.push(ni);
+    if (st.members.length < 2) out.push('Pick at least two members.');
+    st.matches.forEach((mt) => { const mi = stackMatchIssue(st, d, mt); if (mi) out.push(mi); });
+    return out;
+  }
+  function stackSelection() {
+    const keys = Array.from(S.stackRowSel);
+    return {
+      groups: keys.filter((k) => k.indexOf('g:') === 0).map((k) => k.slice(2)),
+      matches: keys.filter((k) => k.indexOf('m:') === 0).map((k) => Number(k.slice(2)))
+    };
+  }
+  function stackMatchProblem(d, groups) {
+    if (!groups.length) return 'Select left-out items first.';
+    const seen = new Map();
+    for (const name of groups) {
+      const g = d.left.find((x) => x.name === name);
+      if (!g) continue;
+      for (const m of g.members) {
+        if (seen.has(m)) return 'Pick at most one item from each member: ' + m + ' has both ' + seen.get(m) + ' and ' + name + '.';
+        seen.set(m, name);
+      }
+    }
+    return '';
+  }
+  // Applied stacked forms are forms like any other: Forms, Form items and Joins list them.
+  function publishStacks() {
+    S.stacksApplied.forEach((st) => {
+      const d = deriveStack(st);
+      FORM_NAME[st.name] = 'Stacked: ' + d.present.join(' + ');
+      FORM_ITEMS[st.name] = d.order.filter((n) => COMMON.indexOf(n) === -1);
+    });
+  }
+  function membersSummary(st) {
+    if (!st.members.length) return '<span class="muted">Pick two or more forms…</span>';
+    const loaded = loadedForms();
+    const names = st.members.map((m) => (loaded.indexOf(m) !== -1 ? esc(m) : '<span class="warn-text">' + esc(m) + ' (not loaded)</span>'));
+    return names.length > 4 ? names.slice(0, 3).join(', ') + ', … <span class="muted">(' + names.length + ' forms)</span>' : names.join(', ');
+  }
+  function renderStacks() {
+    const body = $('#stacks-body');
+    if (!S.stacks.length) {
+      body.innerHTML = '<tr><td colspan="4" class="muted" style="text-align:center">No stacked forms. Use New stacked form to stack two or more forms.</td></tr>';
+      return;
+    }
+    body.innerHTML = S.stacks.map((st) => {
+      const d = deriveStack(st);
+      const issue = st.name.trim() ? stackNameIssue(st) : '';
+      const has = st.members.length > 0;
+      return '<tr data-id="' + st.id + '" aria-selected="' + (st.id === S.stackSel) + '">' +
+        '<td class="cell"><input class="input stack-name' + (issue ? ' invalid' : '') + '" data-id="' + st.id + '" value="' + esc(st.name) + '" placeholder="Name, e.g. VISITS" aria-label="Stacked form name" title="' + esc(issue) + '" spellcheck="false" autocomplete="off"></td>' +
+        '<td class="cell"><button type="button" class="members-btn" data-members="' + st.id + '" aria-haspopup="dialog" aria-expanded="' + (stackPop === st.id) + '"><span class="txt">' + membersSummary(st) + '</span><i data-lucide="chevron-down"></i></button></td>' +
+        '<td class="num">' + (has ? d.every.length + d.matches.length : '') + '</td><td class="num">' + (has ? fmtN(d.rows) : '') + '</td></tr>';
+    }).join('');
+    refreshIcons();
+  }
+  function stackItemsTitle(st) { return 'Items of ' + (st.name.trim() || 'the new stacked form'); }
+  function renderStackItems() {
+    const host = $('#stack-items');
+    const st = curStack();
+    if (!st) {
+      host.innerHTML = '<div class="table-card items-empty"><p>Select a stacked form above, or make one with New stacked form.</p></div>';
+      updateStackButtons();
+      return;
+    }
+    host.innerHTML = '<div class="items-head"><h2 class="section-label" id="stack-items-title">' + esc(stackItemsTitle(st)) + '</h2>' +
+      '<div class="search"><i data-lucide="search"></i><input class="input" type="search" id="stack-q" placeholder="Search items" aria-label="Search items" value="' + esc(S.stackQ) + '"></div>' +
+      '<button type="button" class="btn" id="stack-match">Match</button><button type="button" class="btn" id="stack-unmatch">Unmatch</button></div>' +
+      '<div class="items-body" id="stack-grid"></div>' +
+      '<p class="hint">Select left-out items from different members (Ctrl-click for several), then Match. Match a single item to keep it on its own; double-click does the same.</p>';
+    renderStackGrid();
+  }
+  function stackSection(id, title, count, note, n, open) {
+    return '<tr class="sec" data-sec="' + id + '"><td colspan="' + n + '"><span class="sec-in">' +
+      (id === 'every' ? '<i data-lucide="' + (open ? 'chevron-down' : 'chevron-right') + '"></i>' : '') +
+      '<span>' + title + '</span><span class="pill">' + count + '</span><span class="sec-note">' + note + '</span></span></td></tr>';
+  }
+  function stackNameInput(st, d, mt) {
+    const issue = stackMatchIssue(st, d, st.matches[mt.i]);
+    return '<span class="select mname-wrap"><input class="input mname' + (issue ? ' invalid' : '') + '" data-m="' + mt.i + '" list="stack-dl-' + mt.i + '" value="' + esc(mt.name) + '" aria-label="Name of the matched item" title="' + esc(issue || 'Pick one of the matched names, or type a new one') + '" spellcheck="false" autocomplete="off"><i data-lucide="chevron-down"></i></span>' +
+      '<datalist id="stack-dl-' + mt.i + '">' + mt.from.map((x) => '<option value="' + esc(x) + '"></option>').join('') + '</datalist>';
+  }
+  // How alike two item names are, 0 to 1. Case, spaces and punctuation aside:
+  // one inside the other, or a short form (its letters in order, as Dt in
+  // Date), counts as close; otherwise the share of letters they have in order.
+  function nameSimilarity(a, b) {
+    const x = a.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const y = b.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!x || !y) return 0;
+    if (x === y) return 1;
+    if (x.indexOf(y) !== -1 || y.indexOf(x) !== -1) return 0.9;
+    const short = x.length <= y.length ? x : y;
+    const long = short === x ? y : x;
+    let k = 0;
+    for (let i = 0; i < long.length && k < short.length; i++) if (long[i] === short[k]) k++;
+    if (k === short.length && short[0] === long[0]) return 0.8;
+    const row = new Array(y.length + 1).fill(0);
+    for (let i = 1; i <= x.length; i++) {
+      let diag = 0;
+      for (let j = 1; j <= y.length; j++) {
+        const above = row[j];
+        row[j] = x[i - 1] === y[j - 1] ? diag + 1 : Math.max(row[j], row[j - 1]);
+        diag = above;
+      }
+    }
+    return (2 * row[y.length]) / (x.length + y.length);
+  }
+  const SIMILAR_AT = 0.6;
+  // What a member's cell in a match offers: its current item, then the
+  // left-out items it may take (never one that would give another member a
+  // second item), the names most like the match's first, the rest in file order.
+  function stackChoices(d, mt, m) {
+    const current = mt.cells[m] || null;
+    // Compared with the match's name and what the other members give it (not
+    // this member's own items, which often share its form's prefix).
+    const refs = [mt.name].concat(d.present.filter((p) => p !== m && mt.cells[p]).map((p) => mt.cells[p]));
+    const own = itemsOf(m);
+    const offered = d.left
+      .filter((g) => g.members.indexOf(m) !== -1)
+      .filter((g) => g.members.every((p) => p === m || !mt.cells[p] || mt.cells[p] === current))
+      .map((g) => ({ name: g.name, pos: own.indexOf(g.name), score: Math.max.apply(null, refs.map((r) => nameSimilarity(g.name, r))) }));
+    return {
+      current: current,
+      similar: offered.filter((o) => o.score >= SIMILAR_AT).sort((a, b) => b.score - a.score || a.pos - b.pos).map((o) => o.name),
+      others: offered.filter((o) => o.score < SIMILAR_AT).sort((a, b) => a.pos - b.pos).map((o) => o.name)
+    };
+  }
+  function stackMemberPick(d, mt, m) {
+    const ch = stackChoices(d, mt, m);
+    const sharing = ch.current ? d.present.filter((p) => p !== m && mt.cells[p] === ch.current) : [];
+    const clearTip = sharing.length ? 'Choosing — also clears ' + sharing.join(', ') + ', which gives ' + ch.current + ' too.' : '';
+    const opt = (value, label, title) => '<option value="' + esc(value) + '"' + (value === (ch.current || '') ? ' selected' : '') + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(label) + '</option>';
+    let options = opt('', '—', clearTip);
+    if (ch.current) options += opt(ch.current, ch.current);
+    if (ch.similar.length) options += '<optgroup label="Similar names">' + ch.similar.map((x) => opt(x, x)).join('') + '</optgroup>';
+    if (ch.others.length) options += '<optgroup label="Other items">' + ch.others.map((x) => opt(x, x)).join('') + '</optgroup>';
+    return '<span class="select"><select class="input member-pick" data-m="' + mt.i + '" data-member="' + esc(m) + '" aria-label="' + esc('Item ' + m + ' gives ' + mt.name) + '"' + (clearTip ? ' title="' + esc(clearTip) + '"' : '') + '>' + options + '</select><i data-lucide="chevron-down"></i></span>';
+  }
+  function renderStackGrid() {
+    const box = $('#stack-grid');
+    const st = curStack();
+    if (!box || !st) return;
+    const d = deriveStack(st);
+    if (d.present.length < 2) {
+      box.innerHTML = '<div class="table-card items-empty"><p>Pick two or more forms in Members to see how their items line up.</p></div>';
+      refreshIcons();
+      updateStackButtons();
+      return;
+    }
+    const q = S.stackQ.trim().toLowerCase();
+    const hit = (names) => !q || names.some((n) => n.toLowerCase().indexOf(q) !== -1);
+    const cols = d.present;
+    const n = cols.length + 1;
+    const many = cols.length > 4;
+    const c = many ? ' class="c"' : '';
+    const mark = '<td class="mark' + (many ? ' c' : '') + '"><i data-lucide="check"></i></td>';
+    let h = '<div class="table-card stack-grid-card"><table class="grid-table stack-grid" style="min-width:' + (232 + cols.length * (many ? 92 : 140)) + 'px">' +
+      '<colgroup><col style="width: 232px">' + cols.map(() => '<col>').join('') + '</colgroup><thead><tr><th>Stacked item</th>' +
+      cols.map((m) => '<th' + c + ' title="' + esc(m + ' · ' + fmtN(FORM_ROWS[m] || 0) + ' rows') + '">' + esc(m) + (many ? '' : '<span class="rows">' + fmtN(FORM_ROWS[m] || 0) + ' rows</span>') + '</th>').join('') +
+      '</tr></thead><tbody>';
+    h += stackSection('every', 'In every member', d.every.length, 'Same name in every member; rename them on Order & rename.', n, S.stackEveryOpen);
+    if (S.stackEveryOpen) {
+      d.every.filter((g) => hit([g.name])).forEach((g) => { h += '<tr class="every"><td>' + esc(g.name) + '</td>' + cols.map(() => mark).join('') + '</tr>'; });
+    }
+    h += stackSection('matched', 'Matched', d.matches.length, 'You name these: pick one of the names or type a new one.', n, true);
+    if (!d.matches.length) h += '<tr class="note"><td colspan="' + n + '">No matches yet. Select left-out items below, then Match.</td></tr>';
+    d.matches.filter((mt) => hit([mt.name].concat(mt.from))).forEach((mt) => {
+      const key = 'm:' + mt.i;
+      h += '<tr class="matched" data-key="' + key + '" aria-selected="' + S.stackRowSel.has(key) + '"><td class="cell">' + stackNameInput(st, d, mt) + '</td>' +
+        cols.map((m) => '<td class="cell' + (many ? ' c' : '') + '">' + stackMemberPick(d, mt, m) + '</td>').join('') + '</tr>';
+    });
+    h += stackSection('left', 'Left out', d.left.length, 'Not in the stacked form unless you match them.', n, true);
+    if (!d.left.length) h += '<tr class="note"><td colspan="' + n + '">Nothing left out.</td></tr>';
+    d.left.filter((g) => hit([g.name])).forEach((g) => {
+      const key = 'g:' + g.name;
+      h += '<tr class="left" data-key="' + esc(key) + '" aria-selected="' + S.stackRowSel.has(key) + '"><td>' + esc(g.name) + '</td>' +
+        cols.map((m) => (g.members.indexOf(m) !== -1 ? mark : '<td></td>')).join('') + '</tr>';
+    });
+    box.innerHTML = h + '</tbody></table></div>';
+    refreshIcons();
+    updateStackButtons();
+    if (stackFocus !== null) {
+      const input = $('#stack-items input.mname[data-m="' + stackFocus + '"]');
+      stackFocus = null;
+      if (input) { input.scrollIntoView({ block: 'nearest' }); input.focus(); input.select(); }
+    }
+  }
+  function updateStackButtons() {
+    const st = curStack();
+    $('#stack-remove').disabled = !st;
+    const matchBtn = $('#stack-match');
+    const unmatchBtn = $('#stack-unmatch');
+    if (!matchBtn || !unmatchBtn) return;
+    const d = st ? deriveStack(st) : null;
+    if (!d || d.present.length < 2) { matchBtn.disabled = true; unmatchBtn.disabled = true; return; }
+    const sel = stackSelection();
+    const why = sel.matches.length ? 'Select only left-out items to match them.' : stackMatchProblem(d, sel.groups);
+    matchBtn.disabled = Boolean(why);
+    matchBtn.title = why || (sel.groups.length === 1 ? 'Keep ' + sel.groups[0] + ' on its own' : 'Match ' + sel.groups.join(' with ') + ' into one stacked item');
+    unmatchBtn.disabled = !(sel.matches.length && !sel.groups.length);
+    unmatchBtn.title = unmatchBtn.disabled ? 'Select matched items to unmatch them' : 'Put their items back in Left out';
+  }
+  function renderStackBanners() {
+    banner($('#stacked-state'), S.loaded && stacksDirty() ? { kind: 'info', text: 'Not applied yet. Apply to report to use your changes.', dismiss: false } : null);
+  }
+  function renderStackedPage() {
+    renderStackBanners();
+    renderStacks();
+    renderStackItems();
+    if (stackPop !== null) { renderStackPop(); placeStackPop(); }
+  }
+  function selectStack(id) {
+    if (S.stackSel === id) return;
+    S.stackSel = id;
+    S.stackRowSel = new Set();
+    S.stackQ = '';
+    $$('#stacks-body tr[data-id]').forEach((tr) => tr.setAttribute('aria-selected', String(Number(tr.dataset.id) === id)));
+    renderStackItems();
+  }
+  function doStackMatch() {
+    const st = curStack();
+    const d = deriveStack(st);
+    const sel = stackSelection();
+    if (sel.matches.length || stackMatchProblem(d, sel.groups)) return;
+    const names = d.left.map((g) => g.name).filter((n) => sel.groups.indexOf(n) !== -1);
+    st.matches.push({ name: names[0], from: names });
+    S.stackRowSel = new Set(['m:' + (st.matches.length - 1)]);
+    S.stackQ = '';
+    stackFocus = st.matches.length - 1;
+    renderStackedPage();
+  }
+  function doStackUnmatch() {
+    const st = curStack();
+    const drop = stackSelection().matches;
+    if (!drop.length) return;
+    st.matches = st.matches.filter((mt, i) => drop.indexOf(i) === -1);
+    S.stackRowSel = new Set();
+    renderStackedPage();
+  }
+  // Pick (or clear: value '') a member's item in a match. A match holds names,
+  // so the pick or clear moves every member with that name; a match left
+  // with no item goes, as with Unmatch.
+  function setStackMatchItem(idx, member, value) {
+    const st = curStack();
+    const mt = deriveStack(st).matches[idx];
+    const match = st.matches[idx];
+    let from = match.from.filter((n) => n !== mt.cells[member]);
+    if (value) from = from.concat([value]);
+    if (from.length) st.matches[idx] = { name: match.name, from: from };
+    else st.matches.splice(idx, 1);
+    S.stackRowSel = new Set();
+    renderStackedPage();
+  }
+  function applyStacks() {
+    const problems = [];
+    S.stacks.forEach((st) => stackIssues(st).forEach((p) => problems.push((st.name.trim() || 'New stacked form') + ': ' + p)));
+    if (problems.length) {
+      banner($('#stacked-banner'), { kind: 'error', text: 'Not applied. Fix ' + (problems.length === 1 ? 'this problem' : 'these ' + problems.length + ' problems') + ' first, then apply again.', details: problems.join('\n') });
+      setStatus('Stacked forms not applied', 'error');
+      return;
+    }
+    runBusy(appCr, [['Stacking forms…', 700]], () => {
+      S.stacksApplied.forEach((st) => { delete FORM_ITEMS[st.name]; delete FORM_NAME[st.name]; });
+      S.stacksApplied = JSON.parse(JSON.stringify(S.stacks));
+      publishStacks();
+      const forms = DUAL.forms.all();
+      S.sel.forms = S.sel.forms.filter((f) => forms.indexOf(f) !== -1);
+      onSelectionChanged('forms');
+      const parts = S.stacksApplied.map((st) => { const d = deriveStack(st); return st.name + ' (' + fmtN(d.rows) + ' rows from ' + d.present.join(', ') + ')'; });
+      banner($('#stacked-banner'), { kind: 'success', text: parts.length ? 'Applied. Stacked forms: ' + parts.join('; ') + '.' : 'The stacked forms were removed from the report.' });
+      renderStackedPage();
+      setStatus(parts.length + (parts.length === 1 ? ' stacked form applied' : ' stacked forms applied'), 'success');
+    });
+  }
+  // The Members checklist: loaded forms with tick boxes (stacked forms can't be members).
+  function placeStackPop() {
+    const btn = stackPop === null ? null : $('.members-btn[data-members="' + stackPop + '"]');
+    if (!btn) return;
+    const pop = $('#stack-pop');
+    const pr = $('#app-cr .page[data-page="stacked"]').getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    pop.style.left = Math.round((br.left - pr.left) / scale) + 'px';
+    pop.style.top = Math.round((br.bottom - pr.top) / scale + 4) + 'px';
+    pop.style.width = Math.max(300, Math.round(br.width / scale)) + 'px';
+  }
+  function renderStackPop() {
+    const st = S.stacks.find((s) => s.id === stackPop);
+    if (!st) { closePopovers(); return; }
+    const q = stackPopQ.trim().toLowerCase();
+    const ids = loadedForms().filter((f) => !q || f.toLowerCase().indexOf(q) !== -1 || (FORM_NAME[f] || '').toLowerCase().indexOf(q) !== -1);
+    $('#stack-pop-list').innerHTML = ids.map((f) => {
+      const on = st.members.indexOf(f) !== -1;
+      return '<li class="list-item" role="option" data-form="' + esc(f) + '" aria-selected="' + on + '"><input type="checkbox" tabindex="-1"' + (on ? ' checked' : '') + '>' +
+        '<span class="code">' + esc(f) + '</span><span class="name">' + esc(FORM_NAME[f] || 'Additional input') + '</span><span class="meta">' + fmtN(FORM_ROWS[f] || 0) + ' rows</span></li>';
+    }).join('') || '<li class="list-empty">No forms match.</li>';
+    $('#stack-pop-foot').textContent = st.members.length + ' picked. Stacked forms can’t be members.';
+  }
+  function openStackPop(id) {
+    closePopovers();
+    stackPop = id;
+    stackPopQ = '';
+    $('#stack-pop-q').value = '';
+    $('#stack-pop').hidden = false;
+    renderStacks();
+    placeStackPop();
+    renderStackPop();
+    $('#stack-pop-q').focus();
+  }
+  $('#stack-new').addEventListener('click', () => {
+    const st = { id: stackNextId++, name: '', members: [], matches: [] };
+    S.stacks.push(st);
+    S.stackSel = st.id;
+    S.stackRowSel = new Set();
+    S.stackQ = '';
+    renderStackedPage();
+    const input = $('.stack-name[data-id="' + st.id + '"]');
+    if (input) input.focus();
+  });
+  $('#stack-remove').addEventListener('click', () => {
+    const i = S.stacks.findIndex((s) => s.id === S.stackSel);
+    if (i < 0) return;
+    S.stacks.splice(i, 1);
+    S.stackSel = S.stacks.length ? S.stacks[Math.min(i, S.stacks.length - 1)].id : null;
+    S.stackRowSel = new Set();
+    closePopovers();
+    renderStackedPage();
+  });
+  $('#stack-apply').addEventListener('click', applyStacks);
+  $('#stacks-body').addEventListener('click', (e) => {
+    const btn = e.target.closest('.members-btn');
+    if (btn) {
+      e.stopPropagation();
+      const id = Number(btn.dataset.members);
+      selectStack(id);
+      if (stackPop === id) closePopovers(); else openStackPop(id);
+      return;
+    }
+    const tr = e.target.closest('tr[data-id]');
+    if (tr && !e.target.closest('input')) selectStack(Number(tr.dataset.id));
+  });
+  $('#stacks-body').addEventListener('focusin', (e) => {
+    const input = e.target.closest('.stack-name');
+    if (input) selectStack(Number(input.dataset.id));
+  });
+  $('#stacks-body').addEventListener('input', (e) => {
+    const input = e.target.closest('.stack-name');
+    if (!input) return;
+    const st = S.stacks.find((s) => s.id === Number(input.dataset.id));
+    st.name = input.value;
+    $$('#stacks-body .stack-name').forEach((other) => {
+      const o = S.stacks.find((s) => s.id === Number(other.dataset.id));
+      const issue = o.name.trim() ? stackNameIssue(o) : '';
+      other.classList.toggle('invalid', Boolean(issue));
+      other.title = issue;
+    });
+    const title = $('#stack-items-title');
+    if (title && st.id === S.stackSel) title.textContent = stackItemsTitle(st);
+    renderStackBanners();
+  });
+  $('#stack-items').addEventListener('click', (e) => {
+    if (e.target.closest('#stack-match')) { doStackMatch(); return; }
+    if (e.target.closest('#stack-unmatch')) { doStackUnmatch(); return; }
+    if (e.target.closest('tr.sec[data-sec="every"]')) { S.stackEveryOpen = !S.stackEveryOpen; renderStackGrid(); return; }
+    const tr = e.target.closest('tr[data-key]');
+    if (!tr || e.target.closest('input, select')) return;
+    const key = tr.dataset.key;
+    if (e.ctrlKey || e.metaKey) { if (S.stackRowSel.has(key)) S.stackRowSel.delete(key); else S.stackRowSel.add(key); }
+    else S.stackRowSel = new Set([key]);
+    renderStackGrid();
+  });
+  $('#stack-items').addEventListener('dblclick', (e) => {
+    const tr = e.target.closest('tr.left[data-key]');
+    if (!tr) return;
+    S.stackRowSel = new Set([tr.dataset.key]);
+    doStackMatch();
+  });
+  $('#stack-items').addEventListener('change', (e) => {
+    const pick = e.target.closest('select.member-pick');
+    if (pick) setStackMatchItem(Number(pick.dataset.m), pick.dataset.member, pick.value);
+  });
+  $('#stack-items').addEventListener('input', (e) => {
+    if (e.target.id === 'stack-q') { S.stackQ = e.target.value; renderStackGrid(); return; }
+    const input = e.target.closest('input.mname');
+    if (!input) return;
+    const st = curStack();
+    st.matches[Number(input.dataset.m)].name = input.value;
+    const d = deriveStack(st);
+    $$('#stack-items input.mname').forEach((other) => {
+      const issue = stackMatchIssue(st, d, st.matches[Number(other.dataset.m)]);
+      other.classList.toggle('invalid', Boolean(issue));
+      other.title = issue || 'Pick one of the matched names, or type a new one';
+    });
+    renderStackBanners();
+  });
+  $('#stack-items').addEventListener('focusin', (e) => {
+    const input = e.target.closest('input.mname');
+    if (!input) return;
+    const key = 'm:' + input.dataset.m;
+    if (S.stackRowSel.size === 1 && S.stackRowSel.has(key)) return;
+    S.stackRowSel = new Set([key]);
+    $$('#stack-items tr[data-key]').forEach((tr) => tr.setAttribute('aria-selected', String(S.stackRowSel.has(tr.dataset.key))));
+    updateStackButtons();
+  });
+  $('#stack-pop-q').addEventListener('input', (e) => { stackPopQ = e.target.value; renderStackPop(); });
+  $('#stack-pop-list').addEventListener('click', (e) => {
+    const li = e.target.closest('[data-form]');
+    const st = S.stacks.find((s) => s.id === stackPop);
+    if (!li || !st) return;
+    // The list is redrawn below, so the clicked row leaves the page; stop the
+    // window-wide handler from reading that as a click outside the popover.
+    e.preventDefault();
+    e.stopPropagation();
+    const f = li.dataset.form;
+    if (st.members.indexOf(f) !== -1) st.members = st.members.filter((m) => m !== f);
+    else st.members.push(f);
+    S.stackRowSel = new Set();
+    renderStackedPage();
+  });
+  window.addEventListener('resize', placeStackPop);
+
   // ---------- dual list pickers ----------
   const DUAL = {
-    forms: { all: () => FORMS.map((f) => f[0]), avail: 'Available forms', chosen: 'Selected forms', search: 'Search forms', noun: 'forms' },
+    forms: { all: () => FORMS.map((f) => f[0]).concat(S.stacksApplied.map((s) => s.name)), avail: 'Available forms', chosen: 'Selected forms', search: 'Search forms', noun: 'forms' },
     common: { all: () => COMMON.slice(), avail: 'Available items', chosen: 'Selected items', search: 'Search common items', noun: 'items' },
     formitems: { all: () => formItemsFor(S.sel.forms), avail: 'Available items', chosen: 'Selected items', search: 'Search form items', noun: 'items' }
   };
@@ -1810,7 +2379,7 @@ input[type="date"].input { width: 150px; }
   $$('[data-demo]').forEach((b) => b.addEventListener('click', () => {
     const app = currentApp === 'cr' ? appCr : appSafety;
     const which = b.dataset.demo;
-    if (which === 'busy') runBusy(app, [['Reading Corelisting ZIP…', 1200], ['Reading 18 forms…', 900]]);
+    if (which === 'busy') runBusy(app, [['Reading Corelisting ZIP…', 1200], ['Reading 19 forms…', 900]]);
     if (which === 'toast') toast(app, 'Settings saved', 'success');
     if (which === 'error') {
       if (currentApp === 'cr') {
@@ -1838,9 +2407,11 @@ input[type="date"].input { width: 150px; }
     updateExportState();
   }
   function renderEverything() {
+    publishStacks();
     ['forms', 'common', 'formitems'].forEach(renderDualLists);
     renderDerived();
     renderFiles();
+    renderStackedPage();
     banner($('#export-banner'), null);
     updateExportState();
     elideAll();

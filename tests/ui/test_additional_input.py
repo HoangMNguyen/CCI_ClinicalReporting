@@ -15,6 +15,7 @@ from clinical_reporting.additional_names import Match, SavedFileNames
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.pages import additional_input as additional_input_module
+from clinical_reporting.ui.pages._common import CellComboBox
 from clinical_reporting.ui.pages.additional_input import (
     SAVED_NAMES_COLUMN,
     AdditionalInputMixin,
@@ -859,7 +860,7 @@ def test_a_window_without_this_page_ignores_saved_names():
 
 
 def test_the_wheel_only_changes_a_focused_dropdown(qapp):
-    combo = additional_input_module._SavedNamesComboBox()
+    combo = CellComboBox()
     combo.addItems(["None", "LAB", "PK"])
     wheel = QWheelEvent(
         QPointF(5, 5),

@@ -46,6 +46,29 @@ python -m clinical_reporting
     message after the pick, a standing banner, and the Apply result list
     them ("lab.csv has no Visit Dt"); renaming a column to the saved name
     by hand clears them.
+- On the Stacked forms page, put the rows of two or more loaded forms
+  (Corelisting forms or applied additional inputs, never another stacked
+  form) one under another as a new form. It then goes through every later
+  step like any form; its members stay usable on their own.
+  - An item every member has under the same name is stacked by itself; any
+    other item is left out unless you match it. A match lines up left-out
+    items from different members (Event Date with Collection Date), or keeps
+    a single one, under one of their names or a new one.
+  - Each member's cell in a matched row is a dropdown: "—" (gives nothing),
+    its current item, then its left-out items, names like the match's first
+    (type to filter). Items of one name move together: picking one brings in
+    every member's item of that name, and clearing one takes them all back
+    to Left out. A match left with no item goes.
+  - A stacked form or match name Apply would refuse (taken, a loaded form's,
+    with a dot, or a blank match name) turns red as you type, with the reason
+    as its tooltip.
+  - Apply to report adds the stacked forms. A saved setting keeps the applied
+    ones and rebuilds them whenever the data is loaded or changes (a new ZIP
+    starts a new report, so apply them again). A member or matched item the
+    data lacks is warned about. A stacked form named like a loaded form, or a
+    match that later data makes ambiguous (a member with two of its items, a
+    match named like an item every member now has), stops the export until it
+    is fixed on the page.
 - The steps sit in a sidebar with status badges. Reading the ZIP, building
   the preview, and exporting run in the background, and a ZIP or additional
   file that can't be read, or clashing form names, are explained on the page.
@@ -59,7 +82,7 @@ Keyboard shortcuts:
 |---|---|
 | Ctrl+Tab / Ctrl+PgDown, Ctrl+Shift+Tab / Ctrl+PgUp | Next / previous step |
 | Ctrl+\\ | Show or hide the sidebar |
-| Ctrl+F | Search (Forms, Common items, Form items, Order & rename) |
+| Ctrl+F | Search (Forms, Common items, Form items, Stacked forms, Order & rename) |
 | F5 | Build the preview again (Preview & export) |
 | Ctrl+E | Export to Excel (Preview & export) |
 | Ctrl+S | Save the setting (Preview & export) |
@@ -209,6 +232,45 @@ write_csv(df, "report.csv")  # CSV on disk
 xlsx_bytes = dataframe_to_xlsx_bytes(df)  # in-memory bytes (e.g. stream over HTTP)
 ```
 
+### Stacked forms
+
+```python
+from clinical_reporting.stacking import (
+    Match,
+    StackedForm,
+    layout,
+    match_choices,
+    set_match_item,
+)
+
+visits = StackedForm(
+    "VISITS",
+    members=("SV", "DSSVLTFU"),
+    matches=(
+        Match("Visit Name", {"SV": "Event Group Name", "DSSVLTFU": "Event Label"}),
+    ),
+)
+report.set_stacked_forms([visits])  # rebuilds report.data; VISITS is a form now
+lined_up = layout(visits, report.loaded_data)  # every / matched / left_out, item order
+# What SV's cell in the first match offers, then SV giving Visit Status instead.
+choices = match_choices(lined_up, report.loaded_data, 0, "SV")
+visits = set_match_item(visits, report.loaded_data, 0, "SV", "Visit Status")
+```
+
+`report.loaded_data` keeps the forms as loaded; `report.data` adds the stacked
+forms built from them, again whenever `set_data` runs.
+`clinical_reporting.session.apply_stacked_forms(report, stacked_forms)` does
+the same while keeping the selections that still exist. `report.stacked_build`
+says what building them found: stacked forms not built because a loaded form
+has their name (also the validation issue `stacked_form_name_clash`, which
+`create_report()` refuses); matches the data makes ambiguous since they were
+applied (`conflicts`, the validation issue `stacked_form_conflict`, refused
+the same way); and members or matched items the data lacks or replaces
+(`reconcile_with_current_data()` reports those as missing forms and items).
+`stacking.problems(stacked_forms, loaded_form_names, data)` is the Apply
+check, one line per problem; `name_problem` and `match_name_problem` word one
+name's problem the same way.
+
 ### Persisting a saved setting
 
 A saved setting built in code can be written back to the same JSON the
@@ -247,6 +309,15 @@ the rest of the setting still loads. Saving keeps the names of the files
 listed at the time, as the Additional input page shows them: re-saving a
 setting in a run without some of its files drops their names, just as the
 forms those files would bring drop out of the setting.
+
+It may also hold `stacked_forms`: the stacked forms applied to the report,
+each with its name, members and matches, a match keeping the item each member
+gave it (`clinical_reporting.stacking`). Only applied stacked forms are saved;
+the key is written only when there are some, so other settings save exactly as
+before. Loading a setting rebuilds its stacked forms before reading its
+selections. Versions before 2.16 ignore the key: a setting that selects a
+stacked form reports it as a missing form there, and re-saving it there drops
+the stacked forms. A damaged entry is skipped and logged.
 
 The column order is `selected_items_order_list`, with `order_list_customized`
 set once the Order & rename page changed it (a setting saved before the flag
@@ -370,6 +441,7 @@ src/clinical_reporting/
   steps.py                     # the steps: titles, badges, and what they say
   data.py                      # Corelisting ZIP, CSV, Excel, additional inputs (paths or uploads)
   additional_names.py          # additional inputs' form/column names kept with a saved setting
+  stacking.py                  # stacked forms: how they line up, building them, their settings key
   export.py                    # xlsx/csv/bytes rendering
   telemetry.py                 # reports saves to the usage counter (off unless configured)
   ui/                          # PySide6 desktop front end
@@ -380,12 +452,13 @@ src/clinical_reporting/
     pages/                     # one module per step: its widgets and behavior mixin
       source_data.py           # Corelisting ZIP, cut-off date, and saved settings
       additional_input.py      # additional inputs, form and column names, saved names
+      stacked_forms.py         # stacked forms: members, matches, and Apply
       selection.py             # forms, common items, and form items
       filters.py               # filters and comparisons
       joins.py                 # join order, type, and items
       order_rename.py          # output order and renames
       preview_export.py        # preview, export, and save a setting
-      _common.py               # the table helper the pages share
+      _common.py               # what the pages share: the table helper, the cell combo box
     preview.py                 # python -m clinical_reporting.ui.preview
     sample_data.py             # made-up DEMO01 data for previews and UI tests
     base.py                    # window-level mixin: shared state, refresh coordinators, helpers

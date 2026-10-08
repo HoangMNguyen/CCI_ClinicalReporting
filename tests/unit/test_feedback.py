@@ -39,3 +39,10 @@ def test_short_list_names_a_few_and_counts_the_rest():
     assert feedback.short_list([f"f{n}" for n in range(8)], shown=3) == (
         "f0, f1, f2 and 5 more"
     )
+
+
+def test_and_list_joins_names_into_a_sentence():
+    assert feedback.and_list([]) == ""
+    assert feedback.and_list(["SV"]) == "SV"
+    assert feedback.and_list(["SV", "DS"]) == "SV and DS"
+    assert feedback.and_list(iter(["SV", "DS", "LB"])) == "SV, DS and LB"

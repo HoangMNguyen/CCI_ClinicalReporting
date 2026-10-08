@@ -145,6 +145,10 @@ QComboBox[invalid="true"] {
     font-weight: 600;
     border-color: ${danger};
 }
+QLineEdit[invalid="true"] {
+    color: ${danger_text};
+    border-color: ${danger};
+}
 QComboBox QAbstractItemView {
     background: ${bg_surface};
     border: 1px solid ${border_card};

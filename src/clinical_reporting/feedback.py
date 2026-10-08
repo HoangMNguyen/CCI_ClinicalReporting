@@ -69,6 +69,14 @@ def one_line(text: str) -> str:
     return " ".join(ended + lines[-1:])
 
 
+def and_list(names: Iterable[str]) -> str:
+    """*names* in a sentence: "a", "a and b", "a, b and c"."""
+    names = list(names)
+    if len(names) <= 1:
+        return "".join(names)
+    return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
 def short_list(names: Iterable[str], shown: int = 5) -> str:
     """*names* joined by commas, at most *shown* of them: "a, b and 3 more".
 
@@ -83,6 +91,7 @@ def short_list(names: Iterable[str], shown: int = 5) -> str:
 __all__ = [
     "KINDS",
     "Message",
+    "and_list",
     "error",
     "info",
     "one_line",

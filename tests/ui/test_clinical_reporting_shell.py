@@ -29,7 +29,7 @@ def _toasts(window):
 
 
 def test_badge_states_are_ones_the_sidebar_draws():
-    assert {steps.NONE, steps.DONE, steps.ERROR, steps.OPTIONAL} <= {
+    assert {steps.NONE, steps.DONE, steps.WARNING, steps.ERROR, steps.OPTIONAL} <= {
         state.value for state in StepState
     }
 
@@ -71,6 +71,7 @@ def test_a_title_with_an_ampersand_gets_no_shortcut(sample_window):
 def test_badges_follow_the_sample_report(sample_window):
     assert _badge(sample_window, "source") == (StepState.DONE, None)
     assert _badge(sample_window, "additional") == (StepState.OPTIONAL, None)
+    assert _badge(sample_window, "stacked") == (StepState.OPTIONAL, None)
     assert _badge(sample_window, "forms") == (StepState.NONE, 3)
     assert _badge(sample_window, "common") == (StepState.NONE, 2)
     assert _badge(sample_window, "filters") == (StepState.NONE, 1)
@@ -174,6 +175,7 @@ def test_a_window_without_data_says_so(empty_window):
     assert empty_window.windowTitle() == "Clinical Reporting"
     assert shell.status_bar.summary().startswith("No data loaded")
     assert _badge(empty_window, "additional") == (StepState.OPTIONAL, None)
+    assert _badge(empty_window, "stacked") == (StepState.NONE, None)
     assert _badge(empty_window, "forms") == (StepState.NONE, None)
     assert shell.display_button is None  # No theme manager given.
 
