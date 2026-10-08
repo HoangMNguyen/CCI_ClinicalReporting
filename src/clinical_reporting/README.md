@@ -59,6 +59,9 @@ python -m clinical_reporting
     (type to filter). Items of one name move together: picking one brings in
     every member's item of that name, and clearing one takes them all back
     to Left out. A match left with no item goes.
+  - A stacked form or match name Apply would refuse (taken, a loaded form's,
+    with a dot, or a blank match name) turns red as you type, with the reason
+    as its tooltip.
   - Apply to report adds the stacked forms. A saved setting keeps the applied
     ones and rebuilds them whenever the data is loaded or changes (a new ZIP
     starts a new report, so apply them again). A member or matched item the
@@ -264,6 +267,9 @@ has their name (also the validation issue `stacked_form_name_clash`, which
 applied (`conflicts`, the validation issue `stacked_form_conflict`, refused
 the same way); and members or matched items the data lacks or replaces
 (`reconcile_with_current_data()` reports those as missing forms and items).
+`stacking.problems(stacked_forms, loaded_form_names, data)` is the Apply
+check, one line per problem; `name_problem` and `match_name_problem` word one
+name's problem the same way.
 
 ### Persisting a saved setting
 
@@ -309,9 +315,9 @@ each with its name, members and matches, a match keeping the item each member
 gave it (`clinical_reporting.stacking`). Only applied stacked forms are saved;
 the key is written only when there are some, so other settings save exactly as
 before. Loading a setting rebuilds its stacked forms before reading its
-selections. Versions without stacked forms ignore the key: a setting that
-selects a stacked form reports it as a missing form there, and re-saving it
-there drops the stacked forms. A damaged entry is skipped and logged.
+selections. Versions before 2.16 ignore the key: a setting that selects a
+stacked form reports it as a missing form there, and re-saving it there drops
+the stacked forms. A damaged entry is skipped and logged.
 
 The column order is `selected_items_order_list`, with `order_list_customized`
 set once the Order & rename page changed it (a setting saved before the flag
@@ -452,7 +458,7 @@ src/clinical_reporting/
       joins.py                 # join order, type, and items
       order_rename.py          # output order and renames
       preview_export.py        # preview, export, and save a setting
-      _common.py               # the table helper the pages share
+      _common.py               # what the pages share: the table helper, the cell combo box
     preview.py                 # python -m clinical_reporting.ui.preview
     sample_data.py             # made-up DEMO01 data for previews and UI tests
     base.py                    # window-level mixin: shared state, refresh coordinators, helpers
