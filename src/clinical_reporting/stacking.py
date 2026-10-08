@@ -290,7 +290,11 @@ def build(stacked: StackedForm, data: Mapping[str, pd.DataFrame]) -> pd.DataFram
     order; columns in item order (:func:`layout`), blank where a member gives
     nothing. Values are kept as they are.
     """
-    plan = layout(stacked, data)
+    return _build(layout(stacked, data), data)
+
+
+def _build(plan: StackLayout, data: Mapping[str, pd.DataFrame]) -> pd.DataFrame:
+    """:func:`build` over the stacked form's *plan* (its :func:`layout`)."""
     every = [group.name for group in plan.every]
     parts = []
     for member in plan.present:
@@ -356,7 +360,7 @@ def build_all(
         found = _conflicts(stacked, plan)
         if found:
             conflicts[stacked.name] = found
-        forms[stacked.name] = build(stacked, data)
+        forms[stacked.name] = _build(plan, data)
     return Built(
         forms, tuple(clashes), missing_members, missing_items, conflicts, replaced
     )
