@@ -4,8 +4,9 @@ The page keeps its own stacked forms (the drafts) until "Apply to report":
 :class:`StackedFormsMixin` edits them with :mod:`clinical_reporting.stacking`
 (which decides how the items line up), checks them with
 :func:`~clinical_reporting.stacking.problems` on Apply, and hands them to
-:func:`~clinical_reporting.session.apply_stacked_forms`. The wording is in
-:mod:`clinical_reporting.steps`.
+:func:`~clinical_reporting.session.apply_stacked_forms`. Messages and
+warnings are worded in :mod:`clinical_reporting.steps`; the page's own
+labels and hints are here.
 
 - The Stacked forms table: Name (typed in place) | Members (a searchable
   checklist of the loaded forms; members keep the order they were ticked) |
@@ -21,8 +22,9 @@ The page keeps its own stacked forms (the drafts) until "Apply to report":
   member's item at a time (:func:`~clinical_reporting.stacking.set_match_item`).
 - Two banners: what Apply did, and a standing one for the page's state: the
   drafts differ from the report's ("Not applied yet"), a new Corelisting ZIP
-  started a new report (apply again), or the report's stacked forms lack a
-  member or a matched item.
+  started a new report (apply again), data changed since Apply makes a match
+  ambiguous (an error that stops the export), or the report's stacked forms
+  lack a member or a matched item.
 
 Loading a saved setting (when it changes the report's stacked forms) replaces
 the drafts with the report's; a new ZIP, or removing it, keeps them and asks
@@ -119,11 +121,6 @@ NOTHING = "—"
 SIMILAR_NAMES = "Similar names"
 OTHER_ITEMS = "Other items"
 
-# Icons cci_ui bundles for its own controls (tick boxes, combo arrows).
-_TICK_ICON = "check"
-_OPEN_ICON = "chevron-down"
-_CLOSED_ICON = "chevron-right"
-
 # What a grid row is (KIND_ROLE), and its key (KEY_ROLE): the section, the
 # match's index, or the item name.
 SECTION = "section"
@@ -140,8 +137,6 @@ NOTE_ROLE = Qt.ItemDataRole.UserRole + 3
 OPEN_ROLE = Qt.ItemDataRole.UserRole + 4
 #: A member cell with a tick: the member has the item.
 TICK_ROLE = Qt.ItemDataRole.UserRole + 5
-#: A name drawn in the secondary color (left-out items).
-MUTED_ROLE = Qt.ItemDataRole.UserRole + 6
 
 
 class _NameEdit(QLineEdit):
@@ -248,7 +243,7 @@ class _MatchItemBox(CellComboBox):
 
 
 class _GridDelegate(QStyledItemDelegate):
-    """Draws the items grid: section and note rows, ticks, muted text.
+    """Draws the items grid: section and note rows, ticks, muted left-out names.
 
     Section and note rows span the grid and keep their text at the left
     edge when the members scroll sideways. The frozen first column draws
@@ -264,7 +259,7 @@ class _GridDelegate(QStyledItemDelegate):
 
     def initStyleOption(self, option, index) -> None:  # noqa: N802 (Qt override)
         super().initStyleOption(option, index)
-        if index.data(MUTED_ROLE):
+        if index.data(KIND_ROLE) == LEFT_OUT:
             option.palette.setColor(
                 QPalette.ColorRole.Text, qcolor(current().colors.text_secondary)
             )
@@ -284,7 +279,7 @@ class _GridDelegate(QStyledItemDelegate):
             rect.moveCenter(option.rect.center())
             if not self.center_ticks:
                 rect.moveLeft(option.rect.left() + 8)
-            icon(_TICK_ICON, "success").paint(painter, rect)
+            icon(IconName.TICK, "success").paint(painter, rect)
 
     def _paint_spanning(self, painter, option, index) -> None:
         colors = current().colors
@@ -318,9 +313,10 @@ class _GridDelegate(QStyledItemDelegate):
         is_open = index.data(OPEN_ROLE)
         if is_open is not None:
             chevron = QRect(x, middle - 7, 14, 14)
-            icon(_OPEN_ICON if is_open else _CLOSED_ICON, "secondary").paint(
-                painter, chevron
-            )
+            icon(
+                IconName.SECTION_OPEN if is_open else IconName.SECTION_CLOSED,
+                "secondary",
+            ).paint(painter, chevron)
             x += 20
         title_font = QFont(font)
         title_font.setWeight(QFont.Weight.DemiBold)
@@ -474,9 +470,7 @@ class StackedItemsGrid(QTableView):
         """Add a line saying a section is empty."""
         return self._spanning_row(NOTE, None, text).row()
 
-    def add_item(
-        self, kind: str, key, name: str, ticks: Sequence[bool], *, muted=False
-    ) -> int:
+    def add_item(self, kind: str, key, name: str, ticks: Sequence[bool]) -> int:
         """Add a stacked item's row, *ticks* under the members that have it.
 
         Matched and Left out rows can be selected.
@@ -485,7 +479,6 @@ class StackedItemsGrid(QTableView):
         if kind in (MATCHED, LEFT_OUT):
             flags |= Qt.ItemFlag.ItemIsSelectable
         first = QStandardItem(name)
-        first.setData(muted, MUTED_ROLE)
         row = [first]
         for tick in ticks:
             item = QStandardItem()
@@ -692,8 +685,8 @@ class StackedFormsPage(Page):
         toolbar.addWidget(self.pushButton_stacked_apply)
         # What applying did, or why it couldn't.
         self.banner_stacked = StatusBanner()
-        # The page's state (not applied, apply again, something missing):
-        # standing, so it isn't repeated in the status bar.
+        # The page's state (not applied, apply again, a conflict, something
+        # missing): standing, so it isn't repeated in the status bar.
         self.banner_stacked_state = StatusBanner(dismissible=False, announce=False)
 
         self.tableWidget_stacked_forms = make_table(
@@ -1169,9 +1162,7 @@ class StackedFormsMixin:
             grid.add_note("Nothing left out.")
         for group in plan.left_out:
             if hit(group.name):
-                grid.add_item(
-                    LEFT_OUT, group.name, group.name, ticks(group.members), muted=True
-                )
+                grid.add_item(LEFT_OUT, group.name, group.name, ticks(group.members))
 
     def _match_name_box(self, match: Match, index: int) -> QComboBox:
         box = _MatchNameBox(match.names, match.name)
@@ -1342,11 +1333,3 @@ class StackedFormsMixin:
                 self.report
             ) or steps.stacked_missing_message(self.report)
         self._set_label_text(self.ui.banner_stacked_state, state)
-
-
-__all__ = [
-    "FIRST_COLUMN_W",
-    "StackedFormsMixin",
-    "StackedFormsPage",
-    "StackedItemsGrid",
-]

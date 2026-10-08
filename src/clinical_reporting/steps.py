@@ -284,9 +284,9 @@ def step_statuses(
 
 def _stacked_status(report) -> StepStatus:
     """The Stacked forms badge: warning, done or optional (validation aside)."""
-    built = report.stacked_build
-    if built.missing_members or built.missing_items or built.replaced:
-        return StepStatus(WARNING, tip=str(stacked_missing_message(report)))
+    missing = stacked_missing_message(report)
+    if missing:
+        return StepStatus(WARNING, tip=str(missing))
     if report.stacked_forms:
         return StepStatus(DONE, tip=_plural(len(report.stacked_forms), "stacked form"))
     return StepStatus(OPTIONAL)
@@ -670,7 +670,7 @@ def stacked_applied_message(report) -> feedback.Message:
             continue
         present = layout(stacked, report.loaded_data).present
         parts.append(
-            f"{stacked.name} ({_plural(len(rows), 'row')} from {', '.join(present)})"
+            f"{stacked.name} ({row_count(len(rows))} from {', '.join(present)})"
         )
     return feedback.success(f"Applied. Stacked forms: {'; '.join(parts)}.")
 

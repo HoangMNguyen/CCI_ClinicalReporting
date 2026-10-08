@@ -71,6 +71,10 @@ class IconName:
     SAVE = "save"
     ZIP_FILE = "file-archive"
     RUN = "play"
+    # Tables and grids
+    TICK = "check"
+    SECTION_OPEN = "chevron-down"
+    SECTION_CLOSED = "chevron-right"
     # App icon glyphs (see cci_ui.app_icons)
     APP_CLINICAL_REPORTING = "table-2"
     APP_CCI_AUTOMATION = "workflow"
