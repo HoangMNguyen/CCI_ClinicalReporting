@@ -7,10 +7,10 @@ so every front end shares them. This module must never import Qt.
 It holds:
 
 - The selection snapshot and restore used whenever a report's data is
-  rebuilt: changing the cut-off date, removing the Corelisting input, or
-  applying additional inputs. Rebuilding creates fresh ``CLForm`` objects, so
-  the user's selections are captured first and the ones that still exist are
-  re-applied afterwards.
+  rebuilt: changing the cut-off date, removing the Corelisting input,
+  applying additional inputs, or applying stacked forms. Rebuilding creates
+  fresh ``CLForm`` objects, so the user's selections are captured first and
+  the ones that still exist are re-applied afterwards.
 - Starting a report from Corelisting data and swapping that data out.
 - Building and exporting the report, the slow part, written so a front end
   can run it off its main thread. (Reading files is :mod:`clinical_reporting.data`.)
@@ -23,13 +23,14 @@ that change a report run on the main thread.
 
 from __future__ import annotations
 
-from typing import Any, Collection, Dict, Optional
+from typing import Any, Collection, Dict, Optional, Sequence
 
 import pandas as pd
 
 from clinical_reporting.export import write_xlsx
 from clinical_reporting.models import SUBJECT_COLUMN
 from clinical_reporting.report import CLReport
+from clinical_reporting.stacking import StackedForm
 
 
 def capture_selection(report: CLReport) -> Dict[str, Any]:
@@ -124,6 +125,17 @@ def replace_base_data(
     restore_selection(report, state)
 
 
+def apply_stacked_forms(report: CLReport, stacked_forms: Sequence[StackedForm]) -> None:
+    """Apply *stacked_forms* to *report*, keeping the selections that still exist.
+
+    The report's data is rebuilt with them (see
+    :meth:`~clinical_reporting.report.CLReport.set_stacked_forms`).
+    """
+    state = capture_selection(report)
+    report.set_stacked_forms(stacked_forms)
+    restore_selection(report, state)
+
+
 def without_base_data(report: CLReport, additional_keys: Collection[str]) -> CLReport:
     """A fresh report holding only *report*'s additional-input forms.
 
@@ -165,6 +177,7 @@ def export_report(report: CLReport, file_path: str) -> Optional[str]:
 
 
 __all__ = [
+    "apply_stacked_forms",
     "build_report",
     "capture_selection",
     "export_report",

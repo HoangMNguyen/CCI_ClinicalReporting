@@ -76,9 +76,10 @@ file and that every file has an `IconName` or is a stylesheet glyph
 ## Checking the look: the gallery
 
 The gallery window shows every component: colors (with contrast), type,
-icons, buttons, inputs, toggles and segmented controls, sections, lists,
-tables, the side panel, the workflow page of the small tools, banners,
-toasts, the status bar, the busy overlay, and empty states.
+icons, buttons, inputs (with the checklist combo box), toggles and segmented
+controls, sections, lists, tables, the side panel, the workflow page of the
+small tools, banners, toasts, the status bar, the busy overlay, and empty
+states.
 
 ```bash
 python -m cci_ui.gallery                               # open it
@@ -134,6 +135,7 @@ src/cci_ui/
   widgets/segmented.py         # SegmentedControl
   widgets/display.py           # Display button + popover (appearance, density)
   widgets/search.py            # SearchField
+  widgets/checklist.py         # ChecklistComboBox: a combo whose popup is a searchable checklist
   widgets/views.py             # lists/tables with placeholder text; EmptyState
   widgets/status.py            # StatusBanner, show_toast, show_error
   widgets/busy.py              # BusyOverlay (blocks input; spinner after 150 ms)

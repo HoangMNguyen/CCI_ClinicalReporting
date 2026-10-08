@@ -125,6 +125,20 @@ def validate_report(report) -> list[ReportValidationIssue]:
             "selected_forms",
         )
 
+    stacked_build = getattr(report, "stacked_build", None)
+    for name in getattr(stacked_build, "clashes", ()):
+        _add_issue(
+            issues,
+            "stacked_form_name_clash",
+            f"{name} is both a stacked form and a loaded form. Rename the stacked "
+            "form on Stacked forms.",
+            "stacked_forms",
+        )
+    # Data that changed since Apply and makes a stacked form ambiguous.
+    for messages in getattr(stacked_build, "conflicts", {}).values():
+        for message in messages:
+            _add_issue(issues, "stacked_form_conflict", message, "stacked_forms")
+
     duplicate_common = sorted(
         item for item, count in Counter(selected_common).items() if count > 1
     )
@@ -426,9 +440,17 @@ def raise_for_report(report) -> None:
 #: How the message listing what stops a report from running starts; the
 #: desktop app recognizes its own hint by it.
 CANNOT_RUN_PREFIX = "Cannot run:"
-#: Join problems that disable the export as soon as they appear; the others
-#: are reported when the user previews or exports.
-JOIN_BLOCKING_ISSUE_CODES = frozenset({"duplicate_join_order", "missing_join_items"})
+#: Problems that disable the export as soon as they appear (the join problems,
+#: a stacked form named like a loaded form, and data that makes a stacked form
+#: ambiguous); the others are reported when the user previews or exports.
+EXPORT_BLOCKING_ISSUE_CODES = frozenset(
+    {
+        "duplicate_join_order",
+        "missing_join_items",
+        "stacked_form_name_clash",
+        "stacked_form_conflict",
+    }
+)
 
 
 def cannot_run_message(issues: Iterable[ReportValidationIssue]) -> feedback.Message:
@@ -443,7 +465,7 @@ def report_issues_message(
     """What stops *report* from running, or ``None`` when nothing does.
 
     *issue_codes* limits the check to those codes (the export button reacts
-    only to :data:`JOIN_BLOCKING_ISSUE_CODES`); ``None`` checks everything.
+    only to :data:`EXPORT_BLOCKING_ISSUE_CODES`); ``None`` checks everything.
     """
 
     issues = report.validate()

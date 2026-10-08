@@ -48,6 +48,7 @@ def test_page_names_follow_the_step_order():
     assert PAGE_KEYS == (
         "source",
         "additional",
+        "stacked",
         "forms",
         "common",
         "formitems",

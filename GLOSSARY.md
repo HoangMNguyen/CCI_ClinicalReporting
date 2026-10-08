@@ -14,7 +14,7 @@ The ZIP of per-form data files exported for one study; the main input of every t
 _Avoid_: core listing, listing ZIP
 
 **Form**:
-One data collection form of a study (for example DM or AE): one data file in a Corelisting export, or one additional input.
+One data collection form of a study (for example DM or AE): one data file in a Corelisting export, one additional input, or one stacked form.
 _Avoid_: source, file, extra form
 
 **Item**:
@@ -22,7 +22,7 @@ One field recorded on a form, such as Subject, Visit or Age; in a report, each c
 _Avoid_: field, column (column means a report's column)
 
 **Common item**:
-An item present in every loaded form, including additional inputs; forms are joined on selected common items. For example, an additional input without Visit, even one not selected, takes Visit out of the common items.
+An item present in every loaded form, including additional inputs and stacked forms; forms are joined on selected common items. For example, an additional input without Visit, even one not selected, takes Visit out of the common items.
 _Avoid_: shared item
 
 **Form item**:
@@ -37,10 +37,28 @@ _Avoid_: cutoff
 A CSV or Excel file the user adds next to a Corelisting export so its columns can be reported as if it were another form.
 _Avoid_: extra input, extra file
 
+### Stacking
+
+**Stacked form**:
+A form made by putting the rows of two or more other forms one under another, with their items lined up as stacked items.
+_Avoid_: merged form, vertical merge, union, appended form
+
+**Member**:
+One of the forms a stacked form takes its rows from: a form of a Corelisting export or an additional input, never another stacked form.
+_Avoid_: source form, input form, part
+
+**Stacked item**:
+An item of a stacked form, holding on each row the value of one item of the member the row came from. An item every member has under the same name is a stacked item by itself; any other member item is left out unless the user puts it in a match.
+_Avoid_: merged column, mapped column, combined item
+
+**Match**:
+A stacked item the user makes from at most one item of each member, to keep an item that not every member has or to line up items with different names, such as Event Date with Collection Date; it takes one of their names or a new one.
+_Avoid_: merge, combine, mapping
+
 ### Reports
 
 **Saved setting**:
-A named, reusable definition of a Clinical Reporting report for one study: which forms and items, how they join, the filters and comparisons, the column order and names, and the names given to additional inputs. It does not hold the cut-off date.
+A named, reusable definition of a Clinical Reporting report for one study: which forms and items, how they join, the filters and comparisons, the column order and names, the names given to additional inputs, and how its stacked forms are made. It does not hold the cut-off date.
 _Avoid_: configuration, config, template
 
 **Join order**:

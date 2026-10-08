@@ -1,7 +1,7 @@
 """The stylesheet and palette as Qt actually applies them to widgets."""
 
 from PySide6.QtGui import QPalette
-from PySide6.QtWidgets import QCheckBox, QComboBox, QLabel
+from PySide6.QtWidgets import QCheckBox, QComboBox, QLabel, QLineEdit
 
 from cci_ui.theme.manager import set_invalid
 from cci_ui.theme.palette import to_qpalette
@@ -65,3 +65,18 @@ def test_set_invalid_draws_a_combo_in_the_danger_color_and_back(themed_app):
     set_invalid(combo, False)
     assert text_color() == LIGHT.text_primary.hex_rgb
     assert combo.font().weight() == 400
+
+
+def test_set_invalid_draws_a_line_edit_in_the_danger_color_and_back(themed_app):
+    _apply_light(themed_app)
+    edit = QLineEdit("VI.SITS")
+
+    def text_color():
+        edit.ensurePolished()
+        return edit.palette().color(QPalette.ColorRole.Text).name().upper()
+
+    set_invalid(edit, True)
+    assert text_color() == LIGHT.danger_text.hex_rgb
+
+    set_invalid(edit, False)
+    assert text_color() == LIGHT.text_primary.hex_rgb

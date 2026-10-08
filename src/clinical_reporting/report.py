@@ -2,10 +2,11 @@
 
 A report holds a study's forms, the forms and items chosen from them, how the
 forms join (the common items each joins on, the join order and the join
-type), the filters and comparisons, and the column order and names. It turns
-into a saved setting and back (:meth:`CLReport.settings_to_dict`,
-:meth:`CLReport.load_setting_from_dict`), and :meth:`CLReport.create_report`
-hands the building of the table to
+type), the filters and comparisons, and the column order and names. Its
+stacked forms (:mod:`clinical_reporting.stacking`) are built with its data,
+so they are forms like any other. It turns into a saved setting and back
+(:meth:`CLReport.settings_to_dict`, :meth:`CLReport.load_setting_from_dict`),
+and :meth:`CLReport.create_report` hands the building of the table to
 :class:`clinical_reporting.pipeline.ReportEngine`.
 """
 
@@ -13,7 +14,7 @@ import logging
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from clinical_reporting import report_columns
+from clinical_reporting import report_columns, stacking
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
     CLForm,
@@ -37,6 +38,13 @@ class CLReport:
     def __init__(self):
         self.study_name = None
         self.data = {}
+        # The forms as loaded (the Corelisting ZIP and additional inputs);
+        # ``data`` is these plus the stacked forms built from them.
+        self.loaded_data = {}
+        # The stacked forms applied to the report, and what building them
+        # last gave (stacking.build_all).
+        self.stacked_forms: List[stacking.StackedForm] = []
+        self.stacked_build = stacking.Built()
         self.available_forms = {}
         self.selected_forms = {}
         self.available_common_items = []
@@ -92,8 +100,16 @@ class CLReport:
             self.set_common_item_state(SUBJECT_COLUMN, selected=True)
 
     def set_data(self, data: dict):
-        """Set the data for the report."""
-        self.data = data
+        """Set the data for the report: the forms as loaded.
+
+        The report's stacked forms are built from them and added to
+        ``data``; ``loaded_data`` keeps the forms as loaded.
+        """
+        self.loaded_data = data
+        self.stacked_build = stacking.build_all(self.stacked_forms, data)
+        self.data = (
+            {**data, **self.stacked_build.forms} if self.stacked_build.forms else data
+        )
 
         # Reset form collections to match the new dataset.
         self.remove_all_available_forms()
@@ -108,6 +124,16 @@ class CLReport:
 
         # by default, all common items are available.
         self.add_all_available_common_items()
+
+    def set_stacked_forms(self, stacked_forms) -> None:
+        """Apply these stacked forms, rebuilding the data when some is loaded.
+
+        Rebuilding resets the selections, as :meth:`set_data` does; see
+        :func:`clinical_reporting.session.apply_stacked_forms` to keep them.
+        """
+        self.stacked_forms = list(stacked_forms)
+        if self.loaded_data:
+            self.set_data(self.loaded_data)
 
     def add_available_form(self, form: str):
         """Add the available form to the available forms dictionary."""
@@ -361,7 +387,8 @@ class CLReport:
             "selected_items_order_list": deepcopy(self.selected_items_order_list),
             "order_list_customized": self.order_list_customized,
         }
-        return settings
+        # Only when there are stacked forms, so other settings save as before.
+        return stacking.to_settings(settings, self.stacked_forms)
 
     def load_setting_from_dict(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Apply an in-memory settings dictionary to this report.
@@ -369,7 +396,15 @@ class CLReport:
         It performs no I/O, so it can be driven directly from a
         :class:`~clinical_reporting.models.ReportConfig` or any program
         that constructs the settings schema itself.
+
+        The setting's stacked forms come first: when they differ from the
+        report's, the data is rebuilt (resetting the selections) before the
+        setting's selections are read, so those on a stacked form find it.
         """
+
+        stacked_forms = stacking.from_settings(settings)
+        if stacked_forms != self.stacked_forms:
+            self.set_stacked_forms(stacked_forms)
 
         self.study_name = settings.get("study_name", self.study_name)
 
@@ -422,7 +457,12 @@ class CLReport:
         return settings
 
     def reconcile_with_current_data(self) -> Dict[str, list[str]]:
-        """Align loaded settings with the currently available study data."""
+        """Align loaded settings with the currently available study data.
+
+        Returns the forms and items the setting needs that the data lacks,
+        including the members a built stacked form is missing (as forms) and
+        the matched items a present member no longer has (as ``MEMBER.item``).
+        """
 
         missing_forms: set[str] = set()
         missing_items: set[str] = set()
@@ -506,6 +546,20 @@ class CLReport:
             for item in self.dynamic_filter_items
             if item and item[0] in valid_identifiers and item[2] in valid_identifiers
         ]
+
+        built = self.stacked_build
+        for name in built.forms:
+            missing_forms.update(built.missing_members.get(name, ()))
+            missing_items.update(
+                qualify(member, item)
+                for member, item in built.missing_items.get(name, ())
+            )
+            # A matched item a member replaced with another of the match's
+            # items is missing all the same: the setting saved the other one.
+            missing_items.update(
+                qualify(member, item)
+                for member, item, _used in built.replaced.get(name, ())
+            )
 
         return {
             "forms": sorted(missing_forms),

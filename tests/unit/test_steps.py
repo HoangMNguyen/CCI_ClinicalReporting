@@ -14,6 +14,7 @@ from clinical_reporting.additional_names import (
 )
 from clinical_reporting.models import JoinHow
 from clinical_reporting.report import CLReport
+from clinical_reporting.stacking import Match, StackedForm, layout
 from clinical_reporting.steps import StepStatus
 from clinical_reporting.validation import ReportValidationIssue
 
@@ -156,6 +157,13 @@ def test_every_step_has_a_title_and_the_data_steps_are_the_later_ones():
     assert list(steps.TITLES) == list(steps.STEP_KEYS)
     assert steps.NEEDS_DATA == set(steps.STEP_KEYS) - {steps.SOURCE, steps.ADDITIONAL}
     assert steps.TITLES[steps.SOURCE] in steps.NO_DATA_HINT
+    # Stacked forms are made from the loaded forms, before anything is selected.
+    assert steps.STEP_KEYS[:4] == (
+        steps.SOURCE,
+        steps.ADDITIONAL,
+        steps.STACKED,
+        steps.FORMS,
+    )
 
 
 def test_the_source_summary_counts_forms_and_rows_and_says_when():
@@ -178,6 +186,88 @@ def test_the_additional_input_step_says_what_applying_did():
     assert removed.kind == "success" and "removed" in removed
     assert steps.ADD_FILES_FIRST.kind == "warning"
     assert steps.APPLY_ADDITIONAL_AGAIN.kind == "info"
+
+
+def test_the_stacked_forms_badge_says_how_they_stand():
+    report = _report()
+    assert steps.step_statuses(report)[steps.STACKED] == StepStatus(steps.OPTIONAL)
+
+    report.set_stacked_forms([StackedForm("BOTH", ("DM", "AE"))])
+    assert steps.step_statuses(report)[steps.STACKED] == StepStatus(
+        steps.DONE, tip="1 stacked form"
+    )
+
+    report.set_stacked_forms(
+        [StackedForm("BOTH", ("DM", "AE")), StackedForm("ALL", ("DM", "AE", "LB"))]
+    )
+    assert steps.step_statuses(report)[steps.STACKED] == StepStatus(
+        steps.WARNING, tip="ALL is built without LB, which isn't loaded."
+    )
+
+    report.set_stacked_forms([StackedForm("DM", ("DM", "AE"))])
+    assert steps.step_statuses(report)[steps.STACKED] == StepStatus(
+        steps.ERROR,
+        tip="DM is both a stacked form and a loaded form. Rename the stacked form "
+        "on Stacked forms.",
+    )
+
+    report.set_stacked_forms([])
+    assert steps.step_statuses(report)[steps.STACKED] == StepStatus(steps.OPTIONAL)
+
+
+def test_the_stacked_forms_step_says_what_applying_did():
+    report = _report()
+    report.set_stacked_forms(
+        [StackedForm("BOTH", ("DM", "AE")), StackedForm("LABS", ("LB", "PK"))]
+    )
+    applied = steps.stacked_applied_message(report)
+    report.set_stacked_forms([])
+    removed = steps.stacked_applied_message(report)
+
+    assert applied == (
+        "Applied. Stacked forms: BOTH (2 rows from DM, AE); LABS (not built)."
+    )
+    assert applied.kind == "success"
+    assert removed == "The stacked forms were removed from the report."
+    assert removed.kind == "success"
+    assert steps.stacked_missing_message(report) == ""
+    assert steps.STACKED_NOT_APPLIED.kind == "info"
+    assert steps.APPLY_STACKED_AGAIN.kind == "info"
+
+
+def test_the_stacked_forms_step_words_problems_and_members():
+    one = steps.stacked_problems_message(["VISITS: Pick at least two members."])
+    two = steps.stacked_problems_message(["A: Give it a name.", "B: Give it a name."])
+
+    assert one == "Not applied. Fix this problem first, then apply again."
+    assert (one.kind, one.details) == ("error", "VISITS: Pick at least two members.")
+    assert two == "Not applied. Fix these 2 problems first, then apply again."
+    assert two.details == "A: Give it a name.\nB: Give it a name."
+    assert (
+        steps.stacked_form_tooltip(StackedForm("VISITS", ("SV", "DSSVLTFU")))
+        == "Stacked from SV, DSSVLTFU"
+    )
+
+
+def test_a_matched_cell_says_why_it_warns():
+    data = {
+        "SV": pd.DataFrame(
+            {"Subject": ["1"], "Event Group Name": ["a"], "Event Label": ["b"]}
+        ),
+        "DS": pd.DataFrame({"Subject": ["2"], "Event Group Name": ["c"]}),
+        "LB": pd.DataFrame({"Subject": ["3"]}),
+    }
+    match = Match(
+        "Visit", {"SV": "Event Group Name", "DS": "Event Label", "LB": "Event Label"}
+    )
+    stacked = StackedForm("VISITS", ("SV", "DS", "LB"), (match,))
+    item = layout(stacked, data).matched[0]
+
+    assert [steps.stacked_cell_warning(item, match, m) for m in stacked.members] == [
+        "SV now has Event Group Name and Event Label: which one is unclear",
+        "DS has no Event Label; its Event Group Name is taken instead",
+        "LB has no Event Label",
+    ]
 
 
 def test_saved_names_entries_read_as_their_form_names():
