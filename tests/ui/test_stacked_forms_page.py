@@ -329,7 +329,7 @@ def test_a_cell_whose_member_lost_its_item_warns_until_one_is_picked(
     assert window.ui.banner_stacked_state.text() == NOT_APPLIED
 
 
-def test_a_member_with_two_items_of_a_match_is_fixed_by_clearing_its_cell(
+def test_a_member_with_two_items_of_a_match_stops_the_export_until_its_cell_is_cleared(
     sample_window, tmp_path
 ):
     window = sample_window
@@ -339,7 +339,11 @@ def test_a_member_with_two_items_of_a_match_is_fixed_by_clearing_its_cell(
     _click_item(window, "Outcome", Qt.KeyboardModifier.ControlModifier)
     window.click_match_stacked_items()
     window.click_apply_stacked_forms()
-    _add_files(window, tmp_path, OUT=("Outcome", "Reason"))  # OUT now has both.
+    before = _badge(window)
+    # The next file also has a Reason column: OUT now gives the match two items.
+    _add_files(window, tmp_path, OUT=("Outcome", "Reason"))
+    state = window.ui.banner_stacked_state.text()
+    stopped = (_badge(window), [issue.message for issue in window.report.validate()])
     box = _cell(window, "Reason", 2)
     warned = (box.currentText(), box.toolTip())
 
@@ -349,13 +353,16 @@ def test_a_member_with_two_items_of_a_match_is_fixed_by_clearing_its_cell(
     cleared = _cell(window, "Reason", 2).currentText()
     window.click_apply_stacked_forms()
 
-    assert warned == ("Outcome", "OUT now has Reason and Outcome: which one is unclear")
-    assert again == (
+    message = (
         "ENDS: OUT now has both Reason and Outcome, which the match Reason lines up. "
-        "Unmatch it and match again on Stacked forms. The report can't be exported "
-        "until this is fixed."
+        "Unmatch it and match again on Stacked forms."
     )
-    assert again.kind == "error"
+    assert before == (StepState.DONE, None)
+    assert state == f"{message} The report can't be exported until this is fixed."
+    assert state.kind == "error"
+    assert stopped == ((StepState.ERROR, None), [message])
+    assert warned == ("Outcome", "OUT now has Reason and Outcome: which one is unclear")
+    assert again == state
     # "—" takes Outcome out of the match, so OUT gives its Reason.
     assert cleared == "Reason"
     assert window.report.validate() == []
@@ -571,37 +578,3 @@ def test_the_first_column_stays_when_the_members_scroll_sideways(sample_window):
     # The first member column went under the first column, which stayed.
     assert member_before == FIRST_COLUMN_W
     assert grid.columnViewportPosition(1) == FIRST_COLUMN_W - bar.maximum()
-
-
-def test_an_additional_file_that_now_gives_two_items_of_a_match_stops_the_export(
-    sample_window, tmp_path
-):
-    window = sample_window
-    outcomes = str(tmp_path / "outcomes.csv")
-    rows = {"Subject": ["01-100"], "Site": ["01"], "Visit": ["Screening"]}
-    window.additional_inputs = {outcomes: pd.DataFrame({**rows, "Outcome": ["Done"]})}
-    window.additional_form_names = {outcomes: "OUT"}
-    window.click_apply_additional_forms()
-    _new_stacked_form(window, "ENDS", "EOT", "OUT")
-    _click_item(window, "Reason")
-    _click_item(window, "Outcome", Qt.KeyboardModifier.ControlModifier)
-    window.click_match_stacked_items()
-    window.click_apply_stacked_forms()
-    before = _badge(window)
-
-    # The next file also has a Reason column: OUT now gives the match two items.
-    window.additional_inputs = {
-        outcomes: pd.DataFrame({**rows, "Outcome": ["Done"], "Reason": ["Done"]})
-    }
-    window.click_apply_additional_forms()
-    state = window.ui.banner_stacked_state.text()
-
-    message = (
-        "ENDS: OUT now has both Reason and Outcome, which the match Reason lines up. "
-        "Unmatch it and match again on Stacked forms."
-    )
-    assert before == (StepState.DONE, None)
-    assert state == f"{message} The report can't be exported until this is fixed."
-    assert state.kind == "error"
-    assert _badge(window) == (StepState.ERROR, None)
-    assert [issue.message for issue in window.report.validate()] == [message]
