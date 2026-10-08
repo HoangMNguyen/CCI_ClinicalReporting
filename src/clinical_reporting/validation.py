@@ -443,7 +443,7 @@ CANNOT_RUN_PREFIX = "Cannot run:"
 #: Problems that disable the export as soon as they appear (the join problems,
 #: a stacked form named like a loaded form, and data that makes a stacked form
 #: ambiguous); the others are reported when the user previews or exports.
-JOIN_BLOCKING_ISSUE_CODES = frozenset(
+EXPORT_BLOCKING_ISSUE_CODES = frozenset(
     {
         "duplicate_join_order",
         "missing_join_items",
@@ -465,7 +465,7 @@ def report_issues_message(
     """What stops *report* from running, or ``None`` when nothing does.
 
     *issue_codes* limits the check to those codes (the export button reacts
-    only to :data:`JOIN_BLOCKING_ISSUE_CODES`); ``None`` checks everything.
+    only to :data:`EXPORT_BLOCKING_ISSUE_CODES`); ``None`` checks everything.
     """
 
     issues = report.validate()

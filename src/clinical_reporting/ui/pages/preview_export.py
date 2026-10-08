@@ -48,7 +48,7 @@ from clinical_reporting.ui.dialogs import choose_settings_directory, settings_fo
 from clinical_reporting.ui.preview_model import ReportPreviewModel
 from clinical_reporting.validation import (
     CANNOT_RUN_PREFIX,
-    JOIN_BLOCKING_ISSUE_CODES,
+    EXPORT_BLOCKING_ISSUE_CODES,
     ReportValidationError,
     cannot_run_message,
     report_issues_message,
@@ -293,7 +293,7 @@ class PreviewExportMixin:
         report = getattr(self, "report", None)
         if report is None:
             return None
-        return report_issues_message(report, JOIN_BLOCKING_ISSUE_CODES)
+        return report_issues_message(report, EXPORT_BLOCKING_ISSUE_CODES)
 
     def _refresh_run_availability(self) -> None:
         """Enable/disable Export to Excel and surface join-configuration errors.
