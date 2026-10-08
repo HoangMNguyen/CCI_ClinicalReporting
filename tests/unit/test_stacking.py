@@ -276,6 +276,20 @@ def test_build_all_stops_two_matches_with_one_name():
     }
 
 
+def test_build_all_stops_two_matches_holding_one_item_name():
+    # Only an edited setting gets here: the page matches left-out items only.
+    stacked = _visits(VISIT_NAME, Match("Visit Label", {"DSSVLTFU": "Event Label"}))
+
+    built = stacking.build_all([stacked], _data())
+
+    assert dict(built.conflicts) == {
+        "VISITS": (
+            "VISITS: the matches Visit Name and Visit Label both line up Event "
+            "Label. Unmatch one of them on Stacked forms.",
+        )
+    }
+
+
 def test_build_all_says_when_a_member_gives_another_of_the_matchs_items():
     data = _data()
     data["DSSVLTFU"] = data["DSSVLTFU"].rename(
@@ -577,6 +591,17 @@ def test_a_match_with_two_items_of_one_member_is_a_problem():
     assert problems == [
         "VISITS: Pick at most one item from each member: SV has both "
         "Event Group Name and Event Label."
+    ]
+
+
+def test_two_matches_holding_one_item_name_are_a_problem():
+    stacked = _visits(VISIT_NAME, Match("Visit Label", {"DSSVLTFU": "Event Label"}))
+
+    problems = stacking.problems([stacked], ["SV", "DSSVLTFU"])
+
+    assert problems == [
+        "VISITS: Keep each item in one match: Event Label is in both Visit Name "
+        "and Visit Label."
     ]
 
 

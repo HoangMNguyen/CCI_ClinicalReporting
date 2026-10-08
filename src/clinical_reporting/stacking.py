@@ -184,7 +184,8 @@ class Built:
     #: Why each stacked form can't be used as the data now is, keyed by stacked
     #: form: the data changed since Apply so that a match is named like an item
     #: every member has, two matches share a name, or a member has two items of
-    #: one match. Validation stops the report until it is fixed on the page.
+    #: one match; or an edited setting has two matches holding one item name.
+    #: Validation stops the report until it is fixed on the page.
     conflicts: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
     #: ``(member, item, item used)`` for each matched item a present member no
     #: longer has but replaces with another item of the match, keyed by stacked
@@ -362,12 +363,13 @@ def build_all(
 def _conflicts(
     stacked: StackedForm, plan: StackLayout, data: Mapping[str, pd.DataFrame]
 ) -> Tuple[str, ...]:
-    """What in *data* makes *stacked* ambiguous, one message each.
+    """What makes *stacked* ambiguous over *data*, one message each.
 
     Apply refuses these (:func:`problems`); they come back when the data is
     set again with changed items (a saved setting, a new cut-off or export,
-    additional inputs). Each would otherwise quietly put other values under
-    a stacked item, so they stop the report instead.
+    additional inputs), or from an edited setting. Each would otherwise
+    quietly put other values under a stacked item, or leave one out, so they
+    stop the report instead.
     """
     name = stacked.name
     every = {group.name for group in plan.every}
@@ -399,7 +401,27 @@ def _conflicts(
                 f"{name}: {member} now has {both}, which the match {match.name} "
                 "lines up. Unmatch it and match again on Stacked forms."
             )
+    for item_name, holders in _shared_item_names(stacked).items():
+        two = len(holders) == 2
+        found.append(
+            f"{name}: the matches {feedback.and_list(holders)} "
+            f"{'both' if two else 'all'} line up {item_name}. Unmatch "
+            f"{'one of them' if two else 'all but one'} on Stacked forms."
+        )
     return tuple(found)
+
+
+def _shared_item_names(stacked: StackedForm) -> Dict[str, List[str]]:
+    """Item names more than one match holds, with those matches' names.
+
+    The page only matches left-out items, so only an edited setting gets
+    here; the later matches would otherwise lose the item quietly.
+    """
+    holders: Dict[str, List[str]] = {}
+    for match in stacked.matches:
+        for item_name in match.names:
+            holders.setdefault(item_name, []).append(match.name)
+    return {item: names for item, names in holders.items() if len(names) > 1}
 
 
 # ---------------------------------------------------------------------------
@@ -699,6 +721,12 @@ def _issues(
                 f"{name or 'This stacked form'} already has an item called "
                 f"{match_name}."
             )
+    for item_name, holders in _shared_item_names(stacked).items():
+        both = "both " if len(holders) == 2 else ""
+        issues.append(
+            f"Keep each item in one match: {item_name} is in "
+            f"{both}{feedback.and_list(holders)}."
+        )
     if plan:
         columns = {member: set(data[member].columns) for member in plan.present}
         for match in stacked.matches:
