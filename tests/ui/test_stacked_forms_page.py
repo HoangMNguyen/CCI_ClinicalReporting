@@ -193,6 +193,20 @@ def test_a_page_without_a_selected_stacked_form_says_how_to_make_one(sample_wind
     assert not sample_window.ui.pushButton_stacked_remove.isEnabled()
 
 
+def test_other_steps_leave_the_page_as_it_was(sample_window):
+    window = sample_window
+    _new_stacked_form(window, "DISP", "EOT", "DS")
+    window.ui.lineEdit_stacked_item_search.setText("Rea")
+    _click_item(window, "Reason")
+
+    window.report.add_selected_form("EOT")  # As the Forms page does.
+    window.update_all_ui()
+
+    assert window.ui.lineEdit_stacked_item_search.text() == "Rea"
+    assert _grid_rows(window)[-2:] == ["Left out", "Reason"]
+    assert window.ui.tableView_stacked_items.selected_keys() == [("left", "Reason")]
+
+
 def test_match_lines_up_left_out_items_and_unmatch_takes_them_back(sample_window):
     window = sample_window
     _new_stacked_form(window, "DISP", "EOT", "DS")

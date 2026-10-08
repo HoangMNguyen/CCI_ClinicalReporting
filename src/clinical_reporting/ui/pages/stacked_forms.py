@@ -759,6 +759,10 @@ class StackedFormsMixin:
         # A new Corelisting ZIP started a new report without them.
         self._stacked_apply_again = False
         self._stacked_every_open = False
+        # The report's loaded data and stacked forms build the table and grid
+        # were last filled for: only a change refills them, so other steps'
+        # updates keep the page's selection, search and scrolling.
+        self._stacked_shown_for: Tuple[object, object] = (None, None)
 
         self.ui.pushButton_stacked_new.clicked.connect(self.click_new_stacked_form)
         self.ui.pushButton_stacked_remove.clicked.connect(
@@ -797,14 +801,21 @@ class StackedFormsMixin:
         """Show the drafts over the report's data, and the page's state.
 
         When the report's stacked forms changed (a saved setting was loaded),
-        the drafts become the report's.
+        the drafts become the report's. The table and grid are filled again
+        only when the report's data or stacked forms changed.
         """
         applied = list(self.report.stacked_forms)
-        if applied != self._stacked_seen:
+        changed = applied != self._stacked_seen
+        if changed:
             self._stacked_drafts = list(applied)
             self._stacked_seen = applied
             self._stacked_apply_again = False
-        self._fill_stacked_forms_table(self._current_stacked_row())
+        shown_for = (self.report.loaded_data, self.report.stacked_build)
+        if changed or any(
+            now is not then for now, then in zip(shown_for, self._stacked_shown_for)
+        ):
+            self._stacked_shown_for = shown_for
+            self._fill_stacked_forms_table(self._current_stacked_row())
         self._show_stacked_state()
 
     def _forget_applied_stacked_forms(self) -> None:
