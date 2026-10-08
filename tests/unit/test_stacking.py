@@ -1,6 +1,5 @@
 """Stacked forms over made-up forms (clinical_reporting.stacking)."""
 
-import copy
 import logging
 
 import numpy as np
@@ -363,14 +362,13 @@ def test_dropping_a_member_drops_its_items_from_the_matches():
     )
 
 
-def test_definitions_compare_hash_and_copy_by_value():
+def test_definitions_compare_by_value_and_are_read_only():
     first = _visits(Match("Visit Name", {"SV": "Event Group Name"}))
     second = StackedForm(
         "VISITS", ["SV", "DSSVLTFU"], [Match("Visit Name", {"SV": "Event Group Name"})]
     )
 
-    assert first == second and hash(first) == hash(second)
-    assert copy.deepcopy(first) == first
+    assert first == second
     with pytest.raises(TypeError):
         first.matches[0].items["SV"] = "Visit"
 

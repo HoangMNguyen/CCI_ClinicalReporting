@@ -54,7 +54,7 @@ from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.views import PlaceholderListWidget
 
 #: Narrowest the checklist opens, however narrow the box (as in the mockup).
-POPUP_MIN_W = 300
+_POPUP_MIN_W = 300
 #: Tallest the list of rows grows before it scrolls.
 _LIST_MAX_H = 248
 #: Transparent margin around the card, room for its shadow.
@@ -79,7 +79,6 @@ class ChecklistItem(NamedTuple):
     text: str
     detail: str = ""
     checked: bool = False
-    tooltip: str = ""
 
 
 class _RowDelegate(QStyledItemDelegate):
@@ -257,7 +256,6 @@ class _ChecklistPopup(QWidget):
             item = self.list.item(row)
             item.setText(entry.text)
             item.setData(_DETAIL_ROLE, entry.detail)
-            item.setToolTip(entry.tooltip)
             self._show_checked(item, entry.checked)
         self._filter(self.search.text())
         self._fit()
@@ -329,7 +327,7 @@ class _ChecklistPopup(QWidget):
 
     def _place(self) -> None:
         anchor = self._anchor
-        width = max(POPUP_MIN_W, anchor.width()) + 2 * _SHADOW_MARGIN
+        width = max(_POPUP_MIN_W, anchor.width()) + 2 * _SHADOW_MARGIN
         layout = self.layout()
         layout.activate()
         height = (
@@ -437,10 +435,6 @@ class ChecklistComboBox(QComboBox):
         if self._popup is not None:
             self._popup.set_footer(text)
 
-    def search_text(self) -> str:
-        """What is typed in the open checklist's search field."""
-        return self._popup.search.text() if self._popup is not None else ""
-
     def is_open(self) -> bool:
         """Whether the checklist is showing."""
         return self._popup is not None and self._popup.isVisible()
@@ -503,4 +497,4 @@ class ChecklistComboBox(QComboBox):
         painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, option)
 
 
-__all__ = ["POPUP_MIN_W", "ChecklistComboBox", "ChecklistItem"]
+__all__ = ["ChecklistComboBox", "ChecklistItem"]

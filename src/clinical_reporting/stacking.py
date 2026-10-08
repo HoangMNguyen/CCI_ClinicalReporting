@@ -89,12 +89,6 @@ class Match:
     def __post_init__(self) -> None:
         object.__setattr__(self, "items", MappingProxyType(dict(self.items)))
 
-    def __hash__(self) -> int:
-        return hash((self.name, frozenset(self.items.items())))
-
-    def __reduce__(self):
-        return (Match, (self.name, dict(self.items)))
-
     @property
     def names(self) -> Tuple[str, ...]:
         """The names of its items, each once, in the order they were given."""

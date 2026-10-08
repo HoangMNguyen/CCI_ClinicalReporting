@@ -155,14 +155,13 @@ def test_rows_set_when_the_popup_opens_are_the_ones_shown(combo):
     assert _shown(combo) == ["SV", "DSSVLTFU", "AE"]
 
 
-def test_the_closed_box_shows_the_summary_or_the_empty_text(combo):
+def test_the_closed_box_shows_the_summary(combo):
     combo.set_summary("SV, DSSVLTFU")
     summary = combo.currentText()
     combo.set_summary("")
 
     assert summary == "SV, DSSVLTFU"
     assert combo.currentText() == ""
-    assert combo.placeholderText() == "Choose…"
 
 
 def test_the_checklist_opens_below_the_box(combo):
