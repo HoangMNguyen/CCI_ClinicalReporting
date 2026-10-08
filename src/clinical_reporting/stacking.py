@@ -66,6 +66,7 @@ from typing import (
 
 import pandas as pd
 
+from clinical_reporting import feedback
 from clinical_reporting.models import FORM_ITEM_SEPARATOR
 
 logger = logging.getLogger(__name__)
@@ -390,9 +391,9 @@ def _conflicts(
             columns = set(data[member].columns)
             have = [item_name for item_name in match.names if item_name in columns]
             both = (
-                f"both {have[0]} and {have[1]}"
+                f"both {feedback.and_list(have)}"
                 if len(have) == 2
-                else f"{', '.join(have[:-1])} and {have[-1]}"
+                else feedback.and_list(have)
             )
             found.append(
                 f"{name}: {member} now has {both}, which the match {match.name} "

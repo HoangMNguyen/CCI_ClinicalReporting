@@ -382,13 +382,6 @@ def additional_applied_message(
 _MATCHED_BY = {BY_FILE_NAME: "by its file name", BY_COLUMNS: "by its columns"}
 
 
-def _and_list(names: Sequence[str]) -> str:
-    """*names* in a sentence: "a", "a and b", "a, b and c"."""
-    if len(names) <= 1:
-        return "".join(names)
-    return f"{', '.join(names[:-1])} and {names[-1]}"
-
-
 def _or_list(names: Sequence[str], shown: int = 5) -> str:
     """*names* as alternatives: "a", "a or b", "a, b or c", "…, e or 3 more"."""
     names = list(names)
@@ -606,9 +599,9 @@ def saved_names_hint(
             "be picked for you."
         )
     elif to_add:
-        files = _and_list([by_form[form].file_name for form in to_add])
+        files = feedback.and_list([by_form[form].file_name for form in to_add])
         hints.append(
-            f"{_and_list(to_add)} come from additional files. Add {files} on "
+            f"{feedback.and_list(to_add)} come from additional files. Add {files} on "
             f"{where}, and their saved names will be picked for you."
         )
     if len(to_apply) == 1:
@@ -618,7 +611,7 @@ def saved_names_hint(
         )
     elif to_apply:
         hints.append(
-            f"The files for {_and_list(to_apply)} are added: check their form "
+            f"The files for {feedback.and_list(to_apply)} are added: check their form "
             f"names on {where}, then Apply to report."
         )
     return " ".join(hints)
@@ -635,7 +628,8 @@ def stacked_clear_tooltip(clears: Sequence[str], item: str) -> str:
     For example "Choosing — also clears DS, which gives Status too."
     """
     gives = "gives" if len(clears) == 1 else "give"
-    return f"Choosing — also clears {_and_list(clears)}, which {gives} {item} too."
+    others = feedback.and_list(clears)
+    return f"Choosing — also clears {others}, which {gives} {item} too."
 
 
 def stacked_applied_message(report) -> feedback.Message:
@@ -684,15 +678,16 @@ def stacked_missing_message(report) -> str:
         members = list(built.missing_members.get(name, ()))
         if members:
             loaded = "isn't loaded" if len(members) == 1 else "aren't loaded"
+            listed = feedback.and_list(members)
             if name in built.forms:
-                sentences.append(
-                    f"{name} is built without {_and_list(members)}, which {loaded}."
-                )
+                sentences.append(f"{name} is built without {listed}, which {loaded}.")
             else:
-                sentences.append(f"{name} isn't built: {_and_list(members)} {loaded}.")
+                sentences.append(f"{name} isn't built: {listed} {loaded}.")
         items = built.missing_items.get(name, ())
         if items:
-            lacks = _and_list([f"{member} has no {item}" for member, item in items])
+            lacks = feedback.and_list(
+                [f"{member} has no {item}" for member, item in items]
+            )
             blank = (
                 "the matched item is blank on its rows"
                 if len(items) == 1
