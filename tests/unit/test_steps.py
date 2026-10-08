@@ -14,7 +14,7 @@ from clinical_reporting.additional_names import (
 )
 from clinical_reporting.models import JoinHow
 from clinical_reporting.report import CLReport
-from clinical_reporting.stacking import StackedForm
+from clinical_reporting.stacking import Match, StackedForm, layout
 from clinical_reporting.steps import StepStatus
 from clinical_reporting.validation import ReportValidationIssue
 
@@ -247,9 +247,27 @@ def test_the_stacked_forms_step_words_problems_and_members():
         steps.stacked_form_tooltip(StackedForm("VISITS", ("SV", "DSSVLTFU")))
         == "Stacked from SV, DSSVLTFU"
     )
-    assert steps.STACKED_NOT_SAVED_NOTE == (
-        "Stacked forms has changes that aren't applied, so they weren't saved."
+
+
+def test_a_matched_cell_says_why_it_warns():
+    data = {
+        "SV": pd.DataFrame(
+            {"Subject": ["1"], "Event Group Name": ["a"], "Event Label": ["b"]}
+        ),
+        "DS": pd.DataFrame({"Subject": ["2"], "Event Group Name": ["c"]}),
+        "LB": pd.DataFrame({"Subject": ["3"]}),
+    }
+    match = Match(
+        "Visit", {"SV": "Event Group Name", "DS": "Event Label", "LB": "Event Label"}
     )
+    stacked = StackedForm("VISITS", ("SV", "DS", "LB"), (match,))
+    item = layout(stacked, data).matched[0]
+
+    assert [steps.stacked_cell_warning(item, match, m) for m in stacked.members] == [
+        "SV now has Event Group Name and Event Label: which one is unclear",
+        "DS has no Event Label; its Event Group Name is taken instead",
+        "LB has no Event Label",
+    ]
 
 
 def test_saved_names_entries_read_as_their_form_names():

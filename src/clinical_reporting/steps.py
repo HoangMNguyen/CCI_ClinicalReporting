@@ -42,7 +42,7 @@ from clinical_reporting.additional_names import (
     SavedFileNames,
 )
 from clinical_reporting.models import qualify
-from clinical_reporting.stacking import StackedForm, layout
+from clinical_reporting.stacking import Match, MatchedItem, StackedForm, layout
 from clinical_reporting.validation import ReportValidationIssue
 
 # The steps, in order. The desktop pages use these as their keys.
@@ -632,6 +632,27 @@ def stacked_clear_tooltip(clears: Sequence[str], item: str) -> str:
     return f"Choosing — also clears {others}, which {gives} {item} too."
 
 
+def stacked_cell_warning(item: MatchedItem, match: Match, member: str) -> str:
+    """Why *member*'s cell in a matched row warns, or "" when it doesn't.
+
+    For example "SV now has Event Group Name and Event Label: which one is
+    unclear" (a conflict, see :func:`stacked_conflict_message`), "DSSVLTFU
+    has no Event Label; its Event Group Name is taken instead", or "DSSVLTFU
+    has no Event Label".
+    """
+    if member in item.doubled:
+        both = feedback.and_list(item.doubled[member])
+        return f"{member} now has {both}: which one is unclear"
+    if member in item.replaced:
+        return (
+            f"{member} has no {match.items[member]}; "
+            f"its {item.cells[member]} is taken instead"
+        )
+    if member in item.missing:
+        return f"{member} has no {match.items[member]}"
+    return ""
+
+
 def stacked_applied_message(report) -> feedback.Message:
     """What applying the stacked forms did: each one's rows and members.
 
@@ -780,6 +801,7 @@ __all__ = [
     "selected_item_count",
     "source_summary",
     "stacked_applied_message",
+    "stacked_cell_warning",
     "stacked_clear_tooltip",
     "stacked_conflict_message",
     "stacked_form_tooltip",

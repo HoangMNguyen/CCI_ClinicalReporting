@@ -1188,25 +1188,11 @@ class StackedFormsMixin:
         column: int,
     ) -> QComboBox:
         """*member*'s cell (in *column*) of a matched row: what it gives, and could."""
-        loaded = self.report.loaded_data
-        warning = ""
-        if member in item.doubled:
-            columns = set(loaded[member].columns)
-            have = [name for name in match.names if name in columns]
-            both = f"{', '.join(have[:-1])} and {have[-1]}"
-            warning = f"{member} now has {both}: which one is unclear"
-        elif member in item.replaced:
-            warning = (
-                f"{member} has no {match.items[member]}; "
-                f"its {item.cells[member]} is taken instead"
-            )
-        elif member in item.missing:
-            warning = f"{member} has no {match.items[member]}"
         box = _MatchItemBox(
             member,
             item.name,
-            stacking.match_choices(plan, loaded, item.index, member),
-            warning,
+            stacking.match_choices(plan, self.report.loaded_data, item.index, member),
+            steps.stacked_cell_warning(item, match, member),
         )
         box.picked.connect(
             partial(self._on_match_item_picked, item.index, member, column)

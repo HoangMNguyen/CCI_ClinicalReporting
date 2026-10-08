@@ -140,11 +140,13 @@ class MatchedItem:
     #: but give it another item with one of its names instead.
     replaced: Tuple[str, ...] = ()
     #: Present members that now have two or more items with the match's names,
-    #: so which one it should take is ambiguous (see :attr:`Built.conflicts`).
-    doubled: Tuple[str, ...] = ()
+    #: with those names, so which one it should take is ambiguous (see
+    #: :attr:`Built.conflicts`).
+    doubled: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "cells", MappingProxyType(dict(self.cells)))
+        object.__setattr__(self, "doubled", MappingProxyType(dict(self.doubled)))
 
 
 @dataclass(frozen=True)
@@ -223,11 +225,11 @@ def layout(stacked: StackedForm, data: Mapping[str, pd.DataFrame]) -> StackLayou
         cells: Dict[str, Optional[str]] = {}
         gone: List[str] = []
         replaced: List[str] = []
-        doubled: List[str] = []
+        doubled: Dict[str, Tuple[str, ...]] = {}
         for member in present:
             have = [name for name in match.names if name in column_sets[member]]
             if len(have) > 1:
-                doubled.append(member)
+                doubled[member] = tuple(have)
             saved = match.items.get(member)
             if saved is not None and saved in have:
                 cells[member] = saved
@@ -242,7 +244,7 @@ def layout(stacked: StackedForm, data: Mapping[str, pd.DataFrame]) -> StackLayou
                 cells,
                 tuple(gone),
                 tuple(replaced),
-                tuple(doubled),
+                doubled,
             )
         )
 
@@ -351,7 +353,7 @@ def build_all(
         )
         if swapped:
             replaced[stacked.name] = swapped
-        found = _conflicts(stacked, plan, data)
+        found = _conflicts(stacked, plan)
         if found:
             conflicts[stacked.name] = found
         forms[stacked.name] = build(stacked, data)
@@ -360,10 +362,8 @@ def build_all(
     )
 
 
-def _conflicts(
-    stacked: StackedForm, plan: StackLayout, data: Mapping[str, pd.DataFrame]
-) -> Tuple[str, ...]:
-    """What makes *stacked* ambiguous over *data*, one message each.
+def _conflicts(stacked: StackedForm, plan: StackLayout) -> Tuple[str, ...]:
+    """What makes *stacked* ambiguous over the data *plan* lays it out on.
 
     Apply refuses these (:func:`problems`); they come back when the data is
     set again with changed items (a saved setting, a new cut-off or export,
@@ -389,9 +389,7 @@ def _conflicts(
                 f"{name}: every member now has an item called {match.name}, also "
                 "the name of a match. Rename the match on Stacked forms."
             )
-        for member in item.doubled:
-            columns = set(data[member].columns)
-            have = [item_name for item_name in match.names if item_name in columns]
+        for member, have in item.doubled.items():
             both = (
                 f"both {feedback.and_list(have)}"
                 if len(have) == 2
@@ -728,15 +726,13 @@ def _issues(
             f"{both}{feedback.and_list(holders)}."
         )
     if plan:
-        columns = {member: set(data[member].columns) for member in plan.present}
-        for match in stacked.matches:
-            for member in plan.present:
-                have = [name for name in match.names if name in columns[member]]
-                if len(have) > 1:
-                    issues.append(
-                        "Pick at most one item from each member: "
-                        f"{member} has both {have[0]} and {have[1]}."
-                    )
+        for item in plan.matched:
+            for member, have in item.doubled.items():
+                both = "both " if len(have) == 2 else ""
+                issues.append(
+                    "Pick at most one item from each member: "
+                    f"{member} has {both}{feedback.and_list(have)}."
+                )
     return issues
 
 
