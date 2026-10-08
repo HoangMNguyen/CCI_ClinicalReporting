@@ -603,6 +603,53 @@ def test_two_matches_holding_one_item_name_are_a_problem():
     ]
 
 
+def test_a_name_s_problem_reads_as_apply_says_it():
+    stacked_forms = [
+        StackedForm("VISITS", ("SV", "DSSVLTFU")),
+        StackedForm(" VISITS ", ("SV", "DSSVLTFU")),
+        StackedForm("SV", ("SV", "DSSVLTFU")),
+        StackedForm("VI.SITS", ("SV", "DSSVLTFU")),
+        StackedForm(" ", ("SV", "DSSVLTFU")),
+        StackedForm("LABS", ("SV", "DSSVLTFU")),
+    ]
+
+    found = [
+        stacking.name_problem(stacked_forms, index, ["SV", "DSSVLTFU"])
+        for index in range(len(stacked_forms))
+    ]
+
+    assert found == [
+        "Another stacked form is called VISITS.",
+        "Another stacked form is called VISITS.",
+        "SV is already a loaded form.",
+        "A form name can't contain “.”.",
+        "Give it a name.",
+        "",
+    ]
+
+
+def test_a_match_name_s_problem_reads_as_apply_says_it():
+    data = _data()
+    stacked = _visits(
+        Match("Visit Name", {"SV": "Event Group Name"}),
+        Match("Visit Name", {"DSSVLTFU": "Event Label"}),
+        Match("Subject", {"SV": "Visit Status"}),
+        Match(" ", {"DSSVLTFU": "LTFUDAT"}),
+    )
+    plan = stacking.layout(stacked, data)
+
+    found = [stacking.match_name_problem(stacked, plan, index) for index in range(4)]
+
+    assert found == [
+        "VISITS already has an item called Visit Name.",
+        "VISITS already has an item called Visit Name.",
+        "VISITS already has an item called Subject.",
+        "Give the matched item a name.",
+    ]
+    fine = _visits(VISIT_NAME)
+    assert stacking.match_name_problem(fine, stacking.layout(fine, data), 0) == ""
+
+
 def test_well_made_stacked_forms_have_no_problems():
     assert stacking.problems([_visits(VISIT_NAME)], ["SV", "DSSVLTFU"], _data()) == []
 

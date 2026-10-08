@@ -108,9 +108,10 @@ def repolish(widget: QWidget) -> None:
 def set_invalid(widget: QWidget, invalid: bool) -> None:
     """Mark *widget*'s value as invalid, or clear the mark.
 
-    The stylesheet draws invalid combo boxes in the danger color (see the
-    ``invalid`` rule in :mod:`cci_ui.theme.qss`); add rules there before
-    marking other kinds of input. Restyles only when the state changes.
+    The stylesheet draws invalid combo boxes and line edits in the danger
+    color (see the ``invalid`` rules in :mod:`cci_ui.theme.qss`); add rules
+    there before marking other kinds of input. Restyles only when the state
+    changes.
     """
     invalid = bool(invalid)  # The rule matches the stored value "true" only.
     if bool(widget.property("invalid")) != invalid:

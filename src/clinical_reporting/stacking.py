@@ -679,6 +679,60 @@ def problems(
     return found
 
 
+def name_problem(
+    stacked_forms: Sequence[StackedForm],
+    index: int,
+    loaded_form_names: Collection[str],
+) -> str:
+    """What's wrong with the name of the stacked form at *index*, or "".
+
+    As :func:`problems` says it (without the stacked form's name in front),
+    for a page that marks the name as it is typed.
+    """
+    names = [stacked.name.strip() for stacked in stacked_forms]
+    counts = Counter(name for name in names if name)
+    return _name_issue(names[index], set(loaded_form_names), counts)
+
+
+def match_name_problem(stacked: StackedForm, plan: StackLayout, index: int) -> str:
+    """What's wrong with the name of the match at *index*, or "".
+
+    As :func:`problems` says it, over *stacked*'s :func:`layout` *plan* (a
+    match can't take the name of an item every member has).
+    """
+    return _match_name_issue(
+        stacked,
+        stacked.matches[index].name.strip(),
+        {group.name for group in plan.every},
+    )
+
+
+def _name_issue(
+    name: str, loaded: Collection[str], stacked_names: Mapping[str, int]
+) -> str:
+    if not name:
+        return "Give it a name."
+    if FORM_ITEM_SEPARATOR in name:
+        return f"A form name can't contain “{FORM_ITEM_SEPARATOR}”."
+    if name in loaded:
+        return f"{name} is already a loaded form."
+    if stacked_names[name] > 1:
+        return f"Another stacked form is called {name}."
+    return ""
+
+
+def _match_name_issue(
+    stacked: StackedForm, match_name: str, every: Collection[str]
+) -> str:
+    if not match_name:
+        return "Give the matched item a name."
+    taken = Counter(match.name.strip() for match in stacked.matches)
+    if match_name in every or taken[match_name] > 1:
+        name = stacked.name.strip() or "This stacked form"
+        return f"{name} already has an item called {match_name}."
+    return ""
+
+
 def _issues(
     stacked: StackedForm,
     name: str,
@@ -687,14 +741,9 @@ def _issues(
     data: Optional[Mapping[str, pd.DataFrame]],
 ) -> List[str]:
     issues = []
-    if not name:
-        issues.append("Give it a name.")
-    elif FORM_ITEM_SEPARATOR in name:
-        issues.append(f"A form name can't contain “{FORM_ITEM_SEPARATOR}”.")
-    elif name in loaded:
-        issues.append(f"{name} is already a loaded form.")
-    elif stacked_names[name] > 1:
-        issues.append(f"Another stacked form is called {name}.")
+    issue = _name_issue(name, loaded, stacked_names)
+    if issue:
+        issues.append(issue)
     if len(stacked.members) < 2:
         issues.append("Pick at least two members.")
     # A member named like a stacked form and a loaded form is the loaded form
@@ -707,16 +756,10 @@ def _issues(
 
     plan = layout(stacked, data) if data is not None else None
     every = {group.name for group in plan.every} if plan else set()
-    match_names = Counter(match.name.strip() for match in stacked.matches)
     for match in stacked.matches:
-        match_name = match.name.strip()
-        if not match_name:
-            issues.append("Give the matched item a name.")
-        elif match_name in every or match_names[match_name] > 1:
-            issues.append(
-                f"{name or 'This stacked form'} already has an item called "
-                f"{match_name}."
-            )
+        issue = _match_name_issue(stacked, match.name.strip(), every)
+        if issue:
+            issues.append(issue)
     for item_name, holders in _shared_item_names(stacked).items():
         both = "both " if len(holders) == 2 else ""
         issues.append(
@@ -858,6 +901,8 @@ __all__ = [
     "from_settings",
     "layout",
     "match_choices",
+    "match_name_problem",
+    "name_problem",
     "problems",
     "remove_matches",
     "rename_match",

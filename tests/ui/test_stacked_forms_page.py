@@ -193,6 +193,30 @@ def test_a_page_without_a_selected_stacked_form_says_how_to_make_one(sample_wind
     assert not sample_window.ui.pushButton_stacked_remove.isEnabled()
 
 
+def test_names_apply_would_refuse_turn_red_as_they_are_typed(sample_window):
+    window = sample_window
+    _new_stacked_form(window, "DM", "EOT", "DS")
+    edit = window.ui.tableWidget_stacked_forms.cellWidget(0, 0)
+    named_like_a_form = (edit.property("invalid"), edit.toolTip())
+    _type_name(window, 0, "DISP")
+    renamed = (edit.property("invalid"), edit.toolTip())
+    _click_item(window, "Reason", double=True)
+    grid = window.ui.tableView_stacked_items
+    box = grid.first_widget(_grid_rows(window).index("Reason"))
+
+    box.setCurrentText("Subject")  # An item every member has.
+    taken = (box.property("invalid"), box.toolTip())
+    box.setCurrentText("Disposition")
+
+    assert named_like_a_form == (True, "DM is already a loaded form.")
+    assert renamed == (False, "")
+    assert taken == (True, "DISP already has an item called Subject.")
+    assert (box.property("invalid"), box.toolTip()) == (
+        False,
+        "Pick one of the matched names, or type a new one",
+    )
+
+
 def test_other_steps_leave_the_page_as_it_was(sample_window):
     window = sample_window
     _new_stacked_form(window, "DISP", "EOT", "DS")

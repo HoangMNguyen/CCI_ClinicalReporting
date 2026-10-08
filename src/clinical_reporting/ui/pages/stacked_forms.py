@@ -64,7 +64,7 @@ from PySide6.QtWidgets import (
 )
 
 from cci_ui.icons import IconName, icon
-from cci_ui.theme.manager import current, theme_events
+from cci_ui.theme.manager import current, set_invalid, theme_events
 from cci_ui.theme.palette import qcolor
 from cci_ui.widgets.buttons import make_button
 from cci_ui.widgets.checklist import ChecklistComboBox, ChecklistItem
@@ -949,6 +949,7 @@ class StackedFormsMixin:
                     row, _MEMBERS_COLUMN, self._stacked_members_box(row)
                 )
                 self._show_stacked_form_row(row)
+            self._show_stacked_name_problems()
             if select is not None and 0 <= select < table.rowCount():
                 table.selectRow(select)
             else:
@@ -1046,7 +1047,27 @@ class StackedFormsMixin:
             self.ui.label_stacked_items.setText(
                 self._stacked_items_title(self._stacked_drafts[row])
             )
+        self._show_stacked_name_problems()
         self._show_stacked_state()
+
+    def _show_stacked_name_problems(self) -> None:
+        """Mark each typed name Apply would refuse, with the reason as its tooltip.
+
+        A name not typed yet is left for Apply to point out.
+        """
+        table = self.ui.tableWidget_stacked_forms
+        loaded = self.report.loaded_data.keys()
+        for row, stacked in enumerate(self._stacked_drafts):
+            edit = table.cellWidget(row, _NAME_COLUMN)
+            if edit is None:
+                continue
+            problem = (
+                stacking.name_problem(self._stacked_drafts, row, loaded)
+                if stacked.name.strip()
+                else ""
+            )
+            set_invalid(edit, bool(problem))
+            edit.setToolTip(problem)
 
     def _on_stacked_members_opened(self, row: int) -> None:
         self._select_stacked_form(row)
@@ -1162,6 +1183,7 @@ class StackedFormsMixin:
                     column,
                     self._match_item_box(plan, match, item, member, column),
                 )
+        self._show_match_name_problems(stacked, plan)
 
         grid.add_section(
             LEFT_OUT,
@@ -1208,10 +1230,28 @@ class StackedFormsMixin:
         row = self._current_stacked_row()
         if row is None:
             return
-        self._stacked_drafts[row] = stacking.rename_match(
-            self._stacked_drafts[row], index, name
+        stacked = stacking.rename_match(self._stacked_drafts[row], index, name)
+        self._stacked_drafts[row] = stacked
+        self._show_match_name_problems(
+            stacked, stacking.layout(stacked, self.report.loaded_data)
         )
         self._show_stacked_state()
+
+    def _show_match_name_problems(
+        self, stacked: StackedForm, plan: StackLayout
+    ) -> None:
+        """Mark each match name Apply would refuse, with the reason as its tooltip.
+
+        *plan* is *stacked*'s layout over the loaded data.
+        """
+        grid = self.ui.tableView_stacked_items
+        for index in range(len(stacked.matches)):
+            box = grid.first_widget(grid.row_of(MATCHED, index))
+            if box is None:  # The search hides its row.
+                continue
+            problem = stacking.match_name_problem(stacked, plan, index)
+            set_invalid(box, bool(problem))
+            box.setToolTip(problem or MATCH_NAME_TIP)
 
     def _on_match_item_picked(
         self, index: int, member: str, column: int, picked: Optional[str]
