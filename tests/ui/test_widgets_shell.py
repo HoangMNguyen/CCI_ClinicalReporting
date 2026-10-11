@@ -4,11 +4,21 @@ import gc
 
 import pytest
 import shiboken6
-from PySide6.QtCore import QByteArray, QElapsedTimer, QPointF, QRect, QSettings, Qt
+from PySide6.QtCore import (
+    QByteArray,
+    QElapsedTimer,
+    QPoint,
+    QPointF,
+    QRect,
+    QSettings,
+    Qt,
+    qInstallMessageHandler,
+)
 from PySide6.QtGui import QInputMethodEvent, QKeySequence, QShortcut
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
+    QComboBox,
     QFrame,
     QGraphicsDropShadowEffect,
     QGraphicsOpacityEffect,
@@ -282,6 +292,22 @@ def test_a_toast_keeps_its_fade_and_shadow(shown):
     assert shadow.blurRadius() == 24 and shadow.offset() == QPointF(0, 6)
 
 
+def test_a_shown_toast_redraws_without_qt_warnings(shown):
+    window = shown(QWidget(), 600, 400)
+    toast = show_toast(window, "Saved", duration_ms=5000)
+    QTest.qWait(400)  # Faded in.
+    warnings = []
+    previous = qInstallMessageHandler(lambda kind, context, text: warnings.append(text))
+    try:
+        toast.repaint()
+        QApplication.processEvents()
+    finally:
+        qInstallMessageHandler(previous)
+
+    # Its fade and its pill's shadow never draw at once: Qt can't nest them.
+    assert warnings == []
+
+
 def test_toasts_stack_up_to_a_limit_and_go_away(shown, shown_windows):
     window = shown(QWidget(), 600, 400)
     for number in range(MAX_TOASTS + 2):
@@ -468,6 +494,29 @@ def test_a_deleted_table_does_not_stop_density_updates(qapp, compact):
     theme_manager.theme_events().changed.emit()
 
     assert kept.verticalHeader().defaultSectionSize() == COMPACT.row_h
+
+
+def test_gliding_past_a_cell_dropdown_neither_focuses_nor_selects(make_manager, shown):
+    # The theme's hover rule turns on mouse tracking, and its cell padding
+    # leaves a margin beside a cell widget.
+    make_manager().apply()
+    table = QTableWidget(2, 1)
+    style_table(table)
+    combo = QComboBox()
+    combo.addItems(["Left join", "Inner join"])
+    table.setCellWidget(1, 0, combo)
+    shown(table, 300, 200)
+    table.selectRow(0)
+    table.setFocus()  # Showing the window focused the combo.
+    cell = table.visualRect(table.model().index(1, 0))
+    assert table.hasFocus() and combo.x() > cell.left()
+
+    for x in range(cell.left(), combo.x(), 2):
+        point = table.viewport().mapTo(table, QPoint(x, cell.center().y()))
+        QTest.mouseMove(table.windowHandle(), point)
+
+    assert not combo.hasFocus()
+    assert [index.row() for index in table.selectionModel().selectedRows()] == [0]
 
 
 def test_column_specs_are_validated():

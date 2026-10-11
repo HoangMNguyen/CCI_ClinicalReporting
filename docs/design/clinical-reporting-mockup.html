@@ -411,8 +411,10 @@ svg.lucide { width: 16px; height: 16px; flex: none; }
 .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
 .input:disabled { color: var(--text-disabled); }
 input[type="date"].input { width: 150px; }
+/* Dropdowns you can only pick from are filled grey; fields you can type in stay white. */
 .select { position: relative; display: inline-flex; align-items: center; min-width: 0; }
-.select select { appearance: none; -webkit-appearance: none; width: 100%; padding-right: 26px; cursor: pointer; }
+.select select { appearance: none; -webkit-appearance: none; width: 100%; padding-right: 26px; cursor: pointer; border-color: transparent; background: var(--fill); }
+.select select:hover { background: linear-gradient(var(--bg-hover), var(--bg-hover)), var(--fill); }
 .select > svg.lucide { position: absolute; right: 7px; width: 14px; height: 14px; color: var(--text-secondary); pointer-events: none; }
 .select select.invalid { color: var(--danger-text); font-weight: 600; border-color: var(--danger); }
 .search { position: relative; display: flex; align-items: center; min-width: 160px; }
@@ -562,8 +564,9 @@ input[type="date"].input { width: 150px; }
 .grid-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .grid-table .code { font-weight: 600; }
 .cell .select, .cell .input, .cell-input { width: 100%; }
-.cell .input, .cell-input { height: calc(var(--row-h) - 6px); border-color: transparent; background: transparent; }
-.grid-table tbody tr:hover .cell .input, .cell .input:focus, .grid-table tbody tr:hover .cell-input, .cell-input:focus { border-color: var(--border-control); background: var(--bg-control); }
+.cell .input, .cell-input { height: calc(var(--row-h) - 6px); }
+.cell input.input, .cell-input { border-color: transparent; background: transparent; }
+.grid-table tbody tr:hover .cell input.input, .cell input.input:focus, .grid-table tbody tr:hover .cell-input, .cell-input:focus { border-color: var(--border-control); background: var(--bg-control); }
 .cell .select select.invalid { border-color: var(--danger); }
 .table-tools { display: flex; align-items: center; gap: 10px; flex: none; }
 .preview-card .grid-table { table-layout: auto; width: max-content; min-width: 100%; }
@@ -600,10 +603,10 @@ input[type="date"].input { width: 150px; }
 .cell .input.invalid, .input.invalid { border-color: var(--danger); color: var(--danger-text); }
 .members-btn {
   width: 100%; height: calc(var(--row-h) - 6px); display: flex; align-items: center; gap: 6px; padding: 0 6px 0 8px;
-  border: 1px solid transparent; border-radius: var(--radius-control); background: transparent; color: var(--text-primary);
+  border: 1px solid transparent; border-radius: var(--radius-control); background: var(--fill); color: var(--text-primary);
   font: 400 13px var(--font-ui); text-align: left; cursor: pointer;
 }
-.grid-table tbody tr:hover .members-btn, .members-btn[aria-expanded="true"] { border-color: var(--border-control); background: var(--bg-control); }
+.members-btn:hover, .members-btn[aria-expanded="true"] { background: linear-gradient(var(--bg-hover), var(--bg-hover)), var(--fill); }
 .members-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 0; }
 .members-btn .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .members-btn > svg.lucide { width: 14px; height: 14px; color: var(--text-secondary); }
@@ -622,9 +625,16 @@ input[type="date"].input { width: 150px; }
 .items-empty p { margin: 0; }
 .stack-items tr[data-key] { user-select: none; }
 .mname-wrap { width: 100%; }
+.mname { padding-right: 26px; }
 .mname::-webkit-calendar-picker-indicator { display: none !important; }
+/* A matched row's name and member items take typing in the app, so they
+   always look like fields (the red border of a refused name still shows). */
+.stack-grid .cell select.member-pick,
+.stack-grid .cell input.mname:not(.invalid) { border-color: var(--border-control); background: var(--bg-control); }
+.stack-grid .cell input.mname.invalid { background: var(--bg-control); }
 .grid-table tr.sec td { height: 30px; background: var(--bg-surface-alt); }
 .grid-table tbody tr.sec:hover td { background: var(--bg-surface-alt); }
+.stack-grid tr.sec[data-sec="matched"] td, .stack-grid tr.sec[data-sec="left"] td { height: 38px; border-top: 8px solid var(--bg-surface); }
 .grid-table tr.sec[data-sec="every"] td { cursor: pointer; }
 .sec-in { position: sticky; left: 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .sec-in svg.lucide { width: 14px; height: 14px; }
@@ -632,14 +642,17 @@ input[type="date"].input { width: 150px; }
 .grid-table tr.note td { padding-left: 30px; color: var(--text-tertiary); }
 .grid-table tbody tr.note:hover td, .grid-table tbody tr.every:hover td { background: var(--bg-surface); }
 .stack-grid-card { flex: 1; }
+.stack-grid { min-width: 0; }
+.stack-grid th { overflow: hidden; text-overflow: ellipsis; }
 .stack-grid th:first-child, .stack-grid td:first-child { position: sticky; left: 0; z-index: 1; background: var(--bg-surface); box-shadow: inset -1px 0 0 var(--separator); }
 .stack-grid thead th:first-child { z-index: 3; background: var(--bg-surface-alt); }
+/* Lines between the member columns; section and note rows span the grid, so none run through them. */
+.stack-grid tr > :nth-child(n+3) { box-shadow: inset 1px 0 0 var(--separator); }
 .stack-grid tr.sec td:first-child { position: static; box-shadow: none; background: var(--bg-surface-alt); }
 .stack-grid th .rows { margin-left: 5px; font-weight: 400; color: var(--text-tertiary); }
-.stack-grid th.c, .stack-grid td.c { text-align: center; }
+.col-grip { position: absolute; top: 0; right: 0; width: 7px; height: 100%; cursor: col-resize; }
 .stack-grid td.mark { color: var(--success); }
 .stack-grid td.mark svg.lucide { display: block; width: 15px; height: 15px; }
-.stack-grid td.mark.c svg.lucide { margin: 0 auto; }
 .stack-grid tr.left td:first-child { color: var(--text-secondary); }
 .stack-grid tr.every td:first-child, .stack-grid tr.left td:first-child { padding-left: 30px; }
 .stack-grid tr.matched td.cell:first-child { padding-left: 24px; }
@@ -1683,9 +1696,11 @@ input[type="date"].input { width: 150px; }
       (id === 'every' ? '<i data-lucide="' + (open ? 'chevron-down' : 'chevron-right') + '"></i>' : '') +
       '<span>' + title + '</span><span class="pill">' + count + '</span><span class="sec-note">' + note + '</span></span></td></tr>';
   }
+  const MATCH_NAME_TIP = 'Pick one of the matched names, or type a new one';
+  const MATCH_ITEM_TIP = 'Pick an item, or type to find one';
   function stackNameInput(st, d, mt) {
     const issue = stackMatchIssue(st, d, st.matches[mt.i]);
-    return '<span class="select mname-wrap"><input class="input mname' + (issue ? ' invalid' : '') + '" data-m="' + mt.i + '" list="stack-dl-' + mt.i + '" value="' + esc(mt.name) + '" aria-label="Name of the matched item" title="' + esc(issue || 'Pick one of the matched names, or type a new one') + '" spellcheck="false" autocomplete="off"><i data-lucide="chevron-down"></i></span>' +
+    return '<span class="select mname-wrap"><input class="input mname' + (issue ? ' invalid' : '') + '" data-m="' + mt.i + '" list="stack-dl-' + mt.i + '" value="' + esc(mt.name) + '" aria-label="Name of the matched item" title="' + esc(issue || MATCH_NAME_TIP) + '" spellcheck="false" autocomplete="off"><i data-lucide="chevron-down"></i></span>' +
       '<datalist id="stack-dl-' + mt.i + '">' + mt.from.map((x) => '<option value="' + esc(x) + '"></option>').join('') + '</datalist>';
   }
   // How alike two item names are, 0 to 1. Case, spaces and punctuation aside:
@@ -1742,15 +1757,77 @@ input[type="date"].input { width: 150px; }
     if (ch.current) options += opt(ch.current, ch.current);
     if (ch.similar.length) options += '<optgroup label="Similar names">' + ch.similar.map((x) => opt(x, x)).join('') + '</optgroup>';
     if (ch.others.length) options += '<optgroup label="Other items">' + ch.others.map((x) => opt(x, x)).join('') + '</optgroup>';
-    return '<span class="select"><select class="input member-pick" data-m="' + mt.i + '" data-member="' + esc(m) + '" aria-label="' + esc('Item ' + m + ' gives ' + mt.name) + '"' + (clearTip ? ' title="' + esc(clearTip) + '"' : '') + '>' + options + '</select><i data-lucide="chevron-down"></i></span>';
+    return '<span class="select"><select class="input member-pick" data-m="' + mt.i + '" data-member="' + esc(m) + '" aria-label="' + esc('Item ' + m + ' gives ' + mt.name) + '" title="' + MATCH_ITEM_TIP + '">' + options + '</select><i data-lucide="chevron-down"></i></span>';
   }
+  // Column widths of the items grid. The first fits the longest item name
+  // (never under 232 px, so a match name has room to be typed), up to 45% of
+  // the grid; a member fits its header and longest item, 120 to 300 px. Spare
+  // room goes to the members; when they don't fit, the grid scrolls sideways
+  // under the first column.
+  const STACK_FIRST_SHARE = 0.45;
+  const STACK_FIRST_MIN = 232;
+  const STACK_MEMBER_MIN = 120;
+  const STACK_MEMBER_MAX = 300;
+  const STACK_DRAG_MIN = 48;
+  // Widths the user dragged, kept until the page reloads. A member's belongs
+  // to its form: DM keeps it in every stacked form DM is a member of.
+  let stackFirstW = null;
+  const stackMemberW = new Map();
+  function fitStackColumns(d, table) {
+    const head = getComputedStyle($('th', table));
+    const body = getComputedStyle(table);
+    const text = (s, cs, weight) => { measure.font = (weight || cs.fontWeight) + ' ' + cs.fontSize + ' ' + cs.fontFamily; return Math.ceil(measure.measureText(s).width); };
+    // Padding, borders and room for the chevron around each kind of cell's text.
+    const first = Math.max(STACK_FIRST_MIN, 20 + text('Stacked item', head),
+      ...d.every.concat(d.left).map((g) => 40 + text(g.name, body)),
+      ...d.matches.map((mt) => 64 + text(mt.name, body)));
+    const members = d.present.map((m) => Math.max(25 + text(m, head) + text(fmtN(FORM_ROWS[m] || 0) + ' rows', head, 400),
+      ...d.matches.map((mt) => 44 + text(mt.cells[m] || '—', body))));
+    return { first: first, members: members };
+  }
+  // A name cut short shows whole in its tooltip, above the control's own tip.
+  function cutTitle(el, name, tip) {
+    const cs = getComputedStyle(el);
+    measure.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    const cut = measure.measureText(name).width > el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    el.title = cut ? (tip ? name + '\n' + tip : name) : tip;
+  }
+  function layoutStackGrid() {
+    const card = $('#stack-grid .stack-grid-card');
+    const st = curStack();
+    if (!card || !st || !card.clientWidth) return;
+    const table = $('table', card);
+    const d = deriveStack(st);
+    const fit = fitStackColumns(d, table);
+    const room = card.clientWidth;
+    // A dragged first column holds; either way it leaves room for the members.
+    const want = stackFirstW !== null ? stackFirstW : Math.min(fit.first, room * STACK_FIRST_SHARE);
+    const first = Math.round(Math.max(STACK_DRAG_MIN, Math.min(want, room - STACK_MEMBER_MIN)));
+    const widths = d.present.map((m, i) => (stackMemberW.has(m) ? stackMemberW.get(m) : Math.min(STACK_MEMBER_MAX, Math.max(STACK_MEMBER_MIN, fit.members[i]))));
+    const free = d.present.map((m, i) => i).filter((i) => !stackMemberW.has(d.present[i]));
+    let spare = room - first - widths.reduce((a, w) => a + w, 0);
+    if (spare > 0) free.forEach((i, k) => { const add = Math.floor(spare / (free.length - k)); widths[i] += add; spare -= add; });
+    const all = [first].concat(widths);
+    $$('col', table).forEach((col, i) => { col.style.width = all[i] + 'px'; });
+    table.style.width = all.reduce((a, w) => a + w, 0) + 'px';
+    $$('input.mname', table).forEach((input) => cutTitle(input, input.value, stackMatchIssue(st, d, st.matches[Number(input.dataset.m)]) || MATCH_NAME_TIP));
+    $$('select.member-pick', table).forEach((pick) => cutTitle(pick, pick.selectedOptions[0].textContent, MATCH_ITEM_TIP));
+    $$('tr.every td:first-child, tr.left td:first-child', table).forEach((td) => cutTitle(td, td.textContent, ''));
+  }
+  const stackGridSize = new ResizeObserver(() => layoutStackGrid());
   function renderStackGrid() {
     const box = $('#stack-grid');
     const st = curStack();
     if (!box || !st) return;
     const d = deriveStack(st);
     if (d.present.length < 2) {
-      box.innerHTML = '<div class="table-card items-empty"><p>Pick two or more forms in Members to see how their items line up.</p></div>';
+      // Members kept but not loaded (a removed file) are why, if any.
+      const missing = st.members.filter((m) => d.present.indexOf(m) === -1);
+      const names = missing.length > 1 ? missing.slice(0, -1).join(', ') + ' and ' + missing[missing.length - 1] : missing[0];
+      const text = !missing.length ? 'Pick two or more forms in Members to see how their items line up.'
+        : missing.length === 1 ? names + " isn't loaded. Add its file on Additional input, or untick it in Members."
+        : names + " aren't loaded. Add their files on Additional input, or untick them in Members.";
+      box.innerHTML = '<div class="table-card items-empty"><p>' + esc(text) + '</p></div>';
       refreshIcons();
       updateStackButtons();
       return;
@@ -1759,12 +1836,11 @@ input[type="date"].input { width: 150px; }
     const hit = (names) => !q || names.some((n) => n.toLowerCase().indexOf(q) !== -1);
     const cols = d.present;
     const n = cols.length + 1;
-    const many = cols.length > 4;
-    const c = many ? ' class="c"' : '';
-    const mark = '<td class="mark' + (many ? ' c' : '') + '"><i data-lucide="check"></i></td>';
-    let h = '<div class="table-card stack-grid-card"><table class="grid-table stack-grid" style="min-width:' + (232 + cols.length * (many ? 92 : 140)) + 'px">' +
-      '<colgroup><col style="width: 232px">' + cols.map(() => '<col>').join('') + '</colgroup><thead><tr><th>Stacked item</th>' +
-      cols.map((m) => '<th' + c + ' title="' + esc(m + ' · ' + fmtN(FORM_ROWS[m] || 0) + ' rows') + '">' + esc(m) + (many ? '' : '<span class="rows">' + fmtN(FORM_ROWS[m] || 0) + ' rows</span>') + '</th>').join('') +
+    const mark = '<td class="mark"><i data-lucide="check"></i></td>';
+    const grip = (i) => '<span class="col-grip" data-col="' + i + '" aria-hidden="true"></span>';
+    let h = '<div class="table-card stack-grid-card"><table class="grid-table stack-grid">' +
+      '<colgroup>' + '<col>'.repeat(n) + '</colgroup><thead><tr><th>Stacked item' + grip(0) + '</th>' +
+      cols.map((m, i) => '<th title="' + esc(m + ' · ' + fmtN(FORM_ROWS[m] || 0) + ' rows') + '">' + esc(m) + '<span class="rows">' + fmtN(FORM_ROWS[m] || 0) + ' rows</span>' + grip(i + 1) + '</th>').join('') +
       '</tr></thead><tbody>';
     h += stackSection('every', 'In every member', d.every.length, 'Same name in every member; rename them on Order & rename.', n, S.stackEveryOpen);
     if (S.stackEveryOpen) {
@@ -1775,7 +1851,7 @@ input[type="date"].input { width: 150px; }
     d.matches.filter((mt) => hit([mt.name].concat(mt.from))).forEach((mt) => {
       const key = 'm:' + mt.i;
       h += '<tr class="matched" data-key="' + key + '" aria-selected="' + S.stackRowSel.has(key) + '"><td class="cell">' + stackNameInput(st, d, mt) + '</td>' +
-        cols.map((m) => '<td class="cell' + (many ? ' c' : '') + '">' + stackMemberPick(d, mt, m) + '</td>').join('') + '</tr>';
+        cols.map((m) => '<td class="cell">' + stackMemberPick(d, mt, m) + '</td>').join('') + '</tr>';
     });
     h += stackSection('left', 'Left out', d.left.length, 'Not in the stacked form unless you match them.', n, true);
     if (!d.left.length) h += '<tr class="note"><td colspan="' + n + '">Nothing left out.</td></tr>';
@@ -1786,6 +1862,9 @@ input[type="date"].input { width: 150px; }
     });
     box.innerHTML = h + '</tbody></table></div>';
     refreshIcons();
+    layoutStackGrid();
+    stackGridSize.disconnect();
+    stackGridSize.observe($('.stack-grid-card', box));
     updateStackButtons();
     if (stackFocus !== null) {
       const input = $('#stack-items input.mname[data-m="' + stackFocus + '"]');
@@ -1977,10 +2056,36 @@ input[type="date"].input { width: 150px; }
     renderStackGrid();
   });
   $('#stack-items').addEventListener('dblclick', (e) => {
+    const grip = e.target.closest('.col-grip');
+    if (grip) { setStackColumnWidth(Number(grip.dataset.col), null); return; }
     const tr = e.target.closest('tr.left[data-key]');
     if (!tr) return;
     S.stackRowSel = new Set([tr.dataset.key]);
     doStackMatch();
+  });
+  // Drag a column edge to size it; double-click (width null) fits it again.
+  function setStackColumnWidth(col, w) {
+    const member = col ? deriveStack(curStack()).present[col - 1] : null;
+    if (w === null) { if (member) stackMemberW.delete(member); else stackFirstW = null; }
+    else if (member) stackMemberW.set(member, Math.max(STACK_DRAG_MIN, Math.round(w)));
+    else stackFirstW = Math.max(STACK_DRAG_MIN, Math.round(w));
+    layoutStackGrid();
+  }
+  $('#stack-items').addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('.col-grip');
+    if (!grip) return;
+    e.preventDefault();
+    grip.setPointerCapture(e.pointerId);
+    const col = Number(grip.dataset.col);
+    const startX = e.clientX;
+    const startW = grip.parentElement.getBoundingClientRect().width / scale;
+    const move = (ev) => setStackColumnWidth(col, startW + (ev.clientX - startX) / scale);
+    const up = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
   });
   $('#stack-items').addEventListener('change', (e) => {
     const pick = e.target.closest('select.member-pick');
@@ -1994,11 +2099,14 @@ input[type="date"].input { width: 150px; }
     st.matches[Number(input.dataset.m)].name = input.value;
     const d = deriveStack(st);
     $$('#stack-items input.mname').forEach((other) => {
-      const issue = stackMatchIssue(st, d, st.matches[Number(other.dataset.m)]);
-      other.classList.toggle('invalid', Boolean(issue));
-      other.title = issue || 'Pick one of the matched names, or type a new one';
+      other.classList.toggle('invalid', Boolean(stackMatchIssue(st, d, st.matches[Number(other.dataset.m)])));
     });
+    layoutStackGrid();
     renderStackBanners();
+  });
+  // A long name shows its start once you leave it.
+  $('#stack-items').addEventListener('focusout', (e) => {
+    if (e.target.matches('input.mname')) e.target.scrollLeft = 0;
   });
   $('#stack-items').addEventListener('focusin', (e) => {
     const input = e.target.closest('input.mname');

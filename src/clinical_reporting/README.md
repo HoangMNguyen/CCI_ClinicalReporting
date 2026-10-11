@@ -59,6 +59,10 @@ python -m clinical_reporting
     (type to filter). Items of one name move together: picking one brings in
     every member's item of that name, and clearing one takes them all back
     to Left out. A match left with no item goes.
+  - The grid's columns fit their names (the first up to 45% of the grid),
+    and the grid scrolls sideways when they don't fit. Drag any column edge
+    to resize it, or double-click it to fit it again; a dragged width holds
+    until the app closes.
   - A stacked form or match name Apply would refuse (taken, a loaded form's,
     with a dot, or a blank match name) turns red as you type, with the reason
     as its tooltip.

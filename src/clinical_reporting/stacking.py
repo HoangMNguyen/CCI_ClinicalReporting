@@ -395,7 +395,8 @@ def _conflicts(stacked: StackedForm, plan: StackLayout) -> Tuple[str, ...]:
             )
             found.append(
                 f"{name}: {member} now has {both}, which the match {match.name} "
-                "lines up. Unmatch it and match again on Stacked forms."
+                f"lines up. Choose “—” in {member}'s cell or Unmatch it on "
+                "Stacked forms."
             )
     for item_name, holders in _shared_item_names(stacked).items():
         two = len(holders) == 2

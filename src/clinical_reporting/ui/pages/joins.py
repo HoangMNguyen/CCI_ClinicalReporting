@@ -20,7 +20,7 @@ from typing import List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush
-from PySide6.QtWidgets import QComboBox, QTableWidgetItem, QWidget
+from PySide6.QtWidgets import QTableWidgetItem, QWidget
 
 from cci_ui.icons import IconName
 from cci_ui.theme.manager import current, set_invalid, theme_events
@@ -31,7 +31,7 @@ from cci_ui.widgets.tables import ColumnSpec, table_card
 from clinical_reporting import report_columns, steps
 from clinical_reporting.models import JoinHow
 
-from ._common import make_table
+from ._common import CellComboBox, make_table
 
 
 class JoinsPage(Page):
@@ -99,7 +99,7 @@ class JoinsMixin:
             for col in range(1, 4):
                 self._add_item_dropdown(row, col, form_name, join_data)
 
-            join_order_combo = QComboBox()
+            join_order_combo = CellComboBox()
             join_order_combo.addItems([str(i) for i in range(1, max_order + 1)])
             # Determine current/default order; clamp to available range if needed
             desired_order = 1
@@ -122,7 +122,7 @@ class JoinsMixin:
                 how = join_data.get(form_name, {}).get("how", JoinHow.LEFT)
                 self.report.update_join_items(form_name, items, clamped_order, how)
 
-            join_type_combo = QComboBox()
+            join_type_combo = CellComboBox()
             for join_type in JoinHow.ALL:
                 join_type_combo.addItem(join_type)
             default_join_type = JoinHow.LEFT
@@ -238,7 +238,7 @@ class JoinsMixin:
         join_data: dict,
     ) -> None:
         """Add a dropdown for join-item selection."""
-        combo = QComboBox()
+        combo = CellComboBox()
         combo.addItem("")
 
         all_items: List[str] = []

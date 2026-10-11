@@ -1,7 +1,8 @@
 import types
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QComboBox, QTableWidget, QTableWidgetItem
+from PySide6.QtCore import QPoint, QPointF, Qt
+from PySide6.QtGui import QWheelEvent
+from PySide6.QtWidgets import QApplication, QComboBox, QTableWidget, QTableWidgetItem
 
 from cci_ui.theme import manager as theme_manager
 from cci_ui.theme.manager import Theme, current
@@ -183,3 +184,26 @@ def test_painting_the_missing_items_uses_the_current_theme_only(qapp, monkeypatc
 
     assert table.item(0, 0).foreground().color() == qcolor(DARK.danger_text)
     assert refresh_calls == []
+
+
+def test_the_wheel_leaves_an_unfocused_join_type_alone(sample_window):
+    sample_window.ui.shell.set_current("joins")
+    QApplication.processEvents()
+    table = sample_window.ui.tableWidget_join
+    rows = {table.item(row, 0).text(): row for row in range(table.rowCount())}
+    join_type = table.cellWidget(rows["VS"], 5)
+    centre = QPointF(join_type.rect().center())
+    wheel = QWheelEvent(
+        centre,
+        join_type.mapToGlobal(centre),
+        QPoint(0, 0),
+        QPoint(0, -120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+
+    QApplication.sendEvent(join_type, wheel)
+
+    assert join_type.currentText() == "Left join"
