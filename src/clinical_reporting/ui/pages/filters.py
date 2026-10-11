@@ -19,7 +19,7 @@ from cci_ui.widgets.tables import ColumnSpec, TableToolbar, table_card
 from clinical_reporting import report_columns, steps
 from clinical_reporting.models import Operator
 
-from ._common import make_table
+from ._common import CellComboBox, make_table
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ class FiltersMixin:
         selected_value: Optional[str] = None,
     ) -> None:
         """Add an item or operator dropdown to the Filters table."""
-        combo = QComboBox()
+        combo = CellComboBox()
 
         if dropdown_type == "item":
             self._populate_searchable_item_combo(combo, selected_value)
@@ -321,7 +321,7 @@ class FiltersMixin:
         selected_value: Optional[str] = None,
     ) -> None:
         """Add item/operator dropdowns to the Comparisons table."""
-        combo = QComboBox()
+        combo = CellComboBox()
 
         if dropdown_type == "item":
             self._populate_searchable_item_combo(combo, selected_value)

@@ -264,7 +264,8 @@ def test_a_matched_cell_says_why_it_warns():
     item = layout(stacked, data).matched[0]
 
     assert [steps.stacked_cell_warning(item, match, m) for m in stacked.members] == [
-        "SV now has Event Group Name and Event Label: which one is unclear",
+        "SV now has Event Group Name and Event Label: which one is unclear. "
+        "Choose “—” or Unmatch to fix it.",
         "DS has no Event Label; its Event Group Name is taken instead",
         "LB has no Event Label",
     ]

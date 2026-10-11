@@ -303,7 +303,7 @@ def test_a_member_with_two_items_of_one_match_after_a_reload_stops_the_report():
 
     message = (
         "VISITS: SV now has both Event Group Name and Event Label, which the match "
-        "Visit Name lines up. Unmatch it and match again on Stacked forms."
+        "Visit Name lines up. Choose “—” in SV's cell or Unmatch it on Stacked forms."
     )
     assert _conflicts(report) == [(CONFLICT, message, "stacked_forms")]
     with pytest.raises(ReportValidationError):
@@ -334,7 +334,7 @@ def test_an_additional_member_with_two_items_of_one_match_stops_the_report():
 
     message = (
         "LABS: LAB now has both Event Date and Collection Date, which the match Date "
-        "lines up. Unmatch it and match again on Stacked forms."
+        "lines up. Choose “—” in LAB's cell or Unmatch it on Stacked forms."
     )
     assert _conflicts(report) == [(CONFLICT, message, "stacked_forms")]
     assert report_issues_message(report, EXPORT_BLOCKING_ISSUE_CODES) is not None
