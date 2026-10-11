@@ -2,11 +2,14 @@
 
 The searchable-combo UX rebuilds the report's filters from the table on every
 edit, skipping rows whose item field is still empty ("an unfilled filter row
-applies nothing"). These exercise that pure rebuild logic with lightweight
-fakes, so no Qt event loop / display is required.
+applies nothing"). Most of these exercise that pure rebuild logic with
+lightweight fakes; the last one uses the sample window.
 """
 
 import pandas as pd
+from PySide6.QtCore import QPoint, QPointF, Qt
+from PySide6.QtGui import QWheelEvent
+from PySide6.QtWidgets import QApplication
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
@@ -143,3 +146,24 @@ def test_synchronize_dynamic_filters_skips_incomplete_rows():
     )
     widget.synchronize_dynamic_filters()
     assert report.get_dynamic_filter_items() == [("DM.Age", ">", "VS.Pulse")]
+
+
+def test_the_wheel_leaves_an_unfocused_filter_operator_alone(sample_window):
+    sample_window.ui.shell.set_current("filters")
+    QApplication.processEvents()
+    operator = sample_window.ui.tableWidget_static_filter.cellWidget(0, 1)
+    centre = QPointF(operator.rect().center())
+    wheel = QWheelEvent(
+        centre,
+        operator.mapToGlobal(centre),
+        QPoint(0, 0),
+        QPoint(0, -120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+
+    QApplication.sendEvent(operator, wheel)
+
+    assert operator.currentText() == ">="

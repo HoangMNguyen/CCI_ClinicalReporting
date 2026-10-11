@@ -632,17 +632,38 @@ def stacked_clear_tooltip(clears: Sequence[str], item: str) -> str:
     return f"Choosing — also clears {others}, which {gives} {item} too."
 
 
+def stacked_not_loaded_hint(missing: Sequence[str]) -> str:
+    """What the items grid says when the *missing* members leave it fewer than two.
+
+    For example "LAB isn't loaded. Add its file on Additional input, or untick
+    it in Members." The members stay, so adding the file brings them back.
+    """
+    where = TITLES[ADDITIONAL]
+    if len(missing) == 1:
+        return (
+            f"{missing[0]} isn't loaded. Add its file on {where}, "
+            "or untick it in Members."
+        )
+    return (
+        f"{feedback.and_list(missing)} aren't loaded. Add their files on "
+        f"{where}, or untick them in Members."
+    )
+
+
 def stacked_cell_warning(item: MatchedItem, match: Match, member: str) -> str:
     """Why *member*'s cell in a matched row warns, or "" when it doesn't.
 
     For example "SV now has Event Group Name and Event Label: which one is
-    unclear" (a conflict, see :func:`stacked_conflict_message`), "DSSVLTFU
-    has no Event Label; its Event Group Name is taken instead", or "DSSVLTFU
-    has no Event Label".
+    unclear. Choose “—” or Unmatch to fix it." (a conflict, see
+    :func:`stacked_conflict_message`), "DSSVLTFU has no Event Label; its Event
+    Group Name is taken instead", or "DSSVLTFU has no Event Label".
     """
     if member in item.doubled:
         both = feedback.and_list(item.doubled[member])
-        return f"{member} now has {both}: which one is unclear"
+        return (
+            f"{member} now has {both}: which one is unclear. "
+            "Choose “—” or Unmatch to fix it."
+        )
     if member in item.replaced:
         return (
             f"{member} has no {match.items[member]}; "
@@ -732,9 +753,10 @@ def stacked_conflict_message(report) -> str:
     """What makes the report's stacked forms ambiguous since they were applied.
 
     An error, for example "VISITS: SV now has both Event Group Name and Event
-    Label, which the match Visit Name lines up. Unmatch it and match again on
-    Stacked forms. The report can't be exported until this is fixed."; ``""``
-    when nothing does (see :attr:`clinical_reporting.stacking.Built.conflicts`).
+    Label, which the match Visit Name lines up. Choose “—” in SV's cell or
+    Unmatch it on Stacked forms. The report can't be exported until this is
+    fixed."; ``""`` when nothing does (see
+    :attr:`clinical_reporting.stacking.Built.conflicts`).
     """
     found = [
         message
@@ -806,6 +828,7 @@ __all__ = [
     "stacked_conflict_message",
     "stacked_form_tooltip",
     "stacked_missing_message",
+    "stacked_not_loaded_hint",
     "stacked_problems_message",
     "step_statuses",
 ]

@@ -88,7 +88,7 @@ class ColorTokens:
     bg_control_hover: Color
     bg_control_pressed: Color
     bg_hover: Color  # rows and borderless buttons under the pointer
-    fill: Color  # segmented-control track, count pills
+    fill: Color  # segmented-control track, count pills, pick-only dropdowns
     selection: Color  # soft-tint selection (sidebar, lists, tables)
     selection_inactive: Color  # selection while the window is in the background
     find_bg: Color  # rows matching a search

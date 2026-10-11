@@ -323,8 +323,19 @@ class _Toast(QWidget):
         self.setGraphicsEffect(self._opacity)
         self._fade = QPropertyAnimation(self._opacity, b"opacity", self)
         self._fade.setEasingCurve(QEasingCurve.Type.OutCubic)
+        # Qt can't draw one effect inside another (it warns "QPainter::begin:
+        # A paint device can only be painted by one painter at a time" when a
+        # shown toast is redrawn), so only one works at a time: the fade
+        # while the toast fades, the shadow once it is fully shown.
+        self._fade.valueChanged.connect(self._use_one_effect)
+        self._use_one_effect(0.0)
         self._fade_to(1.0)
         QTimer.singleShot(duration_ms, self.dismiss)
+
+    def _use_one_effect(self, opacity: float) -> None:
+        fading = opacity < 1.0
+        self._opacity.setEnabled(fading)
+        self._shadow.setEnabled(not fading)
 
     def _fade_to(self, value: float) -> None:
         self._fade.stop()

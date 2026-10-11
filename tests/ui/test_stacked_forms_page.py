@@ -9,13 +9,15 @@ report"; badges refresh once control returns to the event loop.
 import json
 
 import pandas as pd
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, QPoint, Qt
+from PySide6.QtGui import QHelpEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QListWidget
+from PySide6.QtWidgets import QApplication, QListWidget, QToolTip
 
+from cci_ui.widgets.checklist import ChecklistComboBox
 from cci_ui.widgets.sidebar import StepState
 from clinical_reporting.stacking import Match, StackedForm
-from clinical_reporting.ui.pages.stacked_forms import FIRST_COLUMN_W, TICK_ROLE
+from clinical_reporting.ui.pages.stacked_forms import TICK_ROLE
 from clinical_reporting.ui.sample_data import STUDY, sample_forms
 
 NOT_APPLIED = "Not applied yet. Apply to report to use your changes."
@@ -363,7 +365,11 @@ def test_a_cell_whose_member_lost_its_item_warns_until_one_is_picked(
     fixed = _cell(window, "Reason", 2)
 
     assert warned == ("—", "OUT has no Outcome", False)
-    assert (fixed.currentText(), fixed.toolTip()) == ("Result", "")
+    # No warning left: the cell's tooltip says how to use it instead.
+    assert (fixed.currentText(), fixed.toolTip()) == (
+        "Result",
+        "Pick an item, or type to find one",
+    )
     assert window.ui.banner_stacked_state.text() == NOT_APPLIED
 
 
@@ -393,13 +399,17 @@ def test_a_member_with_two_items_of_a_match_stops_the_export_until_its_cell_is_c
 
     message = (
         "ENDS: OUT now has both Reason and Outcome, which the match Reason lines up. "
-        "Unmatch it and match again on Stacked forms."
+        "Choose “—” in OUT's cell or Unmatch it on Stacked forms."
     )
     assert before == (StepState.DONE, None)
     assert state == f"{message} The report can't be exported until this is fixed."
     assert state.kind == "error"
     assert stopped == ((StepState.ERROR, None), [message])
-    assert warned == ("Outcome", "OUT now has Reason and Outcome: which one is unclear")
+    assert warned == (
+        "Outcome",
+        "OUT now has Reason and Outcome: which one is unclear. "
+        "Choose “—” or Unmatch to fix it.",
+    )
     assert again == state
     # "—" takes Outcome out of the match, so OUT gives its Reason.
     assert cleared == "Reason"
@@ -590,6 +600,32 @@ def test_a_setting_whose_stacked_member_is_missing_says_what_to_add(
     assert _badge(window) == (StepState.WARNING, None)
 
 
+def test_removing_a_members_file_keeps_it_and_says_what_to_do(sample_window, tmp_path):
+    window = sample_window
+    _add_files(window, tmp_path, LAB=("Lab Test", "Result", "Unit"))
+    _new_stacked_form(window, "LABS", "LB", "LAB")
+    window.click_apply_stacked_forms()
+    applied = window.ui.banner_stacked.text()
+
+    window.additional_inputs = {}  # LAB's file removed on Additional input.
+    window.additional_form_names = {}
+    window.click_apply_additional_forms()
+
+    assert applied == "Applied. Stacked forms: LABS (97 rows from LB, LAB)."
+    # LAB stays a member, so adding its file again brings it back.
+    assert window.ui.tableWidget_stacked_forms.cellWidget(0, 1).currentText() == (
+        "LB, LAB (not loaded)"
+    )
+    assert window.ui.banner_stacked_state.text() == (
+        "LABS is built without LAB, which isn't loaded."
+    )
+    assert window.ui.panel_stacked_items.message() == (
+        "LAB isn't loaded. Add its file on Additional input, or untick it in Members."
+    )
+    # What the last Apply did is out of date.
+    assert window.ui.banner_stacked.text() == ""
+
+
 def test_the_first_column_stays_when_the_members_scroll_sideways(sample_window):
     window = sample_window
     _new_stacked_form(window, "ALL", "DM", "VS", "AE", "LB", "CM", "EX", "EOT", "DS")
@@ -598,6 +634,7 @@ def test_the_first_column_stays_when_the_members_scroll_sideways(sample_window):
     grid = window.ui.tableView_stacked_items
     bar = grid.horizontalScrollBar()
     first = grid.frozen
+    width = grid.columnWidth(0)
     before = (first.geometry(), first.columnViewportPosition(0))
     member_before = grid.columnViewportPosition(1)
 
@@ -609,10 +646,197 @@ def test_the_first_column_stays_when_the_members_scroll_sideways(sample_window):
     )
 
     assert bar.maximum() > 0 and bar.value() == bar.maximum()
-    assert headers == ["Stacked item", "DM", "VS", "AE", "LB", "CM", "EX", "EOT", "DS"]
+    # However many members, each header keeps its row count.
+    assert headers == [
+        "Stacked item",
+        "DM  24 rows",
+        "VS  96 rows",
+        "AE  35 rows",
+        "LB  96 rows",
+        "CM  24 rows",
+        "EX  24 rows",
+        "EOT  24 rows",
+        "DS  24 rows",
+    ]
     assert tip == "DM · 24 rows"
-    assert first.isVisible() and first.width() == FIRST_COLUMN_W
+    assert first.isVisible() and first.width() == width
     assert (first.geometry(), first.columnViewportPosition(0)) == before
     # The first member column went under the first column, which stayed.
-    assert member_before == FIRST_COLUMN_W
-    assert grid.columnViewportPosition(1) == FIRST_COLUMN_W - bar.maximum()
+    assert member_before == width
+    assert grid.columnViewportPosition(1) == width - bar.maximum()
+
+
+LONG_NAME = "Date informed consent was signed by the subject (IG_DM1.DT_ICDAT)"
+
+
+def _edge(header, column):
+    """A point just inside *column*'s right edge in *header*."""
+    x = header.sectionViewportPosition(column) + header.sectionSize(column) - 2
+    return QPoint(x, header.height() // 2)
+
+
+def _drag(header, column, by):
+    """Drag *column*'s right edge *by* pixels, in steps, as a mouse would."""
+    start = _edge(header, column)
+    left, none = Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
+    QTest.mousePress(header.viewport(), left, none, start)
+    for step in range(1, 11):
+        QTest.mouseMove(header.viewport(), start + QPoint(by * step // 10, 0))
+    QTest.mouseRelease(header.viewport(), left, none, start + QPoint(by, 0))
+    QApplication.processEvents()
+
+
+def _glide(window, view, x, from_y, to_y):
+    """Move the pointer, no button held, from *from_y* to *to_y* in *view*."""
+    step = 2 if to_y > from_y else -2
+    for y in range(from_y, to_y, step):
+        position = view.viewport().mapTo(window, QPoint(x, y))
+        QTest.mouseMove(window.windowHandle(), position)
+        QApplication.processEvents()
+
+
+def _activate(window):
+    """Make *window* active again (the Members popup took that), so focus moves."""
+    window.activateWindow()
+    assert QTest.qWaitForWindowActive(window)
+
+
+def test_moving_the_pointer_over_rows_selects_none_of_them(sample_window):
+    window = sample_window
+    _new_stacked_form(window, "DMVS", "DM", "VS")
+    _click_item(window, "Consent Date", double=True)  # Now a matched row.
+    _activate(window)
+    _click_item(window, "Age")
+    grid = window.ui.tableView_stacked_items
+    clicked = grid.hasFocus()  # So a cell's dropdown could take the focus.
+    rows = _grid_rows(window)
+    age = grid.visualRect(grid.model().index(rows.index("Age"), 2))
+    matched = grid.visualRect(grid.model().index(rows.index("Consent Date"), 2))
+    # Up from Age, through the margin beside the matched row's VS dropdown.
+    _glide(window, grid, matched.left() + 3, age.center().y(), matched.top())
+    hovered = (grid.selected_keys(), _cell(window, "Consent Date", 2).hasFocus())
+    _new_stacked_form(window, "DISP", "EOT", "DS")
+    _activate(window)
+    table = window.ui.tableWidget_stacked_forms
+    table.selectRow(0)
+    table.setFocus()
+    name = table.visualRect(table.model().index(1, 0))
+    first = table.visualRect(table.model().index(0, 0))
+    # Down from DMVS into the margin beside DISP's name field.
+    _glide(window, table, name.left() + 3, first.center().y(), name.bottom())
+
+    assert clicked
+    assert hovered == ([("left", "Age")], False)
+    assert window.ui.label_stacked_items.text() == "Items of DMVS"
+
+
+def test_adding_a_stacked_form_leaves_one_members_box_per_row(sample_window):
+    window = sample_window
+    _new_stacked_form(window, "DMVS", "DM", "VS")
+    _new_stacked_form(window, "ALL", "DM", "AE")
+    viewport = window.ui.tableWidget_stacked_forms.viewport()
+
+    shown = [
+        box.currentText()
+        for box in viewport.findChildren(ChecklistComboBox)
+        if box.isVisible()
+    ]
+
+    # The box the new one replaced (deleted later by Qt) no longer shows.
+    assert sorted(shown) == ["DM, AE", "DM, VS"]
+
+
+def test_columns_fit_their_names_the_first_taking_at_most_its_share(
+    sample_window, tmp_path
+):
+    window = sample_window
+    _add_files(window, tmp_path, ICF=LONG_NAME)
+    _new_stacked_form(window, "DATES", "EOT", "ICF")
+    window.resize(960, 600)  # Too narrow for the long name in its share.
+    QApplication.processEvents()
+    grid = window.ui.tableView_stacked_items
+    room = grid.viewport().width()
+    widths = [grid.columnWidth(column) for column in range(3)]
+    view = grid.frozen
+    cell = view.visualRect(grid.model().index(_grid_rows(window).index(LONG_NAME), 0))
+    QApplication.sendEvent(
+        view.viewport(),
+        QHelpEvent(
+            QEvent.Type.ToolTip,
+            cell.center(),
+            view.viewport().mapToGlobal(cell.center()),
+        ),
+    )
+    tip = QToolTip.text()
+    _drag(view.horizontalHeader(), 0, -40)
+    narrowed = [grid.columnWidth(column) for column in range(3)]
+
+    # The long name would take more than its share, so it is cut, and its
+    # tooltip shows it whole; the members share the rest of the grid, also
+    # what the first column gives up when it is dragged narrower.
+    assert widths[0] == int(room * 0.45)
+    assert sum(widths) == room
+    assert tip == LONG_NAME
+    assert narrowed[0] == widths[0] - 40
+    assert sum(narrowed) == room
+
+
+def test_a_dragged_column_keeps_its_width_until_its_edge_is_double_clicked(
+    sample_window,
+):
+    window = sample_window
+    _new_stacked_form(window, "DMVS", "DM", "VS")
+    _new_stacked_form(window, "ALL", "DM", "VS", "AE", "LB", "CM", "EX", "EOT", "DS")
+    grid = window.ui.tableView_stacked_items
+    first_header = grid.frozen.horizontalHeader()
+    header = grid.horizontalHeader()
+    table = window.ui.tableWidget_stacked_forms
+
+    def first_and_dm():
+        return grid.columnWidth(0), grid.columnWidth(1)
+
+    fitted = first_and_dm()
+    _drag(first_header, 0, 60)
+    _drag(header, 1, 40)
+    dragged = first_and_dm()
+    window.ui.lineEdit_stacked_item_search.setText("e")  # Fills the grid again.
+    searched = first_and_dm()
+    window.ui.lineEdit_stacked_item_search.clear()
+    table.selectRow(0)  # DMVS: DM is one of its members too.
+    QApplication.processEvents()
+    elsewhere = first_and_dm()
+    table.selectRow(1)
+    QApplication.processEvents()
+    left, none = Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
+    QTest.mouseDClick(first_header.viewport(), left, none, _edge(first_header, 0))
+    QTest.mouseDClick(header.viewport(), left, none, _edge(header, 1))
+    QApplication.processEvents()
+
+    assert dragged == (fitted[0] + 60, fitted[1] + 40)
+    assert searched == dragged
+    assert elsewhere == dragged
+    assert first_and_dm() == fitted
+
+
+def test_a_long_name_shows_its_start_and_whole_in_its_tooltip(
+    sample_window, tmp_path
+):
+    window = sample_window
+    _add_files(window, tmp_path, ICF=LONG_NAME)
+    _new_stacked_form(window, "DATES", "EOT", "ICF")
+    _click_item(window, LONG_NAME, double=True)  # Kept on its own.
+    grid = window.ui.tableView_stacked_items
+    row = _grid_rows(window).index(LONG_NAME)
+    name = grid.first_widget(row).lineEdit()
+    named = (name.cursorPosition(), name.selectedText())
+    QApplication.processEvents()  # The boxes take their widths.
+    icf_cell, eot_cell = _cell(window, LONG_NAME, 2), _cell(window, LONG_NAME, 1)
+
+    # The new match's name is all selected, to type over, yet shows its start.
+    assert named == (0, LONG_NAME)
+    assert icf_cell.lineEdit().cursorPosition() == 0
+    assert grid.first_widget(row).toolTip() == (
+        f"{LONG_NAME}\nPick one of the matched names, or type a new one"
+    )
+    assert icf_cell.toolTip() == f"{LONG_NAME}\nPick an item, or type to find one"
+    assert eot_cell.toolTip() == "Pick an item, or type to find one"

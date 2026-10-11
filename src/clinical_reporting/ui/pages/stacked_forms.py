@@ -20,6 +20,7 @@ labels and hints are here.
   items back in Left out. A matched row's member cells are dropdowns
   (:func:`~clinical_reporting.stacking.match_choices`) that change one
   member's item at a time (:func:`~clinical_reporting.stacking.set_match_item`).
+  Its columns fit what they show, and any column's edge can be dragged.
 - Two banners: what Apply did, and a standing one for the page's state: the
   drafts differ from the report's ("Not applied yet"), a new Corelisting ZIP
   started a new report (apply again), data changed since Apply makes a match
@@ -35,9 +36,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 from functools import partial
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
-from PySide6.QtCore import QItemSelectionModel, QModelIndex, QRect, Qt, Signal
+from PySide6.QtCore import QEvent, QItemSelectionModel, QModelIndex, QRect, Qt, Signal
 from PySide6.QtGui import (
     QFont,
     QFontMetrics,
@@ -56,9 +57,13 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLineEdit,
     QStackedWidget,
+    QStyle,
     QStyledItemDelegate,
+    QStyleOptionComboBox,
+    QStyleOptionFrame,
     QTableView,
     QTableWidgetItem,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -96,14 +101,23 @@ _NAME_COLUMN, _MEMBERS_COLUMN, _ITEMS_COLUMN, _ROWS_COLUMN = range(4)
 #: The Stacked forms table shows at most this many rows before it scrolls.
 FORMS_TABLE_ROWS = 3.5
 
-#: The items grid's first column (the stacked items), which stays in place.
-FIRST_COLUMN_W = 232
-#: Narrowest a member column gets before the grid scrolls sideways.
-MEMBER_COLUMN_W = 140
-#: The same from :data:`NARROW_FROM` members on, when columns show names only.
-NARROW_MEMBER_COLUMN_W = 92
-#: From this many members, the member columns narrow (their rows in the tooltip).
-NARROW_FROM = 5
+#: The most of the grid's width the first column (the stacked items) takes
+#: when it fits its names; dragging its edge can make it wider.
+FIRST_COLUMN_SHARE = 0.45
+#: The narrowest the first column fits to (when its share of the grid
+#: allows), so a match name has room to be typed.
+FIRST_COLUMN_MIN_W = 232
+#: Narrowest and widest a member column gets when it fits its header and items.
+MEMBER_COLUMN_MIN_W = 120
+MEMBER_COLUMN_MAX_W = 300
+#: Room the first column always leaves for the members, however far it's dragged.
+MEMBERS_ROOM_W = 120
+#: Narrowest any column can be dragged.
+NARROWEST_COLUMN_W = 48
+#: Space above the Matched and Left out sections.
+SECTION_GAP = 8
+#: A cell's padding on both sides (the stylesheet's 8 px each) and its line.
+_CELL_EDGES = 2 * 8 + 1
 
 NO_STACKED_FORMS = "No stacked forms. Use New stacked form to stack two or more forms."
 SELECT_A_STACKED_FORM = (
@@ -115,6 +129,7 @@ ITEMS_HINT = (
     "Match. Match a single item to keep it on its own; double-click does the same."
 )
 MATCH_NAME_TIP = "Pick one of the matched names, or type a new one"
+MATCH_ITEM_TIP = "Pick an item, or type to find one"
 #: A matched cell's entry for giving the match nothing.
 NOTHING = "—"
 #: The headings in a matched cell's dropdown.
@@ -139,6 +154,27 @@ OPEN_ROLE = Qt.ItemDataRole.UserRole + 4
 TICK_ROLE = Qt.ItemDataRole.UserRole + 5
 
 
+def _text_room(edit: QLineEdit, width: int) -> int:
+    """How much text *edit* shows when it is *width* wide, inside its padding."""
+    frame = QStyleOptionFrame()
+    frame.initFrom(edit)
+    frame.rect = QRect(0, 0, width, max(edit.height(), 1))
+    contents = edit.style().subElementRect(
+        QStyle.SubElement.SE_LineEditContents, frame, edit
+    )
+    margins = edit.textMargins()
+    # QLineEdit keeps 2 px on each side of its text.
+    return contents.width() - margins.left() - margins.right() - 4
+
+
+def _draw_column_line(painter: QPainter, rect: QRect) -> None:
+    """Draw the line after a column, down the right edge of *rect*."""
+    painter.save()
+    painter.setPen(qcolor(current().colors.separator))
+    painter.drawLine(rect.topRight(), rect.bottomRight())
+    painter.restore()
+
+
 class _NameEdit(QLineEdit):
     """A line edit that says when it takes the focus (its row gets selected)."""
 
@@ -149,21 +185,57 @@ class _NameEdit(QLineEdit):
         self.focused.emit()
 
 
-class _MatchNameBox(CellComboBox):
-    """A matched item's name: one of its items' names, or one typed."""
+class _GridBox(CellComboBox):
+    """A dropdown in the items grid that takes typing, its text shown from the start.
 
-    def __init__(self, names: Sequence[str], name: str, parent=None) -> None:
+    Its tooltip is the tip given to :meth:`set_tip`, after the whole text
+    when the box is too narrow to show it.
+    """
+
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setEditable(True)
         self.setLineEdit(_NameEdit())
         self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self._tip = ""
+        self.editTextChanged.connect(self._show_tip)
+        self.lineEdit().editingFinished.connect(self.show_start)
+
+    def set_tip(self, tip: str) -> None:
+        """Say *tip* when hovered, after the whole text if the box cuts it."""
+        self._tip = tip
+        self._show_tip()
+
+    def show_start(self) -> None:
+        """Show the text from its start, so a long one is cut at its end."""
+        self.lineEdit().setCursorPosition(0)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 (Qt override)
+        super().resizeEvent(event)
+        self._show_tip()
+
+    def _show_tip(self, *_args) -> None:
+        edit = self.lineEdit()
+        text = edit.text()
+        room = _text_room(edit, edit.width())
+        cut = edit.fontMetrics().horizontalAdvance(text) > room
+        tips = (text if cut else "", self._tip)
+        self.setToolTip("\n".join(tip for tip in tips if tip))
+
+
+class _MatchNameBox(_GridBox):
+    """A matched item's name: one of its items' names, or one typed."""
+
+    def __init__(self, names: Sequence[str], name: str, parent=None) -> None:
+        super().__init__(parent)
         self.addItems(list(names))
         self.setCurrentText(name)
-        self.setToolTip(MATCH_NAME_TIP)
+        self.show_start()
+        self.set_tip(MATCH_NAME_TIP)
         self.setAccessibleName("Name of the matched item")
 
 
-class _MatchItemBox(CellComboBox):
+class _MatchItemBox(_GridBox):
     """A member's item in a match, as a dropdown.
 
     It lists "—" (none) and the member's current item, then the items it
@@ -184,9 +256,6 @@ class _MatchItemBox(CellComboBox):
         parent=None,
     ) -> None:
         super().__init__(parent)
-        self.setEditable(True)
-        self.setLineEdit(_NameEdit())
-        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.setAccessibleName(f"Item {member} gives {match_name}")
         self.addItem(NOTHING, None)
         if choices.clears:
@@ -215,9 +284,10 @@ class _MatchItemBox(CellComboBox):
             for name in names:
                 self.addItem(name, name)
         self.setCurrentIndex(self._chosen)
+        self.show_start()
         if warning:
             self.setItemIcon(self._chosen, icon(IconName.WARNING, "warning"))
-            self.setToolTip(warning)
+        self.set_tip(warning or MATCH_ITEM_TIP)
 
         completer = QCompleter(
             [self.itemData(i) for i in range(self.count()) if self.itemData(i)], self
@@ -240,22 +310,25 @@ class _MatchItemBox(CellComboBox):
         shown = self.itemText(self.currentIndex())
         if self.currentText() != shown:
             self.setEditText(shown)
+        self.show_start()
 
 
 class _GridDelegate(QStyledItemDelegate):
     """Draws the items grid: section and note rows, ticks, muted left-out names.
 
     Section and note rows span the grid and keep their text at the left
-    edge when the members scroll sideways. The frozen first column draws
-    nothing on them (the grid's row shows through) and fills its other cells,
-    so the cells scrolling under it stay hidden.
+    edge when the members scroll sideways; the sections after the first
+    leave a gap above them. Item rows get a line after each column, and a
+    selected row has the same colour in both views while the window is
+    active (the first column's view never has the focus). The frozen first
+    column draws nothing on section and note rows (the grid's row shows
+    through) and fills its other cells, so the cells scrolling under it stay
+    hidden; a name it cuts shows whole in its tooltip.
     """
 
     def __init__(self, view: QTableView, *, frozen: bool) -> None:
         super().__init__(view)
         self._frozen = frozen
-        #: Ticks in the middle of narrow member columns, else where text starts.
-        self.center_ticks = False
 
     def initStyleOption(self, option, index) -> None:  # noqa: N802 (Qt override)
         super().initStyleOption(option, index)
@@ -263,6 +336,8 @@ class _GridDelegate(QStyledItemDelegate):
             option.palette.setColor(
                 QPalette.ColorRole.Text, qcolor(current().colors.text_secondary)
             )
+        if self.parent().window().isActiveWindow():
+            option.state |= QStyle.StateFlag.State_Active
 
     def paint(self, painter, option, index) -> None:
         kind = index.data(KIND_ROLE)
@@ -277,9 +352,23 @@ class _GridDelegate(QStyledItemDelegate):
             side = 14
             rect = QRect(0, 0, side, side)
             rect.moveCenter(option.rect.center())
-            if not self.center_ticks:
-                rect.moveLeft(option.rect.left() + 8)
+            rect.moveLeft(option.rect.left() + 8)
             icon(IconName.TICK, "success").paint(painter, rect)
+        if index.column() < index.model().columnCount() - 1:
+            _draw_column_line(painter, option.rect)
+
+    def helpEvent(self, event, view, option, index) -> bool:  # noqa: N802 (Qt override)
+        if (
+            event.type() == QEvent.Type.ToolTip
+            and index.column() == 0
+            and index.data(KIND_ROLE) in (EVERY, LEFT_OUT)
+        ):
+            name = index.data(Qt.ItemDataRole.DisplayRole) or ""
+            room = option.rect.width() - _CELL_EDGES
+            if option.fontMetrics.horizontalAdvance(name) > room:
+                QToolTip.showText(event.globalPos(), name, view)
+                return True
+        return super().helpEvent(event, view, option, index)
 
     def _paint_spanning(self, painter, option, index) -> None:
         colors = current().colors
@@ -287,8 +376,12 @@ class _GridDelegate(QStyledItemDelegate):
         painter.save()
         section = index.data(KIND_ROLE) == SECTION
         if section:
+            if index.row():  # The gap above it stays the grid's colour.
+                rect.setTop(rect.top() + SECTION_GAP)
             painter.fillRect(rect, qcolor(colors.bg_surface_alt))
         painter.setPen(qcolor(colors.separator))
+        if section and index.row():
+            painter.drawLine(rect.left(), rect.top(), rect.right(), rect.top())
         painter.drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom())
         # At the view's left edge, however far the members are scrolled.
         x = max(rect.left(), 0) + 12
@@ -359,6 +452,15 @@ class _GridDelegate(QStyledItemDelegate):
         painter.restore()
 
 
+class _GridHeader(QHeaderView):
+    """The items grid's header: a line after each column, as its rows have."""
+
+    def paintSection(self, painter, rect, logical_index) -> None:  # noqa: N802 (Qt override)
+        super().paintSection(painter, rect, logical_index)
+        if logical_index < self.count() - 1:
+            _draw_column_line(painter, rect)
+
+
 class StackedItemsGrid(QTableView):
     """The items grid: a row per stacked item, a column per member present.
 
@@ -368,20 +470,45 @@ class StackedItemsGrid(QTableView):
     scrolling up and down with the grid. The matched items' name boxes sit
     in it; their member cells' dropdowns sit in the grid. Only Matched and
     Left out rows can be selected (Ctrl-click for several).
+
+    Columns fit what they show (:meth:`fit_columns`): the first takes at
+    most :data:`FIRST_COLUMN_SHARE` of the width, a member between
+    :data:`MEMBER_COLUMN_MIN_W` and :data:`MEMBER_COLUMN_MAX_W`, and the
+    members share any room left. Any column's edge can be dragged (the first
+    column's in :attr:`frozen`'s header); a dragged width holds, a member's
+    wherever its form is a member, until a double-click on the edge fits the
+    column again.
     """
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
+        self.setHorizontalHeader(_GridHeader(Qt.Orientation.Horizontal, self))
         #: The first column, kept in place over the grid.
         self.frozen = QTableView(self)
+        self.frozen.setHorizontalHeader(
+            _GridHeader(Qt.Orientation.Horizontal, self.frozen)
+        )
+        # What the columns were last fitted to (fit_columns' arguments), the
+        # widths that fit them, the member of each member column, the widths
+        # dragged (the first column's, and members' by form), and whether the
+        # grid is sizing its columns itself.
+        self._fit_for: Tuple[Sequence[str], ...] = ((), (), ())
+        self._fitted: List[int] = []
+        self._members: List[str] = []
+        self._dragged_first: Optional[int] = None
+        self._dragged: Dict[str, int] = {}
+        self._sizing = False
+        # Measures a cell dropdown around its text; never shown. Made on first
+        # use, once the grid is in its window: made with the grid, the
+        # stylesheet wouldn't pad its text as it does the cells'.
+        self._probe: Optional[_GridBox] = None
         model = QStandardItemModel(0, 1, self)
         self.setModel(model)
         style_table(self, selection=QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self._delegate = _GridDelegate(self, frozen=False)
-        self.setItemDelegate(self._delegate)
+        self.setItemDelegate(_GridDelegate(self, frozen=False))
 
         self.frozen.setModel(model)
         self.frozen.setSelectionModel(self.selectionModel())
@@ -401,69 +528,105 @@ class StackedItemsGrid(QTableView):
             self.frozen.setVerticalScrollBarPolicy,
         ):
             policy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.frozen.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Fixed
-        )
         self.verticalScrollBar().valueChanged.connect(
             self.frozen.verticalScrollBar().setValue
         )
         self.frozen.verticalScrollBar().valueChanged.connect(
             self.verticalScrollBar().setValue
         )
-        self.horizontalHeader().sectionResized.connect(self._place_frozen)
+        header = self.horizontalHeader()
+        first_header = self.frozen.horizontalHeader()
+        first_header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        first_header.setMinimumSectionSize(NARROWEST_COLUMN_W)
+        # A double-click on an edge fits the column to all it can show, not
+        # (as Qt would) to the rows shown.
+        for edges in (header, first_header):
+            edges.sectionHandleDoubleClicked.disconnect()
+        header.sectionHandleDoubleClicked.connect(self._fit_member)
+        first_header.sectionHandleDoubleClicked.connect(self._fit_first)
+        header.sectionResized.connect(self._on_member_resized)
+        first_header.sectionResized.connect(self._on_first_resized)
+        header.sectionResized.connect(self._place_frozen)
+        theme_events().changed.connect(self._on_theme_changed)
         self.viewport().stackUnder(self.frozen)
         self.set_members([])
 
     # -- what the page sets
 
-    def set_members(self, headers: Sequence[Tuple[str, str]]) -> None:
-        """Start over with a column per member: (header text, tooltip) each."""
+    def set_members(self, members: Sequence[Tuple[str, str, str]]) -> None:
+        """Start over with a column per member: (member, header, tooltip) each."""
         model = self.model()
-        model.setRowCount(0)
-        self.clearSpans()
-        model.setColumnCount(1 + len(headers))
-        model.setHorizontalHeaderLabels(
-            ["Stacked item", *(text for text, _ in headers)]
-        )
-        narrow = len(headers) >= NARROW_FROM
-        # Narrow columns center their names, as their ticks are.
-        align = (
-            Qt.AlignmentFlag.AlignCenter
-            if narrow
-            else Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
-        for column, (_, tip) in enumerate(headers, start=1):
-            model.setHeaderData(
-                column, Qt.Orientation.Horizontal, tip, Qt.ItemDataRole.ToolTipRole
-            )
-            model.setHeaderData(
-                column,
-                Qt.Orientation.Horizontal,
-                align,
-                Qt.ItemDataRole.TextAlignmentRole,
-            )
-        self._delegate.center_ticks = narrow
         header = self.horizontalHeader()
-        header.setMinimumSectionSize(
-            NARROW_MEMBER_COLUMN_W if narrow else MEMBER_COLUMN_W
-        )
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        header.resizeSection(0, FIRST_COLUMN_W)
-        for column in range(1, model.columnCount()):
-            header.setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch)
-            self.frozen.setColumnHidden(column, True)
-        self.frozen.setColumnHidden(0, False)
-        self.frozen.setColumnWidth(0, FIRST_COLUMN_W)
+        self._sizing = True
+        try:
+            model.setRowCount(0)
+            self.clearSpans()
+            model.setColumnCount(1 + len(members))
+            model.setHorizontalHeaderLabels(
+                ["Stacked item", *(text for _, text, _ in members)]
+            )
+            for column, (_, _, tip) in enumerate(members, start=1):
+                model.setHeaderData(
+                    column, Qt.Orientation.Horizontal, tip, Qt.ItemDataRole.ToolTipRole
+                )
+            header.setMinimumSectionSize(NARROWEST_COLUMN_W)
+            # The first column's edge is dragged in the frozen view's header.
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+            for column in range(1, model.columnCount()):
+                header.setSectionResizeMode(column, QHeaderView.ResizeMode.Interactive)
+                self.frozen.setColumnHidden(column, True)
+            self.frozen.setColumnHidden(0, False)
+        finally:
+            self._sizing = False
+        self._members = [member for member, _, _ in members]
+        self._fitted = []
         self._place_frozen()
+
+    def fit_columns(
+        self,
+        names: Sequence[str],
+        boxes: Sequence[str],
+        cells: Sequence[Sequence[str]],
+    ) -> None:
+        """Size the columns to what they show; dragged ones keep their width.
+
+        *names* are the first column's names, *boxes* the names in its
+        matched rows' boxes, and *cells* each member column's matched cells.
+        """
+        self._fit_for = (tuple(names), tuple(boxes), tuple(map(tuple, cells)))
+        self.ensurePolished()
+        header = self.horizontalHeader()
+        metrics = self.fontMetrics()
+        box_metrics = self._cell_probe().fontMetrics()
+        around = self._box_chrome() + _CELL_EDGES
+        first = max(
+            [FIRST_COLUMN_MIN_W, header.sectionSizeHint(0)]
+            + [metrics.horizontalAdvance(name) + _CELL_EDGES for name in names]
+            + [box_metrics.horizontalAdvance(name) + around for name in boxes]
+        )
+        members = []
+        for column, shown in enumerate(cells, start=1):
+            want = max(
+                [header.sectionSizeHint(column)]
+                + [box_metrics.horizontalAdvance(text) + around for text in shown]
+            )
+            members.append(min(max(want, MEMBER_COLUMN_MIN_W), MEMBER_COLUMN_MAX_W))
+        self._fitted = [first, *members]
+        self._apply_widths()
 
     def add_section(
         self, section: str, title: str, count: int, note: str, *, opened=None
     ) -> int:
-        """Add a section's row; *opened* (True/False) gives it a chevron."""
+        """Add a section's row; *opened* (True/False) gives it a chevron.
+
+        The sections after the first leave a gap above them.
+        """
         item = self._spanning_row(SECTION, section, title)
         item.setData(count, COUNT_ROLE)
         item.setData(note, NOTE_ROLE)
         item.setData(opened, OPEN_ROLE)
+        if item.row():
+            self._leave_gap_above(item.row())
         return item.row()
 
     def add_note(self, text: str) -> int:
@@ -552,6 +715,122 @@ class StackedItemsGrid(QTableView):
         if rows and scroll:
             self.scrollTo(model.index(rows[0], 1 if model.columnCount() > 1 else 0))
 
+    # -- sizing the columns
+
+    def _cell_probe(self) -> _GridBox:
+        if self._probe is None:
+            self._probe = _GridBox(self.viewport())
+            self._probe.hide()
+        return self._probe
+
+    def _box_chrome(self) -> int:
+        """How much wider a cell's dropdown is than the text it shows whole."""
+        probe = self._cell_probe()
+        probe.ensurePolished()
+        option = QStyleOptionComboBox()
+        probe.initStyleOption(option)
+        width = 200  # Any width: the frame, arrow and paddings don't change.
+        option.rect = QRect(0, 0, width, probe.sizeHint().height())
+        field = probe.style().subControlRect(
+            QStyle.ComplexControl.CC_ComboBox,
+            option,
+            QStyle.SubControl.SC_ComboBoxEditField,
+            probe,
+        )
+        return width - _text_room(probe.lineEdit(), field.width())
+
+    def _apply_widths(self) -> None:
+        """Give the columns their fitted or dragged widths at the grid's width."""
+        if self._sizing or len(self._fitted) != self.model().columnCount():
+            return
+        header = self.horizontalHeader()
+        available = self.viewport().width()
+        if self._dragged_first is None:
+            share = max(header.sectionSizeHint(0), int(available * FIRST_COLUMN_SHARE))
+            first = min(self._fitted[0], share)
+        else:
+            first = self._dragged_first
+        first = min(first, self._widest_first())
+        widths = [
+            self._dragged.get(member, fitted)
+            for member, fitted in zip(self._members, self._fitted[1:])
+        ]
+        fitting = [
+            place
+            for place, member in enumerate(self._members)
+            if member not in self._dragged
+        ]
+        spare = available - first - sum(widths)
+        if spare > 0 and fitting:
+            each, extra = divmod(spare, len(fitting))
+            for turn, place in enumerate(fitting):
+                widths[place] += each + (turn < extra)
+        self._sizing = True
+        try:
+            header.resizeSection(0, first)
+            self.frozen.setColumnWidth(0, first)
+            for column, width in enumerate(widths, start=1):
+                header.resizeSection(column, width)
+        finally:
+            self._sizing = False
+        self._place_frozen()
+
+    def _widest_first(self) -> int:
+        """The widest the first column gets, leaving the members their room."""
+        return max(NARROWEST_COLUMN_W, self.viewport().width() - MEMBERS_ROOM_W)
+
+    def _on_first_resized(self, column: int, _old: int, width: int) -> None:
+        """The first column's edge was dragged: it keeps room for the members.
+
+        Members that fit their contents share any room it gives up.
+        """
+        if self._sizing or column != 0:
+            return
+        kept = min(width, self._widest_first())
+        self._dragged_first = kept
+        self._sizing = True
+        try:
+            if kept != width:
+                self.frozen.setColumnWidth(0, kept)
+            self.horizontalHeader().resizeSection(0, kept)
+        finally:
+            self._sizing = False
+        self._place_frozen()
+        self._apply_widths()
+
+    def _on_member_resized(self, column: int, _old: int, width: int) -> None:
+        """A member column's edge was dragged: the width holds for its form.
+
+        The members that fit their contents share any room it gives up.
+        """
+        if not self._sizing and 0 < column <= len(self._members):
+            self._dragged[self._members[column - 1]] = width
+            self._apply_widths()
+
+    def _fit_first(self, column: int) -> None:
+        if column == 0:
+            self._dragged_first = None
+            self._apply_widths()
+
+    def _fit_member(self, column: int) -> None:
+        if 0 < column <= len(self._members):
+            self._dragged.pop(self._members[column - 1], None)
+            self._apply_widths()
+
+    def _leave_gap_above(self, row: int) -> None:
+        height = current().metrics.row_h + SECTION_GAP
+        self.setRowHeight(row, height)
+        self.frozen.setRowHeight(row, height)
+
+    def _on_theme_changed(self, *_args) -> None:
+        """Another density: the sections' gaps and the columns' fit follow."""
+        model = self.model()
+        for row in range(1, model.rowCount()):
+            if model.index(row, 0).data(KIND_ROLE) == SECTION:
+                self._leave_gap_above(row)
+        if self._fitted:
+            self.fit_columns(*self._fit_for)
+
     # -- keeping the first column in place
 
     def _spanning_row(self, kind: str, key, text: str) -> QStandardItem:
@@ -578,6 +857,7 @@ class StackedItemsGrid(QTableView):
 
     def resizeEvent(self, event) -> None:  # noqa: N802 (Qt override)
         super().resizeEvent(event)
+        self._apply_widths()
         self._place_frozen()
 
     def updateGeometries(self) -> None:  # noqa: N802 (Qt override)
@@ -802,7 +1082,8 @@ class StackedFormsMixin:
 
         When the report's stacked forms changed (a saved setting was loaded),
         the drafts become the report's. The table and grid are filled again
-        only when the report's data or stacked forms changed.
+        only when the report's data or stacked forms changed; what the last
+        Apply did is then out of date, so its message goes.
         """
         applied = list(self.report.stacked_forms)
         changed = applied != self._stacked_seen
@@ -815,6 +1096,7 @@ class StackedFormsMixin:
             now is not then for now, then in zip(shown_for, self._stacked_shown_for)
         ):
             self._stacked_shown_for = shown_for
+            self._set_label_text(self.ui.banner_stacked, "")
             self._fill_stacked_forms_table(self._current_stacked_row())
         self._show_stacked_state()
 
@@ -924,14 +1206,15 @@ class StackedFormsMixin:
         table = self.ui.tableWidget_stacked_forms
         table.blockSignals(True)
         try:
+            table.setRowCount(len(self._stacked_drafts))
             for row in range(table.rowCount()):
                 for column in (_NAME_COLUMN, _MEMBERS_COLUMN):
                     # Qt deletes a replaced widget later; hide it now so it
-                    # isn't left drawn over the table until then.
+                    # isn't left drawn over the table until then (only now:
+                    # changing the row count shows the table's widgets again).
                     old = table.cellWidget(row, column)
                     if old is not None:
                         old.hide()
-            table.setRowCount(len(self._stacked_drafts))
             for row, stacked in enumerate(self._stacked_drafts):
                 for column in range(table.columnCount()):
                     # Under the cell widgets, so a double-click opens no editor.
@@ -1112,7 +1395,13 @@ class StackedFormsMixin:
         self.ui.label_stacked_items.setText(self._stacked_items_title(stacked))
         plan = stacking.layout(stacked, self.report.loaded_data)
         if len(plan.present) < 2:
-            panel.show_message(PICK_MEMBERS, head=True)
+            # Members kept but not loaded (a removed file) are why, if any.
+            panel.show_message(
+                steps.stacked_not_loaded_hint(plan.missing)
+                if plan.missing
+                else PICK_MEMBERS,
+                head=True,
+            )
             grid.set_members([])
             self._update_stacked_item_buttons()
             return
@@ -1129,19 +1418,19 @@ class StackedFormsMixin:
             box = grid.first_widget(grid.row_of(MATCHED, focus_match))
             if box is not None:
                 box.setFocus(Qt.FocusReason.OtherFocusReason)
-                box.lineEdit().selectAll()
+                # All selected, to type a new name over, from the end back so
+                # a long name still shows its start.
+                text = box.currentText()
+                box.lineEdit().setSelection(len(text), -len(text))
 
     def _fill_stacked_grid(self, stacked: StackedForm, plan: StackLayout) -> None:
         grid = self.ui.tableView_stacked_items
         loaded = self.report.loaded_data
-        narrow = len(plan.present) >= NARROW_FROM
-        headers = []
+        members = []
         for member in plan.present:
             rows = steps.row_count(len(loaded[member]))
-            headers.append(
-                (member if narrow else f"{member}  {rows}", f"{member} · {rows}")
-            )
-        grid.set_members(headers)
+            members.append((member, f"{member}  {rows}", f"{member} · {rows}"))
+        grid.set_members(members)
 
         query = self.ui.lineEdit_stacked_item_search.text().strip().casefold()
 
@@ -1196,6 +1485,16 @@ class StackedFormsMixin:
         for group in plan.left_out:
             if hit(group.name):
                 grid.add_item(LEFT_OUT, group.name, group.name, ticks(group.members))
+        # Fitted to every item, shown by the search or not, so searching keeps
+        # the widths.
+        grid.fit_columns(
+            [group.name for group in (*plan.every, *plan.left_out)],
+            [stacked.matches[item.index].name for item in plan.matched],
+            [
+                [item.cells.get(member) or NOTHING for item in plan.matched]
+                for member in plan.present
+            ],
+        )
 
     def _match_name_box(self, match: Match, index: int) -> QComboBox:
         box = _MatchNameBox(match.names, match.name)
@@ -1251,7 +1550,7 @@ class StackedFormsMixin:
                 continue
             problem = stacking.match_name_problem(stacked, plan, index)
             set_invalid(box, bool(problem))
-            box.setToolTip(problem or MATCH_NAME_TIP)
+            box.set_tip(problem or MATCH_NAME_TIP)
 
     def _on_match_item_picked(
         self, index: int, member: str, column: int, picked: Optional[str]
