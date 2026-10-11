@@ -258,7 +258,8 @@ def test_build_all_stops_a_member_that_now_has_two_items_of_one_match():
     assert dict(built.conflicts) == {
         "VISITS": (
             "VISITS: SV now has both Event Group Name and Event Label, which the "
-            "match Visit Name lines up. Unmatch it and match again on Stacked forms.",
+            "match Visit Name lines up. Choose “—” in SV's cell or Unmatch it on "
+            "Stacked forms.",
         )
     }
 
@@ -510,7 +511,8 @@ def test_a_member_with_two_items_of_a_match_is_fixed_by_clearing_not_by_picking_
     assert dict(stacking.build_all([again], data).conflicts) == {
         "VISITS": (
             "VISITS: SV now has both Event Group Name and Event Label, which the "
-            "match Visit Name lines up. Unmatch it and match again on Stacked forms.",
+            "match Visit Name lines up. Choose “—” in SV's cell or Unmatch it on "
+            "Stacked forms.",
         )
     }
     # "—" takes Event Group Name out of the match, so SV gives its Event Label.

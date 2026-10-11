@@ -130,6 +130,14 @@ QPlainTextEdit, QTextEdit {
     selection-background-color: ${accent};
     selection-color: ${on_accent};
 }
+/* Pick-only dropdowns are filled grey; fields you type in stay white. */
+QComboBox:!editable {
+    background: ${fill};
+    border-color: transparent;
+}
+QComboBox:!editable:enabled:hover {
+    background: ${bg_control_pressed};
+}
 QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QSpinBox:focus,
 QDoubleSpinBox:focus, QPlainTextEdit:focus, QTextEdit:focus {
     border-color: ${accent};
@@ -278,7 +286,11 @@ QSplitter::handle:vertical {
     border-top: 1px solid ${separator};
 }
 
-/* ---- Calendar popup (needs explicit colors in dark mode) ---- */
+/* ---- Calendar popup (needs explicit colors in dark mode) ----
+   The calendar makes its cells just wide enough for their text, so the
+   table item padding would cut day names to "…". It lays the month bar out
+   at its buttons' minimum height, so they are as tall as the year field
+   that replaces the year button when clicked. */
 QCalendarWidget QWidget#qt_calendar_navigationbar {
     background: ${bg_surface};
 }
@@ -286,14 +298,17 @@ QCalendarWidget QToolButton {
     background: transparent;
     border: none;
     color: ${text_primary};
-    min-height: 0;
-    padding: 4px 8px;
+    min-height: ${control_h}px;
+    padding: 0 8px;
 }
 QCalendarWidget QAbstractItemView {
     border: none;
     border-radius: 0;
     selection-background-color: ${accent};
     selection-color: ${on_accent};
+}
+QCalendarWidget QAbstractItemView::item {
+    padding: 0;
 }
 
 /* ---- Roles and text styles set with dynamic properties ---- */

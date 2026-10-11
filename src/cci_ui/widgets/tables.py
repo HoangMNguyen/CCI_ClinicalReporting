@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import Optional, Sequence
 
 import shiboken6
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -104,6 +104,21 @@ def _refresh_row_heights() -> None:
             _styled_tables.discard(view)
 
 
+class _IdleMoveFilter(QObject):
+    """Drops pointer moves with no button held before the view sees them.
+
+    The theme's hover rule turns on mouse tracking, and a tracked move over a
+    cell gives that cell's widget (a dropdown) the focus. Hover painting uses
+    hover events, so it keeps working; drags hold a button, so they pass.
+    """
+
+    def eventFilter(self, watched, event) -> bool:  # noqa: N802 (Qt override)
+        return (
+            event.type() == QEvent.Type.MouseMove
+            and event.buttons() == Qt.MouseButton.NoButton
+        )
+
+
 def style_table(
     view: QTableView,
     *,
@@ -118,6 +133,8 @@ def style_table(
     *row_numbers* keeps the vertical header (e.g. filters, whose messages say
     "Static filter 2"). *embedded* drops the view's own border when it sits
     inside a card.
+
+    Passing the pointer over a cell's widget doesn't focus it.
     """
     view.setShowGrid(False)
     view.setProperty("rowLines", row_lines)
@@ -135,6 +152,8 @@ def style_table(
     if embedded:
         view.setProperty("cciRole", "embedded")
     repolish(view)
+    viewport = view.viewport()
+    viewport.installEventFilter(_IdleMoveFilter(viewport))
     _apply_row_height(view)
     global _following_density
     if not _following_density:
