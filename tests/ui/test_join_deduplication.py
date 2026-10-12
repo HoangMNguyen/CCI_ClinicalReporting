@@ -207,3 +207,27 @@ def test_the_wheel_leaves_an_unfocused_join_type_alone(sample_window):
     QApplication.sendEvent(join_type, wheel)
 
     assert join_type.currentText() == "Left join"
+
+
+def test_the_join_table_tidies_a_form_after_the_first(sample_window):
+    window = sample_window
+    window.report.update_join_items("VS", ["Visit", "Subject"], 3, "Sideways")
+
+    window.update_join_table_ui()
+
+    assert window.report.get_join_list_dict()["VS"] == {
+        "items": ["Subject"],
+        "order": 3,
+        "how": "Left join",
+    }
+    table = window.ui.tableWidget_join
+    vs = next(
+        row for row in range(table.rowCount()) if table.item(row, 0).text() == "VS"
+    )
+    assert [table.cellWidget(vs, col).currentText() for col in range(1, 6)] == [
+        "Subject",
+        "",
+        "",
+        "3",
+        "Left join",
+    ]

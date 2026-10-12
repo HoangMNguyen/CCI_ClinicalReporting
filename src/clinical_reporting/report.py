@@ -18,15 +18,14 @@ from clinical_reporting import report_columns, stacking
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
     CLForm,
+    JoinHow,
     is_qualified,
     move_item,
     qualify,
     split_qualified,
 )
-from clinical_reporting.settings_store import write_settings_json
 
 if TYPE_CHECKING:
-    from clinical_reporting.models import ReportConfig
     from clinical_reporting.validation import ReportValidationIssue
 
 logger = logging.getLogger(__name__)
@@ -338,11 +337,6 @@ class CLReport:
             column for column in self.data[form_name].columns if column not in common
         ]
 
-    def save_setting_to_json(self, file_path: str, setting_name: Optional[str] = None):
-        """Save the report settings to a JSON file (see :meth:`settings_to_dict`)."""
-
-        write_settings_json(file_path, self.settings_to_dict(setting_name))
-
     def settings_to_dict(self, setting_name: Optional[str] = None) -> Dict[str, Any]:
         """Return the saved-settings dictionary for this report, without file I/O.
 
@@ -393,9 +387,9 @@ class CLReport:
     def load_setting_from_dict(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Apply an in-memory settings dictionary to this report.
 
-        It performs no I/O, so it can be driven directly from a
-        :class:`~clinical_reporting.models.ReportConfig` or any program
-        that constructs the settings schema itself.
+        It performs no I/O, so any program that builds the settings schema can
+        drive it; :func:`~clinical_reporting.session.apply_saved_setting` also
+        lines the setting up with the report's data, as the desktop does.
 
         The setting's stacked forms come first: when they differ from the
         report's, the data is rebuilt (resetting the selections) before the
@@ -460,8 +454,10 @@ class CLReport:
         """Align loaded settings with the currently available study data.
 
         Returns the forms and items the setting needs that the data lacks,
-        including the members a built stacked form is missing (as forms) and
-        the matched items a present member no longer has (as ``MEMBER.item``).
+        including the members any stacked form is missing, built or not (as
+        forms; one named like a loaded form isn't built and records none),
+        and the matched items a present member of a built one no longer has
+        (as ``MEMBER.item``).
         """
 
         missing_forms: set[str] = set()
@@ -548,8 +544,9 @@ class CLReport:
         ]
 
         built = self.stacked_build
+        for members in built.missing_members.values():
+            missing_forms.update(members)
         for name in built.forms:
-            missing_forms.update(built.missing_members.get(name, ()))
             missing_items.update(
                 qualify(member, item)
                 for member, item in built.missing_items.get(name, ())
@@ -656,31 +653,6 @@ class CLReport:
             item for item in self.selected_items_order_list if item in selected
         ]
 
-    def apply_config(self, config: "ReportConfig") -> Dict[str, list]:
-        """Apply a :class:`ReportConfig` and reconcile it against the loaded data.
-
-        ``set_data`` must be called first so the saved setting can be aligned
-        with the columns actually present. This bundles the
-        load-then-reconcile sequence the UI performs into a single call, which
-        is the natural entry point for headless/tool-chained runs.
-
-        Args:
-            config: A :class:`ReportConfig`, or any object exposing a ``raw``
-                settings dict. A plain settings ``dict`` is also accepted for
-                convenience.
-
-        Returns:
-            The reconciliation report (``{"forms": [...], "items": [...]}``)
-            listing anything dropped because the current data no longer
-            supports it -- the same information the UI surfaces as a warning.
-        """
-
-        raw = getattr(config, "raw", None)
-        if raw is None:
-            raw = dict(config)
-        self.load_setting_from_dict(raw)
-        return self.reconcile_with_current_data()
-
     def get_join_list_dict(self) -> Dict[str, Dict[str, Any]]:
         """The join settings of each selected form, keyed by form name.
 
@@ -719,6 +691,38 @@ class CLReport:
         """Update several forms' joins, then re-sync once (see above)."""
         for form, items, order, how in join_list:
             self._set_join(form, items, order, how)
+        self.sync_with_selection()
+
+    def normalize_joins(self) -> None:
+        """Tidy every selected form's joins with one rule, then re-sync once.
+
+        The join order is clamped to 1..N (N selected forms; anything that
+        isn't a number counts as 1). A form at order 1 joins on nothing, with
+        a left join. Every other form keeps at most three join items, taken
+        from its first three, that are selected common items, each once; an
+        unknown join type becomes a left join. The desktop's join table shows
+        and keeps this whenever it is rebuilt (a selection change or a loaded
+        setting).
+        """
+        last = max(1, len(self.selected_forms))
+        common = set(self.selected_common_items)
+        for form_name, form in self.selected_forms.items():
+            try:
+                order = int(form.get_join_order() or 1)
+            except TypeError, ValueError, OverflowError:
+                order = 1
+            order = min(max(1, order), last)
+            if order == 1:
+                self._set_join(form_name, [], 1, JoinHow.LEFT)
+                continue
+            items: list[str] = []
+            for item in form.get_join_items()[:3]:
+                if item in common and item not in items:
+                    items.append(item)
+            how = form.get_join_how()
+            self._set_join(
+                form_name, items, order, how if how in JoinHow.ALL else JoinHow.LEFT
+            )
         self.sync_with_selection()
 
     def get_static_filter_items(self):

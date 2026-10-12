@@ -7,7 +7,7 @@ Clinical Reporting's window code is grouped by page: each module in `ui/pages/` 
 - Per-page controller objects and explicit window state instead of mixins (Option C): deferred. It rewrites ~186 method bodies, which the fingerprint can then no longer prove, to make 8 widget references explicit. Revisit only for a second window or front end that must share page logic.
 - Also merging `app`, `main_ui` and `navigation` into `window.py`, and `dialogs`, `table_actions` and `pages/_common` into `base.py` (A+): rejected. It edits `__main__.py`, makes `ui.window` pull in the app start-up, gives `base.py` four unrelated jobs and makes the pages import it (a reversed import direction), and saves 6 files without changing any coupling.
 - Moving the saved-names feature out of the Additional input page module (A2): rejected. It brings back two files for one page; section comments mark the feature instead.
-- Grouping the core modules into sub-packages (Option B): deferred to the base-report API work, which redesigns the core's public surface anyway; now it would change 19 import sites in the automation tools.
+- Grouping the core modules into sub-packages (Option B): rejected, when the base-report API was added. The automation tools import only `workflow`, `export` and `filenames` (21 import statements in 17 files), so regrouping would move every test and harness import without changing any coupling. The flat core keeps `base_report` beside `session` and `workflow`, which it builds on. No import-linter is added: the AST tests in `tests/unit/test_layering.py` already check the import directions that matter (`cci_ui` imports no tool, and the core never imports `clinical_reporting.ui`).
 
 ## Consequences
 

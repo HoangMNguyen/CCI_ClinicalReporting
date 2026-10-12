@@ -377,3 +377,45 @@ def test_the_joins_message_explains_what_stops_the_joins():
         "The report can't be exported until this is fixed."
     )
     assert one_form.kind == "info" and "two or more forms" in one_form
+
+
+def test_a_saved_settings_missing_forms_and_items_are_listed_by_form():
+    missing = {
+        "forms": ["LAB", "PK"],
+        "items": ["DM.Age", "Visit", "AE.Grade", "DM.Sex"],
+    }
+
+    assert steps.setting_missing_lines(missing) == [
+        "Missing forms: LAB, PK",
+        "Missing common items: Visit",
+        "Missing items in AE: Grade",
+        "Missing items in DM: Age, Sex",
+    ]
+    assert steps.setting_missing_lines({"forms": [], "items": []}) == []
+    # Forms keep their order; a form's items are sorted; an item with an empty
+    # part is a common item.
+    assert steps.setting_missing_lines(
+        {"forms": ["PK", "LAB"], "items": ["DM.Sex", "DM.", ".x", "DM.Age"]}
+    ) == [
+        "Missing forms: PK, LAB",
+        "Missing common items: .x, DM.",
+        "Missing items in DM: Age, Sex",
+    ]
+
+
+def test_an_additional_form_named_like_a_report_form_is_refused_in_full():
+    refused = steps.additional_form_names_message({"/a/dm.csv": "DM"}, taken={"DM"})
+
+    assert refused == (
+        "These form names can't be used: DM. Rename them in the table and try again."
+    )
+    assert refused.kind == "warning"
+    assert refused.details == (
+        "Cannot add forms because some form names are invalid or conflict with "
+        "existing data.\n"
+        "Conflicts with existing report forms:\n"
+        "  - DM: dm.csv"
+    )
+    assert (
+        steps.additional_form_names_message({"/a/lab.csv": "LAB"}, taken={"DM"}) is None
+    )

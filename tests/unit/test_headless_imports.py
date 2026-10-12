@@ -16,6 +16,7 @@ SRC_DIR = Path(__file__).resolve().parents[2] / "src"
 CORE_MODULES = [
     "clinical_reporting",
     "clinical_reporting.additional_names",
+    "clinical_reporting.base_report",
     "clinical_reporting.data",
     "clinical_reporting.export",
     "clinical_reporting.feedback",
@@ -24,6 +25,7 @@ CORE_MODULES = [
     "clinical_reporting.pipeline",
     "clinical_reporting.report",
     "clinical_reporting.report_columns",
+    "clinical_reporting.sample_data",
     "clinical_reporting.session",
     "clinical_reporting.settings_store",
     "clinical_reporting.stacking",

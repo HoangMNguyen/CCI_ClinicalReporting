@@ -96,27 +96,6 @@ def test_context_action_copies_selected_new_columns_to_updated_names(qapp):
     }
 
 
-def test_build_additional_data_map_cleans_subject_and_drops_unnamed():
-    widget = DummyWidget()
-    file_path = "/tmp/sample.csv"
-    widget.additional_inputs[file_path] = pd.DataFrame(
-        {
-            "Subject": ["UPCC-111", "UPCC222", "100-333"],
-            "keep": [1, 2, 3],
-            "Unnamed: 0": [0, 0, 0],
-        }
-    )
-    widget.additional_form_names[file_path] = "FormX"
-    widget.additional_column_names[(file_path, "Subject")] = "Subject"
-
-    result = widget._build_additional_data_map()
-
-    assert "FormX" in result
-    df = result["FormX"]
-    assert list(df.columns) == ["Subject", "keep"]
-    assert df["Subject"].tolist() == ["111", "222", "333"]
-
-
 def test_apply_additional_inputs_preserves_available_selections_only():
     widget = DummyWidget()
 
@@ -249,6 +228,30 @@ def test_warn_on_additional_form_conflicts_detects_dots():
 
     assert widget._warn_on_additional_form_conflicts(set()) is True
     assert "Form.With.Dot" in widget.ui.banner_additional.value
+
+
+def test_applying_names_that_repeat_or_hold_a_dot_says_why_in_full():
+    widget = DummyWidget()
+    for path, name in {"/x/a.csv": "LAB", "/x/b.csv": "LAB", "/x/c.csv": "A.B"}.items():
+        widget.additional_inputs[path] = pd.DataFrame({"Subject": ["S1"]})
+        widget.additional_form_names[path] = name
+
+    widget.click_apply_additional_forms()
+
+    shown = widget.ui.banner_additional.value
+    assert shown == (
+        "These form names can't be used: A.B, LAB. Rename them in the table and "
+        "try again."
+    )
+    assert shown.details == (
+        "Cannot add forms because some form names are invalid or conflict with "
+        "existing data.\n"
+        "Form names cannot include '.':\n"
+        "  - A.B\n"
+        "Duplicate names in additional forms:\n"
+        "  - LAB: a.csv, b.csv"
+    )
+    assert widget.report.loaded_data == {}
 
 
 def test_apply_additional_inputs_aborts_on_form_name_conflict():

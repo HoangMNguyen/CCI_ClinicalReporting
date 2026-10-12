@@ -16,9 +16,9 @@ from PySide6.QtWidgets import QApplication, QListWidget, QToolTip
 
 from cci_ui.widgets.checklist import ChecklistComboBox
 from cci_ui.widgets.sidebar import StepState
+from clinical_reporting.sample_data import STUDY, sample_forms
 from clinical_reporting.stacking import Match, StackedForm
 from clinical_reporting.ui.pages.stacked_forms import TICK_ROLE
-from clinical_reporting.ui.sample_data import STUDY, sample_forms
 
 NOT_APPLIED = "Not applied yet. Apply to report to use your changes."
 DISP = StackedForm(
@@ -818,9 +818,7 @@ def test_a_dragged_column_keeps_its_width_until_its_edge_is_double_clicked(
     assert first_and_dm() == fitted
 
 
-def test_a_long_name_shows_its_start_and_whole_in_its_tooltip(
-    sample_window, tmp_path
-):
+def test_a_long_name_shows_its_start_and_whole_in_its_tooltip(sample_window, tmp_path):
     window = sample_window
     _add_files(window, tmp_path, ICF=LONG_NAME)
     _new_stacked_form(window, "DATES", "EOT", "ICF")
