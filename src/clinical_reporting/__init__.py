@@ -4,7 +4,7 @@ Importing :mod:`clinical_reporting` intentionally does not import PySide6.  The
 desktop application is loaded only by :mod:`clinical_reporting.__main__`.
 """
 
-from .base_report import BaseReport, build_base_report_from_forms
+from .base_report import BaseReport, build_base_report, build_base_report_from_forms
 from .data import (
     build_additional_data_map,
     load_additional_inputs,
@@ -34,6 +34,7 @@ __all__ = [
     "ReportValidationError",
     "ReportValidationIssue",
     "build_additional_data_map",
+    "build_base_report",
     "build_base_report_from_forms",
     "dataframe_to_xlsx_bytes",
     "load_additional_inputs",

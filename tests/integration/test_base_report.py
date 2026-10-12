@@ -1,12 +1,19 @@
 """A base report: a saved setting run on a study's forms, without the desktop."""
 
 import io
+import zipfile
+from datetime import date
 
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from clinical_reporting import BaseReport, build_base_report_from_forms, session
+from clinical_reporting import (
+    BaseReport,
+    build_base_report,
+    build_base_report_from_forms,
+    session,
+)
 from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import write_settings_json
 from clinical_reporting.stacking import Match, StackedForm
@@ -335,4 +342,66 @@ def test_an_additional_input_given_twice_is_refused(tmp_path):
 
     assert str(refused.value) == (
         "lab_results.csv is given twice as an additional input."
+    )
+
+
+# ---------------------------------------------------------------------------
+# From a Corelisting export
+# ---------------------------------------------------------------------------
+
+
+def _corelisting(folder):
+    """A Corelisting export of DEMO01 with one form, DM, seen on three dates."""
+    dm = pd.DataFrame(
+        {
+            "Subject": ["01-1", "01-2", "01-3"],
+            "Site": ["A", "A", "B"],
+            "Age": [30, 40, 45],
+            "Event Date": ["2026-09-01", "2026-09-30", "2026-10-05"],
+            "Form Status": ["Submitted"] * 3,
+            "Form ILB Status": [False] * 3,
+        }
+    )
+    path = folder / "Core_Listings_DEMO01_sample.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("listing_DM.csv", dm.to_csv(index=False))
+    return path
+
+
+def _ages_settings():
+    """DM's subjects and ages (one form: every column is a common item)."""
+    report = CLReport()
+    report.set_data(
+        {"DM": pd.DataFrame(columns=["Subject", "Site", "Age", "Event Date"])}
+    )
+    report.add_selected_form("DM")
+    for item in ("Subject", "Site", "Age"):
+        report.set_common_item_state(item, selected=True)
+    return report.settings_to_dict("Ages")
+
+
+def test_a_corelisting_export_is_read_up_to_the_cut_off(tmp_path):
+    export = _corelisting(tmp_path)
+
+    cut_off = build_base_report(
+        export, _ages_settings(), cut_off_date=date(2026, 9, 30)
+    )
+    every = build_base_report(export, _ages_settings())
+    with open(export, "rb") as upload:
+        uploaded = build_base_report(upload, _ages_settings())
+
+    assert cut_off.table["Subject"].tolist() == ["01-1", "01-2"]
+    assert every.table["Subject"].tolist() == ["01-1", "01-2", "01-3"]
+    assert list(every.table.columns) == ["Subject", "Site", "Age"]
+    assert_frame_equal(uploaded.table, every.table)
+
+
+def test_a_corelisting_export_that_isnt_there_is_refused(tmp_path):
+    with pytest.raises(WorkflowInputError) as refused:
+        build_base_report(
+            tmp_path / "Core_Listings_DEMO01_sample.zip", _ages_settings()
+        )
+
+    assert str(refused.value).startswith(
+        "Couldn't find Core_Listings_DEMO01_sample.zip."
     )

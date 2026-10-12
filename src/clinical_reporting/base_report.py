@@ -6,7 +6,9 @@ read, plus any additional inputs under the names the setting saved for them,
 the way the desktop applies one the user picks, and runs it. A setting the
 data doesn't fit is refused with a :class:`WorkflowInputError` that says what
 is missing, unless ``missing_ok=True``; what the desktop would warn about
-comes back in :attr:`BaseReport.warnings`.
+comes back in :attr:`BaseReport.warnings`. :func:`build_base_report` does the
+same from a Corelisting export (a path or an open file), read as the desktop
+reads it, up to an optional cut-off date.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ import copy
 import os
 import zipfile
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
@@ -30,12 +33,17 @@ from clinical_reporting import (
     steps,
     validation,
 )
-from clinical_reporting.workflow import WorkflowInputError, input_name, reading_input
+from clinical_reporting.workflow import (
+    WorkflowInputError,
+    input_name,
+    read_corelisting,
+    reading_input,
+)
 
 #: A saved setting: its dictionary, or the path of its JSON file.
 Setting = Union[Mapping[str, Any], str, os.PathLike]
-#: An additional input: a CSV or Excel file's path, or the open file.
-AdditionalInput = Union[str, os.PathLike, BinaryIO]
+#: An input file: its path, or the open file (binary).
+InputFile = Union[str, os.PathLike, BinaryIO]
 
 
 @dataclass(frozen=True, eq=False)
@@ -67,7 +75,7 @@ def _read_setting(setting: Setting) -> Tuple[dict, str]:
 
 
 def _read_additional_inputs(
-    sources: Sequence[AdditionalInput],
+    sources: Sequence[InputFile],
 ) -> Dict[str, pd.DataFrame]:
     """Each additional input's rows, by its file name (its path, or ``name``)."""
     frames: Dict[str, pd.DataFrame] = {}
@@ -130,7 +138,7 @@ def build_base_report_from_forms(
     setting: Setting,
     *,
     study_name: Optional[str] = None,
-    additional_inputs: Sequence[AdditionalInput] = (),
+    additional_inputs: Sequence[InputFile] = (),
     missing_ok: bool = False,
 ) -> BaseReport:
     """Run the saved *setting* on *forms* (form name to its rows).
@@ -188,4 +196,31 @@ def build_base_report_from_forms(
     return BaseReport(table, tuple(warnings), setting_name)
 
 
-__all__ = ["BaseReport", "build_base_report_from_forms"]
+def build_base_report(
+    corelisting: InputFile,
+    setting: Setting,
+    *,
+    cut_off_date: Optional[date] = None,
+    additional_inputs: Sequence[InputFile] = (),
+    missing_ok: bool = False,
+) -> BaseReport:
+    """Run the saved *setting* on the Corelisting export *corelisting*.
+
+    The export (a ZIP's path, or the open file) is read as the desktop reads
+    it, up to *cut_off_date* when one is given; its study is named by its
+    file name (:func:`clinical_reporting.data.parse_study_name`). The rest is
+    :func:`build_base_report_from_forms`, which says what is refused.
+    """
+    forms = read_corelisting(corelisting, cut_off_date)
+    name = input_name(corelisting)
+    study = data.parse_study_name(name) if name else None
+    return build_base_report_from_forms(
+        forms,
+        setting,
+        study_name=study or None,
+        additional_inputs=additional_inputs,
+        missing_ok=missing_ok,
+    )
+
+
+__all__ = ["BaseReport", "build_base_report", "build_base_report_from_forms"]
