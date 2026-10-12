@@ -401,3 +401,21 @@ def test_a_saved_settings_missing_forms_and_items_are_listed_by_form():
         "Missing common items: .x, DM.",
         "Missing items in DM: Age, Sex",
     ]
+
+
+def test_an_additional_form_named_like_a_report_form_is_refused_in_full():
+    refused = steps.additional_form_names_message({"/a/dm.csv": "DM"}, taken={"DM"})
+
+    assert refused == (
+        "These form names can't be used: DM. Rename them in the table and try again."
+    )
+    assert refused.kind == "warning"
+    assert refused.details == (
+        "Cannot add forms because some form names are invalid or conflict with "
+        "existing data.\n"
+        "Conflicts with existing report forms:\n"
+        "  - DM: dm.csv"
+    )
+    assert (
+        steps.additional_form_names_message({"/a/lab.csv": "LAB"}, taken={"DM"}) is None
+    )

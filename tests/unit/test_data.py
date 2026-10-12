@@ -6,6 +6,7 @@ import zipfile
 import pandas as pd
 import pytest
 
+from clinical_reporting import data
 from clinical_reporting.data import (
     load_tabular_file,
     read_data_dict_zip_corelisting,
@@ -102,3 +103,16 @@ def test_load_tabular_file_accepts_an_open_file_with_a_name():
 def test_load_tabular_file_rejects_unknown_upload_types():
     with pytest.raises(ValueError):
         load_tabular_file(io.BytesIO(b"x"), name="notes.txt")
+
+
+def test_an_additional_file_without_a_form_name_is_named_after_the_file():
+    names = data.additional_form_names(
+        ["/x/lab_results.csv", "/x/pk.csv", "/x/ae.csv"],
+        {"/x/pk.csv": "PK", "/x/ae.csv": ""},
+    )
+
+    assert names == {
+        "/x/lab_results.csv": "lab_results.csv",
+        "/x/pk.csv": "PK",
+        "/x/ae.csv": "ae.csv",
+    }

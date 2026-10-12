@@ -508,3 +508,36 @@ def test_applying_a_saved_setting_says_what_the_data_lacks():
     missing = session.apply_saved_setting(report, settings)
 
     assert missing == {"forms": ["LAB"], "items": ["DM.Height"]}
+
+
+# ---------------------------------------------------------------------------
+# session.apply_additional_inputs
+# ---------------------------------------------------------------------------
+
+
+def test_additional_inputs_are_merged_into_the_report_by_their_form_names():
+    dm = pd.DataFrame({"Subject": ["001"], "Age": [41]})
+    lab = pd.DataFrame(
+        {"Subject": ["001"], "Visit Dt": ["2026-09-01"], "Unnamed: 2": [None]}
+    )
+    report = session.new_report("DEMO01", {"DM": dm})
+
+    applied = session.apply_additional_inputs(
+        report,
+        {"/x/lab.csv": lab},
+        {"/x/lab.csv": "LAB"},
+        {("/x/lab.csv", "Visit Dt"): "Visit Date"},
+    )
+
+    assert list(applied.forms) == ["LAB"]
+    assert applied.signature == {"LAB": ("Subject", "Visit Date")}
+    assert sorted(report.data) == ["DM", "LAB"]
+
+    again = session.apply_additional_inputs(
+        report, {"/x/lab.csv": lab}, {"/x/lab.csv": "LAB2"}, {}, previous_keys={"LAB"}
+    )
+
+    assert again.signature == {"LAB2": ("Subject", "Visit Dt")}
+    assert sorted(report.data) == ["DM", "LAB2"]
+    assert sorted(report.loaded_data) == ["DM", "LAB2"]
+    assert report.loaded_data["DM"] is dm
