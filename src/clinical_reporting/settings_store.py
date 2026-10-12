@@ -2,8 +2,9 @@
 
 The desktop app keeps each saved setting as a JSON file in a folder the user
 picks (``~/Documents`` by default). Callers list, load, and save settings
-through a :class:`SettingsStore`. The JSON helpers work on text as well as
-files, so a setting's JSON can be read and written without a file.
+through a :class:`SettingsStore`; :func:`find_saved_setting` finds one by the
+name the app lists it under. The JSON helpers work on text as well as files,
+so a setting's JSON can be read and written without a file.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Union
 
 from clinical_reporting.filenames import safe_file_stem
+from clinical_reporting.workflow import WorkflowInputError
 
 logger = logging.getLogger(__name__)
 
@@ -117,11 +119,42 @@ class LocalFolderStore:
         return str(path)
 
 
+def find_saved_setting(
+    name: str,
+    *,
+    folder: Optional[Union[str, os.PathLike]] = None,
+    study_name: Optional[str] = None,
+) -> Path:
+    """The file of the saved setting the desktop app lists as *name*.
+
+    Looks in *folder* (default: :func:`default_settings_folder`), among the
+    settings of *study_name* when given, by the name the app shows: the
+    ``setting_name`` saved in the file, or else the file's stem. Raises
+    :class:`~clinical_reporting.workflow.WorkflowInputError` when no setting
+    or several have that name.
+    """
+    folder = Path(folder) if folder else default_settings_folder()
+    found = sorted(
+        Path(saved.key)
+        for saved in LocalFolderStore(folder).list(study_name)
+        if saved.name == name
+    )
+    if not found:
+        raise WorkflowInputError(f"No saved setting is called “{name}” in {folder}.")
+    if len(found) > 1:
+        files = ", ".join(path.name for path in found)
+        raise WorkflowInputError(
+            f"Several saved settings are called “{name}” in {folder}: {files}."
+        )
+    return found[0]
+
+
 __all__ = [
     "LocalFolderStore",
     "SavedSetting",
     "SettingsStore",
     "default_settings_folder",
+    "find_saved_setting",
     "read_settings_json",
     "settings_from_json",
     "settings_to_json",

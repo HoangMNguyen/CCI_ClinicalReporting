@@ -193,17 +193,20 @@ header row only.
 
 `clinical_reporting.build_base_report_from_forms(forms, setting, *,
 study_name=None, additional_inputs=(), missing_ok=False)` does the same from
-forms already read (`{form name: DataFrame}`):
+forms already read (`{form name: DataFrame}`), and
+`clinical_reporting.settings_store.find_saved_setting(name, *, folder=None,
+study_name=None)` finds the file of a setting the desktop lists by name:
 
 ```python
+from clinical_reporting.settings_store import find_saved_setting
 from clinical_reporting.workflow import read_corelisting
 
+# In ~/Documents unless folder= says where; no setting or several with that
+# name raise WorkflowInputError.
+setting = find_saved_setting("monthly AE review", study_name="DEMO01")
 forms = read_corelisting("Core_Listings_DEMO01_20261001.zip")  # {form: DataFrame}
 base = clinical_reporting.build_base_report_from_forms(
-    forms,
-    "settings/monthly_ae_review.json",
-    study_name="DEMO01",
-    additional_inputs=["lab_results.csv"],
+    forms, setting, study_name="DEMO01", additional_inputs=["lab_results.csv"]
 )
 ```
 
