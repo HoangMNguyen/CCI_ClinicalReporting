@@ -8,8 +8,10 @@ from :func:`clinical_reporting.validation.validate_report` by issue code
 (:data:`ISSUE_STEPS`), so every front end points the user to the step that
 fixes each one. The other functions word what the steps show:
 :func:`report_summary` (the line under the window), :func:`source_summary`,
-:func:`preview_caption`, :func:`joins_message`, the Additional input
-step's messages (:func:`additional_applied_message`, the constants, and the
+:func:`setting_missing_lines` (what a loaded setting needs that the data
+lacks), :func:`preview_caption`, :func:`joins_message`, the Additional input
+step's messages (:func:`additional_applied_message`,
+:func:`additional_form_names_message`, the constants, and the
 ``saved_names_*`` wording for the names a loaded setting saved for its
 additional files; see :mod:`clinical_reporting.additional_names`), and the
 Stacked forms step's (the ``stacked_*`` ones and :data:`STACKED_NOT_APPLIED`,
@@ -21,6 +23,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime
+from pathlib import Path
 from typing import (
     Collection,
     Dict,
@@ -41,7 +44,7 @@ from clinical_reporting.additional_names import (
     IgnoredName,
     SavedFileNames,
 )
-from clinical_reporting.models import qualify
+from clinical_reporting.models import is_qualified, qualify, split_qualified
 from clinical_reporting.stacking import Match, MatchedItem, StackedForm, layout
 from clinical_reporting.validation import ReportValidationIssue
 
@@ -379,6 +382,64 @@ def additional_applied_message(
     return feedback.success(text)
 
 
+def additional_form_names_message(
+    name_map: Mapping[str, str], taken: Collection[str]
+) -> Optional[feedback.Message]:
+    """Why the additional files' form names can't be used, or ``None``.
+
+    *name_map* is each file's form name (``{path: form name}``, see
+    :func:`clinical_reporting.data.additional_form_names`); *taken* are the
+    report's form names the files can't take (its loaded and stacked forms).
+    A name can't hold a ".", two files can't share one, and none can be
+    taken. A warning to show on one line; its details list the reasons by
+    file.
+    """
+    dotted_names = sorted({name for name in name_map.values() if is_qualified(name)})
+    name_to_paths: Dict[str, List[str]] = {}
+    for file_path, form_name in name_map.items():
+        name_to_paths.setdefault(form_name, []).append(file_path)
+    duplicates = {
+        form_name: paths for form_name, paths in name_to_paths.items() if len(paths) > 1
+    }
+    conflicts = {
+        form_name: paths
+        for form_name, paths in name_to_paths.items()
+        if form_name in taken
+    }
+    if not dotted_names and not duplicates and not conflicts:
+        return None
+
+    clashing = sorted(set(dotted_names) | set(duplicates) | set(conflicts))
+    message_parts = [
+        "Cannot add forms because some form names are invalid or conflict "
+        "with existing data."
+    ]
+    if dotted_names:
+        message_parts.append("Form names cannot include '.':")
+        message_parts.append("  - " + ", ".join(dotted_names))
+    if duplicates:
+        message_parts.append("Duplicate names in additional forms:")
+        for form_name in sorted(duplicates):
+            file_list = ", ".join(
+                sorted(Path(path).name for path in duplicates[form_name])
+            )
+            message_parts.append(f"  - {form_name}: {file_list}")
+    if conflicts:
+        message_parts.append("Conflicts with existing report forms:")
+        for form_name in sorted(conflicts):
+            file_list = ", ".join(
+                sorted(Path(path).name for path in conflicts[form_name])
+            )
+            message_parts.append(f"  - {form_name}: {file_list}")
+    # One line on the page (it doesn't scroll); the reasons per file are
+    # behind "Show details".
+    return feedback.warning(
+        f"These form names can't be used: {feedback.short_list(clashing)}. "
+        "Rename them in the table and try again.",
+        "\n".join(message_parts),
+    )
+
+
 _MATCHED_BY = {BY_FILE_NAME: "by its file name", BY_COLUMNS: "by its columns"}
 
 
@@ -570,6 +631,38 @@ def saved_names_kept_message(file_name: str) -> feedback.Message:
     return feedback.info(
         f"{file_name} no longer uses saved names. The names you changed stay."
     )
+
+
+def setting_missing_lines(missing: Mapping[str, Sequence[str]]) -> List[str]:
+    """What a saved setting needs that the data lacks, as lines to show.
+
+    *missing* is what
+    :meth:`~clinical_reporting.CLReport.reconcile_with_current_data` returns.
+    The forms come first, as given ("Missing forms: LAB, PK"); then the
+    common items ("Missing common items: Visit"), which include items without
+    a form or with an empty part; then one line per form for its items
+    ("Missing items in DM: Age, Sex"), forms and items sorted. ``[]`` when
+    nothing is missing.
+    """
+    lines = []
+    forms = list(missing.get("forms") or ())
+    if forms:
+        lines.append("Missing forms: " + ", ".join(forms))
+    common_items = []
+    form_items: Dict[str, List[str]] = {}
+    for item in missing.get("items") or ():
+        form_name, item_name = split_qualified(str(item))
+        if form_name and item_name:
+            form_items.setdefault(form_name, []).append(item_name)
+        else:
+            common_items.append(str(item))
+    if common_items:
+        lines.append("Missing common items: " + ", ".join(sorted(common_items)))
+    for form_name in sorted(form_items):
+        lines.append(
+            f"Missing items in {form_name}: " + ", ".join(sorted(form_items[form_name]))
+        )
+    return lines
 
 
 def saved_names_hint(
@@ -804,6 +897,7 @@ __all__ = [
     "WARNING",
     "StepStatus",
     "additional_applied_message",
+    "additional_form_names_message",
     "issue_step",
     "joins_message",
     "preview_caption",
@@ -821,6 +915,7 @@ __all__ = [
     "saved_names_picked_message",
     "saved_names_tip",
     "selected_item_count",
+    "setting_missing_lines",
     "source_summary",
     "stacked_applied_message",
     "stacked_cell_warning",

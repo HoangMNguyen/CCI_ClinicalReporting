@@ -58,6 +58,11 @@ in `EnrollmentLog.collect_data`; the DSMB report needs a branch in
 `_report_builder` (`dsmb/DSMB.py`), plus an entry in `_WRITES_WHEN_BUILT` if
 the module writes its report while it is built instead of in `run()`.
 
+A new automation, rather than a new study of these workflows, builds on a
+base report
+([ADR 0001](../../docs/adr/0001-new-automations-build-on-base-reports.md)):
+see [The base report](../clinical_reporting/README.md#the-base-report).
+
 ## Package layout
 
 ```text

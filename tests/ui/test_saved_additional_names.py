@@ -7,8 +7,8 @@ from PySide6.QtWidgets import QApplication, QHeaderView
 
 from clinical_reporting import steps
 from clinical_reporting.additional_names import SETTINGS_KEY, SavedFileNames
+from clinical_reporting.sample_data import STUDY, sample_forms
 from clinical_reporting.ui.pages.additional_input import SAVED_NAMES_COLUMN
-from clinical_reporting.ui.sample_data import STUDY, sample_forms
 
 
 def _lab_results():

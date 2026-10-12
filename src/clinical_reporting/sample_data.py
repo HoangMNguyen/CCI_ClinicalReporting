@@ -1,4 +1,4 @@
-"""Made-up study data (DEMO01) for UI previews and screenshots.
+"""Made-up study data (DEMO01) for previews, screenshots and tests.
 
 Nothing here comes from a real study: subjects, visits, and values are
 generated from a fixed seed, so previews look the same every time and can be

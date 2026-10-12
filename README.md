@@ -120,13 +120,22 @@ than carrying their own copies:
 - `clinical_reporting.filenames.output_file_name` makes the
   `<name> YYMMDD_HHMMSS.xlsx` file names.
 - `clinical_reporting.data.parse_study_name` reads the study from a file
-  name (Clinical Reporting's Source data page directly; `study_named_by`
-  builds on it).
+  name (Clinical Reporting's Source data page and `build_base_report`
+  directly; `study_named_by` builds on it).
 - `clinical_reporting.export.get_named_excel_formats` provides shared Excel
   cell styles (the DSMB modules and Safety Automation's AE & DLT listing).
 - `clinical_reporting.export.to_short_date_string` writes dates as
   `m/d/yyyy` without leading zeros (CCI Automation's
   `util.remove_leading_zeros_from_dates`).
+
+New automations build on a base report instead of their own pandas code
+([ADR 0001](docs/adr/0001-new-automations-build-on-base-reports.md)):
+`clinical_reporting.build_base_report(corelisting, setting, ...)` runs a saved
+setting on a Corelisting export and gives the table, and the workbook, the
+desktop exports for it. The automation adds its own statistics, sheets and
+formatting; its saved setting is versioned next to its code. See
+[The base report](src/clinical_reporting/README.md#the-base-report) for
+examples.
 
 ### What the automation tools share
 
@@ -216,7 +225,7 @@ Testing notes:
   test counts a run (even with a local `telemetry.json`), and provides one
   shared `qapp` fixture.
 - Tests build their own made-up data in code (Clinical Reporting's
-  `clinical_reporting/ui/sample_data.py`, small DataFrames, and tiny ZIPs
+  `clinical_reporting/sample_data.py`, small DataFrames, and tiny ZIPs
   written to pytest's `tmp_path`) and never read real study exports. Keep
   real exports outside the repository: Git ignores `tests/data/` and every
   `.zip`, `.csv` and Excel file so one can't be committed by accident, but

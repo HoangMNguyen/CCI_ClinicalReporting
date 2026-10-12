@@ -12,6 +12,12 @@ It holds:
   fresh ``CLForm`` objects, so the user's selections are captured first and
   the ones that still exist are re-applied afterwards.
 - Starting a report from Corelisting data and swapping that data out.
+- Applying a saved setting (:func:`apply_saved_setting`): its selections are
+  lined up with the report's data, and its joins, renames, filters and
+  column order are tidied to match.
+- Merging additional inputs into a report (:func:`apply_additional_inputs`):
+  each file becomes a form named as given or after the file, replacing the
+  forms an earlier merge added; :class:`AppliedInputs` says what was added.
 - Building and exporting the report, the slow part, written so a front end
   can run it off its main thread. (Reading files is :mod:`clinical_reporting.data`.)
 
@@ -23,10 +29,12 @@ that change a report run on the main thread.
 
 from __future__ import annotations
 
-from typing import Any, Collection, Dict, Optional, Sequence
+from dataclasses import dataclass
+from typing import Any, Collection, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import pandas as pd
 
+from clinical_reporting.data import build_additional_data_map
 from clinical_reporting.export import write_xlsx
 from clinical_reporting.models import SUBJECT_COLUMN
 from clinical_reporting.report import CLReport
@@ -136,6 +144,73 @@ def apply_stacked_forms(report: CLReport, stacked_forms: Sequence[StackedForm]) 
     restore_selection(report, state)
 
 
+def apply_saved_setting(
+    report: CLReport, settings: Mapping[str, Any]
+) -> Dict[str, List[str]]:
+    """Apply the saved setting *settings* to *report*, as every front end does.
+
+    The setting's selections are read and lined up with the report's data; a
+    setting with no study name keeps the report's. The joins are tidied
+    (:meth:`~clinical_reporting.report.CLReport.normalize_joins`), and the
+    renames, filters and column order follow the selection. Returns what the
+    setting needs that the data lacks, ``{"forms": [...], "items": [...]}``
+    (see :meth:`~clinical_reporting.report.CLReport.reconcile_with_current_data`).
+    """
+    previous = report.study_name
+    report.load_setting_from_dict(dict(settings))
+    report.set_study_name(settings.get("study_name") or previous)
+    missing = report.reconcile_with_current_data()
+    report.normalize_joins()
+    report.sync_with_selection()
+    report.update_selected_items_order_list()
+    return missing
+
+
+@dataclass(frozen=True, eq=False)
+class AppliedInputs:
+    """What :func:`apply_additional_inputs` added to a report.
+
+    ``forms`` are the forms made from the additional files, by form name;
+    ``signature`` is each one's column names, to tell whether a later apply
+    changed anything.
+    """
+
+    forms: Dict[str, pd.DataFrame]
+    signature: Dict[str, Tuple[str, ...]]
+
+
+def apply_additional_inputs(
+    report: CLReport,
+    inputs: Mapping[str, pd.DataFrame],
+    form_names: Mapping[str, str],
+    column_names: Mapping[Tuple[str, str], str],
+    previous_keys: Collection[str] = (),
+) -> AppliedInputs:
+    """Merge the additional files *inputs* (``{path: frame}``) into *report*.
+
+    Each file becomes a form named by *form_names* (else its file name), with
+    its columns renamed by *column_names* (``{(path, column): name}``; see
+    :func:`clinical_reporting.data.build_additional_data_map`). The forms an
+    earlier apply added (*previous_keys*) are replaced. The report's data is
+    rebuilt, so the caller restores the selections it wants to keep. Check
+    the names first (:func:`clinical_reporting.steps.additional_form_names_message`).
+    """
+    base = {
+        key: frame
+        for key, frame in report.loaded_data.items()
+        if key not in previous_keys
+    }
+    extra = build_additional_data_map(inputs, form_names, column_names)
+    report.set_data({**base, **extra})
+    return AppliedInputs(
+        extra,
+        {
+            name: tuple(str(column) for column in frame.columns)
+            for name, frame in extra.items()
+        },
+    )
+
+
 def without_base_data(report: CLReport, additional_keys: Collection[str]) -> CLReport:
     """A fresh report holding only *report*'s additional-input forms.
 
@@ -177,6 +252,9 @@ def export_report(report: CLReport, file_path: str) -> Optional[str]:
 
 
 __all__ = [
+    "AppliedInputs",
+    "apply_additional_inputs",
+    "apply_saved_setting",
     "apply_stacked_forms",
     "build_report",
     "capture_selection",

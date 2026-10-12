@@ -2,14 +2,18 @@
 
 import json
 
+import pytest
+
 from clinical_reporting.settings_store import (
     LocalFolderStore,
     SavedSetting,
+    find_saved_setting,
     read_settings_json,
     settings_from_json,
     settings_to_json,
     write_settings_json,
 )
+from clinical_reporting.workflow import WorkflowInputError
 
 
 def test_a_setting_is_saved_as_json_with_a_four_space_indent():
@@ -65,3 +69,44 @@ def test_saved_setting_names_cannot_leave_the_folder(tmp_path):
 
 def test_missing_folder_lists_nothing(tmp_path):
     assert LocalFolderStore(tmp_path / "does-not-exist").list() == []
+
+
+def _saved_settings(folder):
+    write_settings_json(
+        folder / "a.json",
+        {"setting_name": "Monthly AE review", "study_name": "DEMO01"},
+    )
+    write_settings_json(folder / "b.json", {"study_name": "DEMO02"})
+    write_settings_json(
+        folder / "c.json",
+        {"setting_name": "Monthly AE review", "study_name": "DEMO02"},
+    )
+
+
+def test_a_saved_setting_is_found_by_the_name_the_desktop_shows(tmp_path):
+    _saved_settings(tmp_path)
+
+    assert (
+        find_saved_setting("Monthly AE review", folder=tmp_path, study_name="DEMO01")
+        == tmp_path / "a.json"
+    )
+    assert find_saved_setting("b", folder=tmp_path) == tmp_path / "b.json"
+
+
+def test_a_name_several_settings_share_or_none_has_is_refused(tmp_path):
+    _saved_settings(tmp_path)
+
+    with pytest.raises(WorkflowInputError) as several:
+        find_saved_setting("Monthly AE review", folder=tmp_path)
+    with pytest.raises(WorkflowInputError) as none:
+        find_saved_setting("Weekly", folder=tmp_path)
+    # A setting with a name isn't listed under its file's stem.
+    with pytest.raises(WorkflowInputError) as by_stem:
+        find_saved_setting("a", folder=tmp_path)
+
+    assert str(several.value) == (
+        f"Several saved settings are called “Monthly AE review” in {tmp_path}: "
+        "a.json, c.json."
+    )
+    assert str(none.value) == f"No saved setting is called “Weekly” in {tmp_path}."
+    assert str(by_stem.value) == f"No saved setting is called “a” in {tmp_path}."
