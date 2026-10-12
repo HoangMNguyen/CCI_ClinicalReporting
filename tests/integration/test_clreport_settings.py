@@ -4,6 +4,7 @@ import pandas as pd
 
 from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
+from clinical_reporting.settings_store import write_settings_json
 
 
 def _make_form(
@@ -37,7 +38,7 @@ def test_save_and_load_settings_roundtrip(tmp_path):
     report.selected_forms = {"DM": dm_form}
 
     output_file = tmp_path / "settings.json"
-    report.save_setting_to_json(str(output_file), setting_name="baseline")
+    write_settings_json(output_file, report.settings_to_dict("baseline"))
 
     with open(output_file, "r", encoding="utf-8") as f:
         payload = json.load(f)

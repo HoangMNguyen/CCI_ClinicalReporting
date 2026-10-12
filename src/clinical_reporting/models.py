@@ -1,19 +1,13 @@
-"""Domain models, configuration, constants, and identifier helpers."""
+"""Domain models, constants, and identifier helpers."""
 
 from __future__ import annotations
 
-from copy import deepcopy
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, TypeVar, Union
-
-from clinical_reporting.settings_store import read_settings_json, write_settings_json
+from typing import List, Optional, Sequence, TypeVar
 
 FORM_ITEM_SEPARATOR = "."
 SUBJECT_COLUMN = "Subject"
 
 T = TypeVar("T")
-PathLike = Union[str, Path]
 
 
 class JoinHow:
@@ -177,41 +171,11 @@ class CLForm:
         return self.join_order
 
 
-@dataclass
-class ReportConfig:
-    """Typed wrapper around the backward-compatible settings dictionary."""
-
-    raw: Dict[str, Any] = field(default_factory=dict)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ReportConfig":
-        return cls(deepcopy(dict(data)))
-
-    @classmethod
-    def from_settings_json(cls, file_path: PathLike) -> "ReportConfig":
-        return cls(read_settings_json(file_path))
-
-    def to_settings_json(self, file_path: PathLike) -> None:
-        write_settings_json(file_path, self.raw)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return deepcopy(self.raw)
-
-    @property
-    def study_name(self) -> Optional[str]:
-        return self.raw.get("study_name")
-
-    @property
-    def setting_name(self) -> Optional[str]:
-        return self.raw.get("setting_name")
-
-
 __all__ = [
     "CLForm",
     "FORM_ITEM_SEPARATOR",
     "JoinHow",
     "Operator",
-    "ReportConfig",
     "SUBJECT_COLUMN",
     "is_qualified",
     "move_item",

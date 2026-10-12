@@ -7,7 +7,7 @@ import os
 import re
 import zipfile
 from pathlib import Path
-from typing import BinaryIO, Dict, Iterable, List, Optional, Tuple, Union
+from typing import BinaryIO, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
 import pandas as pd
 
@@ -190,15 +190,34 @@ def named_columns(df: pd.DataFrame) -> List[str]:
     return [str(column) for column in df.columns if is_named_column(column)]
 
 
+def additional_form_names(
+    paths: Iterable[str], form_names: Mapping[str, str]
+) -> Dict[str, str]:
+    """Each additional file's form name: the one given, or else the file's name.
+
+    ``{path: form name}`` for every path in *paths*; *form_names* holds the
+    names given (``{path: name}``), and an empty or missing one falls back to
+    the file name, e.g. ``lab_results.csv``.
+    """
+    return {path: form_names.get(path) or Path(path).name for path in paths}
+
+
 def build_additional_data_map(
-    additional_inputs: Dict[str, pd.DataFrame],
-    form_names: Dict[str, str],
-    column_names: Dict[Tuple[str, str], str],
+    additional_inputs: Mapping[str, pd.DataFrame],
+    form_names: Mapping[str, str],
+    column_names: Mapping[Tuple[str, str], str],
 ) -> Dict[str, pd.DataFrame]:
-    """Apply UI form/column names and normalize additional input data."""
+    """The additional files *additional_inputs* as forms, by their form names.
+
+    Each file's form is named by *form_names* (see
+    :func:`additional_form_names`), its columns renamed by *column_names*
+    (``{(path, column): name}``), its unnamed columns dropped and its
+    ``Subject`` values cleaned (:func:`strip_subject_prefix`).
+    """
     data_map: Dict[str, pd.DataFrame] = {}
+    names = additional_form_names(additional_inputs, form_names)
     for file_path, df in additional_inputs.items():
-        form_name = form_names.get(file_path) or Path(file_path).name
+        form_name = names[file_path]
         df_clean = df.copy()
         drop_cols = []
         rename_map = {}
@@ -227,6 +246,7 @@ def build_additional_data_map(
 
 
 __all__ = [
+    "additional_form_names",
     "build_additional_data_map",
     "is_named_column",
     "load_additional_inputs",

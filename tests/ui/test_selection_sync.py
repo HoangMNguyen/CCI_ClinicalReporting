@@ -7,6 +7,7 @@ import pytest
 
 from clinical_reporting.models import JoinHow
 from clinical_reporting.report import CLReport
+from clinical_reporting.settings_store import write_settings_json
 from clinical_reporting.ui.base import WidgetBaseMixin
 
 
@@ -140,7 +141,7 @@ def test_saved_setting_excludes_removed_form_entries(report, tmp_path):
     report.add_available_form("AE")
     # No explicit sync: saving must never persist entries for removed forms.
     path = tmp_path / "setting.json"
-    report.save_setting_to_json(str(path), setting_name="no AE")
+    write_settings_json(path, report.settings_to_dict("no AE"))
 
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["rename_dict"] == {"DM.AGE": "Age", "Subject": "ID"}

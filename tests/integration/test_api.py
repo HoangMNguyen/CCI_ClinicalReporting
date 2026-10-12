@@ -3,9 +3,9 @@
 These exercise the building blocks that let the reporting engine be driven
 without the PySide6 UI (tool chaining):
 
-* ``models.ReportConfig`` -- declarative config wrapper over the settings JSON
-* ``report.CLReport.load_setting_from_dict`` / ``apply_config`` -- file-free
-  configuration + reconciliation
+* ``report.CLReport.load_setting_from_dict`` -- file-free configuration
+* ``session.apply_saved_setting`` -- applying a saved setting as the desktop
+  does: its study, tidied joins, and what the data lacks
 * ``data`` -- data loading / input shaping
 * ``export`` -- xlsx / csv / bytes export
 
@@ -22,7 +22,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 import clinical_reporting as api
-from clinical_reporting import data
+from clinical_reporting import data, session
 from clinical_reporting.data import (
     build_additional_data_map,
     parse_study_name,
@@ -34,8 +34,8 @@ from clinical_reporting.export import (
     write_csv,
     write_xlsx,
 )
-from clinical_reporting.models import ReportConfig
 from clinical_reporting.report import CLReport
+from clinical_reporting.settings_store import read_settings_json, write_settings_json
 
 # ---------------------------------------------------------------------------
 # Shared fixtures / helpers
@@ -74,79 +74,9 @@ def _reference_settings_dict(tmp_path):
     """Round-trip the reference report through the on-disk settings schema."""
     report = _configure_reference_report()
     path = tmp_path / "reference.json"
-    report.save_setting_to_json(str(path), setting_name="baseline")
+    write_settings_json(path, report.settings_to_dict("baseline"))
     with open(path, "r", encoding="utf-8") as handle:
         return json.load(handle)
-
-
-# ---------------------------------------------------------------------------
-# ReportConfig
-# ---------------------------------------------------------------------------
-
-
-def test_report_config_defaults_to_empty():
-    config = ReportConfig()
-    assert config.raw == {}
-    assert config.study_name is None
-    assert config.setting_name is None
-
-
-def test_report_config_from_dict_is_deep_copied():
-    source = {"study_name": "S1", "selected_common_items": ["Subject"]}
-    config = ReportConfig.from_dict(source)
-
-    # Mutating the source must not leak into the config.
-    source["selected_common_items"].append("Visit")
-    source["study_name"] = "MUTATED"
-
-    assert config.study_name == "S1"
-    assert config.raw["selected_common_items"] == ["Subject"]
-
-
-def test_report_config_to_dict_returns_isolated_copy():
-    config = ReportConfig.from_dict({"selected_common_items": ["Subject"]})
-    snapshot = config.to_dict()
-    snapshot["selected_common_items"].append("Visit")
-
-    # The internal raw dict is untouched by edits to the returned copy.
-    assert config.raw["selected_common_items"] == ["Subject"]
-
-
-def test_report_config_exposes_study_and_setting_name():
-    config = ReportConfig.from_dict(
-        {"study_name": "STUDY01", "setting_name": "baseline"}
-    )
-    assert config.study_name == "STUDY01"
-    assert config.setting_name == "baseline"
-
-
-def test_report_config_json_roundtrip(tmp_path):
-    raw = {
-        "study_name": "STUDY01",
-        "setting_name": "baseline",
-        "selected_common_items": ["Subject"],
-        "rename_dict": {"DM.Age": "Age"},
-    }
-    path = tmp_path / "setting.json"
-
-    ReportConfig.from_dict(raw).to_settings_json(path)
-    reloaded = ReportConfig.from_settings_json(path)
-
-    assert reloaded.raw == raw
-
-
-def test_report_config_reads_settings_saved_by_engine(tmp_path):
-    """A config loaded from a UI-saved settings file mirrors the saved data."""
-    settings = _reference_settings_dict(tmp_path)
-    path = tmp_path / "engine_setting.json"
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(settings, handle)
-
-    config = ReportConfig.from_settings_json(path)
-
-    assert config.study_name == "STUDY01"
-    assert config.setting_name == "baseline"
-    assert config.raw["selected_forms"]["DM"]["selected_form_items"] == ["Age"]
 
 
 # ---------------------------------------------------------------------------
@@ -170,71 +100,59 @@ def test_load_setting_from_dict_applies_settings_without_io(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# CLReport.apply_config
+# Replaying the reference setting (session.apply_saved_setting)
 # ---------------------------------------------------------------------------
 
 
-def test_apply_config_with_matching_data_reports_nothing_missing(tmp_path):
-    config = ReportConfig.from_dict(_reference_settings_dict(tmp_path))
+def test_a_saved_setting_that_fits_the_data_misses_nothing(tmp_path):
+    settings = _reference_settings_dict(tmp_path)
 
     report = CLReport()
     report.set_data(_two_form_data())
-    missing = report.apply_config(config)
+    missing = session.apply_saved_setting(report, settings)
 
     assert missing == {"forms": [], "items": []}
     assert set(report.selected_forms) == {"DM", "VS"}
     assert report.get_selected_common_items() == ["Subject"]
 
 
-def test_apply_config_accepts_plain_dict(tmp_path):
-    """For convenience, apply_config also accepts a raw settings dict."""
-    settings = _reference_settings_dict(tmp_path)
-
-    report = CLReport()
-    report.set_data(_two_form_data())
-    missing = report.apply_config(settings)
-
-    assert missing == {"forms": [], "items": []}
-    assert "DM" in report.selected_forms
-
-
-def test_apply_config_reports_forms_and_items_missing_from_data(tmp_path):
-    """Config referencing forms/items absent from the loaded data is reconciled."""
+def test_a_saved_setting_says_the_forms_and_items_missing_from_the_data(tmp_path):
+    """A setting referencing forms/items absent from the loaded data is reconciled."""
     settings = _reference_settings_dict(tmp_path)
 
     report = CLReport()
     # Only DM is present, and it is missing the configured 'Age' column.
     report.set_data({"DM": pd.DataFrame({"Subject": ["001"], "Weight": [70]})})
-    missing = report.apply_config(ReportConfig.from_dict(settings))
+    missing = session.apply_saved_setting(report, settings)
 
     assert "VS" in missing["forms"]
     assert "DM.Age" in missing["items"]
     assert "VS" not in report.selected_forms
 
 
-def test_apply_config_without_data_drops_everything(tmp_path):
+def test_a_saved_setting_applied_without_data_drops_everything(tmp_path):
     """set_data must come first; otherwise reconciliation drops all selections."""
-    config = ReportConfig.from_dict(_reference_settings_dict(tmp_path))
+    settings = _reference_settings_dict(tmp_path)
 
     report = CLReport()  # note: no set_data
-    missing = report.apply_config(config)
+    missing = session.apply_saved_setting(report, settings)
 
     assert sorted(missing["forms"]) == ["DM", "VS"]
     assert report.selected_forms == {}
 
 
-def test_apply_config_then_create_report_matches_reference(tmp_path):
-    """The strongest guarantee: a config replayed via the API yields the same
+def test_a_saved_setting_replayed_creates_the_reference_report(tmp_path):
+    """The strongest guarantee: a setting replayed via the API yields the same
     DataFrame as the report that produced it."""
     reference = _configure_reference_report()
     expected = reference.create_report().reset_index(drop=True)
 
     path = tmp_path / "setting.json"
-    reference.save_setting_to_json(str(path), setting_name="baseline")
+    write_settings_json(path, reference.settings_to_dict("baseline"))
 
     replayed = CLReport()
     replayed.set_data(_two_form_data())
-    replayed.apply_config(ReportConfig.from_settings_json(str(path)))
+    session.apply_saved_setting(replayed, read_settings_json(path))
     actual = replayed.create_report().reset_index(drop=True)
 
     assert list(actual.columns) == ["Subject", "DM.Age", "VS.Pulse"]
@@ -406,14 +324,14 @@ def test_full_chaining_pipeline_load_configure_run_export(tmp_path):
 
     # Persist a configuration the way the UI would.
     setting_path = tmp_path / "setting.json"
-    _configure_reference_report().save_setting_to_json(
-        str(setting_path), setting_name="batch"
+    write_settings_json(
+        setting_path, _configure_reference_report().settings_to_dict("batch")
     )
 
-    # 2. Load data + 3. apply config + 4. run.
+    # 2. Load data + 3. apply the setting + 4. run.
     report = CLReport()
     report.set_data(data)
-    missing = report.apply_config(ReportConfig.from_settings_json(str(setting_path)))
+    missing = session.apply_saved_setting(report, read_settings_json(setting_path))
     assert missing == {"forms": [], "items": []}
 
     result = report.create_report()
@@ -430,3 +348,112 @@ def test_full_chaining_pipeline_load_configure_run_export(tmp_path):
         worksheet.cell(row=1, column=c).value for c in range(1, result.shape[1] + 1)
     ]
     assert headers == list(result.columns)
+
+
+# ---------------------------------------------------------------------------
+# session.apply_saved_setting
+# ---------------------------------------------------------------------------
+
+
+def _three_forms():
+    return {
+        "DM": pd.DataFrame(columns=["Subject", "Site", "Age"]),
+        "AE": pd.DataFrame(columns=["Subject", "Site", "Term"]),
+        "VS": pd.DataFrame(columns=["Subject", "Site", "Pulse"]),
+    }
+
+
+def _joins_settings():
+    report = CLReport()
+    report.set_data(_three_forms())
+    for form in ("DM", "AE", "VS"):
+        report.add_selected_form(form)
+    report.set_common_item_state("Subject", selected=True)
+    report.set_common_item_state("Site", selected=True)
+    report.selected_forms["DM"].set_form_item_state("Age", selected=True)
+    report.update_join_items("DM", [], 1, "Left join")
+    report.update_join_items("AE", ["Subject", "Site"], 2, "Left join")
+    report.update_join_items("VS", ["Subject", "Site"], 3, "Left join")
+    return report.settings_to_dict("Joins")
+
+
+def test_a_saved_setting_without_a_study_keeps_the_reports():
+    settings = _joins_settings()
+    settings["study_name"] = None
+    report = session.new_report("DEMO01", _three_forms())
+
+    session.apply_saved_setting(report, settings)
+
+    assert report.study_name == "DEMO01"
+
+    settings["study_name"] = "DEMO02"
+    session.apply_saved_setting(report, settings)
+
+    assert report.study_name == "DEMO02"
+
+
+def test_a_saved_settings_joins_are_tidied_when_it_is_applied():
+    settings = _joins_settings()
+    settings["selected_forms"]["AE"].update(
+        join_items=["Site", "Site", "Subject", "Visit"],
+        join_order=7,
+        join_how="Sideways",
+    )
+    report = session.new_report("DEMO01", _three_forms())
+
+    session.apply_saved_setting(report, settings)
+
+    assert report.get_join_list_dict()["AE"] == {
+        "items": ["Site", "Subject"],
+        "order": 3,
+        "how": "Left join",
+    }
+
+
+def test_applying_a_saved_setting_says_what_the_data_lacks():
+    settings = _joins_settings()
+    settings["selected_forms"]["LAB"] = {
+        "selected_form_items": ["Result"],
+        "join_items": ["Subject", "Site"],
+        "join_order": 3,
+        "join_how": "Left join",
+    }
+    settings["selected_forms"]["DM"]["selected_form_items"].append("Height")
+    report = session.new_report("DEMO01", _three_forms())
+
+    missing = session.apply_saved_setting(report, settings)
+
+    assert missing == {"forms": ["LAB"], "items": ["DM.Height"]}
+
+
+# ---------------------------------------------------------------------------
+# session.apply_additional_inputs
+# ---------------------------------------------------------------------------
+
+
+def test_additional_inputs_are_merged_into_the_report_by_their_form_names():
+    dm = pd.DataFrame({"Subject": ["001"], "Age": [41]})
+    lab = pd.DataFrame(
+        {"Subject": ["001"], "Visit Dt": ["2026-09-01"], "Unnamed: 2": [None]}
+    )
+    report = session.new_report("DEMO01", {"DM": dm})
+
+    applied = session.apply_additional_inputs(
+        report,
+        {"/x/lab.csv": lab},
+        {"/x/lab.csv": "LAB"},
+        {("/x/lab.csv", "Visit Dt"): "Visit Date"},
+    )
+
+    assert list(applied.forms) == ["LAB"]
+    assert applied.signature == {"LAB": ("Subject", "Visit Date")}
+    assert sorted(report.data) == ["DM", "LAB"]
+
+    again = session.apply_additional_inputs(
+        report, {"/x/lab.csv": lab}, {"/x/lab.csv": "LAB2"}, {}, previous_keys={"LAB"}
+    )
+
+    assert again.signature == {"LAB2": ("Subject", "Visit Dt")}
+    assert sorted(report.data) == ["DM", "LAB2"]
+    assert sorted(report.loaded_data) == ["DM", "LAB2"]
+    assert report.loaded_data["DM"] is dm

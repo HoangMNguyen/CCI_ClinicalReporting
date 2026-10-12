@@ -42,8 +42,12 @@ from cci_ui.widgets.toggle import ToggleSwitch
 from clinical_reporting import feedback, steps
 from clinical_reporting.additional_names import from_settings
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
-from clinical_reporting.models import is_qualified, split_qualified
-from clinical_reporting.session import new_report, replace_base_data, without_base_data
+from clinical_reporting.session import (
+    apply_saved_setting,
+    new_report,
+    replace_base_data,
+    without_base_data,
+)
 from clinical_reporting.ui.dialogs import choose_settings_directory, settings_folder
 
 logger = logging.getLogger(__name__)
@@ -471,51 +475,22 @@ class SourceDataMixin:
         saved, the warning also says which files to add, or, for files
         already added, to check their form names and apply them.
         """
+        lines = steps.setting_missing_lines(reconciliation)
+        self._pending_saved_setting_reapply = bool(lines)
+
         missing_forms = reconciliation.get("forms", [])
-        missing_items = reconciliation.get("items", [])
-
-        self._pending_saved_setting_reapply = bool(missing_forms or missing_items)
-
-        if missing_forms or missing_items:
-            message_parts = []
-            if missing_forms:
-                message_parts.append("Missing forms: " + ", ".join(missing_forms))
-                added = getattr(self, "_saved_names_added", None)
-                hint = steps.saved_names_hint(
-                    missing_forms,
-                    getattr(self, "_saved_additional_names", ()),
-                    added() if added is not None else (),
-                )
-                if hint:
-                    message_parts.append(hint)
-            if missing_items:
-                common_items = []
-                form_items: dict[str, list[str]] = {}
-                for item in missing_items:
-                    item_str = str(item)
-                    if is_qualified(item_str):
-                        form_name, item_name = split_qualified(item_str)
-                        if form_name and item_name:
-                            form_items.setdefault(form_name, []).append(item_name)
-                        else:
-                            common_items.append(item_str)
-                    else:
-                        common_items.append(item_str)
-
-                if common_items:
-                    message_parts.append(
-                        "Missing common items: " + ", ".join(sorted(common_items))
-                    )
-                for form_name in sorted(form_items):
-                    message_parts.append(
-                        f"Missing items in {form_name}: "
-                        + ", ".join(sorted(form_items[form_name]))
-                    )
-            self._set_label_text(
-                self.label_setting, feedback.warning("\n".join(message_parts))
+        if missing_forms:
+            added = getattr(self, "_saved_names_added", None)
+            hint = steps.saved_names_hint(
+                missing_forms,
+                getattr(self, "_saved_additional_names", ()),
+                added() if added is not None else (),
             )
-        else:
-            self._set_label_text(self.label_setting, "")
+            if hint:
+                lines.insert(1, hint)
+        self._set_label_text(
+            self.label_setting, feedback.warning("\n".join(lines)) if lines else ""
+        )
 
     def _apply_saved_setting_from_path(
         self,
@@ -533,7 +508,7 @@ class SourceDataMixin:
         """
         try:
             stored = self._settings_store().load(file_path)
-            settings_data = self.report.load_setting_from_dict(stored)
+            reconciliation = apply_saved_setting(self.report, stored)
         except Exception as exc:
             logger.exception("Failed to load settings from %s", file_path)
             self._set_label_text(
@@ -545,6 +520,8 @@ class SourceDataMixin:
             self._set_label_text(self.label_setting, "")
             self._pending_saved_setting_reapply = False
             return False
+
+        self.study_name = self.report.study_name
 
         offer = getattr(self, "_offer_saved_additional_names", None)
         if offer_saved_names and offer is not None:
@@ -561,14 +538,6 @@ class SourceDataMixin:
             )
             offer(from_settings(stored), setting_name, used_forms)
 
-        loaded_study_name = (
-            settings_data.get("study_name") if isinstance(settings_data, dict) else None
-        )
-        if loaded_study_name:
-            self.study_name = loaded_study_name
-        self.report.set_study_name(self.study_name)
-
-        reconciliation = self.report.reconcile_with_current_data()
         self.update_all_ui()
         self._update_saved_setting_warning(reconciliation)
 

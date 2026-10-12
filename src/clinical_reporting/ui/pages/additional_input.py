@@ -66,13 +66,16 @@ from clinical_reporting.additional_names import (
     names_from,
 )
 from clinical_reporting.data import (
-    build_additional_data_map,
+    additional_form_names,
     named_columns,
     try_load_tabular_files,
 )
-from clinical_reporting.models import is_qualified
 from clinical_reporting.report import CLReport
-from clinical_reporting.session import capture_selection, restore_selection
+from clinical_reporting.session import (
+    apply_additional_inputs,
+    capture_selection,
+    restore_selection,
+)
 from clinical_reporting.ui.table_actions import (
     add_copy_original_name_action,
     copy_original_names_to_new_names,
@@ -911,95 +914,17 @@ class AdditionalInputMixin:
         self._additional_form_keys = set()
         self._additional_input_signature = {}
 
-    def _build_additional_data_map(self) -> Dict[str, pd.DataFrame]:
-        """Construct a dict of form_name -> dataframe with applied renames.
-
-        Delegates to :func:`clinical_reporting.data.build_additional_data_map`
-        so the same shaping logic is reusable headlessly.
-        """
-        return build_additional_data_map(
-            self.additional_inputs,
-            self.additional_form_names,
-            self.additional_column_names,
-        )
-
-    @staticmethod
-    def _build_additional_input_signature(
-        data_map: Dict[str, pd.DataFrame],
-    ) -> Dict[str, Tuple[str, ...]]:
-        """Summarize additional inputs by form name and column names."""
-        signature: Dict[str, Tuple[str, ...]] = {}
-        for form_name, df in data_map.items():
-            signature[form_name] = tuple(str(column) for column in df.columns)
-        return signature
-
     def _collect_additional_form_names(self) -> Dict[str, str]:
         """Return a mapping of file path -> form name for additional inputs."""
-        form_names = {}
-        for file_path in self.additional_inputs:
-            form_name = (
-                self.additional_form_names.get(file_path) or Path(file_path).name
-            )
-            form_names[file_path] = form_name
-        return form_names
+        return additional_form_names(self.additional_inputs, self.additional_form_names)
 
     def _warn_on_additional_form_conflicts(self, existing_forms: Set[str]) -> bool:
         """Say (in the banner) if additional forms' names clash; True if they do."""
-        name_map = self._collect_additional_form_names()
-        if not name_map:
-            return False
-
-        dotted_names = sorted(
-            {name for name in name_map.values() if is_qualified(name)}
+        conflict = steps.additional_form_names_message(
+            self._collect_additional_form_names(), existing_forms
         )
-        name_to_paths: Dict[str, list[str]] = {}
-        for file_path, form_name in name_map.items():
-            name_to_paths.setdefault(form_name, []).append(file_path)
-
-        duplicates = {
-            form_name: paths
-            for form_name, paths in name_to_paths.items()
-            if len(paths) > 1
-        }
-        conflicts = {
-            form_name: paths
-            for form_name, paths in name_to_paths.items()
-            if form_name in existing_forms
-        }
-
-        if not dotted_names and not duplicates and not conflicts:
+        if conflict is None:
             return False
-
-        clashing = sorted(set(dotted_names) | set(duplicates) | set(conflicts))
-        message_parts = [
-            "Cannot add forms because some form names are invalid or conflict "
-            "with existing data."
-        ]
-        if dotted_names:
-            message_parts.append("Form names cannot include '.':")
-            message_parts.append("  - " + ", ".join(dotted_names))
-        if duplicates:
-            message_parts.append("Duplicate names in additional forms:")
-            for form_name in sorted(duplicates):
-                file_list = ", ".join(
-                    sorted(Path(path).name for path in duplicates[form_name])
-                )
-                message_parts.append(f"  - {form_name}: {file_list}")
-        if conflicts:
-            message_parts.append("Conflicts with existing report forms:")
-            for form_name in sorted(conflicts):
-                file_list = ", ".join(
-                    sorted(Path(path).name for path in conflicts[form_name])
-                )
-                message_parts.append(f"  - {form_name}: {file_list}")
-
-        # One line on the page (it doesn't scroll); the reasons per file are
-        # behind "Show details".
-        conflict = feedback.warning(
-            f"These form names can't be used: {feedback.short_list(clashing)}. "
-            "Rename them in the table and try again.",
-            "\n".join(message_parts),
-        )
         self._set_label_text(self.ui.banner_additional, conflict)
         return True
 
@@ -1012,13 +937,13 @@ class AdditionalInputMixin:
         previous_signature = dict(getattr(self, "_additional_input_signature", {}))
 
         # Capture current selections (forms/items/common/join) to restore after
-        # ``set_data`` rebuilds fresh CLForm objects with defaults.
+        # the merge rebuilds fresh CLForm objects with defaults.
         selection_state = capture_selection(self.report)
 
-        # The forms as loaded: ``data`` also holds the stacked forms, which
-        # are rebuilt from these.
+        # The names the additional forms can't take: the forms as loaded
+        # (``data`` also holds the stacked forms, rebuilt from these), less
+        # the ones the last apply added.
         base_data = dict(getattr(self.report, "loaded_data", {}) or {})
-        # Remove previously injected additional forms.
         for form_key in getattr(self, "_additional_form_keys", set()):
             base_data.pop(form_key, None)
 
@@ -1027,24 +952,27 @@ class AdditionalInputMixin:
         if self._warn_on_additional_form_conflicts(set(base_data) | stacked_names):
             return
 
-        additional_data = self._build_additional_data_map()
-        if not additional_data and not self._additional_form_keys:
+        if not self.additional_inputs and not self._additional_form_keys:
             self._set_label_text(
                 self.ui.banner_additional,
                 steps.ADD_FILES_FIRST,
             )
             return
-        new_signature = self._build_additional_input_signature(additional_data)
+        applied = apply_additional_inputs(
+            self.report,
+            self.additional_inputs,
+            self.additional_form_names,
+            self.additional_column_names,
+            self._additional_form_keys,
+        )
+        new_signature = applied.signature
         signature_changed = new_signature != previous_signature
 
-        combined_data = {**base_data, **additional_data}
-
-        self.report.set_data(combined_data)
-        self._additional_form_keys = set(additional_data.keys())
+        self._additional_form_keys = set(applied.forms)
         self._additional_input_signature = new_signature
         # The forms are added even when some picked names can't be used.
         self._additional_applied_message = steps.additional_applied_message(
-            additional_data, self._ignored_saved_names()
+            applied.forms, self._ignored_saved_names()
         )
         self._set_label_text(
             self.ui.banner_additional, self._additional_applied_message
