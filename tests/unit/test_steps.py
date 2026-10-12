@@ -377,3 +377,27 @@ def test_the_joins_message_explains_what_stops_the_joins():
         "The report can't be exported until this is fixed."
     )
     assert one_form.kind == "info" and "two or more forms" in one_form
+
+
+def test_a_saved_settings_missing_forms_and_items_are_listed_by_form():
+    missing = {
+        "forms": ["LAB", "PK"],
+        "items": ["DM.Age", "Visit", "AE.Grade", "DM.Sex"],
+    }
+
+    assert steps.setting_missing_lines(missing) == [
+        "Missing forms: LAB, PK",
+        "Missing common items: Visit",
+        "Missing items in AE: Grade",
+        "Missing items in DM: Age, Sex",
+    ]
+    assert steps.setting_missing_lines({"forms": [], "items": []}) == []
+    # Forms keep their order; a form's items are sorted; an item with an empty
+    # part is a common item.
+    assert steps.setting_missing_lines(
+        {"forms": ["PK", "LAB"], "items": ["DM.Sex", "DM.", ".x", "DM.Age"]}
+    ) == [
+        "Missing forms: PK, LAB",
+        "Missing common items: .x, DM.",
+        "Missing items in DM: Age, Sex",
+    ]

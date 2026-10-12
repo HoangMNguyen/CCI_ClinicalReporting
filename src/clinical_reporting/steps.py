@@ -41,7 +41,7 @@ from clinical_reporting.additional_names import (
     IgnoredName,
     SavedFileNames,
 )
-from clinical_reporting.models import qualify
+from clinical_reporting.models import qualify, split_qualified
 from clinical_reporting.stacking import Match, MatchedItem, StackedForm, layout
 from clinical_reporting.validation import ReportValidationIssue
 
@@ -572,6 +572,38 @@ def saved_names_kept_message(file_name: str) -> feedback.Message:
     )
 
 
+def setting_missing_lines(missing: Mapping[str, Sequence[str]]) -> List[str]:
+    """What a saved setting needs that the data lacks, as lines to show.
+
+    *missing* is what
+    :meth:`~clinical_reporting.CLReport.reconcile_with_current_data` returns.
+    The forms come first, as given ("Missing forms: LAB, PK"); then the
+    common items ("Missing common items: Visit"), which include items without
+    a form or with an empty part; then one line per form for its items
+    ("Missing items in DM: Age, Sex"), forms and items sorted. ``[]`` when
+    nothing is missing.
+    """
+    lines = []
+    forms = list(missing.get("forms") or ())
+    if forms:
+        lines.append("Missing forms: " + ", ".join(forms))
+    common_items = []
+    form_items: Dict[str, List[str]] = {}
+    for item in missing.get("items") or ():
+        form_name, item_name = split_qualified(str(item))
+        if form_name and item_name:
+            form_items.setdefault(form_name, []).append(item_name)
+        else:
+            common_items.append(str(item))
+    if common_items:
+        lines.append("Missing common items: " + ", ".join(sorted(common_items)))
+    for form_name in sorted(form_items):
+        lines.append(
+            f"Missing items in {form_name}: " + ", ".join(sorted(form_items[form_name]))
+        )
+    return lines
+
+
 def saved_names_hint(
     missing_forms: Iterable[str],
     entries: Iterable[SavedFileNames],
@@ -821,6 +853,7 @@ __all__ = [
     "saved_names_picked_message",
     "saved_names_tip",
     "selected_item_count",
+    "setting_missing_lines",
     "source_summary",
     "stacked_applied_message",
     "stacked_cell_warning",
