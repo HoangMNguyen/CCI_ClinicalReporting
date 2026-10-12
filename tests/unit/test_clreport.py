@@ -168,6 +168,32 @@ def test_update_join_items():
     assert form.get_join_order() == 1
 
 
+def test_every_selected_forms_joins_are_tidied_with_one_rule():
+    report = CLReport()
+    report.set_data(
+        {
+            "DM": pd.DataFrame(columns=["Subject", "Site", "Age"]),
+            "AE": pd.DataFrame(columns=["Subject", "Site", "Term"]),
+            "VS": pd.DataFrame(columns=["Subject", "Site", "Pulse"]),
+        }
+    )
+    for form in ("DM", "AE", "VS"):
+        report.add_selected_form(form)
+    report.set_common_item_state("Subject", selected=True)
+    report.set_common_item_state("Site", selected=True)
+    report.update_join_items("DM", ["Subject"], None, "Inner join")
+    report.update_join_items("AE", ["Visit", "Site", "Site", "Subject"], 7, "Sideways")
+    report.update_join_items("VS", ["Visit", "Subject"], "2", "Inner join")
+
+    report.normalize_joins()
+
+    assert report.get_join_list_dict() == {
+        "DM": {"items": [], "order": 1, "how": "Left join"},
+        "AE": {"items": ["Site"], "order": 3, "how": "Left join"},
+        "VS": {"items": ["Subject"], "order": 2, "how": "Inner join"},
+    }
+
+
 def test_static_filter_management():
     report = CLReport()
     form = CLForm("DM")

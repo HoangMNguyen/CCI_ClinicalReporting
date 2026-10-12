@@ -20,6 +20,12 @@ python -m clinical_reporting
   search filters.
 - Join, rename, comparison, and filter configuration tables tailored for
   clinical datasets.
+  - The Joins step keeps every form's joins tidy, a loaded setting's
+    included: join orders run from 1 to the number of selected forms (one
+    out of range moves to the nearest end, one that isn't a number becomes
+    1); a form at order 1 joins on nothing, with a left join; any other form
+    joins on at most three items, its first three, keeping only selected
+    common items, each once; an unknown join type becomes a left join.
 - Save/load settings plus quick run helpers for generating reports.
 - Form names cannot include `.` because it is reserved for the form/item
   separator. Additional inputs default to the file name and must be renamed

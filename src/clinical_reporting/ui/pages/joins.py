@@ -80,17 +80,18 @@ class JoinsMixin:
         theme_events().changed.connect(self._paint_missing_join_items)
 
     def update_join_table_ui(self) -> None:
-        """Populate the join configuration table when selections change."""
+        """Tidy the report's joins (``CLReport.normalize_joins``), then show them."""
         # No handler is connected to ``tableWidget_join.cellChanged`` (join edits
         # are captured via the per-cell combo boxes), so there is nothing to
         # disconnect here before repopulating the table.
         self.ui.tableWidget_join.setRowCount(0)
+        self.report.normalize_joins()
         join_data = self.report.get_join_list_dict()
         # Max join order equals number of selected forms
         selected_forms = self.report.get_selected_forms_list()
         max_order = max(1, len(selected_forms))
 
-        for row, form_name in enumerate(self.report.get_selected_forms_list()):
+        for row, form_name in enumerate(selected_forms):
             self.ui.tableWidget_join.insertRow(row)
             form_item = QTableWidgetItem(form_name)
             form_item.setFlags(form_item.flags() & ~Qt.ItemIsEditable)
@@ -101,38 +102,22 @@ class JoinsMixin:
 
             join_order_combo = CellComboBox()
             join_order_combo.addItems([str(i) for i in range(1, max_order + 1)])
-            # Determine current/default order; clamp to available range if needed
-            desired_order = 1
-            if form_name in join_data and join_data[form_name]["order"]:
-                try:
-                    desired_order = int(join_data[form_name]["order"])
-                except TypeError, ValueError:
-                    desired_order = 1
-            clamped_order = min(max(1, desired_order), max_order)
-            join_order_combo.setCurrentText(str(clamped_order))
+            order = join_data[form_name]["order"]
+            join_order_combo.setCurrentText(str(order))
             join_order_combo.currentTextChanged.connect(self.update_join_list)
             join_order_combo.currentTextChanged.connect(
                 lambda value, r=row: self.on_join_order_changed(r, value)
             )
             self.ui.tableWidget_join.setCellWidget(row, 4, join_order_combo)
 
-            # If we had to clamp the value, persist it immediately to the model
-            if clamped_order != desired_order:
-                items = join_data.get(form_name, {}).get("items", [])
-                how = join_data.get(form_name, {}).get("how", JoinHow.LEFT)
-                self.report.update_join_items(form_name, items, clamped_order, how)
-
             join_type_combo = CellComboBox()
             for join_type in JoinHow.ALL:
                 join_type_combo.addItem(join_type)
-            default_join_type = JoinHow.LEFT
-            if form_name in join_data and join_data[form_name]["how"]:
-                default_join_type = join_data[form_name]["how"]
-            join_type_combo.setCurrentText(default_join_type)
+            join_type_combo.setCurrentText(join_data[form_name]["how"])
             join_type_combo.currentTextChanged.connect(self.update_join_list)
             self.ui.tableWidget_join.setCellWidget(row, 5, join_type_combo)
 
-            if clamped_order == 1:
+            if order == 1:
                 self.on_join_order_changed(row, "1")
 
         self._highlight_duplicate_join_orders()

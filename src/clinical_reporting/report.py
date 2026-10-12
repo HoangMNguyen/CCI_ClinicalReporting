@@ -18,6 +18,7 @@ from clinical_reporting import report_columns, stacking
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
     CLForm,
+    JoinHow,
     is_qualified,
     move_item,
     qualify,
@@ -719,6 +720,38 @@ class CLReport:
         """Update several forms' joins, then re-sync once (see above)."""
         for form, items, order, how in join_list:
             self._set_join(form, items, order, how)
+        self.sync_with_selection()
+
+    def normalize_joins(self) -> None:
+        """Tidy every selected form's joins with one rule, then re-sync once.
+
+        The join order is clamped to 1..N (N selected forms; anything that
+        isn't a number counts as 1). A form at order 1 joins on nothing, with
+        a left join. Every other form keeps at most three join items, taken
+        from its first three, that are selected common items, each once; an
+        unknown join type becomes a left join. The desktop's join table shows
+        and keeps this whenever it is rebuilt (a selection change or a loaded
+        setting).
+        """
+        last = max(1, len(self.selected_forms))
+        common = set(self.selected_common_items)
+        for form_name, form in self.selected_forms.items():
+            try:
+                order = int(form.get_join_order() or 1)
+            except TypeError, ValueError, OverflowError:
+                order = 1
+            order = min(max(1, order), last)
+            if order == 1:
+                self._set_join(form_name, [], 1, JoinHow.LEFT)
+                continue
+            items: list[str] = []
+            for item in form.get_join_items()[:3]:
+                if item in common and item not in items:
+                    items.append(item)
+            how = form.get_join_how()
+            self._set_join(
+                form_name, items, order, how if how in JoinHow.ALL else JoinHow.LEFT
+            )
         self.sync_with_selection()
 
     def get_static_filter_items(self):
