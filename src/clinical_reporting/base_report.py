@@ -17,7 +17,7 @@ import copy
 import os
 import zipfile
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
@@ -33,9 +33,12 @@ from clinical_reporting import (
     steps,
     validation,
 )
+from clinical_reporting.export import dataframe_to_xlsx_bytes
 from clinical_reporting.workflow import (
+    OutputFile,
     WorkflowInputError,
     input_name,
+    named_output,
     read_corelisting,
     reading_input,
 )
@@ -60,6 +63,26 @@ class BaseReport:
     table: pd.DataFrame
     warnings: Tuple[feedback.Message, ...]
     setting_name: str
+
+    def to_workbook(
+        self, *, file_name: str = "", now: Optional[datetime] = None
+    ) -> OutputFile:
+        """The table as the desktop exports it: a styled workbook, and its name.
+
+        The name is "<file_name> YYMMDD_HHMMSS.xlsx", with the setting's name
+        when *file_name* is empty or blank (just the stamp when that is empty
+        too), and characters not allowed in file names made "_", as on the
+        desktop; *now* stamps it (default: the current time). The bytes are
+        the desktop export's for the same table, but for the creation time; a
+        table without rows, which the desktop doesn't save, is written with
+        its header row.
+        """
+        return named_output(
+            dataframe_to_xlsx_bytes(self.table),
+            file_name=file_name,
+            default_name=self.setting_name,
+            now=now,
+        )
 
 
 def _read_setting(setting: Setting) -> Tuple[dict, str]:

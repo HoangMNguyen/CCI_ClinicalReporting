@@ -2,7 +2,7 @@
 
 import io
 import zipfile
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 import pytest
@@ -405,3 +405,28 @@ def test_a_corelisting_export_that_isnt_there_is_refused(tmp_path):
     assert str(refused.value).startswith(
         "Couldn't find Core_Listings_DEMO01_sample.zip."
     )
+
+
+# ---------------------------------------------------------------------------
+# The workbook
+# ---------------------------------------------------------------------------
+
+
+def test_the_workbook_is_named_after_the_setting_or_the_file_name_given():
+    base = build_base_report_from_forms(_forms(), _settings())
+    now = datetime(2026, 10, 11, 14, 22, 33)
+
+    assert base.to_workbook(now=now).name == "Adults with AEs 261011_142233.xlsx"
+    assert (
+        base.to_workbook(file_name="AE review", now=now).name
+        == "AE review 261011_142233.xlsx"
+    )
+
+
+def test_a_workbook_without_rows_keeps_the_columns():
+    base = build_base_report_from_forms(_forms(), _settings(min_age="99"))
+
+    read_back = pd.read_excel(io.BytesIO(base.to_workbook().data))
+
+    assert list(read_back.columns) == ["Subject", "Site", "DM.Age", "AE.Term"]
+    assert len(read_back) == 0
