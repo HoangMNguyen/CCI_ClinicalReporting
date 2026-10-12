@@ -2,27 +2,40 @@
 the base report (GLOSSARY), with no Qt and no telemetry.
 
 :func:`build_base_report_from_forms` applies a saved setting to forms already
-read, the way the desktop applies one the user picks, and runs it. A setting
-the data doesn't fit is refused with a :class:`WorkflowInputError` that says
-what is missing, unless ``missing_ok=True``; what the desktop would warn
-about comes back in :attr:`BaseReport.warnings`.
+read, plus any additional inputs under the names the setting saved for them,
+the way the desktop applies one the user picks, and runs it. A setting the
+data doesn't fit is refused with a :class:`WorkflowInputError` that says what
+is missing, unless ``missing_ok=True``; what the desktop would warn about
+comes back in :attr:`BaseReport.warnings`.
 """
 
 from __future__ import annotations
 
 import copy
 import os
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Optional, Tuple, Union
+from typing import Any, BinaryIO, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import pandas as pd
 
-from clinical_reporting import feedback, session, settings_store, steps, validation
-from clinical_reporting.workflow import WorkflowInputError, reading_input
+from clinical_reporting import (
+    additional_names,
+    data,
+    feedback,
+    session,
+    settings_store,
+    stacking,
+    steps,
+    validation,
+)
+from clinical_reporting.workflow import WorkflowInputError, input_name, reading_input
 
 #: A saved setting: its dictionary, or the path of its JSON file.
 Setting = Union[Mapping[str, Any], str, os.PathLike]
+#: An additional input: a CSV or Excel file's path, or the open file.
+AdditionalInput = Union[str, os.PathLike, BinaryIO]
 
 
 @dataclass(frozen=True, eq=False)
@@ -53,26 +66,104 @@ def _read_setting(setting: Setting) -> Tuple[dict, str]:
     return settings, settings.get("setting_name") or Path(setting).stem
 
 
+def _read_additional_inputs(
+    sources: Sequence[AdditionalInput],
+) -> Dict[str, pd.DataFrame]:
+    """Each additional input's rows, by its file name (its path, or ``name``)."""
+    frames: Dict[str, pd.DataFrame] = {}
+    for source in sources:
+        key = input_name(source)
+        if not key:
+            raise WorkflowInputError(
+                "An additional input has no file name. Give it one (a file "
+                "object's name attribute) so its saved names can be found."
+            )
+        file_name = additional_names.file_name_of(key)
+        if key in frames:
+            raise WorkflowInputError(
+                f"{file_name} is given twice as an additional input."
+            )
+        with reading_input(
+            source,
+            "a CSV or Excel file",
+            unreadable=(ValueError, zipfile.BadZipFile),
+        ):
+            frames[key] = data.load_tabular_file(source, name=file_name)
+    return frames
+
+
+def _names_for(
+    saved: Sequence[additional_names.SavedFileNames],
+    frames: Mapping[str, pd.DataFrame],
+) -> Tuple[
+    Dict[str, str], Dict[Tuple[str, str], str], List[additional_names.IgnoredName]
+]:
+    """The form and column names the *saved* entries give the files *frames*.
+
+    As the desktop picks them when the files are added: each file takes the
+    entry it matches (:func:`clinical_reporting.additional_names.match`).
+    Returns the form names by file, the column names by (file, column), and
+    the saved column names the files can't use.
+    """
+    columns = {key: data.named_columns(frame) for key, frame in frames.items()}
+    found = additional_names.match(saved, columns)
+    form_names: Dict[str, str] = {}
+    column_names: Dict[Tuple[str, str], str] = {}
+    ignored: List[additional_names.IgnoredName] = []
+    for key in sorted(
+        found, key=lambda key: additional_names.file_name_of(key).casefold()
+    ):
+        entry = saved[found[key].index]
+        names = additional_names.names_from(entry, columns[key])
+        if names.form_name:
+            form_names[key] = names.form_name
+        for column, new_name in names.column_names.items():
+            column_names[(key, column)] = new_name
+        ignored.extend(
+            additional_names.ignored_names(entry, key, columns[key], names.column_names)
+        )
+    return form_names, column_names, ignored
+
+
 def build_base_report_from_forms(
     forms: Mapping[str, pd.DataFrame],
     setting: Setting,
     *,
     study_name: Optional[str] = None,
+    additional_inputs: Sequence[AdditionalInput] = (),
     missing_ok: bool = False,
 ) -> BaseReport:
     """Run the saved *setting* on *forms* (form name to its rows).
 
     *setting* is a settings dictionary or the path of a saved setting's JSON
     file; a setting with no name is named after its file. *study_name* is
-    the report's study when the setting has none.
+    the report's study when the setting has none. *additional_inputs* are
+    CSV or Excel files (paths, or open files with a ``name``) added as forms
+    by the names the setting saved for them, as the desktop does. A file
+    needs a saved form name: one named after itself is refused, its name
+    holding a ".", as on the desktop.
 
-    Raises :class:`WorkflowInputError` when the setting's file can't be read,
-    when the setting needs forms or items *forms* lack (unless *missing_ok*:
-    they are left out, and said in the warnings), and when the report can't
-    run (the desktop's "Cannot run:" message).
+    Raises :class:`WorkflowInputError` when the setting's file or an
+    additional input can't be read, when the additional inputs' form names
+    can't be used, when the setting needs forms or items the data lacks
+    (unless *missing_ok*: they are left out, and said in the warnings), and
+    when the report can't run (the desktop's "Cannot run:" message).
     """
     settings, setting_name = _read_setting(setting)
+    frames = _read_additional_inputs(additional_inputs)
+    form_names, column_names, ignored = _names_for(
+        additional_names.from_settings(settings), frames
+    )
+    taken = set(forms) | {form.name for form in stacking.from_settings(settings)}
+    clash = steps.additional_form_names_message(
+        data.additional_form_names(frames, form_names), taken
+    )
+    if clash is not None:
+        raise WorkflowInputError(clash.details)
+
     report = session.new_report(study_name, dict(forms))
+    if frames:
+        session.apply_additional_inputs(report, frames, form_names, column_names)
     lines = steps.setting_missing_lines(session.apply_saved_setting(report, settings))
     if lines and not missing_ok:
         head = (
@@ -92,6 +183,8 @@ def build_base_report_from_forms(
     stacked = steps.stacked_missing_message(report)
     if stacked:
         warnings.append(stacked)
+    if ignored:
+        warnings.append(steps.saved_names_ignored_message(ignored))
     return BaseReport(table, tuple(warnings), setting_name)
 
 

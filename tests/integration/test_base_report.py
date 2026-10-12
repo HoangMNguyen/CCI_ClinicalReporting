@@ -1,5 +1,7 @@
 """A base report: a saved setting run on a study's forms, without the desktop."""
 
+import io
+
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
@@ -197,4 +199,140 @@ def test_a_report_that_cant_run_is_refused_as_the_desktop_says():
     assert str(refused.value).startswith("Cannot run:")
     assert "Form 'AE' needs at least one join item because it is not first." in str(
         refused.value
+    )
+
+
+# ---------------------------------------------------------------------------
+# Additional inputs
+# ---------------------------------------------------------------------------
+
+
+def _lab_settings(form_name="LAB"):
+    """Adults with AEs plus LAB's ALT, from lab_results.csv by its saved names."""
+    settings = _settings()
+    settings["additional_input_names"] = [
+        {
+            "file_name": "lab_results.csv",
+            "columns": ["Subject", "Site", "ALT (U/L)", "Visit Dt"],
+            "form_name": form_name,
+            "column_names": {"ALT (U/L)": "ALT", "Visit Dt": "Visit Date"},
+        }
+    ]
+    settings["selected_forms"]["LAB"] = {
+        "selected_form_items": ["ALT"],
+        "join_items": ["Subject", "Site"],
+        "join_order": 3,
+        "join_how": "Left join",
+    }
+    return settings
+
+
+def _lab_file(folder, name="lab_results.csv"):
+    path = folder / name
+    path.write_text("Subject,Site,ALT (U/L)\n01-1,A,40\n01-3,B,55\n", encoding="utf-8")
+    return path
+
+
+LAB_TABLE = pd.DataFrame(
+    {
+        "Subject": ["01-1", "01-3"],
+        "Site": ["A", "B"],
+        "DM.Age": [30, 45],
+        "AE.Term": ["Headache", "Nausea"],
+        "LAB.ALT": [40, 55],
+    }
+)
+NO_VISIT_DT = (
+    "A saved column name can't be used: lab_results.csv has no Visit Dt. It's "
+    "ignored; the form still applies without it."
+)
+
+
+def test_an_additional_input_joins_the_report_by_its_saved_names(tmp_path):
+    base = build_base_report_from_forms(
+        _forms(), _lab_settings(), additional_inputs=[_lab_file(tmp_path)]
+    )
+
+    assert_frame_equal(base.table, LAB_TABLE)
+    assert base.warnings == (NO_VISIT_DT,)
+    assert base.warnings[0].kind == "warning"
+    assert base.warnings[0].details == "lab_results.csv: Visit Dt → Visit Date"
+
+
+def test_an_additional_input_can_be_an_open_file(tmp_path):
+    with open(_lab_file(tmp_path), "rb") as lab:
+        base = build_base_report_from_forms(
+            _forms(), _lab_settings(), additional_inputs=[lab]
+        )
+
+    assert_frame_equal(base.table, LAB_TABLE)
+
+
+def test_the_ignored_saved_names_are_the_last_warning(tmp_path):
+    settings = _lab_settings()
+    settings["selected_forms"]["PK"] = {
+        "selected_form_items": ["Dose"],
+        "join_items": ["Subject"],
+        "join_order": 4,
+        "join_how": "Left join",
+    }
+
+    base = build_base_report_from_forms(
+        _forms(), settings, additional_inputs=[_lab_file(tmp_path)], missing_ok=True
+    )
+
+    assert base.warnings == ("Missing forms: PK", NO_VISIT_DT)
+
+
+def test_an_additional_input_without_saved_names_is_refused_for_its_dot(tmp_path):
+    # Named after its file, as on the desktop, it can't be a form: it holds a ".".
+    with pytest.raises(WorkflowInputError) as refused:
+        build_base_report_from_forms(
+            _forms(), _settings(), additional_inputs=[_lab_file(tmp_path, "notes.csv")]
+        )
+
+    assert str(refused.value) == (
+        "Cannot add forms because some form names are invalid or conflict with "
+        "existing data.\n"
+        "Form names cannot include '.':\n"
+        "  - notes.csv"
+    )
+
+
+def test_an_additional_input_named_like_a_form_is_refused(tmp_path):
+    with pytest.raises(WorkflowInputError) as refused:
+        build_base_report_from_forms(
+            _forms(), _lab_settings("DM"), additional_inputs=[_lab_file(tmp_path)]
+        )
+
+    assert str(refused.value) == (
+        "Cannot add forms because some form names are invalid or conflict with "
+        "existing data.\n"
+        "Conflicts with existing report forms:\n"
+        "  - DM: lab_results.csv"
+    )
+
+
+def test_an_additional_input_needs_a_file_name():
+    with pytest.raises(WorkflowInputError) as refused:
+        build_base_report_from_forms(
+            _forms(), _settings(), additional_inputs=[io.BytesIO(b"Subject\n")]
+        )
+
+    assert str(refused.value) == (
+        "An additional input has no file name. Give it one (a file object's name "
+        "attribute) so its saved names can be found."
+    )
+
+
+def test_an_additional_input_given_twice_is_refused(tmp_path):
+    lab = _lab_file(tmp_path)
+
+    with pytest.raises(WorkflowInputError) as refused:
+        build_base_report_from_forms(
+            _forms(), _lab_settings(), additional_inputs=[lab, lab]
+        )
+
+    assert str(refused.value) == (
+        "lab_results.csv is given twice as an additional input."
     )
