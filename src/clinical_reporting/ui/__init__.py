@@ -10,5 +10,5 @@ shell, a sidebar of steps with a header and a status bar. The pieces more
 than one page uses are :mod:`ui.dialogs`, :mod:`ui.table_actions` and
 :mod:`ui.preview_model`.
 :mod:`ui.app` is the entry point, and :mod:`ui.preview` shows the pages on
-sample data (:mod:`ui.sample_data`).
+sample data (:mod:`clinical_reporting.sample_data`).
 """

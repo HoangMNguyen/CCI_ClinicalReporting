@@ -14,8 +14,8 @@ from PySide6.QtWidgets import QApplication, QPushButton
 from cci_ui.widgets.sidebar import StepState
 from cci_ui.widgets.status import ToastHost
 from clinical_reporting import feedback, steps
+from clinical_reporting.sample_data import STUDY, sample_forms
 from clinical_reporting.ui.preview import PAGE_KEYS
-from clinical_reporting.ui.sample_data import STUDY, sample_forms
 
 
 def _badge(window, key):

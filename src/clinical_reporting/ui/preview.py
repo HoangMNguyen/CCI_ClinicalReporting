@@ -4,7 +4,7 @@
     python -m clinical_reporting.ui.preview joins --theme dark --size 1920x1001
     python -m clinical_reporting.ui.preview --screenshot shots --size 1000x620,1920x1001
 
-The window holds DEMO01 sample data (:mod:`clinical_reporting.ui.sample_data`),
+The window holds DEMO01 sample data (:mod:`clinical_reporting.sample_data`),
 never a real study, and nothing here changes the appearance saved for the
 real tool. The sample isn't a real ZIP, so turning the cut-off date on shows
 a read error. ``--screenshot`` runs off screen and writes
@@ -81,7 +81,7 @@ def build_preview_window(
 
     *theme* (the app's ThemeManager) adds the header's Display button.
     """
-    from clinical_reporting.ui.sample_data import (
+    from clinical_reporting.sample_data import (
         STUDY,
         configure_sample_report,
         sample_forms,

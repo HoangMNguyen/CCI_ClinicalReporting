@@ -216,7 +216,7 @@ Testing notes:
   test counts a run (even with a local `telemetry.json`), and provides one
   shared `qapp` fixture.
 - Tests build their own made-up data in code (Clinical Reporting's
-  `clinical_reporting/ui/sample_data.py`, small DataFrames, and tiny ZIPs
+  `clinical_reporting/sample_data.py`, small DataFrames, and tiny ZIPs
   written to pytest's `tmp_path`) and never read real study exports. Keep
   real exports outside the repository: Git ignores `tests/data/` and every
   `.zip`, `.csv` and Excel file so one can't be committed by accident, but

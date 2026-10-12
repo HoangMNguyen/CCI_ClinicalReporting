@@ -448,6 +448,7 @@ src/clinical_reporting/
   stacking.py                  # stacked forms: how they line up, building them, their settings key
   export.py                    # xlsx/csv/bytes rendering
   telemetry.py                 # reports saves to the usage counter (off unless configured)
+  sample_data.py               # made-up DEMO01 data for previews and tests
   ui/                          # PySide6 desktop front end
     app.py                     # entry point: starts the app and opens the window
     window.py                  # QMainWindow plus the behavior mixins
@@ -464,7 +465,6 @@ src/clinical_reporting/
       preview_export.py        # preview, export, and save a setting
       _common.py               # what the pages share: the table helper, the cell combo box
     preview.py                 # python -m clinical_reporting.ui.preview
-    sample_data.py             # made-up DEMO01 data for previews and UI tests
     base.py                    # window-level mixin: shared state, refresh coordinators, helpers
     dialogs.py                 # dialogs shared by more than one page
     table_actions.py           # original-name/new-name tables (renames)

@@ -15,10 +15,10 @@ from PySide6.QtWidgets import QApplication
 
 from cci_ui.widgets.status import ToastHost
 from clinical_reporting import steps
+from clinical_reporting.sample_data import sample_forms
 from clinical_reporting.ui.pages import source_data
 from clinical_reporting.ui.pages.preview_export import SUBTITLE
 from clinical_reporting.ui.preview_model import ReportPreviewModel
-from clinical_reporting.ui.sample_data import sample_forms
 
 
 def _page(window, key):
