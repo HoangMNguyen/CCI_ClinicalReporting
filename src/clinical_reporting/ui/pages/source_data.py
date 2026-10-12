@@ -42,7 +42,12 @@ from cci_ui.widgets.toggle import ToggleSwitch
 from clinical_reporting import feedback, steps
 from clinical_reporting.additional_names import from_settings
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
-from clinical_reporting.session import new_report, replace_base_data, without_base_data
+from clinical_reporting.session import (
+    apply_saved_setting,
+    new_report,
+    replace_base_data,
+    without_base_data,
+)
 from clinical_reporting.ui.dialogs import choose_settings_directory, settings_folder
 
 logger = logging.getLogger(__name__)
@@ -503,7 +508,7 @@ class SourceDataMixin:
         """
         try:
             stored = self._settings_store().load(file_path)
-            settings_data = self.report.load_setting_from_dict(stored)
+            reconciliation = apply_saved_setting(self.report, stored)
         except Exception as exc:
             logger.exception("Failed to load settings from %s", file_path)
             self._set_label_text(
@@ -515,6 +520,8 @@ class SourceDataMixin:
             self._set_label_text(self.label_setting, "")
             self._pending_saved_setting_reapply = False
             return False
+
+        self.study_name = self.report.study_name
 
         offer = getattr(self, "_offer_saved_additional_names", None)
         if offer_saved_names and offer is not None:
@@ -531,14 +538,6 @@ class SourceDataMixin:
             )
             offer(from_settings(stored), setting_name, used_forms)
 
-        loaded_study_name = (
-            settings_data.get("study_name") if isinstance(settings_data, dict) else None
-        )
-        if loaded_study_name:
-            self.study_name = loaded_study_name
-        self.report.set_study_name(self.study_name)
-
-        reconciliation = self.report.reconcile_with_current_data()
         self.update_all_ui()
         self._update_saved_setting_warning(reconciliation)
 

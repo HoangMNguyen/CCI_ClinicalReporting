@@ -6,6 +6,8 @@ without the PySide6 UI (tool chaining):
 * ``models.ReportConfig`` -- declarative config wrapper over the settings JSON
 * ``report.CLReport.load_setting_from_dict`` / ``apply_config`` -- file-free
   configuration + reconciliation
+* ``session.apply_saved_setting`` -- applying a saved setting as the desktop
+  does: its study, tidied joins, and what the data lacks
 * ``data`` -- data loading / input shaping
 * ``export`` -- xlsx / csv / bytes export
 
@@ -22,7 +24,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 import clinical_reporting as api
-from clinical_reporting import data
+from clinical_reporting import data, session
 from clinical_reporting.data import (
     build_additional_data_map,
     parse_study_name,
@@ -430,3 +432,79 @@ def test_full_chaining_pipeline_load_configure_run_export(tmp_path):
         worksheet.cell(row=1, column=c).value for c in range(1, result.shape[1] + 1)
     ]
     assert headers == list(result.columns)
+
+
+# ---------------------------------------------------------------------------
+# session.apply_saved_setting
+# ---------------------------------------------------------------------------
+
+
+def _three_forms():
+    return {
+        "DM": pd.DataFrame(columns=["Subject", "Site", "Age"]),
+        "AE": pd.DataFrame(columns=["Subject", "Site", "Term"]),
+        "VS": pd.DataFrame(columns=["Subject", "Site", "Pulse"]),
+    }
+
+
+def _joins_settings():
+    report = CLReport()
+    report.set_data(_three_forms())
+    for form in ("DM", "AE", "VS"):
+        report.add_selected_form(form)
+    report.set_common_item_state("Subject", selected=True)
+    report.set_common_item_state("Site", selected=True)
+    report.selected_forms["DM"].set_form_item_state("Age", selected=True)
+    report.update_join_items("DM", [], 1, "Left join")
+    report.update_join_items("AE", ["Subject", "Site"], 2, "Left join")
+    report.update_join_items("VS", ["Subject", "Site"], 3, "Left join")
+    return report.settings_to_dict("Joins")
+
+
+def test_a_saved_setting_without_a_study_keeps_the_reports():
+    settings = _joins_settings()
+    settings["study_name"] = None
+    report = session.new_report("DEMO01", _three_forms())
+
+    session.apply_saved_setting(report, settings)
+
+    assert report.study_name == "DEMO01"
+
+    settings["study_name"] = "DEMO02"
+    session.apply_saved_setting(report, settings)
+
+    assert report.study_name == "DEMO02"
+
+
+def test_a_saved_settings_joins_are_tidied_when_it_is_applied():
+    settings = _joins_settings()
+    settings["selected_forms"]["AE"].update(
+        join_items=["Site", "Site", "Subject", "Visit"],
+        join_order=7,
+        join_how="Sideways",
+    )
+    report = session.new_report("DEMO01", _three_forms())
+
+    session.apply_saved_setting(report, settings)
+
+    assert report.get_join_list_dict()["AE"] == {
+        "items": ["Site", "Subject"],
+        "order": 3,
+        "how": "Left join",
+    }
+
+
+def test_applying_a_saved_setting_says_what_the_data_lacks():
+    settings = _joins_settings()
+    settings["selected_forms"]["LAB"] = {
+        "selected_form_items": ["Result"],
+        "join_items": ["Subject", "Site"],
+        "join_order": 3,
+        "join_how": "Left join",
+    }
+    settings["selected_forms"]["DM"]["selected_form_items"].append("Height")
+    report = session.new_report("DEMO01", _three_forms())
+
+    missing = session.apply_saved_setting(report, settings)
+
+    assert missing == {"forms": ["LAB"], "items": ["DM.Height"]}

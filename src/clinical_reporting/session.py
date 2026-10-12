@@ -12,6 +12,9 @@ It holds:
   fresh ``CLForm`` objects, so the user's selections are captured first and
   the ones that still exist are re-applied afterwards.
 - Starting a report from Corelisting data and swapping that data out.
+- Applying a saved setting (:func:`apply_saved_setting`): its selections are
+  lined up with the report's data, and its joins, renames, filters and
+  column order are tidied to match.
 - Building and exporting the report, the slow part, written so a front end
   can run it off its main thread. (Reading files is :mod:`clinical_reporting.data`.)
 
@@ -23,7 +26,7 @@ that change a report run on the main thread.
 
 from __future__ import annotations
 
-from typing import Any, Collection, Dict, Optional, Sequence
+from typing import Any, Collection, Dict, List, Mapping, Optional, Sequence
 
 import pandas as pd
 
@@ -136,6 +139,28 @@ def apply_stacked_forms(report: CLReport, stacked_forms: Sequence[StackedForm]) 
     restore_selection(report, state)
 
 
+def apply_saved_setting(
+    report: CLReport, settings: Mapping[str, Any]
+) -> Dict[str, List[str]]:
+    """Apply the saved setting *settings* to *report*, as every front end does.
+
+    The setting's selections are read and lined up with the report's data; a
+    setting with no study name keeps the report's. The joins are tidied
+    (:meth:`~clinical_reporting.report.CLReport.normalize_joins`), and the
+    renames, filters and column order follow the selection. Returns what the
+    setting needs that the data lacks, ``{"forms": [...], "items": [...]}``
+    (see :meth:`~clinical_reporting.report.CLReport.reconcile_with_current_data`).
+    """
+    previous = report.study_name
+    report.load_setting_from_dict(dict(settings))
+    report.set_study_name(settings.get("study_name") or previous)
+    missing = report.reconcile_with_current_data()
+    report.normalize_joins()
+    report.sync_with_selection()
+    report.update_selected_items_order_list()
+    return missing
+
+
 def without_base_data(report: CLReport, additional_keys: Collection[str]) -> CLReport:
     """A fresh report holding only *report*'s additional-input forms.
 
@@ -177,6 +202,7 @@ def export_report(report: CLReport, file_path: str) -> Optional[str]:
 
 
 __all__ = [
+    "apply_saved_setting",
     "apply_stacked_forms",
     "build_report",
     "capture_selection",
