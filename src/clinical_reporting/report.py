@@ -461,8 +461,10 @@ class CLReport:
         """Align loaded settings with the currently available study data.
 
         Returns the forms and items the setting needs that the data lacks,
-        including the members a built stacked form is missing (as forms) and
-        the matched items a present member no longer has (as ``MEMBER.item``).
+        including the members any stacked form is missing, built or not (as
+        forms; one named like a loaded form isn't built and records none),
+        and the matched items a present member of a built one no longer has
+        (as ``MEMBER.item``).
         """
 
         missing_forms: set[str] = set()
@@ -549,8 +551,9 @@ class CLReport:
         ]
 
         built = self.stacked_build
+        for members in built.missing_members.values():
+            missing_forms.update(members)
         for name in built.forms:
-            missing_forms.update(built.missing_members.get(name, ()))
             missing_items.update(
                 qualify(member, item)
                 for member, item in built.missing_items.get(name, ())

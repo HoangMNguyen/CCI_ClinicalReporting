@@ -219,6 +219,27 @@ def test_missing_members_and_matched_items_are_reported():
     )
 
 
+def test_the_members_of_a_stacked_form_that_isnt_built_are_missing():
+    data = {
+        "DM": _data()["DM"],
+        "AE": pd.DataFrame({"Subject": ["001"], "Site": ["A"], "Term": ["Rash"]}),
+    }
+    source = session.new_report("DEMO01", data)
+    source.add_selected_form("DM")
+    settings = source.settings_to_dict("Labs")
+    settings["stacked_forms"] = [
+        {"name": "LABS", "members": ["LB", "LAB"], "matches": []}
+    ]
+
+    report = session.new_report("DEMO01", data)
+    report.load_setting_from_dict(settings)
+
+    assert report.reconcile_with_current_data() == {
+        "forms": ["LAB", "LB"],
+        "items": [],
+    }
+
+
 def test_a_stacked_form_named_like_a_loaded_form_stops_the_report():
     report = session.new_report("DEMO01", _data())
     report.add_selected_form("DM")

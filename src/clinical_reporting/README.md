@@ -75,10 +75,12 @@ python -m clinical_reporting
   - Apply to report adds the stacked forms. A saved setting keeps the applied
     ones and rebuilds them whenever the data is loaded or changes (a new ZIP
     starts a new report, so apply them again). A member or matched item the
-    data lacks is warned about. A stacked form named like a loaded form, or a
-    match that later data makes ambiguous (a member with two of its items, a
-    match named like an item every member now has), stops the export until it
-    is fixed on the page.
+    data lacks is warned about; a loaded setting's "Missing forms" warning
+    also names the members that aren't loaded, whether the stacked form is
+    built or not (one named like a loaded form names none). A stacked form
+    named like a loaded form, or a match that later data makes ambiguous (a
+    member with two of its items, a match named like an item every member now
+    has), stops the export until it is fixed on the page.
 - The steps sit in a sidebar with status badges. Reading the ZIP, building
   the preview, and exporting run in the background, and a ZIP or additional
   file that can't be read, or clashing form names, are explained on the page.
