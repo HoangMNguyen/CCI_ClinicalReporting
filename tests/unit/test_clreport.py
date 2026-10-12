@@ -1,5 +1,3 @@
-import json
-
 import pandas as pd
 import pytest
 from tests.unit.fakes import DummyTable
@@ -243,16 +241,3 @@ def test_dynamic_filter_management():
 
     report.set_dynamic_filter_items([("Subject", "=", "Subject")])
     assert report.get_dynamic_filter_items() == [("Subject", "=", "Subject")]
-
-
-def test_settings_dict_matches_the_saved_json(tmp_path):
-    report = CLReport()
-    report.set_data({"DM": pd.DataFrame({"Subject": ["01"], "Age": [42]})})
-    report.add_selected_form("DM")
-    path = tmp_path / "baseline.json"
-
-    report.save_setting_to_json(str(path), setting_name="baseline")
-
-    assert json.loads(path.read_text(encoding="utf-8")) == report.settings_to_dict(
-        "baseline"
-    )

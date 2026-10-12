@@ -12,8 +12,10 @@ import pandas as pd
 import pytest
 from tests.unit.fakes import DummyTable
 
+from clinical_reporting import session
 from clinical_reporting.models import CLForm, JoinHow
 from clinical_reporting.report import CLReport
+from clinical_reporting.settings_store import write_settings_json
 
 
 @pytest.fixture
@@ -154,7 +156,7 @@ def test_customized_flag_roundtrips_through_settings(tmp_path, report_with_data)
     report.set_selected_items_order_list(["DM.Weight", "Subject"])
 
     path = tmp_path / "setting.json"
-    report.save_setting_to_json(str(path))
+    write_settings_json(path, report.settings_to_dict())
 
     loaded = CLReport()
     loaded.load_setting_from_dict(json.loads(path.read_text(encoding="utf-8")))
@@ -185,7 +187,8 @@ def _report_from_setting(order_settings):
             "VS": pd.DataFrame({"Subject": ["001"], "Pulse": [60]}),
         }
     )
-    report.apply_config(
+    session.apply_saved_setting(
+        report,
         {
             "selected_forms": {
                 "DM": {
@@ -198,7 +201,7 @@ def _report_from_setting(order_settings):
             },
             "selected_common_items": ["Subject"],
             **order_settings,
-        }
+        },
     )
     return report
 

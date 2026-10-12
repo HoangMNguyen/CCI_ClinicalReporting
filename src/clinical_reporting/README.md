@@ -84,9 +84,10 @@ python -m clinical_reporting
 - The steps sit in a sidebar with status badges. Reading the ZIP, building
   the preview, and exporting run in the background, and a ZIP or additional
   file that can't be read, or clashing form names, are explained on the page.
-- Headless reporting engine that can be driven programmatically without the
-  UI, so the same logic can be reused in scripts, batch jobs, and tool chains.
-  See [Programmatic / API usage](#programmatic--api-usage).
+- A base report (a saved setting run on a Corelisting export) can be built
+  without the window, giving the workbook the desktop exports byte for byte
+  (but for its creation time), so automations, the web version and scripts
+  reuse the same logic. See [Programmatic / API usage](#programmatic--api-usage).
 
 Keyboard shortcuts:
 
@@ -102,33 +103,140 @@ Keyboard shortcuts:
 ## Programmatic / API usage
 
 The reporting engine is decoupled from the PySide6 UI, so it can be driven
-directly from another Python program (scripts, batch jobs, tool chains, or a
-future service layer). The UI is just one client of the same core engine.
+directly from another Python program (an automation, a batch job, or the web
+version). The UI is just one client of the same core engine, and none of the
+modules below imports Qt.
 
-The pipeline has four headless building blocks:
+### The base report
+
+A base report is a saved setting run on a Corelisting export: the table the
+desktop app exports for the same inputs ([GLOSSARY](../../GLOSSARY.md)).
+Build it with `clinical_reporting.build_base_report`:
+
+```python
+from datetime import date
+from pathlib import Path
+
+import clinical_reporting
+
+base = clinical_reporting.build_base_report(
+    "Core_Listings_DEMO01_20261001.zip",  # a path, or an open binary file
+    "settings/monthly_ae_review.json",  # a saved setting's file, or its dict
+    cut_off_date=date(2026, 9, 30),  # optional, as on Source data
+    additional_inputs=["lab_results.csv"],  # optional, by their saved names
+)
+base.setting_name  # "monthly AE review" (its file's stem when it has no name)
+base.table  # the report's rows: a pandas DataFrame, columns as exported
+base.warnings  # what the desktop would warn about; () when nothing
+base.table.groupby("Site").size()  # an automation builds on the table
+
+workbook = base.to_workbook()  # an OutputFile: .name and .data (bytes)
+Path(workbook.name).write_bytes(workbook.data)
+# workbook.name is "monthly AE review 261011_142233.xlsx": the setting's name
+# and the time. to_workbook(file_name="AE review") names it instead, and
+# now=datetime(...) stamps it with another time.
+```
+
+The workbook is byte for byte the desktop export for the same inputs, but for
+the creation time it holds (`docProps/core.xml`). The setting is applied as
+the desktop applies one the user picks: its joins are tidied the way the Joins
+step shows them, additional inputs take the form and column names the setting
+saved for them, and a setting with no study name keeps the export's.
+
+A setting the export doesn't fit is refused, with a message written for the
+user; `missing_ok=True` runs it without what is missing and says so in
+`warnings`:
+
+```python
+from clinical_reporting.workflow import WorkflowInputError
+
+try:  # lab_results.csv isn't given, so the setting's LAB form is missing
+    clinical_reporting.build_base_report(
+        "Core_Listings_DEMO01_20261001.zip", "settings/monthly_ae_review.json"
+    )
+except WorkflowInputError as problem:
+    print(problem)
+    # The saved setting “monthly AE review” doesn't fit this export.
+    # Missing forms: LAB
+
+base = clinical_reporting.build_base_report(
+    "Core_Listings_DEMO01_20261001.zip",
+    "settings/monthly_ae_review.json",
+    missing_ok=True,
+)
+for warning in base.warnings:
+    print(warning)  # Missing forms: LAB (the table has no LAB columns)
+```
+
+Inputs the report can't be made from raise
+`clinical_reporting.workflow.WorkflowInputError`:
+
+- an export, setting or additional input that can't be found or read, and
+  an additional input given twice or as a file object without a `name`;
+- additional inputs whose form names can't be used (a "." in the name, two
+  files with one name, or a name a form already has). A file needs a saved
+  form name: named after itself, its name holds its extension's ".";
+- a setting that needs forms or items the data lacks, as above, one line per
+  kind ("Missing forms: LAB", "Missing items in DM: Height"), unless
+  `missing_ok=True`. The members of the setting's stacked forms count as
+  forms it needs, whether a stacked form is selected or not;
+- a report that can't run: the desktop's "Cannot run:" list.
+
+`warnings` holds, in order, the missing lines, the stacked forms' missing
+members and missing or replaced matched items, and the saved column names an
+additional input can't use. Without `missing_ok=True` only the last can
+appear: the others are refusals. Each is a
+`clinical_reporting.feedback.Message`: a `str` with `kind == "warning"` and,
+for the ignored names, `details` listing them by file. A setting that matches
+no rows isn't refused: the table keeps its columns, and the workbook has the
+header row only.
+
+`clinical_reporting.build_base_report_from_forms(forms, setting, *,
+study_name=None, additional_inputs=(), missing_ok=False)` does the same from
+forms already read (`{form name: DataFrame}`):
+
+```python
+from clinical_reporting.workflow import read_corelisting
+
+forms = read_corelisting("Core_Listings_DEMO01_20261001.zip")  # {form: DataFrame}
+base = clinical_reporting.build_base_report_from_forms(
+    forms,
+    "settings/monthly_ae_review.json",
+    study_name="DEMO01",
+    additional_inputs=["lab_results.csv"],
+)
+```
+
+New automations keep their saved setting versioned in the repo next to their
+code ([ADR 0001](../../docs/adr/0001-new-automations-build-on-base-reports.md)),
+e.g. `src/<tool>/settings/<name>.json`, and pass its path:
+`Path(__file__).with_name("settings") / "<name>.json"`. To ship it inside the
+tool's executable, add the folder to the tool's `.spec` `datas` under the same
+package path, e.g. `('src/<tool>/settings', '<tool>/settings')`, as
+`CCI Clinical Reporting.spec` does for `telemetry.json`.
+
+### The building blocks
 
 | Step | Module | What it does |
 | --- | --- | --- |
 | Load data | `clinical_reporting.data` | Read a Corelisting ZIP / CSV / Excel into a `{form_name: DataFrame}` dict and shape additional inputs. |
-| Configure | `clinical_reporting.models.ReportConfig` | A typed wrapper over the same settings JSON the UI saves/loads. |
-| Run | `clinical_reporting.report.CLReport` | Apply the saved setting to the data and execute `create_report()`. |
+| Apply a setting | `clinical_reporting.session` | `apply_saved_setting(report, settings)` lines a saved setting up with the report's data, as the desktop does. |
+| Run | `clinical_reporting.report.CLReport` | Hold the selections and execute `create_report()`. |
 | Export | `clinical_reporting.export` | Write the result to xlsx/csv, or render it to bytes. |
 
-None of these import Qt, so they run anywhere Python + pandas are available.
-
-### Minimal end-to-end example
-
 ```python
-from clinical_reporting import CLReport, ReportConfig
+from clinical_reporting import session
 from clinical_reporting.data import read_data_dict_zip_corelisting
 from clinical_reporting.export import write_xlsx
+from clinical_reporting.settings_store import read_settings_json
 
 # 1. Load the study data into {form_name: DataFrame}
-report = CLReport()
-report.set_data(read_data_dict_zip_corelisting("study_export.zip"))
+report = session.new_report(
+    "DEMO01", read_data_dict_zip_corelisting("study_export.zip")
+)
 
-# 2. Apply a saved setting from the UI (load + reconcile in one call)
-missing = report.apply_config(ReportConfig.from_settings_json("setting.json"))
+# 2. Apply a saved setting from the UI
+missing = session.apply_saved_setting(report, read_settings_json("setting.json"))
 if missing["forms"] or missing["items"]:
     print("Dropped (not present in current data):", missing)
 
@@ -142,11 +250,11 @@ write_xlsx(df, "report.xlsx")
 output names. Call `report.validate()` first when a program needs to present all
 issues at once; each issue exposes `code`, `message`, `field`, and `to_dict()`.
 
-`set_data()` must be called before `apply_config()` so the saved setting can be
-reconciled against the columns actually present. `apply_config()` returns a
+The report must hold its data before `apply_saved_setting()` so the saved
+setting can be reconciled against the columns actually present. It returns a
 `{"forms": [...], "items": [...]}` report of anything dropped because the
 current data no longer supports it — the same information the UI shows as a
-warning label.
+warning label (`clinical_reporting.steps.setting_missing_lines` words it).
 
 ### Building a saved setting in code
 
@@ -154,32 +262,30 @@ Any `.json` saved from the UI is a valid saved setting, but you can also
 build one in memory using the same schema:
 
 ```python
-config = ReportConfig.from_dict(
-    {
-        "study_name": "STUDY01",
-        "selected_common_items": ["Subject"],
-        "selected_forms": {
-            "DM": {
-                "name": "DM",
-                "selected_form_items": ["Age"],
-                "join_items": [],
-                "join_order": 1,
-                "join_how": "Left join",
-            },
-            "VS": {
-                "name": "VS",
-                "selected_form_items": ["Pulse"],
-                "join_items": ["Subject"],
-                "join_order": 2,
-                "join_how": "Left join",
-            },
+settings = {
+    "study_name": "STUDY01",
+    "selected_common_items": ["Subject"],
+    "selected_forms": {
+        "DM": {
+            "name": "DM",
+            "selected_form_items": ["Age"],
+            "join_items": [],
+            "join_order": 1,
+            "join_how": "Left join",
         },
-        "rename_dict": {"DM.Age": "Age"},
-        "static_filter_items": [["DM.Age", ">", "18"]],
-        "dynamic_filter_items": [],
-    }
-)
-report.apply_config(config)
+        "VS": {
+            "name": "VS",
+            "selected_form_items": ["Pulse"],
+            "join_items": ["Subject"],
+            "join_order": 2,
+            "join_how": "Left join",
+        },
+    },
+    "rename_dict": {"DM.Age": "Age"},
+    "static_filter_items": [["DM.Age", ">", "18"]],
+    "dynamic_filter_items": [],
+}
+session.apply_saved_setting(report, settings)
 ```
 
 > Note: form items only exist when more than one form is loaded. With a
@@ -201,21 +307,20 @@ are joined; a filter on `VS.Visit` applies to VS's copy only.
 ### Additional inputs and export options
 
 ```python
-from clinical_reporting.data import (
-    load_additional_inputs,
-    build_additional_data_map,
-)
+from clinical_reporting.data import load_additional_inputs
 from clinical_reporting.export import dataframe_to_xlsx_bytes, write_csv
 
 # Combine a Corelisting ZIP with additional inputs (CSV/Excel files)
-base = read_data_dict_zip_corelisting("study_export.zip")
 inputs = load_additional_inputs(["labs.csv"])  # {resolved_path: DataFrame}
 # try_load_tabular_files(paths) skips unreadable files instead of raising and
 # returns (loaded, failures), both keyed by the paths as given
 form_names = {path: "LABS" for path in inputs}  # path -> form name
 column_names = {}  # (path, original_col) -> new name
-extra = build_additional_data_map(inputs, form_names, column_names)
-report.set_data({**base, **extra})
+# steps.additional_form_names_message(data.additional_form_names(inputs,
+# form_names), taken) says why names can't be used ("." in one, a repeat, or
+# a form's name); None when they can. Merging rebuilds the data and resets the
+# selections, so apply the saved setting after it, as build_base_report does.
+session.apply_additional_inputs(report, inputs, form_names, column_names)
 
 # Keep those names with a setting, and reuse them for next month's files
 from clinical_reporting.additional_names import (
@@ -289,9 +394,9 @@ A saved setting built in code can be written back to the same JSON the
 UI reads, so headless runs and the UI stay interchangeable:
 
 ```python
-report.save_setting_to_json("my_setting.json", setting_name="batch-run")
-# or, from a ReportConfig:
-config.to_settings_json("my_setting.json")
+from clinical_reporting.settings_store import write_settings_json
+
+write_settings_json("my_setting.json", report.settings_to_dict("batch-run"))
 ```
 
 The settings dictionary can also go to a folder of saved settings (the store
@@ -440,9 +545,10 @@ Everything except `__main__.py` and `ui/` is Qt-free (see
 ```text
 src/clinical_reporting/
   __main__.py                  # runtime entry: python -m clinical_reporting
-  models.py                    # forms, ReportConfig, labels, identifiers
-  report.py                    # report state, persistence, reconciliation
+  models.py                    # forms, labels, identifiers
+  report.py                    # report state, its saved-setting dict, reconciliation
   session.py                   # what happens to a report when the user acts; build/export
+  base_report.py               # a saved setting run on an export, as a table and workbook
   settings_store.py            # saved settings as JSON files in a folder; their JSON text
   feedback.py                  # status messages tagged info/success/warning/error
   filenames.py                 # safe file names; "<name> YYMMDD_HHMMSS.xlsx" outputs

@@ -2,6 +2,11 @@
 
 Importing :mod:`clinical_reporting` intentionally does not import PySide6.  The
 desktop application is loaded only by :mod:`clinical_reporting.__main__`.
+
+The entry point for automations and scripts is :func:`build_base_report`: it
+runs a saved setting on a Corelisting export, and
+:meth:`BaseReport.to_workbook` gives the workbook the desktop exports for it
+(``build_base_report_from_forms`` does the same from forms already read).
 """
 
 from .base_report import BaseReport, build_base_report, build_base_report_from_forms
@@ -13,7 +18,7 @@ from .data import (
     try_load_tabular_files,
 )
 from .export import dataframe_to_xlsx_bytes, write_csv, write_xlsx
-from .models import CLForm, ReportConfig
+from .models import CLForm
 from .report import CLReport
 from .validation import (
     ReportValidationError,
@@ -30,7 +35,6 @@ __all__ = [
     "BaseReport",
     "CLForm",
     "CLReport",
-    "ReportConfig",
     "ReportValidationError",
     "ReportValidationIssue",
     "build_additional_data_map",

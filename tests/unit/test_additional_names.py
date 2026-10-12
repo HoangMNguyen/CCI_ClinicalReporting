@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from clinical_reporting import additional_names as names
+from clinical_reporting import session
 from clinical_reporting.additional_names import (
     BY_COLUMNS,
     BY_FILE_NAME,
@@ -180,7 +181,7 @@ def test_a_setting_with_names_still_loads_in_the_report():
     for settings in (plain, with_names):
         report = CLReport()
         report.set_data(data)
-        missing = report.apply_config(settings)
+        missing = session.apply_saved_setting(report, settings)
         states.append((missing, report.settings_to_dict("monthly")))
 
     assert states[0] == states[1]
@@ -356,7 +357,7 @@ def test_saved_names_rebuild_the_forms_a_setting_needs(tmp_path):
     )
     report = CLReport()
     report.set_data({**data, **rebuilt})
-    missing = report.apply_config(stored)
+    missing = session.apply_saved_setting(report, stored)
 
     assert missing == {"forms": [], "items": []}
     assert report.selected_forms["LAB"].get_selected_form_items() == ["Visit Date"]

@@ -24,10 +24,8 @@ from clinical_reporting.models import (
     qualify,
     split_qualified,
 )
-from clinical_reporting.settings_store import write_settings_json
 
 if TYPE_CHECKING:
-    from clinical_reporting.models import ReportConfig
     from clinical_reporting.validation import ReportValidationIssue
 
 logger = logging.getLogger(__name__)
@@ -339,11 +337,6 @@ class CLReport:
             column for column in self.data[form_name].columns if column not in common
         ]
 
-    def save_setting_to_json(self, file_path: str, setting_name: Optional[str] = None):
-        """Save the report settings to a JSON file (see :meth:`settings_to_dict`)."""
-
-        write_settings_json(file_path, self.settings_to_dict(setting_name))
-
     def settings_to_dict(self, setting_name: Optional[str] = None) -> Dict[str, Any]:
         """Return the saved-settings dictionary for this report, without file I/O.
 
@@ -394,9 +387,9 @@ class CLReport:
     def load_setting_from_dict(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Apply an in-memory settings dictionary to this report.
 
-        It performs no I/O, so it can be driven directly from a
-        :class:`~clinical_reporting.models.ReportConfig` or any program
-        that constructs the settings schema itself.
+        It performs no I/O, so any program that builds the settings schema can
+        drive it; :func:`~clinical_reporting.session.apply_saved_setting` also
+        lines the setting up with the report's data, as the desktop does.
 
         The setting's stacked forms come first: when they differ from the
         report's, the data is rebuilt (resetting the selections) before the
@@ -659,31 +652,6 @@ class CLReport:
         self.selected_items_order_list = [
             item for item in self.selected_items_order_list if item in selected
         ]
-
-    def apply_config(self, config: "ReportConfig") -> Dict[str, list]:
-        """Apply a :class:`ReportConfig` and reconcile it against the loaded data.
-
-        ``set_data`` must be called first so the saved setting can be aligned
-        with the columns actually present. This bundles the
-        load-then-reconcile sequence the UI performs into a single call, which
-        is the natural entry point for headless/tool-chained runs.
-
-        Args:
-            config: A :class:`ReportConfig`, or any object exposing a ``raw``
-                settings dict. A plain settings ``dict`` is also accepted for
-                convenience.
-
-        Returns:
-            The reconciliation report (``{"forms": [...], "items": [...]}``)
-            listing anything dropped because the current data no longer
-            supports it -- the same information the UI surfaces as a warning.
-        """
-
-        raw = getattr(config, "raw", None)
-        if raw is None:
-            raw = dict(config)
-        self.load_setting_from_dict(raw)
-        return self.reconcile_with_current_data()
 
     def get_join_list_dict(self) -> Dict[str, Dict[str, Any]]:
         """The join settings of each selected form, keyed by form name.

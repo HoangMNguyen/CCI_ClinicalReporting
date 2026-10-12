@@ -133,7 +133,7 @@ def test_a_setting_brings_its_stacked_forms_before_its_selections():
     settings = json.loads(json.dumps(source.settings_to_dict("visits")))
 
     report = session.new_report("DEMO01", _data())
-    missing = report.apply_config(settings)
+    missing = session.apply_saved_setting(report, settings)
 
     assert missing == {"forms": [], "items": []}
     assert report.stacked_forms == [VISITS]
@@ -189,7 +189,9 @@ def test_a_setting_without_stacked_forms_saves_as_before():
 def test_loading_a_setting_without_stacked_forms_removes_them():
     report = _report_with_visits()
 
-    report.apply_config(session.new_report("DEMO01", _data()).settings_to_dict("old"))
+    session.apply_saved_setting(
+        report, session.new_report("DEMO01", _data()).settings_to_dict("old")
+    )
 
     assert report.stacked_forms == []
     assert set(report.data) == {"DM", "SV", "DSSVLTFU"}
@@ -204,7 +206,7 @@ def test_missing_members_and_matched_items_are_reported():
     data["DSSVLTFU"] = data["DSSVLTFU"].rename(columns={"Event Label": "Label"})
 
     report = session.new_report("DEMO01", data)
-    missing = report.apply_config(settings)
+    missing = session.apply_saved_setting(report, settings)
 
     assert missing == {"forms": ["LB"], "items": ["DSSVLTFU.Event Label"]}
     assert report.data["VISITS"]["Visit Name"].isna().tolist() == [False, False, True]
@@ -294,7 +296,7 @@ def test_a_setting_whose_match_is_now_an_item_every_member_has_stops_the_report(
         data[member] = data[member].assign(**{"Visit Name": "new"})
 
     report = session.new_report("DEMO01", data)
-    report.apply_config(settings)
+    session.apply_saved_setting(report, settings)
 
     message = (
         "VISITS: every member now has an item called Visit Name, also the name of a "
@@ -369,7 +371,7 @@ def test_a_member_that_now_gives_another_of_the_matchs_items_is_warned_about():
     )
 
     report = session.new_report("DEMO01", data)
-    missing = report.apply_config(settings)
+    missing = session.apply_saved_setting(report, settings)
 
     assert missing == {"forms": [], "items": ["DSSVLTFU.Event Label"]}
     assert report.data["VISITS"]["Visit Name"].tolist() == [
