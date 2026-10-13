@@ -70,6 +70,7 @@ dmypy.json
 
 # AI directional
 /AGENTS.md
+/.omp
 
 # AWS SAM build/deployment files (samconfig may contain the counter token)
 .aws-sam/
@@ -97,7 +98,5 @@ samconfig.toml
 # Copied AWS CLI login session (never commit)
 /.aws/
 
-# Local Claude Code scratch: visual drafts and agent worktrees. The shared
-# .claude/settings.json stays tracked.
-/.claude/drafts/
-/.claude/worktrees/
+# Local Claude Code files: settings, visual drafts and agent worktrees.
+/.claude/
