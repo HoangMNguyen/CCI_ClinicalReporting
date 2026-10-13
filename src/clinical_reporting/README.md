@@ -94,8 +94,9 @@ python -m clinical_reporting
     where its first item was; its items leave the form. An item is in one
     coalesced item at most. With two or more forms loaded, a common item can
     only be coalesced under its own name, so the forms still join on it.
-  - A row where the value so far is a value and a later item has one too
-    overlaps. Apply refuses overlaps, naming the first rows (every row in
+  - A row overlaps where the value so far is neither empty nor meeting the
+    later item's condition, and that item has a value too: one of the two
+    would be lost. Apply refuses overlaps, naming the first rows (every row in
     the details), unless When values overlap is set to Keep the earlier
     value. As you edit, the page shows how the form's rows take their value
     and what Apply would refuse; a name Apply would refuse turns red, with
@@ -423,8 +424,8 @@ name's problem the same way.
 ### Coalesced items
 
 ```python
-from clinical_reporting import coalescing
-from clinical_reporting.coalescing import KEEP_EARLIER, CoalescedItem, Fill
+from clinical_reporting import coalescing, session
+from clinical_reporting.coalescing import CoalescedItem, Fill
 
 race = CoalescedItem(
     "DM",

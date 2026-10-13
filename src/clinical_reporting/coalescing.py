@@ -194,9 +194,7 @@ def build(item: CoalescedItem, frame: pd.DataFrame) -> Outcome:
             origin = np.where(takes.to_numpy(), position, origin)
     rows: Dict[str, int] = {
         name: int((origin == position).sum())
-        for position, name in enumerate(
-            (item.first, *(fill.item for fill in item.fills))
-        )
+        for position, name in enumerate(item.items)
     }
     coalesced = frame.drop(columns=[fill.item for fill in item.fills])
     coalesced[item.first] = current
@@ -281,26 +279,29 @@ def build_all(
             if (item.form, name) in holders
         ]
         if held:
-            conflicts.extend(
+            found = [
                 f"{label(item)}: {name} is also in {holder}. Keep each item in "
                 "one coalesced item on Coalesced items."
                 for name, holder in held
-            )
-            details.extend(conflicts[len(details) :])
+            ]
+            conflicts.extend(found)
+            details.extend(found)
             continue
         if item.name in frame.columns and item.name not in present.items:
-            conflicts.append(
+            found = [
                 f"{label(item)}: {item.form} now has its own {item.name}. Rename "
                 "the coalesced item on Coalesced items."
-            )
-            details.append(conflicts[-1])
+            ]
+            conflicts.extend(found)
+            details.extend(found)
             continue
         for name in present.items:
             holders[(item.form, name)] = item.name
         outcome = build(present, frame)
         if outcome.overlaps and item.on_overlap == REFUSE:
-            for shown, found in ((5, conflicts), (None, details)):
-                found.extend(
+            # The same lines twice: naming the first five rows, and every row.
+            for shown, lines in ((5, conflicts), (None, details)):
+                lines.extend(
                     f"{label(item)}: {line} Change a condition, or keep the "
                     "earlier value, on Coalesced items."
                     for line in _overlap_lines(present, outcome, shown)
@@ -390,7 +391,7 @@ def preview(
     ``None`` while it can't be built: no form, fewer than two items, an item
     its form lacks or another coalesced item holds (see :func:`problems_of`).
     """
-    _issues_found, buildable = _checks(items, data)[position]
+    _, buildable = _checks(items, data)[position]
     if not buildable:
         return None
     item = items[position]

@@ -336,6 +336,22 @@ def test_overlap_values_show_as_the_export_shows_them():
     ]
 
 
+def test_an_edited_setting_holding_an_item_twice_is_not_built_and_says_so():
+    # Only an edited setting gets here: Apply keeps each item in one.
+    ethnicity = CoalescedItem(
+        "DM", "Ethnicity", "Ethnicity", (Fill("Race Other Specify"),)
+    )
+
+    built = coalescing.build_all([_race(), ethnicity], _forms())
+
+    assert built.conflicts == (
+        "Ethnicity in DM: Race Other Specify is also in Race. Keep each item in "
+        "one coalesced item on Coalesced items.",
+    )
+    assert built.conflict_details == built.conflicts
+    assert set(built.outcomes) == {0}
+
+
 def test_with_one_form_loaded_no_item_is_held_to_its_name():
     # One form has no joins, so its items aren't common items to keep.
     item = CoalescedItem("F", "Any", "A", (Fill("B"),))
