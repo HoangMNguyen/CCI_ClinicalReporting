@@ -19,6 +19,7 @@ from clinical_reporting.models import (
     SUBJECT_COLUMN,
     CLForm,
     JoinHow,
+    common_items,
     is_qualified,
     move_item,
     qualify,
@@ -71,28 +72,13 @@ class CLReport:
         """Set the study name for the report."""
         self.study_name = study_name
 
-    @staticmethod
-    def _common_columns(data: dict) -> List[str]:
-        """Return the column names present in every form of ``data``.
-
-        The result keeps the input column order of the first form so common
-        items retain the original file order instead of an alphabetical one.
-        """
-        forms = list(data.values())
-        if not forms:
-            return []
-        common = set(forms[0].columns)
-        for form_df in forms[1:]:
-            common &= set(form_df.columns)
-        return [column for column in forms[0].columns if column in common]
-
     def identify_common_items(self):
         """Identify columns that exist in all forms of the data."""
         if not self.data:
             return
 
         # Update static_available_common_items with the common columns
-        self.static_available_common_items = self._common_columns(self.data)
+        self.static_available_common_items = common_items(self.data)
 
         if SUBJECT_COLUMN in self.static_available_common_items:
             # Move "Subject" to the front of the list
@@ -466,7 +452,7 @@ class CLReport:
         data_forms = set(self.data.keys())
 
         # Determine the true common items from the loaded data (input column order).
-        actual_common_items = self._common_columns(self.data)
+        actual_common_items = common_items(self.data)
         common_lookup = set(actual_common_items)
 
         self.static_available_common_items = list(actual_common_items)

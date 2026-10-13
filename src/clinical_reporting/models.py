@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, TypeVar
+from typing import Any, List, Mapping, Optional, Sequence, TypeVar
 
 FORM_ITEM_SEPARATOR = "."
 SUBJECT_COLUMN = "Subject"
@@ -56,6 +56,21 @@ class Operator:
     )
     DYNAMIC = (EQ, NE, GT, GE, LT, LE)
     NULLARY = (IS_NULL, IS_NOT_NULL)
+
+
+def common_items(forms: Mapping[str, Any]) -> List[str]:
+    """The items every one of *forms* (DataFrames by name) has.
+
+    In the first form's column order, so common items keep the file's order
+    rather than an alphabetical one.
+    """
+    frames = list(forms.values())
+    if not frames:
+        return []
+    common = set(frames[0].columns)
+    for frame in frames[1:]:
+        common &= set(frame.columns)
+    return [column for column in frames[0].columns if column in common]
 
 
 def is_positive_integer(value) -> bool:
@@ -177,6 +192,7 @@ __all__ = [
     "JoinHow",
     "Operator",
     "SUBJECT_COLUMN",
+    "common_items",
     "is_qualified",
     "move_item",
     "qualify",
