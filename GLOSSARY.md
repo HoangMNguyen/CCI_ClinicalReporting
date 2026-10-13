@@ -55,10 +55,20 @@ _Avoid_: merged column, mapped column, combined item
 A stacked item the user makes from at most one item of each member, to keep an item that not every member has or to line up items with different names, such as Event Date with Collection Date; it takes one of their names or a new one.
 _Avoid_: merge, combine, mapping
 
+### Coalescing
+
+**Coalesced item**:
+An item made from two or more items of one form, taken in order: the first gives each row's value, and each later item fills it where it is still empty or meets that item's condition, such as a Race of Other filled from Race Other Specify. The items it is made from leave the form; it takes one of their names or a new one.
+_Avoid_: combined item, merged item, filled item
+
+**Overlap**:
+A row where a coalesced item already has a value its next item's condition doesn't replace, while that item has a value too, so one of the two would be lost.
+_Avoid_: conflict, clash
+
 ### Reports
 
 **Saved setting**:
-A named, reusable definition of a Clinical Reporting report for one study: which forms and items, how they join, the filters and comparisons, the column order and names, the names given to additional inputs, and how its stacked forms are made. It does not hold the cut-off date.
+A named, reusable definition of a Clinical Reporting report for one study: which forms and items, how they join, the filters and comparisons, the column order and names, the names given to additional inputs, and how its stacked forms and coalesced items are made. It does not hold the cut-off date.
 _Avoid_: configuration, config, template
 
 **Join order**:

@@ -8,9 +8,9 @@ It holds:
 
 - The selection snapshot and restore used whenever a report's data is
   rebuilt: changing the cut-off date, removing the Corelisting input,
-  applying additional inputs, or applying stacked forms. Rebuilding creates
-  fresh ``CLForm`` objects, so the user's selections are captured first and
-  the ones that still exist are re-applied afterwards.
+  applying additional inputs, stacked forms or coalesced items. Rebuilding
+  creates fresh ``CLForm`` objects, so the user's selections are captured
+  first and the ones that still exist are re-applied afterwards.
 - Starting a report from Corelisting data and swapping that data out.
 - Applying a saved setting (:func:`apply_saved_setting`): its selections are
   lined up with the report's data, and its joins, renames, filters and
@@ -34,6 +34,7 @@ from typing import Any, Collection, Dict, List, Mapping, Optional, Sequence, Tup
 
 import pandas as pd
 
+from clinical_reporting.coalescing import CoalescedItem
 from clinical_reporting.data import build_additional_data_map
 from clinical_reporting.export import write_xlsx
 from clinical_reporting.models import SUBJECT_COLUMN
@@ -141,6 +142,19 @@ def apply_stacked_forms(report: CLReport, stacked_forms: Sequence[StackedForm]) 
     """
     state = capture_selection(report)
     report.set_stacked_forms(stacked_forms)
+    restore_selection(report, state)
+
+
+def apply_coalesced_items(
+    report: CLReport, coalesced_items: Sequence[CoalescedItem]
+) -> None:
+    """Apply *coalesced_items* to *report*, keeping the selections that still exist.
+
+    The report's data is rebuilt with them (see
+    :meth:`~clinical_reporting.report.CLReport.set_coalesced_items`).
+    """
+    state = capture_selection(report)
+    report.set_coalesced_items(coalesced_items)
     restore_selection(report, state)
 
 
@@ -254,6 +268,7 @@ def export_report(report: CLReport, file_path: str) -> Optional[str]:
 __all__ = [
     "AppliedInputs",
     "apply_additional_inputs",
+    "apply_coalesced_items",
     "apply_saved_setting",
     "apply_stacked_forms",
     "build_report",

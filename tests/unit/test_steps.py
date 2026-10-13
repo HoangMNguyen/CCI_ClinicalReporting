@@ -6,12 +6,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from clinical_reporting import steps, validation
+from clinical_reporting import coalescing, steps, validation
 from clinical_reporting.additional_names import (
     BY_FILE_NAME,
     IgnoredName,
     SavedFileNames,
 )
+from clinical_reporting.coalescing import CoalescedItem, Fill
 from clinical_reporting.models import JoinHow
 from clinical_reporting.report import CLReport
 from clinical_reporting.stacking import Match, StackedForm, layout
@@ -157,11 +158,13 @@ def test_every_step_has_a_title_and_the_data_steps_are_the_later_ones():
     assert list(steps.TITLES) == list(steps.STEP_KEYS)
     assert steps.NEEDS_DATA == set(steps.STEP_KEYS) - {steps.SOURCE, steps.ADDITIONAL}
     assert steps.TITLES[steps.SOURCE] in steps.NO_DATA_HINT
-    # Stacked forms are made from the loaded forms, before anything is selected.
-    assert steps.STEP_KEYS[:4] == (
+    # Stacked forms are made from the loaded forms, and coalesced items from
+    # those, before anything is selected.
+    assert steps.STEP_KEYS[:5] == (
         steps.SOURCE,
         steps.ADDITIONAL,
         steps.STACKED,
+        steps.COALESCED,
         steps.FORMS,
     )
 
@@ -269,6 +272,164 @@ def test_a_matched_cell_says_why_it_warns():
         "DS has no Event Label; its Event Group Name is taken instead",
         "LB has no Event Label",
     ]
+
+
+def _race_report():
+    """DM, whose Race is specified in Race Other where it is Other, and AE."""
+    report = CLReport()
+    report.set_data(
+        {
+            "DM": pd.DataFrame(
+                {
+                    "Subject": ["001", "002"],
+                    "Race": ["White", "Other"],
+                    "Race Other": [None, "Mixed"],
+                }
+            ),
+            "AE": pd.DataFrame({"Subject": ["001"], "Term": ["Nausea"]}),
+        }
+    )
+    return report
+
+
+RACE = CoalescedItem("DM", "Race", "Race", (Fill("Race Other", "=", "Other"),))
+UNIT = CoalescedItem("LB", "Unit", "Unit", (Fill("Unit Other"),))
+
+
+def test_the_coalesced_items_badge_says_how_they_stand():
+    report = _race_report()
+    assert steps.step_statuses(report)[steps.COALESCED] == StepStatus(steps.OPTIONAL)
+
+    report.set_coalesced_items([RACE])
+    assert steps.step_statuses(report)[steps.COALESCED] == StepStatus(
+        steps.DONE, tip="1 coalesced item"
+    )
+
+    report.set_coalesced_items([RACE, UNIT])
+    assert steps.step_statuses(report)[steps.COALESCED] == StepStatus(
+        steps.WARNING, tip="Unit in LB isn't built: LB isn't loaded."
+    )
+
+    # Without its condition, Race's Other overlaps the Mixed of Race Other.
+    report.set_coalesced_items(
+        [CoalescedItem("DM", "Race", "Race", (Fill("Race Other"),))]
+    )
+    assert steps.step_statuses(report)[steps.COALESCED] == StepStatus(
+        steps.ERROR,
+        tip="Race in DM: 1 row has a value in Race Other where Race already has "
+        "one: 002 (Other / Mixed). Change a condition, or keep the earlier value, "
+        "on Coalesced items.",
+    )
+
+
+def test_the_coalesced_items_step_says_what_applying_did():
+    report = _race_report()
+    report.set_coalesced_items([RACE, UNIT])
+    applied = steps.coalesced_applied_message(report)
+    report.set_coalesced_items([])
+    removed = steps.coalesced_applied_message(report)
+
+    assert applied == (
+        "Applied. Coalesced items: Race in DM (1 row filled); Unit in LB (not built)."
+    )
+    assert applied.kind == "success"
+    assert removed == "The coalesced items were removed from the report."
+    assert removed.kind == "success"
+    assert steps.COALESCED_NOT_APPLIED.kind == "info"
+    assert steps.APPLY_COALESCED_AGAIN.kind == "info"
+
+
+def test_the_coalesced_items_step_lists_problems_and_every_overlapping_row():
+    one = steps.coalesced_problems_message(["Race in DM: Give it a name."])
+    cut = steps.coalesced_problems_message(
+        ["A in F: 6 rows have a value in B where A already has one: 1, 2 and 4 more."],
+        ["A in F: 6 rows have a value in B where A already has one: 1, 2, 3, 4, 5, 6."],
+    )
+
+    assert one == (
+        "Not applied. Fix this problem first, then apply again.\n"
+        "- Race in DM: Give it a name."
+    )
+    assert (one.kind, one.details) == ("error", None)
+    assert cut.details == (
+        "A in F: 6 rows have a value in B where A already has one: 1, 2, 3, 4, 5, 6."
+    )
+
+
+def test_a_coalesced_item_built_without_an_item_says_so():
+    report = _race_report()
+    report.set_coalesced_items(
+        [CoalescedItem("DM", "Race", "Race", (Fill("Race Text"), Fill("Race Code")))]
+    )
+
+    assert steps.coalesced_missing_message(report) == (
+        "Race in DM is built without Race Text and Race Code, which DM doesn't have."
+    )
+
+    report.set_coalesced_items([CoalescedItem("DM", "Origin", "Ethnic", (Fill("E2"),))])
+
+    assert steps.coalesced_missing_message(report) == (
+        "Origin in DM isn't built: DM has no Ethnic or E2."
+    )
+
+
+def test_a_coalesced_items_counts_say_where_its_rows_take_their_value():
+    form = pd.DataFrame(
+        {
+            "Subject": ["001", "002", "003", "004"],
+            "Race": ["White", "Other", None, "Asian"],
+            "Race Other": [None, "Mixed", None, "Thai"],
+        }
+    )
+
+    counts = steps.coalesced_counts(RACE, coalescing.build(RACE, form))
+
+    assert counts == (
+        "DM has 4 rows: 2 keep Race · 1 filled from Race Other · 1 left empty · "
+        "1 row overlaps"
+    )
+
+
+def test_a_coalesced_item_being_edited_says_what_stops_it():
+    one = steps.coalesced_item_problems_message(["Give it a name."])
+    two = steps.coalesced_item_problems_message(["Give it a name.", "Pick its form."])
+
+    assert one == "Can't apply yet: Give it a name."
+    assert one.kind == "warning"
+    assert two == "Can't apply yet:\n- Give it a name.\n- Pick its form."
+    assert steps.coalesced_item_problems_message([]) == ""
+
+
+def test_later_overlaps_list_their_first_rows_and_every_row_in_the_details():
+    report = CLReport()
+    report.set_data(
+        {
+            "F": pd.DataFrame(
+                {
+                    "Subject": [f"S{n}" for n in range(1, 8)],
+                    "A": ["x"] * 7,
+                    "B": ["y"] * 7,
+                }
+            ),
+            "G": pd.DataFrame({"Subject": ["S1"]}),
+        }
+    )
+    report.set_coalesced_items([CoalescedItem("F", "A", "A", (Fill("B"),))])
+
+    message = steps.coalesced_conflict_message(report)
+
+    assert message == (
+        "A in F: 7 rows have a value in B where A already has one: S1 (x / y), "
+        "S2 (x / y), S3 (x / y), S4 (x / y), S5 (x / y) and 2 more. Change a "
+        "condition, or keep the earlier value, on Coalesced items. The report "
+        "can't be exported until this is fixed."
+    )
+    assert message.kind == "error"
+    assert message.details == (
+        "A in F: 7 rows have a value in B where A already has one: S1 (x / y), "
+        "S2 (x / y), S3 (x / y), S4 (x / y), S5 (x / y), S6 (x / y), S7 (x / y). "
+        "Change a condition, or keep the earlier value, on Coalesced items."
+    )
 
 
 def test_saved_names_entries_read_as_their_form_names():
