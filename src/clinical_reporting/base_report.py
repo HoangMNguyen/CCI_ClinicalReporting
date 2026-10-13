@@ -214,6 +214,9 @@ def build_base_report_from_forms(
     stacked = steps.stacked_missing_message(report)
     if stacked:
         warnings.append(stacked)
+    coalesced = steps.coalesced_missing_message(report)
+    if coalesced:
+        warnings.append(coalesced)
     if ignored:
         warnings.append(steps.saved_names_ignored_message(ignored))
     return BaseReport(table, tuple(warnings), setting_name)

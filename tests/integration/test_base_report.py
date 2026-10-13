@@ -14,6 +14,7 @@ from clinical_reporting import (
     build_base_report_from_forms,
     session,
 )
+from clinical_reporting.coalescing import KEEP_EARLIER, REFUSE, CoalescedItem, Fill
 from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import write_settings_json
 from clinical_reporting.stacking import Match, StackedForm
@@ -190,6 +191,87 @@ def test_a_stacked_form_missing_a_member_is_built_without_it_and_said():
         "DISP is built without DS, which isn't loaded.",
     )
     assert [warning.kind for warning in base.warnings] == ["warning", "warning"]
+
+
+def _race_forms():
+    """DM's Race, specified in Race Other where it is Other, and AE."""
+    dm = pd.DataFrame(
+        {
+            "Subject": ["01-1", "01-2", "01-3"],
+            "Site": ["A", "A", "B"],
+            "Race": ["White", "Other", None],
+            "Race Other": [None, "Hispanic", "Mixed"],
+        }
+    )
+    return {"DM": dm, "AE": _forms()["AE"]}
+
+
+def _race_settings(on_overlap=REFUSE):
+    """DM's subjects and Race, Race Other filling it where it is Other or empty."""
+    source = session.new_report(None, _race_forms())
+    race = CoalescedItem(
+        "DM", "Race", "Race", (Fill("Race Other", "=", "Other"),), on_overlap
+    )
+    session.apply_coalesced_items(source, [race])
+    source.add_selected_form("DM")
+    source.selected_forms["DM"].set_form_item_state("Race", selected=True)
+    source.update_join_items("DM", [], 1, "Left join")
+    return source.settings_to_dict("Race")
+
+
+def test_a_setting_coalesces_its_items_as_the_desktop_does():
+    base = build_base_report_from_forms(_race_forms(), _race_settings())
+
+    assert_frame_equal(
+        base.table,
+        pd.DataFrame(
+            {
+                "Subject": ["01-1", "01-2", "01-3"],
+                "DM.Race": ["White", "Hispanic", "Mixed"],
+            }
+        ),
+    )
+    assert base.warnings == ()
+
+
+def test_a_coalesced_item_missing_an_item_is_refused_or_built_from_the_rest():
+    forms = _race_forms()
+    forms["DM"] = forms["DM"].drop(columns="Race Other")
+
+    with pytest.raises(WorkflowInputError) as refused:
+        build_base_report_from_forms(forms, _race_settings())
+    base = build_base_report_from_forms(forms, _race_settings(), missing_ok=True)
+
+    assert str(refused.value) == (
+        "The saved setting “Race” doesn't fit this export.\n"
+        "Missing items in DM: Race Other"
+    )
+    assert base.warnings == (
+        "Missing items in DM: Race Other",
+        "Race in DM is built without Race Other, which DM doesn't have.",
+    )
+    assert base.table["DM.Race"].fillna("<empty>").tolist() == [
+        "White",
+        "Other",
+        "<empty>",
+    ]
+
+
+def test_overlaps_a_coalesced_item_refuses_stop_the_base_report():
+    forms = _race_forms()
+    forms["DM"].loc[0, "Race Other"] = "Caucasian"
+
+    with pytest.raises(WorkflowInputError) as refused:
+        build_base_report_from_forms(forms, _race_settings())
+    kept = build_base_report_from_forms(forms, _race_settings(KEEP_EARLIER))
+
+    assert str(refused.value).startswith("Cannot run:")
+    assert (
+        "Race in DM: 1 row has a value in Race Other where Race already has one: "
+        "01-1 (White / Caucasian)." in str(refused.value)
+    )
+    assert kept.table["DM.Race"].tolist() == ["White", "Hispanic", "Mixed"]
+    assert kept.warnings == ()
 
 
 def test_a_setting_that_matches_no_rows_gives_its_columns_and_no_rows():

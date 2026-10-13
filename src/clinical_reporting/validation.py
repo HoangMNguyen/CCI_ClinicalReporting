@@ -138,6 +138,9 @@ def validate_report(report) -> list[ReportValidationIssue]:
     for messages in getattr(stacked_build, "conflicts", {}).values():
         for message in messages:
             _add_issue(issues, "stacked_form_conflict", message, "stacked_forms")
+    # Data that changed since Apply and makes a coalesced item unusable.
+    for message in getattr(getattr(report, "coalesced_build", None), "conflicts", ()):
+        _add_issue(issues, "coalesced_item_conflict", message, "coalesced_items")
 
     duplicate_common = sorted(
         item for item, count in Counter(selected_common).items() if count > 1
@@ -442,13 +445,15 @@ def raise_for_report(report) -> None:
 CANNOT_RUN_PREFIX = "Cannot run:"
 #: Problems that disable the export as soon as they appear (the join problems,
 #: a stacked form named like a loaded form, and data that makes a stacked form
-#: ambiguous); the others are reported when the user previews or exports.
+#: ambiguous or a coalesced item unusable); the others are reported when the
+#: user previews or exports.
 EXPORT_BLOCKING_ISSUE_CODES = frozenset(
     {
         "duplicate_join_order",
         "missing_join_items",
         "stacked_form_name_clash",
         "stacked_form_conflict",
+        "coalesced_item_conflict",
     }
 )
 

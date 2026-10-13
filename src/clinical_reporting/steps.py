@@ -13,10 +13,13 @@ lacks), :func:`preview_caption`, :func:`joins_message`, the Additional input
 step's messages (:func:`additional_applied_message`,
 :func:`additional_form_names_message`, the constants, and the
 ``saved_names_*`` wording for the names a loaded setting saved for its
-additional files; see :mod:`clinical_reporting.additional_names`), and the
+additional files; see :mod:`clinical_reporting.additional_names`), the
 Stacked forms step's (the ``stacked_*`` ones and :data:`STACKED_NOT_APPLIED`,
 :data:`APPLY_STACKED_AGAIN`, :data:`STACKED_NOT_SAVED_NOTE`; see
-:mod:`clinical_reporting.stacking`).
+:mod:`clinical_reporting.stacking`), and the Coalesced items step's (the
+``coalesced_*`` ones and :data:`COALESCED_NOT_APPLIED`,
+:data:`APPLY_COALESCED_AGAIN`, :data:`COALESCED_NOT_SAVED_NOTE`; see
+:mod:`clinical_reporting.coalescing`).
 """
 
 from __future__ import annotations
@@ -37,7 +40,7 @@ from typing import (
     Tuple,
 )
 
-from clinical_reporting import feedback, report_columns
+from clinical_reporting import coalescing, feedback, report_columns
 from clinical_reporting.additional_names import (
     BY_COLUMNS,
     BY_FILE_NAME,
@@ -52,6 +55,7 @@ from clinical_reporting.validation import ReportValidationIssue
 SOURCE = "source"
 ADDITIONAL = "additional"
 STACKED = "stacked"
+COALESCED = "coalesced"
 FORMS = "forms"
 COMMON = "common"
 FORM_ITEMS = "formitems"
@@ -64,6 +68,7 @@ STEP_KEYS = (
     SOURCE,
     ADDITIONAL,
     STACKED,
+    COALESCED,
     FORMS,
     COMMON,
     FORM_ITEMS,
@@ -79,6 +84,7 @@ TITLES = {
     SOURCE: "Source data",
     ADDITIONAL: "Additional input",
     STACKED: "Stacked forms",
+    COALESCED: "Coalesced items",
     FORMS: "Forms",
     COMMON: "Common items",
     FORM_ITEMS: "Form items",
@@ -116,6 +122,20 @@ APPLY_STACKED_AGAIN = feedback.info(
 #: Added to the save message when the Stacked forms step has unapplied changes.
 STACKED_NOT_SAVED_NOTE = (
     f"{TITLES[STACKED]} has changes that aren't applied, so they weren't saved."
+)
+#: The Coalesced items step, while the page's coalesced items differ from the
+#: report's.
+COALESCED_NOT_APPLIED = feedback.info(
+    "Not applied yet. Apply to report to use your changes."
+)
+#: The Coalesced items step, once a new Corelisting ZIP started a new report.
+APPLY_COALESCED_AGAIN = feedback.info(
+    "The new Corelisting ZIP started a new report. Apply the coalesced items "
+    "again to add them to it."
+)
+#: Added to the save message when the Coalesced items step has unapplied changes.
+COALESCED_NOT_SAVED_NOTE = (
+    f"{TITLES[COALESCED]} has changes that aren't applied, so they weren't saved."
 )
 #: The first entry of a file's Saved names dropdown: no saved names used.
 SAVED_NAMES_NONE = "None"
@@ -161,6 +181,7 @@ ISSUE_STEPS = {
     "unknown_order_item": ORDER,
     "stacked_form_name_clash": STACKED,
     "stacked_form_conflict": STACKED,
+    "coalesced_item_conflict": COALESCED,
 }
 #: Issues that belong to a filter step, found by their field.
 FILTER_ITEM_ISSUE_CODES = frozenset({"ambiguous_filter_item", "missing_filter_item"})
@@ -273,6 +294,7 @@ def step_statuses(
     renamed = _renamed_count(report)
     statuses[ORDER] = _counted(renamed, f"{renamed} renamed")
     statuses[STACKED] = _stacked_status(report)
+    statuses[COALESCED] = _coalesced_status(report)
     if len(selected_forms) > 1:
         statuses[JOINS] = StepStatus(DONE, tip="Ready")
     elif selected_forms:
@@ -292,6 +314,17 @@ def _stacked_status(report) -> StepStatus:
         return StepStatus(WARNING, tip=str(missing))
     if report.stacked_forms:
         return StepStatus(DONE, tip=_plural(len(report.stacked_forms), "stacked form"))
+    return StepStatus(OPTIONAL)
+
+
+def _coalesced_status(report) -> StepStatus:
+    """The Coalesced items badge: warning, done or optional (validation aside)."""
+    missing = coalesced_missing_message(report)
+    if missing:
+        return StepStatus(WARNING, tip=str(missing))
+    if report.coalesced_items:
+        count = len(report.coalesced_items)
+        return StepStatus(DONE, tip=_plural(count, "coalesced item"))
     return StepStatus(OPTIONAL)
 
 
@@ -863,11 +896,104 @@ def stacked_conflict_message(report) -> str:
     )
 
 
+def coalesced_applied_message(report) -> feedback.Message:
+    """What applying the coalesced items did: the rows each one filled.
+
+    For example "Applied. Coalesced items: Race in DM (12 rows filled)."; a
+    coalesced item that couldn't be built (see :func:`coalesced_missing_message`
+    and the validation issues) says so.
+    """
+    if not report.coalesced_items:
+        return feedback.success("The coalesced items were removed from the report.")
+    parts = []
+    for position, item in enumerate(report.coalesced_items):
+        outcome = report.coalesced_build.outcomes.get(position)
+        if outcome is None:
+            parts.append(f"{coalescing.label(item)} (not built)")
+            continue
+        filled = sum(list(outcome.rows.values())[1:])
+        parts.append(f"{coalescing.label(item)} ({row_count(filled)} filled)")
+    return feedback.success(f"Applied. Coalesced items: {'; '.join(parts)}.")
+
+
+def coalesced_problems_message(
+    problems: Sequence[str], every_row: Sequence[str] = ()
+) -> feedback.Message:
+    """Applying the coalesced items was refused for these *problems*.
+
+    They are listed, an overlap naming its first rows; *every_row* holds the
+    same problems naming every overlapping row, for the details when that is
+    more (see :func:`clinical_reporting.coalescing.problems`).
+    """
+    what = "this problem" if len(problems) == 1 else f"these {len(problems)} problems"
+    listed = "\n".join(f"- {problem}" for problem in problems)
+    every = list(every_row)
+    return feedback.error(
+        f"Not applied. Fix {what} first, then apply again.\n{listed}",
+        "\n".join(every) if every and every != list(problems) else None,
+    )
+
+
+def coalesced_missing_message(report) -> str:
+    """The forms and items the report's coalesced items lack.
+
+    A warning, for example "Race in DM is built without Race Other Specify,
+    which DM doesn't have."; ``""`` when nothing is missing.
+    """
+    built = report.coalesced_build
+    sentences = []
+    for position, item in enumerate(report.coalesced_items):
+        named = coalescing.label(item)
+        if item.form in built.missing_forms:
+            sentences.append(f"{named} isn't built: {item.form} isn't loaded.")
+            continue
+        lacking = built.missing_items.get(position)
+        if not lacking:
+            continue
+        if position in built.outcomes:
+            sentences.append(
+                f"{named} is built without {feedback.and_list(lacking)}, which "
+                f"{item.form} doesn't have."
+            )
+        else:
+            sentences.append(
+                f"{named} isn't built: {item.form} has no {_or_list(lacking)}."
+            )
+    if not sentences:
+        return ""
+    return feedback.warning(" ".join(sentences))
+
+
+def coalesced_conflict_message(report) -> str:
+    """What makes the report's coalesced items unusable since they were applied.
+
+    An error naming an overlap's first rows, every row in its details, for
+    example "Race in DM: 2 rows have a value in Race Other Specify where Race
+    already has one: 101-004 (White / Caucasian), …. Change a condition, or
+    keep the earlier value, on Coalesced items. The report can't be exported
+    until this is fixed."; ``""`` when nothing does (see
+    :attr:`clinical_reporting.coalescing.Built.conflicts`).
+    """
+    built = report.coalesced_build
+    if not built.conflicts:
+        return ""
+    details = built.conflict_details
+    return feedback.error(
+        f"{' '.join(built.conflicts)} The report can't be exported until this is "
+        "fixed.",
+        "\n".join(details) if details != built.conflicts else None,
+    )
+
+
 __all__ = [
     "ADDITIONAL",
     "ADD_FILES_FIRST",
     "APPLY_ADDITIONAL_AGAIN",
+    "APPLY_COALESCED_AGAIN",
     "APPLY_STACKED_AGAIN",
+    "COALESCED",
+    "COALESCED_NOT_APPLIED",
+    "COALESCED_NOT_SAVED_NOTE",
     "COMMON",
     "COMPARISONS",
     "DONE",
@@ -898,6 +1024,10 @@ __all__ = [
     "StepStatus",
     "additional_applied_message",
     "additional_form_names_message",
+    "coalesced_applied_message",
+    "coalesced_conflict_message",
+    "coalesced_missing_message",
+    "coalesced_problems_message",
     "issue_step",
     "joins_message",
     "preview_caption",

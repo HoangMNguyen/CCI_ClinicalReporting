@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import (
     Any,
@@ -198,18 +198,130 @@ def build(item: CoalescedItem, frame: pd.DataFrame) -> Outcome:
     )
 
 
+@dataclass(frozen=True)
+class Built:
+    """The coalesced items built over some data (:func:`build_all`)."""
+
+    #: The forms coalescing changed, keyed by form.
+    forms: Mapping[str, pd.DataFrame] = field(default_factory=dict)
+    #: What building each coalesced item gave, keyed by its position.
+    outcomes: Mapping[int, Outcome] = field(default_factory=dict)
+    #: The forms of coalesced items that aren't there; those aren't built.
+    missing_forms: Tuple[str, ...] = ()
+    #: The items each coalesced item's form lacks, keyed by its position. It
+    #: is built from the others (with none left, it isn't built).
+    missing_items: Mapping[int, Tuple[str, ...]] = field(default_factory=dict)
+    #: Why the report can't use the coalesced items as the data now is, one
+    #: message each: values that overlap in one set to refuse them (it is
+    #: built, keeping the earlier values), or, in one not built, a name an
+    #: item of the form now has, or an item another coalesced item holds (an
+    #: edited setting). Validation stops the report until they are fixed. An
+    #: overlap's message names its first five rows.
+    conflicts: Tuple[str, ...] = ()
+    #: The same messages, an overlap's naming every row.
+    conflict_details: Tuple[str, ...] = ()
+
+
+def _present(item: CoalescedItem, columns: Collection[str]) -> Optional[CoalescedItem]:
+    """*item* without the items *columns* lacks; ``None`` when none is left.
+
+    When its first item is gone, the next present one starts the value.
+    """
+    kept = [fill for fill in (Fill(item.first), *item.fills) if fill.item in columns]
+    if not kept:
+        return None
+    first, *fills = kept
+    return replace(item, first=first.item, fills=tuple(fills))
+
+
+def build_all(
+    items: Sequence[CoalescedItem], data: Mapping[str, pd.DataFrame]
+) -> Built:
+    """*items* built over *data* (the loaded and stacked forms), and what's amiss.
+
+    Each coalesced item is built over its form as the ones before it left
+    it. One whose form or items are missing is built from what is there
+    (:attr:`Built.missing_forms`, :attr:`Built.missing_items`); what makes
+    one unusable is recorded in :attr:`Built.conflicts`.
+    """
+    forms: Dict[str, pd.DataFrame] = {}
+    outcomes: Dict[int, Outcome] = {}
+    missing_forms: List[str] = []
+    missing_items: Dict[int, Tuple[str, ...]] = {}
+    conflicts: List[str] = []
+    details: List[str] = []
+    # The coalesced item that holds each (form, item).
+    holders: Dict[Tuple[str, str], str] = {}
+    for position, item in enumerate(items):
+        if item.form not in data:
+            if item.form not in missing_forms:
+                missing_forms.append(item.form)
+            continue
+        columns = data[item.form].columns
+        lacking = tuple(name for name in item.items if name not in columns)
+        if lacking:
+            missing_items[position] = lacking
+        present = _present(item, set(columns))
+        if present is None:
+            continue
+        frame = forms.get(item.form, data[item.form])
+        held = [
+            (name, holders[(item.form, name)])
+            for name in present.items
+            if (item.form, name) in holders
+        ]
+        if held:
+            conflicts.extend(
+                f"{label(item)}: {name} is also in {holder}. Keep each item in "
+                "one coalesced item on Coalesced items."
+                for name, holder in held
+            )
+            details.extend(conflicts[len(details) :])
+            continue
+        if item.name in frame.columns and item.name not in present.items:
+            conflicts.append(
+                f"{label(item)}: {item.form} now has its own {item.name}. Rename "
+                "the coalesced item on Coalesced items."
+            )
+            details.append(conflicts[-1])
+            continue
+        for name in present.items:
+            holders[(item.form, name)] = item.name
+        outcome = build(present, frame)
+        if outcome.overlaps and item.on_overlap == REFUSE:
+            for shown, found in ((5, conflicts), (None, details)):
+                found.extend(
+                    f"{label(item)}: {line} Change a condition, or keep the "
+                    "earlier value, on Coalesced items."
+                    for line in _overlap_lines(present, outcome, shown)
+                )
+        forms[item.form] = outcome.frame
+        outcomes[position] = outcome
+    return Built(
+        forms,
+        outcomes,
+        tuple(missing_forms),
+        missing_items,
+        tuple(conflicts),
+        tuple(details),
+    )
+
+
 # ---------------------------------------------------------------------------
 # The Apply check
 
 
-def _label(item: CoalescedItem) -> str:
-    """How a message names *item*: "Race in DM"."""
+def label(item: CoalescedItem) -> str:
+    """How messages name *item*: "Race in DM" ("New coalesced item" unnamed)."""
     name = item.name.strip() or NEW_COALESCED_ITEM
     return f"{name} in {item.form}" if item.form else name
 
 
 def problems(
-    items: Sequence[CoalescedItem], data: Mapping[str, pd.DataFrame]
+    items: Sequence[CoalescedItem],
+    data: Mapping[str, pd.DataFrame],
+    *,
+    shown: Optional[int] = 5,
 ) -> List[str]:
     """What stops *items* from being applied over *data*, one line each.
 
@@ -217,7 +329,8 @@ def problems(
     and the stacked forms). Each line starts with the coalesced item, as
     "Race in DM: ". A common item can only be coalesced under its own name,
     so the forms still join on it; with one form loaded there are no joins,
-    and no item is held to its name.
+    and no item is held to its name. An overlap's line names its first
+    *shown* rows (every row with ``None``).
     """
     names = Counter(
         (item.form, item.name.strip()) for item in items if item.name.strip()
@@ -228,8 +341,8 @@ def problems(
     found = []
     for position, item in enumerate(items):
         found.extend(
-            f"{_label(item)}: {issue}"
-            for issue in _issues(items, position, data, names, common, holders)
+            f"{label(item)}: {issue}"
+            for issue in _issues(items, position, data, names, common, holders, shown)
         )
     return found
 
@@ -241,6 +354,7 @@ def _issues(
     names: Mapping[Tuple[str, str], int],
     common: Collection[str],
     holders: Dict[Tuple[str, str], int],
+    shown: Optional[int],
 ) -> List[str]:
     item = items[position]
     if not item.form:
@@ -287,22 +401,31 @@ def _issues(
         if picked_name in common and picked_name != name
     )
     if buildable and item.on_overlap == REFUSE:
-        issues.extend(_overlap_lines(item, build(item, data[item.form])))
+        issues.extend(_overlap_lines(item, build(item, data[item.form]), shown))
     return issues
 
 
-def _overlap_lines(item: CoalescedItem, outcome: Outcome) -> List[str]:
-    """The overlaps of *outcome*, one line per later item, its first rows named."""
+def _overlap_lines(
+    item: CoalescedItem, outcome: Outcome, shown: Optional[int]
+) -> List[str]:
+    """The overlaps of *outcome*, one line per later item.
+
+    Each names its first *shown* rows, or every row with ``None``.
+    """
     name = item.name.strip() or item.first
     lines = []
     for fill in item.fills:
-        rows = [overlap for overlap in outcome.overlaps if overlap.item == fill.item]
+        rows = [
+            _row_label(overlap)
+            for overlap in outcome.overlaps
+            if overlap.item == fill.item
+        ]
         if not rows:
             continue
         have = "1 row has" if len(rows) == 1 else f"{len(rows):,} rows have"
+        listed = feedback.short_list(rows, len(rows) if shown is None else shown)
         lines.append(
-            f"{have} a value in {fill.item} where {name} already has one: "
-            f"{feedback.short_list(_row_label(overlap) for overlap in rows)}."
+            f"{have} a value in {fill.item} where {name} already has one: {listed}."
         )
     return lines
 
@@ -429,8 +552,11 @@ __all__ = [
     "Fill",
     "Outcome",
     "Overlap",
+    "Built",
     "build",
+    "build_all",
     "from_settings",
+    "label",
     "problems",
     "to_settings",
 ]

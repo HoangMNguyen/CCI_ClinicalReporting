@@ -3,8 +3,9 @@
 A report holds a study's forms, the forms and items chosen from them, how the
 forms join (the common items each joins on, the join order and the join
 type), the filters and comparisons, and the column order and names. Its
-stacked forms (:mod:`clinical_reporting.stacking`) are built with its data,
-so they are forms like any other. It turns into a saved setting and back
+stacked forms (:mod:`clinical_reporting.stacking`) and then its coalesced
+items (:mod:`clinical_reporting.coalescing`) are built with its data, so they
+are forms and items like any other. It turns into a saved setting and back
 (:meth:`CLReport.settings_to_dict`, :meth:`CLReport.load_setting_from_dict`),
 and :meth:`CLReport.create_report` hands the building of the table to
 :class:`clinical_reporting.pipeline.ReportEngine`.
@@ -14,7 +15,7 @@ import logging
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from clinical_reporting import report_columns, stacking
+from clinical_reporting import coalescing, report_columns, stacking
 from clinical_reporting.models import (
     SUBJECT_COLUMN,
     CLForm,
@@ -39,12 +40,17 @@ class CLReport:
         self.study_name = None
         self.data = {}
         # The forms as loaded (the Corelisting ZIP and additional inputs);
-        # ``data`` is these plus the stacked forms built from them.
+        # ``stacked_data`` is these plus the stacked forms built from them,
+        # and ``data`` is those with the coalesced items made over them.
         self.loaded_data = {}
-        # The stacked forms applied to the report, and what building them
-        # last gave (stacking.build_all).
+        self.stacked_data = {}
+        # The stacked forms and coalesced items applied to the report, and
+        # what building them last gave (stacking.build_all,
+        # coalescing.build_all).
         self.stacked_forms: List[stacking.StackedForm] = []
         self.stacked_build = stacking.Built()
+        self.coalesced_items: List[coalescing.CoalescedItem] = []
+        self.coalesced_build = coalescing.Built()
         self.available_forms = {}
         self.selected_forms = {}
         self.available_common_items = []
@@ -87,13 +93,23 @@ class CLReport:
     def set_data(self, data: dict):
         """Set the data for the report: the forms as loaded.
 
-        The report's stacked forms are built from them and added to
-        ``data``; ``loaded_data`` keeps the forms as loaded.
+        The report's stacked forms are built from them and added, then its
+        coalesced items are made over those forms, giving ``data``;
+        ``loaded_data`` keeps the forms as loaded and ``stacked_data`` the
+        forms before coalescing.
         """
         self.loaded_data = data
         self.stacked_build = stacking.build_all(self.stacked_forms, data)
-        self.data = (
+        self.stacked_data = (
             {**data, **self.stacked_build.forms} if self.stacked_build.forms else data
+        )
+        self.coalesced_build = coalescing.build_all(
+            self.coalesced_items, self.stacked_data
+        )
+        self.data = (
+            {**self.stacked_data, **self.coalesced_build.forms}
+            if self.coalesced_build.forms
+            else self.stacked_data
         )
 
         # Reset form collections to match the new dataset.
@@ -117,6 +133,16 @@ class CLReport:
         :func:`clinical_reporting.session.apply_stacked_forms` to keep them.
         """
         self.stacked_forms = list(stacked_forms)
+        if self.loaded_data:
+            self.set_data(self.loaded_data)
+
+    def set_coalesced_items(self, coalesced_items) -> None:
+        """Apply these coalesced items, rebuilding the data when some is loaded.
+
+        Rebuilding resets the selections, as :meth:`set_data` does; see
+        :func:`clinical_reporting.session.apply_coalesced_items` to keep them.
+        """
+        self.coalesced_items = list(coalesced_items)
         if self.loaded_data:
             self.set_data(self.loaded_data)
 
@@ -367,8 +393,10 @@ class CLReport:
             "selected_items_order_list": deepcopy(self.selected_items_order_list),
             "order_list_customized": self.order_list_customized,
         }
-        # Only when there are stacked forms, so other settings save as before.
-        return stacking.to_settings(settings, self.stacked_forms)
+        # Only when there are stacked forms or coalesced items, so other
+        # settings save as before.
+        stacking.to_settings(settings, self.stacked_forms)
+        return coalescing.to_settings(settings, self.coalesced_items)
 
     def load_setting_from_dict(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         """Apply an in-memory settings dictionary to this report.
@@ -377,14 +405,22 @@ class CLReport:
         drive it; :func:`~clinical_reporting.session.apply_saved_setting` also
         lines the setting up with the report's data, as the desktop does.
 
-        The setting's stacked forms come first: when they differ from the
-        report's, the data is rebuilt (resetting the selections) before the
-        setting's selections are read, so those on a stacked form find it.
+        The setting's stacked forms and coalesced items come first: when they
+        differ from the report's, the data is rebuilt (resetting the
+        selections) before the setting's selections are read, so those on a
+        stacked form or a coalesced item find it.
         """
 
         stacked_forms = stacking.from_settings(settings)
-        if stacked_forms != self.stacked_forms:
-            self.set_stacked_forms(stacked_forms)
+        coalesced_items = coalescing.from_settings(settings)
+        if (
+            stacked_forms != self.stacked_forms
+            or coalesced_items != self.coalesced_items
+        ):
+            self.stacked_forms = stacked_forms
+            self.coalesced_items = coalesced_items
+            if self.loaded_data:
+                self.set_data(self.loaded_data)
 
         self.study_name = settings.get("study_name", self.study_name)
 
@@ -442,8 +478,9 @@ class CLReport:
         Returns the forms and items the setting needs that the data lacks,
         including the members any stacked form is missing, built or not (as
         forms; one named like a loaded form isn't built and records none),
-        and the matched items a present member of a built one no longer has
-        (as ``MEMBER.item``).
+        the matched items a present member of a built one no longer has (as
+        ``MEMBER.item``), and the forms and items its coalesced items lack
+        (as forms and ``FORM.item``).
         """
 
         missing_forms: set[str] = set()
@@ -543,6 +580,12 @@ class CLReport:
                 qualify(member, item)
                 for member, item, _used in built.replaced.get(name, ())
             )
+
+        coalesced = self.coalesced_build
+        missing_forms.update(coalesced.missing_forms)
+        for position, items in coalesced.missing_items.items():
+            form = self.coalesced_items[position].form
+            missing_items.update(qualify(form, item) for item in items)
 
         return {
             "forms": sorted(missing_forms),
