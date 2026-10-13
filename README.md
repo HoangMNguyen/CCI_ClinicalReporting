@@ -128,8 +128,7 @@ than carrying their own copies:
   `m/d/yyyy` without leading zeros (CCI Automation's
   `util.remove_leading_zeros_from_dates`).
 
-New automations build on a base report instead of their own pandas code
-([ADR 0001](docs/adr/0001-new-automations-build-on-base-reports.md)):
+New automations build on a base report instead of their own pandas code:
 `clinical_reporting.build_base_report(corelisting, setting, ...)` runs a saved
 setting on a Corelisting export and gives the table, and the workbook, the
 desktop exports for it. The automation adds its own statistics, sheets and
@@ -181,7 +180,6 @@ tests/
   integration/                 # Clinical Reporting end-to-end report/settings/API tests
   ui/                          # design-system, window and page tests (need Qt)
 infra/run_counter/             # AWS stack behind the usage counter (its README)
-docs/adr/                      # architecture decisions: what was decided and why
 GLOSSARY.md                    # the domain words the code and docs use
 *.spec, build_support.py       # PyInstaller builds (see Building the executables)
 ```

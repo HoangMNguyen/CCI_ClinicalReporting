@@ -211,8 +211,7 @@ base = clinical_reporting.build_base_report_from_forms(
 ```
 
 New automations keep their saved setting versioned in the repo next to their
-code ([ADR 0001](../../docs/adr/0001-new-automations-build-on-base-reports.md)),
-e.g. `src/<tool>/settings/<name>.json`, and pass its path:
+code, e.g. `src/<tool>/settings/<name>.json`, and pass its path:
 `Path(__file__).with_name("settings") / "<name>.json"`. To ship it inside the
 tool's executable, add the folder to the tool's `.spec` `datas` under the same
 package path, e.g. `('src/<tool>/settings', '<tool>/settings')`, as
