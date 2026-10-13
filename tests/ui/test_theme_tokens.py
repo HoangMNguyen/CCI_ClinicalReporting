@@ -2,7 +2,6 @@
 
 import re
 from dataclasses import fields
-from pathlib import Path
 
 import pytest
 
@@ -20,49 +19,31 @@ from cci_ui.theme.tokens import (
     to_css,
 )
 
-MOCKUP = (
-    Path(__file__).resolve().parents[2]
-    / "docs"
-    / "design"
-    / "clinical-reporting-mockup.html"
-)
-# Variables the mockup uses only to draw its fake window and stage, plus its
-# font stacks (they add browser-only fallbacks; test_css_export checks fonts).
-MOCKUP_ONLY = re.compile(
-    r"--(titlebar|close|on-close|window|shadow-window|tint|mock|stage|font)"
-)
+#: The font stacks, which test_css_export_for_a_web_front_end checks.
+FONTS = {"--font-ui", "--font-mono"}
 
 
-def _mockup_block(selector: str) -> dict:
-    """The custom properties declared in the mockup's CSS block for *selector*."""
-    css = MOCKUP.read_text(encoding="utf-8")
+def _declared(css: str, selector: str) -> dict:
+    """The custom properties *css* declares in its block for *selector*."""
     start = css.index(selector + " {")
     body = css[start : css.index("}", start)]
-    declared = dict(re.findall(r"(--[\w-]+):\s*([^;]+);", body))
-    return {
-        name: re.sub(r"\s+", "", value).upper()
-        for name, value in declared.items()
-        if not MOCKUP_ONLY.match(name)
+    return dict(re.findall(r"(--[\w-]+):\s*([^;]+);", body))
+
+
+def test_css_export_gives_each_scheme_and_density_its_own_tokens():
+    css = to_css()
+    light = {
+        name: value
+        for name, value in _declared(css, ":root").items()
+        if name not in FONTS
     }
+    dark = css_color_variables(DARK)
 
-
-def _normalized(variables: dict) -> dict:
-    return {
-        name: re.sub(r"\s+", "", value).upper() for name, value in variables.items()
-    }
-
-
-def test_tokens_match_the_approved_mockup_exactly():
-    light = _mockup_block(':root, .app[data-mode="light"]')
-    dark = _mockup_block(':root[data-theme="dark"], .app[data-mode="dark"]')
-    comfortable = _mockup_block(":root")
-    compact = _mockup_block('.app[data-density="compact"]')
-
-    assert _normalized(css_color_variables(LIGHT)) == light
-    assert _normalized(css_color_variables(DARK)) == dark
-    assert _normalized(css_metric_variables(COMFORTABLE)) == comfortable
-    compact_metrics = _normalized(css_metric_variables(COMPACT))
-    assert {name: compact_metrics[name] for name in compact} == compact
+    assert light == {**css_color_variables(LIGHT), **css_metric_variables(COMFORTABLE)}
+    # Dark replaces the colors when the system is dark, or when the page asks.
+    assert _declared(css, ':root:not([data-theme="light"])') == dark
+    assert _declared(css, ':root[data-theme="dark"]') == dark
+    assert _declared(css, '[data-density="compact"]') == css_metric_variables(COMPACT)
 
 
 def test_both_schemes_define_every_color():

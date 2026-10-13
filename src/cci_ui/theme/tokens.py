@@ -2,9 +2,8 @@
 
 This module is the single source for how the apps look. The desktop palette
 and stylesheet are generated from it, and :func:`to_css` writes the same
-values as CSS custom properties whose names match the approved HTML mockup,
-so a future web front end uses identical values. It is pure Python and must
-never import Qt.
+values as CSS custom properties, so a future web front end uses identical
+values. It is pure Python and must never import Qt.
 """
 
 from __future__ import annotations
@@ -358,9 +357,9 @@ def _css_font_stack(families: Tuple[str, ...], generic: str) -> str:
 def to_css() -> str:
     """CSS for a web front end: light values, dark values, and compact density.
 
-    The shape matches the approved mockup: light tokens on ``:root``, dark
-    tokens under ``prefers-color-scheme: dark`` and ``[data-theme="dark"]``,
-    and compact sizes under ``[data-density="compact"]``.
+    Light tokens go on ``:root``, dark tokens under
+    ``prefers-color-scheme: dark`` and ``[data-theme="dark"]``, and compact
+    sizes under ``[data-density="compact"]``.
     """
 
     def block(selector: str, values: Dict[str, str], indent: str = "") -> str:

@@ -22,8 +22,8 @@ and validation stops the report until the match is fixed, so no stacked item
 quietly takes other values.
 
 :class:`~clinical_reporting.report.CLReport` builds its stacked forms whenever
-its data is set (:func:`build_all`), so every later step treats them as forms
-(ADR 0003). A saved setting keeps them under :data:`SETTINGS_KEY`:
+its data is set (:func:`build_all`), so every later step treats them as forms.
+A saved setting keeps them under :data:`SETTINGS_KEY`:
 
 .. code-block:: json
 
