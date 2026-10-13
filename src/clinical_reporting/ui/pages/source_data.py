@@ -16,7 +16,8 @@ files that bring them (or, for files already added, says to check and apply
 them). Forgetting the loaded setting greys those dropdowns out again, back
 to None: a new ZIP, removing the ZIP, turning the toggle off, picking
 "Choose a setting…", or a setting that fails to load. A new ZIP, or removing
-it, also tells the Stacked forms page to ask for Apply again.
+it, also tells the Stacked forms and Coalesced items pages to ask for Apply
+again.
 """
 
 from __future__ import annotations
@@ -225,11 +226,15 @@ class SourceDataMixin:
         self._input_file_path = file_path
         self._applied_cut_off_date = cut_off_date
         self._failed_cut_off_reload = None
-        # The new report has none of the applied additional or stacked forms.
+        # The new report has none of the applied additional or stacked forms,
+        # nor the coalesced items.
         self._forget_applied_additional_forms()
         forget_stacked_forms = getattr(self, "_forget_applied_stacked_forms", None)
         if forget_stacked_forms is not None:
             forget_stacked_forms()
+        forget_coalesced = getattr(self, "_forget_applied_coalesced_items", None)
+        if forget_coalesced is not None:
+            forget_coalesced()
         self._forget_export_results()
         self.ui.pushButton_remove_input.setEnabled(True)
 
@@ -261,10 +266,14 @@ class SourceDataMixin:
         self._failed_cut_off_reload = None
         self._forget_loaded_setting()
         self._forget_export_results()
-        # The fresh report has no stacked forms; the page asks to apply them.
+        # The fresh report has no stacked forms or coalesced items; the pages
+        # ask to apply them.
         forget_stacked_forms = getattr(self, "_forget_applied_stacked_forms", None)
         if forget_stacked_forms is not None:
             forget_stacked_forms()
+        forget_coalesced = getattr(self, "_forget_applied_coalesced_items", None)
+        if forget_coalesced is not None:
+            forget_coalesced()
 
         self._show_input_file()
         self._show_data_read(None)

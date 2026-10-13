@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from clinical_reporting import steps, validation
+from clinical_reporting import coalescing, steps, validation
 from clinical_reporting.additional_names import (
     BY_FILE_NAME,
     IgnoredName,
@@ -371,6 +371,33 @@ def test_a_coalesced_item_built_without_an_item_says_so():
     assert steps.coalesced_missing_message(report) == (
         "Origin in DM isn't built: DM has no Ethnic or E2."
     )
+
+
+def test_a_coalesced_items_counts_say_where_its_rows_take_their_value():
+    form = pd.DataFrame(
+        {
+            "Subject": ["001", "002", "003", "004"],
+            "Race": ["White", "Other", None, "Asian"],
+            "Race Other": [None, "Mixed", None, "Thai"],
+        }
+    )
+
+    counts = steps.coalesced_counts(RACE, coalescing.build(RACE, form))
+
+    assert counts == (
+        "DM has 4 rows: 2 keep Race · 1 filled from Race Other · 1 left empty · "
+        "1 row overlaps"
+    )
+
+
+def test_a_coalesced_item_being_edited_says_what_stops_it():
+    one = steps.coalesced_item_problems_message(["Give it a name."])
+    two = steps.coalesced_item_problems_message(["Give it a name.", "Pick its form."])
+
+    assert one == "Can't apply yet: Give it a name."
+    assert one.kind == "warning"
+    assert two == "Can't apply yet:\n- Give it a name.\n- Pick its form."
+    assert steps.coalesced_item_problems_message([]) == ""
 
 
 def test_later_overlaps_list_their_first_rows_and_every_row_in_the_details():

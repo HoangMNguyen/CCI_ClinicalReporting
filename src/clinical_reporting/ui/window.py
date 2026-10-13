@@ -21,6 +21,7 @@ from .base import WidgetBaseMixin
 from .main_ui import ClinicalReportingUi
 from .navigation import NavigationMixin
 from .pages.additional_input import AdditionalInputMixin
+from .pages.coalesced_items import CoalescedItemsMixin
 from .pages.filters import FiltersMixin
 from .pages.joins import JoinsMixin
 from .pages.order_rename import OrderRenameMixin
@@ -36,6 +37,7 @@ BEHAVIORS = (
     SourceDataMixin,
     AdditionalInputMixin,
     StackedFormsMixin,
+    CoalescedItemsMixin,
     FormsMixin,
     CommonItemsMixin,
     FormItemsMixin,
@@ -62,6 +64,7 @@ class Widget(QMainWindow, *BEHAVIORS):
         self._init_source_data()
         self._init_additional_input()
         self._init_stacked_forms()
+        self._init_coalesced_items()
         self._init_forms()
         self._init_common_items()
         self._init_form_items()

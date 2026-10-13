@@ -47,6 +47,7 @@ from clinical_reporting.additional_names import (
     IgnoredName,
     SavedFileNames,
 )
+from clinical_reporting.coalescing import CoalescedItem, Outcome
 from clinical_reporting.models import is_qualified, qualify, split_qualified
 from clinical_reporting.stacking import Match, MatchedItem, StackedForm, layout
 from clinical_reporting.validation import ReportValidationIssue
@@ -911,9 +912,41 @@ def coalesced_applied_message(report) -> feedback.Message:
         if outcome is None:
             parts.append(f"{coalescing.label(item)} (not built)")
             continue
-        filled = sum(list(outcome.rows.values())[1:])
-        parts.append(f"{coalescing.label(item)} ({row_count(filled)} filled)")
+        filled = row_count(outcome.filled)
+        parts.append(f"{coalescing.label(item)} ({filled} filled)")
     return feedback.success(f"Applied. Coalesced items: {'; '.join(parts)}.")
+
+
+def coalesced_counts(item: CoalescedItem, outcome: Outcome) -> str:
+    """Where the rows of *item*'s form take their value from, as *outcome* gives.
+
+    For example "DM has 250 rows: 230 keep Race · 12 filled from Race Other
+    Specify · 6 left empty · 2 rows overlap".
+    """
+    (first, kept), *later = outcome.rows.items()
+    overlapping = outcome.overlapping
+    parts = [
+        f"{kept:,} keep {first}",
+        *(f"{count:,} filled from {name}" for name, count in later),
+        f"{outcome.empty:,} left empty",
+        "1 row overlaps" if overlapping == 1 else f"{overlapping:,} rows overlap",
+    ]
+    rows = sum(outcome.rows.values()) + outcome.empty
+    return f"{item.form} has {row_count(rows)}: {' · '.join(parts)}"
+
+
+def coalesced_item_problems_message(problems: Sequence[str]) -> str:
+    """What stops the coalesced item being edited from being applied, or "".
+
+    A warning listing its *problems*
+    (:func:`clinical_reporting.coalescing.problems_of`).
+    """
+    if not problems:
+        return ""
+    if len(problems) == 1:
+        return feedback.warning(f"Can't apply yet: {problems[0]}")
+    listed = "\n".join(f"- {problem}" for problem in problems)
+    return feedback.warning(f"Can't apply yet:\n{listed}")
 
 
 def coalesced_problems_message(
@@ -1026,6 +1059,8 @@ __all__ = [
     "additional_form_names_message",
     "coalesced_applied_message",
     "coalesced_conflict_message",
+    "coalesced_counts",
+    "coalesced_item_problems_message",
     "coalesced_missing_message",
     "coalesced_problems_message",
     "issue_step",

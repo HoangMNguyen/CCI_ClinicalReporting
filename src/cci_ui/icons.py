@@ -27,6 +27,7 @@ class IconName:
     SOURCE_DATA = "database"
     ADDITIONAL_INPUT = "file-plus-2"
     STACKED_FORMS = "layers"
+    COALESCED_ITEMS = "blend"
     FORMS = "clipboard-list"
     COMMON_ITEMS = "list-checks"
     FORM_ITEMS = "list-tree"

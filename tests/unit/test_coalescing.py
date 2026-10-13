@@ -148,6 +148,12 @@ def test_a_form_without_subject_names_an_overlap_by_its_row_alone():
     assert (dict(outcome.rows), outcome.empty) == ({"A": 1, "B": 1}, 1)
 
 
+def test_an_outcome_counts_the_rows_filled_and_the_rows_that_overlap():
+    outcome = coalescing.build(RACE_THREE, _three_items())
+
+    assert (outcome.filled, outcome.overlapping) == (3, 3)
+
+
 def test_a_new_name_puts_the_coalesced_item_where_its_first_item_was():
     outcome = coalescing.build(_race(name="Race (all)"), _dm())
 
@@ -228,6 +234,30 @@ def test_a_name_is_given_and_free_in_its_form():
         "Origin in DM: Another coalesced item of DM is called Origin.",
         "Origin in DM: Another coalesced item of DM is called Origin.",
     ]
+
+
+def test_one_coalesced_items_problems_read_as_apply_says_them():
+    items = [
+        _race(name="Age"),
+        CoalescedItem("DM", "Ethnicity", "Ethnicity", (Fill("Race Other Specify"),)),
+    ]
+
+    assert coalescing.problems_of(items, 1, _forms()) == [
+        "Race Other Specify is already in Age."
+    ]
+    assert coalescing.name_problem(items, 0, _forms()) == (
+        "DM already has an item called Age."
+    )
+    assert coalescing.name_problem(items, 1, _forms()) == ""
+
+
+def test_a_preview_is_what_a_coalesced_item_gives_once_it_can_be_built():
+    items = [_race(), CoalescedItem("DM", "Ethnicity", "Ethnicity", (Fill(""),))]
+
+    preview = coalescing.preview(items, 0, _forms())
+
+    assert preview.frame["Race"].tolist() == ["White", "Hispanic", "Asian"]
+    assert coalescing.preview(items, 1, _forms()) is None
 
 
 def test_a_common_item_is_only_coalesced_under_its_own_name():

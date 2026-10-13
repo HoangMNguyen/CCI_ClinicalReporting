@@ -26,6 +26,7 @@ from cci_ui.widgets.views import EmptyState
 from clinical_reporting import steps
 
 from .pages.additional_input import AdditionalInputPage
+from .pages.coalesced_items import CoalescedItemsPage
 from .pages.filters import ComparisonsPage, FiltersPage
 from .pages.joins import JoinsPage
 from .pages.order_rename import OrderRenamePage
@@ -41,6 +42,7 @@ PAGE_CLASSES = (
     SourceDataPage,
     AdditionalInputPage,
     StackedFormsPage,
+    CoalescedItemsPage,
     FormsPage,
     CommonItemsPage,
     FormItemsPage,

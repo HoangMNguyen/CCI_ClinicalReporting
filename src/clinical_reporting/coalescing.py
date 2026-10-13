@@ -142,6 +142,16 @@ class Outcome:
     def __post_init__(self) -> None:
         object.__setattr__(self, "rows", MappingProxyType(dict(self.rows)))
 
+    @property
+    def filled(self) -> int:
+        """How many rows a later item filled."""
+        return sum(list(self.rows.values())[1:])
+
+    @property
+    def overlapping(self) -> int:
+        """How many rows overlap (at one later item or more)."""
+        return len({overlap.row for overlap in self.overlaps})
+
 
 def _empty(values: pd.Series) -> pd.Series:
     """Which of *values* are empty: missing, or text of only spaces."""
@@ -332,19 +342,80 @@ def problems(
     and no item is held to its name. An overlap's line names its first
     *shown* rows (every row with ``None``).
     """
-    names = Counter(
+    found = []
+    for item, (issues, buildable) in zip(items, _checks(items, data)):
+        if buildable:
+            issues = [*issues, *_refused_overlaps(item, data, shown)]
+        found.extend(f"{label(item)}: {issue}" for issue in issues)
+    return found
+
+
+def problems_of(
+    items: Sequence[CoalescedItem],
+    position: int,
+    data: Mapping[str, pd.DataFrame],
+    *,
+    shown: Optional[int] = 5,
+) -> List[str]:
+    """What stops the coalesced item at *position* among *items* being applied.
+
+    As :func:`problems` says it, without its name in front: for a page that
+    shows one coalesced item at a time.
+    """
+    issues, buildable = _checks(items, data)[position]
+    if buildable:
+        issues = [*issues, *_refused_overlaps(items[position], data, shown)]
+    return issues
+
+
+def name_problem(
+    items: Sequence[CoalescedItem], position: int, data: Mapping[str, pd.DataFrame]
+) -> str:
+    """What's wrong with the name of the coalesced item at *position*, or "".
+
+    As :func:`problems` says it (without the coalesced item's name in front),
+    for a page that marks the name as it is typed.
+    """
+    item = items[position]
+    if item.form not in data:
+        return ""
+    return _name_issue(item, set(data[item.form].columns), _names(items))
+
+
+def preview(
+    items: Sequence[CoalescedItem], position: int, data: Mapping[str, pd.DataFrame]
+) -> Optional[Outcome]:
+    """What the coalesced item at *position* among *items* gives over *data*.
+
+    ``None`` while it can't be built: no form, fewer than two items, an item
+    its form lacks or another coalesced item holds (see :func:`problems_of`).
+    """
+    _issues_found, buildable = _checks(items, data)[position]
+    if not buildable:
+        return None
+    item = items[position]
+    return build(item, data[item.form])
+
+
+def _names(items: Sequence[CoalescedItem]) -> Counter:
+    """How many coalesced items of each form have each name."""
+    return Counter(
         (item.form, item.name.strip()) for item in items if item.name.strip()
     )
+
+
+def _checks(
+    items: Sequence[CoalescedItem], data: Mapping[str, pd.DataFrame]
+) -> List[Tuple[List[str], bool]]:
+    """Each coalesced item's problems but its overlaps, and if it can be built."""
+    names = _names(items)
     common = set(common_items(data)) if len(data) > 1 else set()
     # The position of the coalesced item each (form, item) is in first.
     holders: Dict[Tuple[str, str], int] = {}
-    found = []
-    for position, item in enumerate(items):
-        found.extend(
-            f"{label(item)}: {issue}"
-            for issue in _issues(items, position, data, names, common, holders, shown)
-        )
-    return found
+    return [
+        _issues(items, position, data, names, common, holders)
+        for position in range(len(items))
+    ]
 
 
 def _issues(
@@ -354,13 +425,12 @@ def _issues(
     names: Mapping[Tuple[str, str], int],
     common: Collection[str],
     holders: Dict[Tuple[str, str], int],
-    shown: Optional[int],
-) -> List[str]:
+) -> Tuple[List[str], bool]:
     item = items[position]
     if not item.form:
-        return ["Pick its form."]
+        return ["Pick its form."], False
     if item.form not in data:
-        return [f"{item.form} isn't loaded."]
+        return [f"{item.form} isn't loaded."], False
     columns = set(data[item.form].columns)
     picked = [name for name in item.items if name.strip()]
     counts = Counter(picked)
@@ -387,22 +457,39 @@ def _issues(
             issues.append(f"{picked_name} is already in {other}.")
     # Overlaps only count once it can be built as it stands.
     buildable = not issues
+    name_issue = _name_issue(item, columns, names)
+    if name_issue:
+        issues.append(name_issue)
     name = item.name.strip()
-    if not name:
-        issues.append("Give it a name.")
-    elif name in columns and name not in counts:
-        issues.append(f"{item.form} already has an item called {name}.")
-    elif names[(item.form, name)] > 1:
-        issues.append(f"Another coalesced item of {item.form} is called {name}.")
     issues.extend(
         f"{picked_name} is a common item: name the coalesced item {picked_name}, "
         f"or leave {picked_name} out."
         for picked_name in counts
         if picked_name in common and picked_name != name
     )
-    if buildable and item.on_overlap == REFUSE:
-        issues.extend(_overlap_lines(item, build(item, data[item.form]), shown))
-    return issues
+    return issues, buildable
+
+
+def _name_issue(
+    item: CoalescedItem, columns: Collection[str], names: Mapping[Tuple[str, str], int]
+) -> str:
+    name = item.name.strip()
+    if not name:
+        return "Give it a name."
+    if name in columns and name not in item.items:
+        return f"{item.form} already has an item called {name}."
+    if names[(item.form, name)] > 1:
+        return f"Another coalesced item of {item.form} is called {name}."
+    return ""
+
+
+def _refused_overlaps(
+    item: CoalescedItem, data: Mapping[str, pd.DataFrame], shown: Optional[int]
+) -> List[str]:
+    """The overlaps that stop *item* from being applied, one line per item."""
+    if item.on_overlap != REFUSE:
+        return []
+    return _overlap_lines(item, build(item, data[item.form]), shown)
 
 
 def _overlap_lines(
@@ -557,6 +644,9 @@ __all__ = [
     "build_all",
     "from_settings",
     "label",
+    "name_problem",
+    "preview",
     "problems",
+    "problems_of",
     "to_settings",
 ]

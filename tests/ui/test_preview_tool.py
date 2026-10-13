@@ -49,6 +49,7 @@ def test_page_names_follow_the_step_order():
         "source",
         "additional",
         "stacked",
+        "coalesced",
         "forms",
         "common",
         "formitems",
