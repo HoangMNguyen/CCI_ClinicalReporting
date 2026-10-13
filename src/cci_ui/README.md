@@ -18,11 +18,8 @@ so every tool can depend on it. Its design values (`theme/tokens.py`,
 
 Edit `src/cci_ui/theme/tokens.py`: the light and dark colors, the
 Comfortable and Compact sizes, the type scale. The stylesheet is generated
-from it (`theme/qss.py`). The values match the approved mockup in
-`docs/design/clinical-reporting-mockup.html`, and
-`tests/ui/test_theme_tokens.py` keeps them in step: change both together.
-Check the result in the [gallery](#checking-the-look-the-gallery), in both
-schemes and densities.
+from it (`theme/qss.py`). Check the result in the
+[gallery](#checking-the-look-the-gallery), in both schemes and densities.
 
 ## Components
 

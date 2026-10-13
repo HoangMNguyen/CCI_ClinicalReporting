@@ -25,7 +25,7 @@ def _workbook(path, *, file_name=""):
     return OutputFile(f"{file_name} 260131_101500.xlsx", b"PK workbook")
 
 
-def test_it_is_the_mockups_single_page(window):
+def test_it_is_a_single_page(window):
     page = window.page
 
     assert window.windowTitle() == "Safety Automation"

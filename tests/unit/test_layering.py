@@ -5,8 +5,7 @@ The tools build on cci_ui, so cci_ui importing a tool would tie the kit to it
 (and risk import cycles). Where the kit needs something from a tool, such as
 the workbook a workflow returns, it takes it duck-typed (cci_ui.files).
 Likewise no Clinical Reporting module outside its ``ui`` package and
-``__main__.py`` imports ``clinical_reporting.ui``, so the core runs without
-Qt (ADR 0002).
+``__main__.py`` imports ``clinical_reporting.ui``, so the core runs without Qt.
 """
 
 import ast
