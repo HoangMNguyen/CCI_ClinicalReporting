@@ -7,11 +7,11 @@ preview and the export runs in the background
 
 A saved setting holds the report's settings
 (:meth:`~clinical_reporting.report.CLReport.settings_to_dict`, its applied
-stacked forms included) plus the names given to the additional input files
-on the Additional input page
+stacked forms and coalesced items included) plus the names given to the
+additional input files on the Additional input page
 (:func:`clinical_reporting.additional_names.add_to_settings`). When the
-Stacked forms page has changes that aren't applied, the save message says
-they weren't saved.
+Stacked forms or Coalesced items page has changes that aren't applied, the
+save message says they weren't saved.
 """
 
 from __future__ import annotations
@@ -272,12 +272,19 @@ class PreviewExportMixin:
         except Exception:  # Defensive isolation from telemetry regressions.
             pass
 
-        # A setting keeps what's applied: say so if the Stacked forms page
-        # has changes that aren't.
-        unapplied = getattr(self, "_has_unapplied_stacked_forms", None)
-        if unapplied is not None and unapplied():
+        # A setting keeps what's applied: say so if the Stacked forms or
+        # Coalesced items page has changes that aren't.
+        notes = [
+            note
+            for unapplied, note in (
+                ("_has_unapplied_stacked_forms", steps.STACKED_NOT_SAVED_NOTE),
+                ("_has_unapplied_coalesced_items", steps.COALESCED_NOT_SAVED_NOTE),
+            )
+            if getattr(self, unapplied, lambda: False)()
+        ]
+        if notes:
             saved = feedback.warning(
-                f"Settings saved to {settings_path}. {steps.STACKED_NOT_SAVED_NOTE}"
+                f"Settings saved to {settings_path}. {' '.join(notes)}"
             )
         else:
             saved = feedback.success(f"Settings saved to {settings_path}")

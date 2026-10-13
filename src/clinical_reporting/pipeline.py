@@ -28,47 +28,42 @@ from clinical_reporting.models import (
 logger = logging.getLogger(__name__)
 
 
-def apply_static_filter(df, item, operator, value):
-    """Filter rows by comparing one column with a configured value."""
-    if df is None or df.empty or item not in df.columns:
-        return df
+def static_filter_mask(values: pd.Series, operator: str, value) -> pd.Series:
+    """Which of *values* pass the filter *operator* *value*, as booleans.
 
+    The test the Filters step applies to an item's values (coalesced items'
+    conditions use it too): text compares ignoring case, and a value that
+    reads as a number compares as one. Raises ``ValueError`` for an operator
+    that isn't one of :data:`Operator.STATIC`.
+    """
     is_numeric = False
     try:
         numeric_value = pd.to_numeric(value)
-        numeric_column = pd.to_numeric(df[item], errors="coerce")
+        numeric_column = pd.to_numeric(values, errors="coerce")
         is_numeric = True
     except Exception:
         pass
 
     if operator == Operator.EQ:
         if is_numeric:
-            return df[numeric_column == numeric_value]
-        return df[df[item].astype(str).str.lower() == str(value).lower()]
+            return numeric_column == numeric_value
+        return values.astype(str).str.lower() == str(value).lower()
     if operator == Operator.NE:
         if is_numeric:
-            return df[numeric_column != numeric_value]
-        return df[df[item].astype(str).str.lower() != str(value).lower()]
+            return numeric_column != numeric_value
+        return values.astype(str).str.lower() != str(value).lower()
     if operator == Operator.GT:
-        return (
-            df[numeric_column > numeric_value] if is_numeric else df[df[item] > value]
-        )
+        return numeric_column > numeric_value if is_numeric else values > value
     if operator == Operator.GE:
-        return (
-            df[numeric_column >= numeric_value] if is_numeric else df[df[item] >= value]
-        )
+        return numeric_column >= numeric_value if is_numeric else values >= value
     if operator == Operator.LT:
-        return (
-            df[numeric_column < numeric_value] if is_numeric else df[df[item] < value]
-        )
+        return numeric_column < numeric_value if is_numeric else values < value
     if operator == Operator.LE:
-        return (
-            df[numeric_column <= numeric_value] if is_numeric else df[df[item] <= value]
-        )
+        return numeric_column <= numeric_value if is_numeric else values <= value
     if operator == Operator.CONTAINS:
-        return df[df[item].astype(str).str.contains(str(value), case=False, na=False)]
+        return values.astype(str).str.contains(str(value), case=False, na=False)
     if operator == Operator.NOT_CONTAINS:
-        return df[~df[item].astype(str).str.contains(str(value), case=False, na=False)]
+        return ~values.astype(str).str.contains(str(value), case=False, na=False)
     if operator in {Operator.IN, Operator.NOT_IN}:
         value_list = [part.strip() for part in str(value).split(",")]
         if is_numeric:
@@ -78,24 +73,37 @@ def apply_static_filter(df, item, operator, value):
                 )
             except Exception:
                 matches = (
-                    df[item]
-                    .astype(str)
+                    values.astype(str)
                     .str.lower()
                     .isin([part.lower() for part in value_list])
                 )
         else:
             matches = (
-                df[item]
-                .astype(str)
+                values.astype(str)
                 .str.lower()
                 .isin([part.lower() for part in value_list])
             )
-        return df[matches] if operator == Operator.IN else df[~matches]
+        return matches if operator == Operator.IN else ~matches
     if operator == Operator.IS_NULL:
-        return df[df[item].isnull()]
+        return values.isnull()
     if operator == Operator.IS_NOT_NULL:
-        return df[~df[item].isnull()]
-    return df
+        return ~values.isnull()
+    raise ValueError(f"Unknown filter operator: {operator!r}")
+
+
+def apply_static_filter(df, item, operator, value):
+    """Filter rows by comparing one column with a configured value.
+
+    An operator that isn't one of :data:`Operator.STATIC` keeps every row.
+    """
+    if (
+        df is None
+        or df.empty
+        or item not in df.columns
+        or operator not in Operator.STATIC
+    ):
+        return df
+    return df[static_filter_mask(df[item], operator, value)]
 
 
 def _looks_numeric(sample) -> bool:

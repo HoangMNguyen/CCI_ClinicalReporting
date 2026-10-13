@@ -73,6 +73,7 @@ class WidgetBaseMixin:
         self._in_coordinated_refresh = True
         try:
             self.update_stacked_forms_ui()
+            self.update_coalesced_items_ui()
             self.update_forms_ui()
             self.update_common_items_ui()
             self.update_form_dependent_ui()
