@@ -28,8 +28,7 @@ from cci_ui.theme.palette import qcolor
 from cci_ui.widgets.buttons import make_button
 from cci_ui.widgets.labels import IconLabel, text_label
 
-#: Widest a result column grows to fit its contents; longer values are
-#: shortened (as the mockup's preview grid does).
+#: Widest a result column grows to fit its contents; longer values are shortened.
 COLUMN_MAX_W = 320
 #: Rows looked at when sizing result columns: enough for a fair width,
 #: without reading every row of a large result (it runs on the GUI thread).

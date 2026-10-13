@@ -181,7 +181,6 @@ tests/
   integration/                 # Clinical Reporting end-to-end report/settings/API tests
   ui/                          # design-system, window and page tests (need Qt)
 infra/run_counter/             # AWS stack behind the usage counter (its README)
-docs/design/clinical-reporting-mockup.html  # the approved mockup the design follows
 docs/adr/                      # architecture decisions: what was decided and why
 GLOSSARY.md                    # the domain words the code and docs use
 *.spec, build_support.py       # PyInstaller builds (see Building the executables)
@@ -242,8 +241,8 @@ Testing notes:
   can run; a `QTest.qWait` loop holds Python's GIL and slows the worker down
   many times over. Test stand-ins without a `task_runner` run the work
   directly (`cci_ui.tasks.run_task`).
-- The tests that guard the look (the tokens against the mockup, no stray
-  windows, the icons) are described in the
+- The tests that guard the look (no stray windows, the icons) are
+  described in the
   [design system's README](src/cci_ui/README.md). Clinical Reporting's own
   testing notes (tagged status messages, sidebar badges) are in its
   [README](src/clinical_reporting/README.md#testing-notes), and the tests

@@ -217,7 +217,7 @@ def test_long_preview_values_show_whole_in_a_tooltip():
     assert model.data(model.index(1, 0), Qt.ToolTipRole) is None
 
 
-def test_small_wording_from_the_mockup(empty_window):
+def test_small_wording_on_the_controls_and_pages(empty_window):
     ui = empty_window.ui
 
     assert ui.pushButton_remove_input.toolTip() == "Remove file"

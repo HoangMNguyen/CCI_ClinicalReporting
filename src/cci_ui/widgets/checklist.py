@@ -53,7 +53,7 @@ from cci_ui.widgets.labels import text_label
 from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.views import PlaceholderListWidget
 
-#: Narrowest the checklist opens, however narrow the box (as in the mockup).
+#: Narrowest the checklist opens, however narrow the box.
 _POPUP_MIN_W = 300
 #: Tallest the list of rows grows before it scrolls.
 _LIST_MAX_H = 248
@@ -137,7 +137,7 @@ class _RowDelegate(QStyledItemDelegate):
 class _ChecklistView(PlaceholderListWidget):
     """The rows; a click or Space ticks a row instead of selecting it.
 
-    A ticked row is also shown selected, as in the mockup.
+    A ticked row is also shown selected.
     """
 
     toggleRequested = Signal(QListWidgetItem)
