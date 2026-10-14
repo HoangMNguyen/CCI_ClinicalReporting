@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from cci_ui.theme import manager as theme_manager
-from cci_ui.theme.manager import Theme
+from cci_ui.theme.manager import Theme, ThemeMode
 from cci_ui.theme.tokens import COMPACT, LAYOUT, LIGHT, Density, Scheme
 from cci_ui.widgets import status
 from cci_ui.widgets.busy import REVEAL_DELAY_MS, BusyOverlay
@@ -638,11 +638,19 @@ def test_collapsed_sidebar_hides_titles_and_shows_rules(qapp):
 # App shell
 
 
-def _shell(make_manager):
-    shell = AppShell(make_manager(), title="Clinical Reporting")
+def _shell(make_manager, **flags):
+    shell = AppShell(make_manager(), title="Clinical Reporting", **flags)
     shell.add_page("source", Page("Source data"), title="Source data", section="Data")
     shell.add_page("joins", Page("Joins"), title="Joins", section="Rules")
     return shell
+
+
+def _comfortable(make_manager):
+    """A theme manager in Comfortable (not Automatic: the test screen is small)."""
+    manager = make_manager()
+    manager.set_density(Density.COMFORTABLE)
+    manager.apply()
+    return manager
 
 
 def test_shell_switches_pages_and_shows_where_you_are(make_manager):
@@ -732,6 +740,60 @@ def test_sidebar_shortcut_toggles_at_any_width(make_manager, shown):
     QTest.keySequence(shell.sidebar.item("source"), QKeySequence(SIDEBAR_SHORTCUT))
 
     assert shell.is_sidebar_collapsed()
+
+
+def test_an_opted_in_shell_starts_as_a_strip_in_compact(make_manager, shown, compact):
+    shell = shown(_shell(make_manager, collapse_in_compact=True), 1300, 700)
+    started_collapsed = shell.is_sidebar_collapsed()
+    shell.sidebar.item("source").setFocus()
+
+    QTest.keySequence(shell.sidebar.item("source"), QKeySequence(SIDEBAR_SHORTCUT))
+
+    assert started_collapsed and not shell.is_sidebar_collapsed()
+
+
+def test_each_density_gets_its_own_sidebar_state_back(make_manager, shown):
+    manager = _comfortable(make_manager)
+    shell = shown(_shell(make_manager, collapse_in_compact=True), 1300, 700)
+    started_open = not shell.is_sidebar_collapsed()
+    shell.toggle_sidebar()  # Hidden in Comfortable.
+    manager.set_density(Density.COMPACT)
+    compact_default = shell.is_sidebar_collapsed()
+    shell.toggle_sidebar()  # Opened in Compact.
+    manager.set_mode(ThemeMode.DARK)  # Not a density change.
+    compact_after_dark = shell.is_sidebar_collapsed()
+    manager.set_density(Density.COMFORTABLE)
+    comfortable_again = shell.is_sidebar_collapsed()
+    manager.set_density(Density.COMPACT)
+    compact_again = shell.is_sidebar_collapsed()
+    manager.set_density(Density.COMFORTABLE)
+
+    assert started_open and compact_default
+    assert not compact_after_dark
+    assert comfortable_again and not compact_again
+
+
+def test_a_shell_without_the_flags_ignores_density_changes(make_manager, shown):
+    manager = _comfortable(make_manager)
+    shell = shown(_shell(make_manager), 1300, 700)
+    shell.toggle_sidebar()  # Hidden in Comfortable.
+    manager.set_density(Density.COMPACT)
+    in_compact = shell.is_sidebar_collapsed()
+    shell.toggle_sidebar()  # Opened in Compact.
+    manager.set_density(Density.COMFORTABLE)
+
+    assert in_compact and not shell.is_sidebar_collapsed()
+
+
+def test_the_badge_strip_is_wider_than_the_plain_strip(make_manager, shown):
+    plain = shown(_shell(make_manager), 1000, 700)
+    badged = shown(_shell(make_manager, strip_badges=True), 1000, 700)
+    badged.sidebar.set_status("source", count=999)
+    badged.sidebar.set_status("joins", StepState.WARNING)
+
+    assert plain.is_sidebar_collapsed() and badged.is_sidebar_collapsed()
+    assert (plain.sidebar.width(), badged.sidebar.width()) == (56, 72)
+    badged.grab()  # Paints the badges beside the icons without errors.
 
 
 def test_shell_shows_the_current_page_and_a_display_button_with_a_theme(
@@ -899,6 +961,22 @@ def test_remember_restores_the_window_and_sidebar_after_a_restart(
         reopened.close()
         shiboken6.delete(window)
         shiboken6.delete(reopened)
+
+
+def test_window_state_keeps_each_densitys_sidebar_state(make_manager, ini_settings):
+    manager = _comfortable(make_manager)
+    shell = _shell(make_manager, collapse_in_compact=True)
+    shell.set_sidebar_collapsed(True)  # Hidden in Comfortable.
+    manager.set_density(Density.COMPACT)
+    shell.set_sidebar_collapsed(False)  # Opened in Compact.
+    WindowState("clinical-reporting", ini_settings).save_sidebar(shell)
+
+    reopened = _shell(make_manager, collapse_in_compact=True)  # Opens in Compact.
+    WindowState("clinical-reporting", ini_settings).restore_sidebar(reopened)
+    in_compact = reopened.is_sidebar_collapsed()
+    manager.set_density(Density.COMFORTABLE)
+
+    assert not in_compact and reopened.is_sidebar_collapsed()
 
 
 def test_window_state_reads_numbers_and_flags_stored_as_text(qapp, ini_settings):
