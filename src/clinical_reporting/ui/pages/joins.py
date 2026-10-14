@@ -53,13 +53,14 @@ class JoinsPage(Page):
             ["Form", "Item 1", "Item 2", "Item 3", "Order", "Type"],
             [
                 ColumnSpec("interactive", 190),
-                ColumnSpec("stretch"),
-                ColumnSpec("stretch"),
-                ColumnSpec("stretch"),
-                ColumnSpec("fixed", 84),
-                ColumnSpec("fixed", 140),
+                ColumnSpec("stretch", editable=True),
+                ColumnSpec("stretch", editable=True),
+                ColumnSpec("stretch", editable=True),
+                ColumnSpec("fixed", 84, editable=True),
+                ColumnSpec("fixed", 140, editable=True),
             ],
             placeholder="Select forms to set how they are joined.",
+            controls=True,
         )
         # What stops the joins from working, kept current as they change: a
         # state of the page, so it isn't repeated in the status bar.

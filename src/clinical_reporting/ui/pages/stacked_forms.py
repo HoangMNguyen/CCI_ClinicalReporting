@@ -77,7 +77,12 @@ from cci_ui.widgets.labels import section_label, text_label
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.status import StatusBanner
-from cci_ui.widgets.tables import ColumnSpec, style_table, table_card
+from cci_ui.widgets.tables import (
+    ColumnSpec,
+    EditableColumnsHeader,
+    style_table,
+    table_card,
+)
 from clinical_reporting import stacking, steps
 from clinical_reporting.session import apply_stacked_forms
 from clinical_reporting.stacking import (
@@ -92,8 +97,8 @@ from ._common import CellComboBox, make_table
 
 #: The Stacked forms table's columns: Name, Members, Items, Rows.
 _FORMS_COLUMNS = (
-    ColumnSpec("interactive", 220),
-    ColumnSpec("stretch"),
+    ColumnSpec("interactive", 220, editable=True),
+    ColumnSpec("stretch", editable=True),
     ColumnSpec("fixed", 76),
     ColumnSpec("fixed", 92),
 )
@@ -452,8 +457,11 @@ class _GridDelegate(QStyledItemDelegate):
         painter.restore()
 
 
-class _GridHeader(QHeaderView):
-    """The items grid's header: a line after each column, as its rows have."""
+class _GridHeader(EditableColumnsHeader):
+    """The items grid's header: a line after each column, as its rows have.
+
+    Its editable columns (the matched items' names and members) show the pencil.
+    """
 
     def paintSection(self, painter, rect, logical_index) -> None:  # noqa: N802 (Qt override)
         super().paintSection(painter, rect, logical_index)
@@ -504,7 +512,11 @@ class StackedItemsGrid(QTableView):
         self._probe: Optional[_GridBox] = None
         model = QStandardItemModel(0, 1, self)
         self.setModel(model)
-        style_table(self, selection=QAbstractItemView.SelectionMode.ExtendedSelection)
+        style_table(
+            self,
+            selection=QAbstractItemView.SelectionMode.ExtendedSelection,
+            controls=True,
+        )
         self.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -516,6 +528,7 @@ class StackedItemsGrid(QTableView):
             self.frozen,
             selection=QAbstractItemView.SelectionMode.ExtendedSelection,
             embedded=True,
+            controls=True,
         )
         # Its section and note rows let the grid's show through.
         self.frozen.setStyleSheet("QTableView { background: transparent; }")
@@ -538,6 +551,9 @@ class StackedItemsGrid(QTableView):
         first_header = self.frozen.horizontalHeader()
         first_header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         first_header.setMinimumSectionSize(NARROWEST_COLUMN_W)
+        # The matched items' name boxes sit in the first column's view, their
+        # members' dropdowns in the grid: those headers show the pencil.
+        first_header.set_editable_columns([0])
         # A double-click on an edge fits the column to all it can show, not
         # (as Qt would) to the rows shown.
         for edges in (header, first_header):
@@ -576,6 +592,7 @@ class StackedItemsGrid(QTableView):
                 header.setSectionResizeMode(column, QHeaderView.ResizeMode.Interactive)
                 self.frozen.setColumnHidden(column, True)
             self.frozen.setColumnHidden(0, False)
+            header.set_editable_columns(range(1, model.columnCount()))
         finally:
             self._sizing = False
         self._members = [member for member, _, _ in members]
@@ -599,8 +616,10 @@ class StackedItemsGrid(QTableView):
         metrics = self.fontMetrics()
         box_metrics = self._cell_probe().fontMetrics()
         around = self._box_chrome() + _CELL_EDGES
+        # The first column's header shows in the first column's view.
+        first_header = self.frozen.horizontalHeader()
         first = max(
-            [FIRST_COLUMN_MIN_W, header.sectionSizeHint(0)]
+            [FIRST_COLUMN_MIN_W, first_header.sectionSizeHint(0)]
             + [metrics.horizontalAdvance(name) + _CELL_EDGES for name in names]
             + [box_metrics.horizontalAdvance(name) + around for name in boxes]
         )
@@ -746,7 +765,8 @@ class StackedItemsGrid(QTableView):
         header = self.horizontalHeader()
         available = self.viewport().width()
         if self._dragged_first is None:
-            share = max(header.sectionSizeHint(0), int(available * FIRST_COLUMN_SHARE))
+            first_hint = self.frozen.horizontalHeader().sectionSizeHint(0)
+            share = max(first_hint, int(available * FIRST_COLUMN_SHARE))
             first = min(self._fitted[0], share)
         else:
             first = self._dragged_first
@@ -818,7 +838,7 @@ class StackedItemsGrid(QTableView):
             self._apply_widths()
 
     def _leave_gap_above(self, row: int) -> None:
-        height = current().metrics.row_h + SECTION_GAP
+        height = current().metrics.editor_row_h + SECTION_GAP
         self.setRowHeight(row, height)
         self.frozen.setRowHeight(row, height)
 
@@ -973,6 +993,7 @@ class StackedFormsPage(Page):
             ["Name", "Members", "Items", "Rows"],
             _FORMS_COLUMNS,
             placeholder=NO_STACKED_FORMS,
+            controls=True,
         )
         for column in (_ITEMS_COLUMN, _ROWS_COLUMN):
             header = self.tableWidget_stacked_forms.horizontalHeaderItem(column)
@@ -1019,7 +1040,7 @@ class StackedFormsPage(Page):
         margins = card.layout().contentsMargins()
         frames = 2 * (card.frameWidth() + table.frameWidth())
         card.setFixedHeight(
-            round(header + rows * current().metrics.row_h)
+            round(header + rows * current().metrics.editor_row_h)
             + margins.top()
             + margins.bottom()
             + frames

@@ -45,9 +45,14 @@ class FiltersPage(Page):
         # Row numbers: validation messages name filters by row.
         self.tableWidget_static_filter = make_table(
             ["Item", "Operator", "Value"],
-            [ColumnSpec("stretch"), ColumnSpec("fixed", 170), ColumnSpec("stretch")],
+            [
+                ColumnSpec("stretch", editable=True),
+                ColumnSpec("fixed", 170, editable=True),
+                ColumnSpec("stretch", editable=True),
+            ],
             placeholder="No filters. Press + to add one.",
             row_numbers=True,
+            controls=True,
         )
         toolbar = TableToolbar(
             add_tooltip="Add filter",
@@ -81,9 +86,14 @@ class ComparisonsPage(Page):
         )
         self.tableWidget_dynamic_filter = make_table(
             ["Item 1", "Operator", "Item 2"],
-            [ColumnSpec("stretch"), ColumnSpec("fixed", 120), ColumnSpec("stretch")],
+            [
+                ColumnSpec("stretch", editable=True),
+                ColumnSpec("fixed", 120, editable=True),
+                ColumnSpec("stretch", editable=True),
+            ],
             placeholder="No comparisons. Press + to add one.",
             row_numbers=True,
+            controls=True,
         )
         toolbar = TableToolbar(
             add_tooltip="Add comparison", remove_tooltip="Remove selected comparison"
