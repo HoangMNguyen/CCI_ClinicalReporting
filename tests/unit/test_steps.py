@@ -190,7 +190,10 @@ def test_the_additional_input_step_says_what_reaching_the_report_did():
     )
     assert added.kind == "success"
     assert one == "Additional input updated: 1 file added to the report. New forms: LB."
-    assert removed == "Additional input: the additional forms were removed from the report."
+    assert (
+        removed
+        == "Additional input: the additional forms were removed from the report."
+    )
     assert removed.kind == "success"
 
 
@@ -364,7 +367,9 @@ def test_the_coalesced_items_step_says_what_applying_did():
         "Coalesced items updated: Race in DM (1 row filled); Unit in LB (not built)."
     )
     assert applied.kind == "success"
-    assert removed == "Coalesced items: the coalesced items were removed from the report."
+    assert (
+        removed == "Coalesced items: the coalesced items were removed from the report."
+    )
     assert removed.kind == "success"
 
 
@@ -544,8 +549,7 @@ def test_cannot_run_counts_a_pages_own_problems():
     )
 
     assert message == (
-        "Cannot run: Select at least one form before running. "
-        "Fix Stacked forms first."
+        "Cannot run: Select at least one form before running. Fix Stacked forms first."
     )
     assert message.details == "Stacked forms: DISP: Give it a name."
 

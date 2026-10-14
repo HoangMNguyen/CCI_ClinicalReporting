@@ -609,13 +609,26 @@ PAGES: Sequence[GalleryPage] = (
 )
 
 
+def _sample_help(key: str) -> str:
+    """The help panel's sample text for page *key* (Markdown)."""
+    return (
+        f"## What this page shows\n\nThe **{key}** components.\n\n"
+        "## Step by step\n\n1. Look at each component.\n2. Try it.\n"
+    )
+
+
 def build_gallery(theme: ThemeManager) -> Tuple[QMainWindow, AppShell]:
     """The gallery window with one page per component group."""
     window = QMainWindow()
     window.setWindowTitle("CCI design system")
-    # The step-list strip: numbers beside the icons, an icon strip in Compact.
+    # The step-list strip: numbers beside the icons, an icon strip in Compact;
+    # the "?" button opens a sample of the help panel.
     shell = AppShell(
-        theme, title="Design system", strip_badges=True, collapse_in_compact=True
+        theme,
+        title="Design system",
+        strip_badges=True,
+        collapse_in_compact=True,
+        help_text=_sample_help,
     )
     shell.set_context("Gallery")
     shell.status_bar.set_summary(

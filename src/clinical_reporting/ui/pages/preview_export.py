@@ -298,9 +298,7 @@ class PreviewExportMixin:
         issues = getattr(self, "_issues", None)
         if issues is None:  # A partial window (tests): validate here.
             issues = self.report.validate() if self.report is not None else []
-        message = steps.cannot_run_message(
-            issues, getattr(self, "_page_problems", {})
-        )
+        message = steps.cannot_run_message(issues, getattr(self, "_page_problems", {}))
         has_folder = bool(self.output_folder_name)
         picker = getattr(self.ui, "pathPicker_output_folder", None)
         if picker is not None:

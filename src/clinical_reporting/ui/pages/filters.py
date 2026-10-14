@@ -184,7 +184,9 @@ class FiltersMixin:
         table = self.ui.tableWidget_static_filter
         row = table.rowCount()
         table.insertRow(row)
-        table.setCellWidget(row, 0, self._filter_item_box(item, self._on_filter_changed))
+        table.setCellWidget(
+            row, 0, self._filter_item_box(item, self._on_filter_changed)
+        )
         combo = CellComboBox()
         combo.addItems(list(Operator.STATIC))
         combo.setCurrentText(operator)
@@ -232,7 +234,9 @@ class FiltersMixin:
             value_item.setFlags(value_item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
         else:
             value_item.setFlags(
-                value_item.flags() | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable
+                value_item.flags()
+                | Qt.ItemFlag.ItemIsEnabled
+                | Qt.ItemFlag.ItemIsEditable
             )
 
     def static_filter_add(self) -> None:
@@ -350,7 +354,10 @@ class FiltersMixin:
         table = self.ui.tableWidget_static_filter
         for row in range(table.rowCount()):
             field = f"static_filter_items.{row}"
-            item_box, operator_combo = table.cellWidget(row, 0), table.cellWidget(row, 1)
+            item_box, operator_combo = (
+                table.cellWidget(row, 0),
+                table.cellWidget(row, 1),
+            )
             value_item = table.item(row, 2)
             if item_box is not None:
                 item_box.set_problem(problem(f"{field}.0"))

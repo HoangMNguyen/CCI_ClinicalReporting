@@ -845,7 +845,9 @@ class CoalescedItemsMixin:
             finally:
                 table.blockSignals(False)
             self.ui.label_coalesced_counts.setText(
-                PICK_ITEMS if outcome is None else steps.coalesced_counts(draft, outcome)
+                PICK_ITEMS
+                if outcome is None
+                else steps.coalesced_counts(draft, outcome)
             )
         self._show_coalesced_problems(outcomes)
         self._show_coalesced_state()

@@ -268,6 +268,7 @@ def test_applying_says_what_it_added_and_removed():
     )
     assert widget.update_all_ui_calls == 2
 
+
 def test_files_that_cannot_be_read_are_reported_and_the_rest_added(
     qapp, monkeypatch, tmp_path
 ):

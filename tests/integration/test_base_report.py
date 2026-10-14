@@ -103,7 +103,6 @@ def test_a_setting_with_tied_join_orders_runs_in_its_form_order():
     assert list(base.table.columns) == list(untouched.table.columns)
 
 
-
 def test_a_setting_the_forms_lack_parts_of_is_refused():
     with pytest.raises(WorkflowInputError) as refused:
         build_base_report_from_forms(_forms(), _with_lab_and_height(_settings()))

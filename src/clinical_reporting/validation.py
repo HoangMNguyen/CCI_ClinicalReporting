@@ -380,7 +380,10 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 f"Dynamic filter {index + 1} has an invalid operator: {operator!r}.",
                 f"{field}.1",
             )
-        for position, operand_name, operand in ((0, "left", item1), (2, "right", item2)):
+        for position, operand_name, operand in (
+            (0, "left", item1),
+            (2, "right", item2),
+        ):
             if not str(operand).strip():
                 _add_issue(
                     issues,

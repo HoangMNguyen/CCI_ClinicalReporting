@@ -335,7 +335,10 @@ def cannot_run_message(
     if not to_fix and not unplaced:
         return None
     titles = [TITLES[key] for key in to_fix]
-    parts = [*unplaced, *([f"Fix {feedback.and_list(titles)} first."] if to_fix else [])]
+    parts = [
+        *unplaced,
+        *([f"Fix {feedback.and_list(titles)} first."] if to_fix else []),
+    ]
     details = "\n".join(
         f"{TITLES[key]}: {line}"
         for key in to_fix

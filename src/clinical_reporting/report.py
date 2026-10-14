@@ -802,7 +802,9 @@ class CLReport:
             return
         previous_first = ranking[0]
         ranking[index], ranking[target] = ranking[target], ranking[index]
-        subject = [SUBJECT_COLUMN] if SUBJECT_COLUMN in self.selected_common_items else []
+        subject = (
+            [SUBJECT_COLUMN] if SUBJECT_COLUMN in self.selected_common_items else []
+        )
         for order, form_name in enumerate(ranking, start=1):
             current = self.selected_forms[form_name]
             if order == 1:

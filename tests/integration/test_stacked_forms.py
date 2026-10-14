@@ -358,8 +358,7 @@ def test_an_additional_member_with_two_items_of_one_match_stops_the_report():
     )
     assert _conflicts(report) == [(CONFLICT, message, "stacked_forms")]
     assert steps.cannot_run_message(report.validate()) == (
-        "Cannot run: Select at least one form before running. "
-        "Fix Stacked forms first."
+        "Cannot run: Select at least one form before running. Fix Stacked forms first."
     )
 
 
