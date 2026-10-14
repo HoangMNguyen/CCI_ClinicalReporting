@@ -230,33 +230,61 @@ class Metrics:
     """Sizes in logical pixels for one density; they scale with Windows display scaling."""
 
     control_h: int  # buttons, inputs, combos
-    row_h: int  # table and list rows
+    row_h: int  # read-only table and list rows, and table headers
+    editor_row_h: int  # rows of tables whose cells hold dropdowns or fields
     form_row_pad: int  # vertical padding of a row inside a card
     page_margin: int
     section_gap: int
     sidebar_row: int
+    header_h: int  # the header bar
+    status_h: int  # the status bar
+    page_title_px: int  # text size of page titles
+    page_header_gap: int  # space between a page's title block and its body
+    footer_pad_top: int  # space above a workspace page's footer ("Next: …")
+    footer_pad_bottom: int  # space below a workspace page's footer
+    panel_pad: int  # space inside each section of a side panel
+    panel_gap: int  # space between the parts of a side panel section
+    pair_gap: int  # space between and around the lists of a two-list picker
     radius_card: int = 10
     radius_control: int = 6
     radius_pill: int = 8
-    header_h: int = 44
-    status_h: int = 24
 
 
 COMFORTABLE = Metrics(
     control_h=28,
     row_h=32,
+    editor_row_h=32,
     form_row_pad=10,
     page_margin=24,
     section_gap=20,
     sidebar_row=30,
+    header_h=44,
+    status_h=24,
+    page_title_px=22,
+    page_header_gap=14,
+    footer_pad_top=10,
+    footer_pad_bottom=12,
+    panel_pad=14,
+    panel_gap=10,
+    pair_gap=12,
 )
 COMPACT = Metrics(
     control_h=24,
-    row_h=26,
-    form_row_pad=6,
+    row_h=24,
+    editor_row_h=28,
+    form_row_pad=4,
     page_margin=16,
     section_gap=12,
     sidebar_row=26,
+    header_h=36,
+    status_h=20,
+    page_title_px=17,
+    page_header_gap=8,
+    footer_pad_top=6,
+    footer_pad_bottom=8,
+    panel_pad=10,
+    panel_gap=6,
+    pair_gap=8,
 )
 
 
@@ -283,7 +311,7 @@ BODY_PX = 13
 TYPE_SCALE: Mapping[str, TextStyle] = MappingProxyType(
     {
         "largeTitle": TextStyle(26, 700),
-        "title1": TextStyle(22, 700),  # page titles
+        "title1": TextStyle(22, 700),  # page titles, sized by Metrics.page_title_px
         "title2": TextStyle(17, 600),
         "title3": TextStyle(15, 600),
         "headline": TextStyle(13, 600),
@@ -308,6 +336,8 @@ class Layout:
     sidebar_w_min: int = 200
     sidebar_w_max: int = 320
     sidebar_collapsed_w: int = 56
+    #: Collapsed sidebar width when its icons carry their step numbers.
+    sidebar_badge_strip_w: int = 72
     #: Below this window width the sidebar collapses to icons.
     sidebar_collapse_below: int = 1100
     panel_w: int = 320

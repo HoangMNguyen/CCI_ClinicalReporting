@@ -83,13 +83,13 @@ from clinical_reporting.ui.table_actions import (
 
 from ._common import CellComboBox, make_table
 
-_NAME_COLUMNS = (ColumnSpec("stretch"), ColumnSpec("stretch"))
+_NAME_COLUMNS = (ColumnSpec("stretch"), ColumnSpec("stretch", editable=True))
 #: The Form names columns: file names are long, form names are short, and
 #: the Saved names dropdowns list wider entries when they open.
 _FORM_NAME_COLUMNS = (
     ColumnSpec("stretch"),
-    ColumnSpec("interactive", 110),
-    ColumnSpec("interactive", 130),
+    ColumnSpec("interactive", 110, editable=True),
+    ColumnSpec("interactive", 130, editable=True),
 )
 #: The Form names column holding each file's Saved names dropdown.
 SAVED_NAMES_COLUMN = 2
@@ -153,6 +153,7 @@ class AdditionalInputPage(Page):
             ["Original name", "New name", "Saved names"],
             _FORM_NAME_COLUMNS,
             placeholder="Added files appear here.",
+            controls=True,
         )
         self.tableWidget_update_column_name = make_table(
             ["Original name", "New name"],

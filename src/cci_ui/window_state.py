@@ -7,7 +7,9 @@ Values are stored per tool in the settings shared by all CCI tools.
 
 :meth:`WindowState.remember` does it all for a tool's main window: it
 places the window (and its shell's sidebar) now and saves both whenever
-the window closes.
+the window closes. A shell whose sidebar state follows the density
+(``AppShell(collapse_in_compact=True)``) keeps Comfortable's state and
+Compact's under separate keys.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from PySide6.QtGui import QCursor, QGuiApplication, QScreen
 from PySide6.QtWidgets import QWidget
 
 from cci_ui.theme.manager import shared_settings
+from cci_ui.theme.tokens import Density
 
 if TYPE_CHECKING:
     from cci_ui.widgets.shell import AppShell
@@ -28,7 +31,17 @@ FIRST_LAUNCH_SCREEN_SHARE = 0.9
 #: Keys of the stored values, under ``windows/<app id>/``.
 GEOMETRY_KEY = "geometry"
 SIDEBAR_WIDTH_KEY = "sidebarWidth"
+#: Whether the sidebar is collapsed (in Comfortable density, for a shell
+#: whose sidebar state follows the density).
 SIDEBAR_COLLAPSED_KEY = "sidebarCollapsed"
+#: Whether the sidebar is collapsed in Compact density (only for a shell
+#: whose sidebar state follows the density).
+SIDEBAR_COLLAPSED_COMPACT_KEY = "sidebarCollapsedCompact"
+#: The collapsed-state key of each density.
+_COLLAPSED_KEYS = {
+    Density.COMFORTABLE: SIDEBAR_COLLAPSED_KEY,
+    Density.COMPACT: SIDEBAR_COLLAPSED_COMPACT_KEY,
+}
 
 
 def fitting_min_size(min_size: Tuple[int, int], screen: QScreen) -> Tuple[int, int]:
@@ -111,13 +124,22 @@ class WindowState:
         self._settings.sync()
 
     def restore_sidebar(self, shell: AppShell) -> bool:
-        """Give *shell*'s sidebar its saved width and collapsed state, if saved."""
+        """Give *shell*'s sidebar its saved width and collapsed state, if saved.
+
+        A shell whose state follows the density gets each density's state;
+        the one in use applies.
+        """
         if shell.sidebar is None or self.value(SIDEBAR_WIDTH_KEY) is None:
             return False
-        shell.restore_sidebar(
-            self.value(SIDEBAR_WIDTH_KEY, shell.sidebar_width(), int),
-            self.value(SIDEBAR_COLLAPSED_KEY, False, bool),
-        )
+        width = self.value(SIDEBAR_WIDTH_KEY, shell.sidebar_width(), int)
+        if shell.collapse_in_compact:
+            shell.restore_sidebar(
+                width,
+                self._flag(SIDEBAR_COLLAPSED_KEY),
+                compact_collapsed=self._flag(SIDEBAR_COLLAPSED_COMPACT_KEY),
+            )
+        else:
+            shell.restore_sidebar(width, self.value(SIDEBAR_COLLAPSED_KEY, False, bool))
         return True
 
     def save_sidebar(self, shell: AppShell) -> None:
@@ -125,8 +147,22 @@ class WindowState:
         if shell.sidebar is None:
             return
         self.set_value(SIDEBAR_WIDTH_KEY, shell.sidebar_width())
-        self.set_value(SIDEBAR_COLLAPSED_KEY, shell.is_sidebar_collapsed())
+        if shell.collapse_in_compact:
+            for density, key in _COLLAPSED_KEYS.items():
+                collapsed = shell.sidebar_collapsed_in(density)
+                if collapsed is None:  # Not used yet: its default applies.
+                    self._settings.remove(self._prefix + key)
+                else:
+                    self.set_value(key, collapsed)
+        else:
+            self.set_value(SIDEBAR_COLLAPSED_KEY, shell.is_sidebar_collapsed())
         self._settings.sync()
+
+    def _flag(self, key: str) -> Optional[bool]:
+        """The stored flag, or ``None`` if none is stored."""
+        if self.value(key) is None:
+            return None
+        return self.value(key, False, bool)
 
     def remember(
         self,
@@ -168,6 +204,7 @@ class _SaveOnClose(QObject):
 __all__ = [
     "FIRST_LAUNCH_SCREEN_SHARE",
     "GEOMETRY_KEY",
+    "SIDEBAR_COLLAPSED_COMPACT_KEY",
     "SIDEBAR_COLLAPSED_KEY",
     "SIDEBAR_WIDTH_KEY",
     "WindowState",

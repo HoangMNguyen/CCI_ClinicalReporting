@@ -76,6 +76,7 @@ class IconName:
     TICK = "check"
     SECTION_OPEN = "chevron-down"
     SECTION_CLOSED = "chevron-right"
+    EDIT = "pencil"
     # App icon glyphs (see cci_ui.app_icons)
     APP_CLINICAL_REPORTING = "table-2"
     APP_CCI_AUTOMATION = "workflow"

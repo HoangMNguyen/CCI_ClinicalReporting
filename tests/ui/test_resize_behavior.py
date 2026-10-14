@@ -6,14 +6,16 @@ At each target size and density, on every page: no button or input is
 stretched or squashed from the height it wants, text buttons are wide
 enough for their text and not stretched (except the panel's full-width
 ones), the Source data page stays a centered column, the sidebar is an
-icon strip on narrow windows, and the Preview panel sits beside the grid
-when there is room and below it (with most of the height left to the
-grid) when there isn't. Long paths in the panel's messages wrap instead of
-making it scroll sideways.
+icon strip on narrow windows (and in Compact density, until opened), and
+the Preview panel sits beside the grid when there is room and below it
+(with most of the height left to the grid) when there isn't. Long paths in
+the panel's messages wrap instead of making it scroll sideways.
 """
 
 import pytest
 import shiboken6
+from PySide6.QtGui import QKeySequence
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
@@ -29,6 +31,7 @@ from PySide6.QtWidgets import (
 
 from cci_ui.theme.manager import current
 from cci_ui.theme.tokens import LAYOUT, Density
+from cci_ui.widgets.shell import SIDEBAR_SHORTCUT
 from clinical_reporting import feedback
 from clinical_reporting.ui.preview import build_preview_window
 
@@ -43,6 +46,8 @@ OWNERS = (QAbstractSpinBox, QComboBox, QAbstractItemView)
 @pytest.fixture
 def window(make_manager, settle):
     theme = make_manager()
+    # Not the automatic density: the test screen is small.
+    theme.set_density(Density.COMFORTABLE)
     theme.apply()
     built = build_preview_window(theme=theme)
     built.show()
@@ -117,8 +122,37 @@ def test_the_sidebar_is_an_icon_strip_on_narrow_windows(window, width, collapsed
     shell = built.ui.shell
 
     assert shell.is_sidebar_collapsed() is collapsed
-    expected = LAYOUT.sidebar_collapsed_w if collapsed else shell.sidebar_width()
+    expected = LAYOUT.sidebar_badge_strip_w if collapsed else shell.sidebar_width()
     assert shell.sidebar.width() == expected
+
+
+def test_in_compact_the_sidebar_is_a_strip_until_opened(window):
+    built, theme = window
+    built.resize(1280, 700)
+    QApplication.processEvents()
+    shell = built.ui.shell
+    shell.sidebar.item("source").setFocus()
+
+    def toggle():
+        QTest.keySequence(shell.sidebar.item("source"), QKeySequence(SIDEBAR_SHORTCUT))
+        QApplication.processEvents()
+        return shell.is_sidebar_collapsed()
+
+    collapsed_in_comfortable = toggle()  # The user hides it in Comfortable.
+    theme.set_density(Density.COMPACT)
+    QApplication.processEvents()
+    strip = shell.is_sidebar_collapsed(), shell.sidebar.width()
+    collapsed_in_compact = toggle()  # Ctrl+\ opens it.
+    theme.set_density(Density.COMFORTABLE)
+    back_in_comfortable = shell.is_sidebar_collapsed()
+    theme.set_density(Density.COMPACT)
+    back_in_compact = shell.is_sidebar_collapsed()
+    theme.set_density(Density.COMFORTABLE)
+
+    assert collapsed_in_comfortable
+    assert strip == (True, 72)
+    assert not collapsed_in_compact
+    assert back_in_comfortable and not back_in_compact
 
 
 @pytest.mark.parametrize(

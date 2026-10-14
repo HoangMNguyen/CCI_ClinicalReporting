@@ -95,9 +95,9 @@ ITEMS_TABLE_ROWS = 3.5
 #: The editor's items table's columns: #, Item, condition, Value, Rows.
 _FILLS_COLUMNS = (
     ColumnSpec("fixed", 44),
-    ColumnSpec("stretch"),
-    ColumnSpec("fixed", 290),
-    ColumnSpec("stretch"),
+    ColumnSpec("stretch", editable=True),
+    ColumnSpec("fixed", 290, editable=True),
+    ColumnSpec("stretch", editable=True),
     ColumnSpec("fixed", 80),
 )
 _NUMBER_COLUMN, _ITEM_COLUMN, _CONDITION_COLUMN, _VALUE_COLUMN, _ROWS_COLUMN = range(5)
@@ -242,6 +242,7 @@ class _EditorPanel(QWidget):
         self.fills = make_table(
             ["#", "Item", "Fills where the value so far is empty or", "Value", "Rows"],
             _FILLS_COLUMNS,
+            controls=True,
         )
         self.fills.horizontalHeaderItem(_ROWS_COLUMN).setTextAlignment(_RIGHT)
         self._fills_card = table_card(self.fills)
@@ -317,7 +318,7 @@ class _EditorPanel(QWidget):
         margins = card.layout().contentsMargins()
         frames = 2 * (card.frameWidth() + table.frameWidth())
         card.setMinimumHeight(
-            round(header + FILLS_TABLE_MIN_ROWS * current().metrics.row_h)
+            round(header + FILLS_TABLE_MIN_ROWS * current().metrics.editor_row_h)
             + margins.top()
             + margins.bottom()
             + frames

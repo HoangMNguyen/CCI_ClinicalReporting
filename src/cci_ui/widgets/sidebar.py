@@ -3,7 +3,9 @@
 Each item shows an icon, a title, and on the right either a count, a ✓ when
 done, a warning or error symbol, or "Optional". Collapsed to icons (on narrow
 windows), sections become thin lines, titles move to tooltips, and a small
-dot marks warnings and errors.
+dot marks warnings and errors; with *strip_badges* the collapsed strip is a
+little wider and shows each item's count, ✓, warning or error symbol beside
+its icon instead.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from cci_ui.icons import IconName, icon
 from cci_ui.theme.manager import current, theme_events
 from cci_ui.theme.palette import qcolor
 from cci_ui.theme.qss import register_qss
+from cci_ui.theme.tokens import LAYOUT
 from cci_ui.widgets.buttons import icon_button
 from cci_ui.widgets.labels import escape_ampersands, text_label
 
@@ -59,7 +62,11 @@ QFrame[cciRole="sidebarRule"] {
 _ICON = 16
 _BADGE_ICON = 14
 _PAD = 8
+#: Space on each side of the items in the collapsed strip.
+_STRIP_MARGIN = 8
 _DOT = 7
+#: Gap between the icon and its badge in the collapsed badge strip.
+_STRIP_GAP = 4
 
 
 class StepState(str, Enum):
@@ -82,7 +89,15 @@ _STATE_ICONS = {
 class SidebarItem(QAbstractButton):
     """One entry; painted directly so the selection pill and badge match the design."""
 
-    def __init__(self, key: str, title: str, icon_name: str, parent=None):
+    def __init__(
+        self,
+        key: str,
+        title: str,
+        icon_name: str,
+        parent=None,
+        *,
+        strip_badges: bool = False,
+    ):
         super().__init__(parent)
         self.key = key
         self._title = title
@@ -91,6 +106,7 @@ class SidebarItem(QAbstractButton):
         self._count: Optional[int] = None
         self._tip = ""
         self._collapsed = False
+        self._strip_badges = strip_badges
         self.setCheckable(True)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover)
         self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
@@ -138,7 +154,16 @@ class SidebarItem(QAbstractButton):
     # Size and painting
 
     def sizeHint(self) -> QSize:  # noqa: N802 (Qt override)
-        return QSize(40 if self._collapsed else 180, current().metrics.sidebar_row)
+        if not self._collapsed:
+            width = 180
+        else:
+            strip = (
+                LAYOUT.sidebar_badge_strip_w
+                if self._strip_badges
+                else LAYOUT.sidebar_collapsed_w
+            )
+            width = strip - 2 * _STRIP_MARGIN
+        return QSize(width, current().metrics.sidebar_row)
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802 (Qt override)
         return QSize(40, current().metrics.sidebar_row)
@@ -167,6 +192,10 @@ class SidebarItem(QAbstractButton):
 
         middle = self.height() // 2
         role = "accent" if self.isChecked() else "secondary"
+        if self._collapsed and self._strip_badges:
+            self._paint_strip_item(painter, colors, role)
+            painter.end()
+            return
         if self._collapsed:
             icon_rect = QRect(0, 0, _ICON, _ICON)
             icon_rect.moveCenter(self.rect().center())
@@ -199,6 +228,30 @@ class SidebarItem(QAbstractButton):
         )
         painter.drawText(text_rect, int(Qt.AlignmentFlag.AlignVCenter), title)
         painter.end()
+
+    def _paint_strip_item(self, painter: QPainter, colors, role: str) -> None:
+        """Collapsed with badges: the icon, then its count or state symbol."""
+        middle = self.height() // 2
+        icon_rect = QRect(_PAD, middle - _ICON // 2, _ICON, _ICON)
+        icon(self._icon_name, role).paint(painter, icon_rect)
+        left = icon_rect.right() + 1 + _STRIP_GAP
+        if self._state in _STATE_ICONS:
+            badge = QRect(left, middle - _BADGE_ICON // 2, _BADGE_ICON, _BADGE_ICON)
+            icon(*_STATE_ICONS[self._state]).paint(painter, badge)
+            return
+        if self._state is StepState.OPTIONAL or self._count is None:
+            return
+        font = QFont(self.font())
+        font.setPixelSize(12)
+        painter.setFont(font)
+        painter.setPen(qcolor(colors.text_secondary))
+        area = QRect(left, 0, self.width() - left, self.height())
+        painter.drawText(
+            area,
+            int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+            str(self._count),
+        )
+        painter.setFont(self.font())
 
     def _paint_badge(self, painter: QPainter, colors) -> int:
         """Draw the badge at the right edge; return the width it took."""
@@ -234,6 +287,8 @@ class Sidebar(QFrame):
 
     The items share an exclusive :class:`QButtonGroup`, so Qt's own keyboard
     handling applies: Tab reaches the current item and Up/Down pick another.
+    With *strip_badges*, collapsed items show their badge beside the icon
+    (the strip must be ``LAYOUT.sidebar_badge_strip_w`` wide to fit it).
     """
 
     #: Emitted with the item's key when the user picks an item.
@@ -241,7 +296,13 @@ class Sidebar(QFrame):
     #: Emitted when the user clicks the collapse button in the sidebar's top row.
     toggleRequested = Signal()
 
-    def __init__(self, title: str = "", parent: Optional[QWidget] = None):
+    def __init__(
+        self,
+        title: str = "",
+        parent: Optional[QWidget] = None,
+        *,
+        strip_badges: bool = False,
+    ):
         super().__init__(parent)
         self.setProperty("cciRole", "sidebar")
         self._items: Dict[str, SidebarItem] = {}
@@ -249,6 +310,7 @@ class Sidebar(QFrame):
         self._section_labels: List[QLabel] = []
         self._section_rules: List[QFrame] = []
         self._collapsed = False
+        self._strip_badges = strip_badges
         self._group = QButtonGroup(self)
         self._group.setExclusive(True)
         self._group.buttonClicked.connect(self._on_clicked)
@@ -314,7 +376,7 @@ class Sidebar(QFrame):
     def add_item(self, key: str, title: str, icon_name: str) -> SidebarItem:
         if key in self._items:
             raise ValueError(f"The sidebar already has an item {key!r}")
-        item = SidebarItem(key, title, icon_name)
+        item = SidebarItem(key, title, icon_name, strip_badges=self._strip_badges)
         item.set_collapsed(self._collapsed)
         self._items[key] = item
         self._order.append(key)
@@ -362,9 +424,8 @@ class Sidebar(QFrame):
         tip = "Show sidebar (Ctrl+\\)" if collapsed else "Hide sidebar (Ctrl+\\)"
         self.toggle_button.setToolTip(tip)
         self.toggle_button.setAccessibleName(tip)
-        self._list_layout.setContentsMargins(
-            8 if collapsed else 10, 0, 8 if collapsed else 10, 12
-        )
+        side = _STRIP_MARGIN if collapsed else 10
+        self._list_layout.setContentsMargins(side, 0, side, 12)
         for index, (label, rule) in enumerate(
             zip(self._section_labels, self._section_rules)
         ):

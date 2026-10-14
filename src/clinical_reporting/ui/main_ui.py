@@ -67,7 +67,10 @@ class ClinicalReportingUi:
         """Build the window's contents; *theme* adds the header's Display button."""
         #: The pages in step order.
         self.pages: List[Page] = [page_class() for page_class in PAGE_CLASSES]
-        self.shell = AppShell(theme, title=APP_NAME)
+        # The collapsed sidebar shows each step's badge; Compact starts collapsed.
+        self.shell = AppShell(
+            theme, title=APP_NAME, strip_badges=True, collapse_in_compact=True
+        )
         for page in self.pages:
             self.shell.add_page(
                 page.KEY,

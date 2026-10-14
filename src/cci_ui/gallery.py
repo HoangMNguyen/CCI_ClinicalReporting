@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
 
 from cci_ui.icons import IconName
 from cci_ui.theme.manager import (
+    DensityMode,
     ThemeManager,
     ThemeMode,
     current,
@@ -44,7 +45,7 @@ from cci_ui.theme.manager import (
     theme_events,
 )
 from cci_ui.theme.palette import qcolor
-from cci_ui.theme.tokens import TYPE_SCALE, Color, ColorTokens, Density
+from cci_ui.theme.tokens import TYPE_SCALE, Color, ColorTokens
 from cci_ui.widgets.buttons import VARIANTS, icon_button, make_button
 from cci_ui.widgets.checklist import ChecklistComboBox, ChecklistItem
 from cci_ui.widgets.dual_list import DualListPicker
@@ -358,42 +359,62 @@ def _lists_page(_shell: AppShell) -> Page:
 
 
 def _tables_page(_shell: AppShell) -> Page:
-    page = Page("Tables", "Column rules, row lines, combos in cells, and +/− buttons.")
+    page = Page(
+        "Tables",
+        "Column rules, row lines, editable columns, combos in cells, and +/− buttons.",
+    )
     table = PlaceholderTableWidget("Select forms first.")
     table.setColumnCount(5)
     table.setHorizontalHeaderLabels(["Form", "Item 1", "Item 2", "Order", "Type"])
     rows = [
-        ("DM", "Subject", "—", "1"),
-        ("AE", "Subject", "—", "2"),
-        ("VS", "Subject", "InstanceName", "2"),
+        ("DM", "", "", "1"),
+        ("AE", "Subject", "", "2"),
+        ("VS", "Subject", "InstanceName", "3"),
     ]
+    read_only = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
     table.setRowCount(len(rows))
     for row, values in enumerate(rows):
         for column, value in enumerate(values):
-            table.setItem(row, column, QTableWidgetItem(value))
+            cell = QTableWidgetItem(value)
+            if column in (0, 3):
+                cell.setFlags(read_only)
+            elif row == 0:
+                # The first form joins on nothing: its item cells are unused.
+                cell.setFlags(Qt.ItemFlag.ItemIsSelectable)
+            table.setItem(row, column, cell)
         how = QComboBox()
         how.addItems(["Left join", "Inner join"])
         table.setCellWidget(row, 4, how)
-    style_table(table)
+    style_table(table, controls=True)
     configure_columns(
         table,
         [
             ColumnSpec("contents"),
-            ColumnSpec(),
-            ColumnSpec(),
+            ColumnSpec(editable=True),
+            ColumnSpec(editable=True),
             ColumnSpec("fixed", 84),
-            ColumnSpec("fixed", 140),
+            ColumnSpec("fixed", 140, editable=True),
         ],
     )
     page.body.addWidget(table_card(table), 1)
     page.body.addWidget(
-        TableToolbar(add_tooltip="Add join", caption="Forms are joined in Order.")
+        TableToolbar(
+            add_tooltip="Add join",
+            caption="A pencil marks the columns you can change; click an item to type.",
+        )
     )
     empty = PlaceholderTableWidget("No filters. Press + to add one.")
     empty.setColumnCount(3)
     empty.setHorizontalHeaderLabels(["Item", "Operator", "Value"])
-    style_table(empty)
-    configure_columns(empty, [ColumnSpec(), ColumnSpec("fixed", 120), ColumnSpec()])
+    style_table(empty, controls=True)
+    configure_columns(
+        empty,
+        [
+            ColumnSpec(editable=True),
+            ColumnSpec("fixed", 120, editable=True),
+            ColumnSpec(editable=True),
+        ],
+    )
     card = table_card(empty)
     card.setFixedHeight(140)
     page.body.addWidget(card)
@@ -584,7 +605,10 @@ def build_gallery(theme: ThemeManager) -> Tuple[QMainWindow, AppShell]:
     """The gallery window with one page per component group."""
     window = QMainWindow()
     window.setWindowTitle("CCI design system")
-    shell = AppShell(theme, title="Design system")
+    # The step-list strip: numbers beside the icons, an icon strip in Compact.
+    shell = AppShell(
+        theme, title="Design system", strip_badges=True, collapse_in_compact=True
+    )
     shell.set_context("Gallery")
     shell.status_bar.set_summary(
         f"{len(PAGES)} pages · {len(IconName.all())} icons · {len(VARIANTS)} buttons"
@@ -629,7 +653,9 @@ def _parse(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     parser.add_argument(
         "--theme", choices=[m.value for m in ThemeMode], help="appearance"
     )
-    parser.add_argument("--density", choices=[d.value for d in Density], help="density")
+    parser.add_argument(
+        "--density", choices=[d.value for d in DensityMode], help="density"
+    )
     parser.add_argument(
         "--size", type=_size, default=(1280, 800), help="window size, e.g. 1000x620"
     )
@@ -661,7 +687,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.theme:
         theme.set_mode(ThemeMode(args.theme))
     if args.density:
-        theme.set_density(Density(args.density))
+        theme.set_density(DensityMode(args.density))
 
     window, shell = build_gallery(theme)
     window.resize(*args.size)
