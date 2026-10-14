@@ -9,11 +9,11 @@ the tooltips. Most tests use the DEMO01 sample window (``sample_window`` in
 import re
 
 import pandas as pd
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QFocusEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
-from cci_ui.widgets.status import ToastHost
 from clinical_reporting import steps
 from clinical_reporting.sample_data import sample_forms
 from clinical_reporting.ui.pages import source_data
@@ -73,28 +73,6 @@ def test_the_preview_page_builds_nothing_without_data(empty_window, monkeypatch)
     assert built == []
 
 
-def test_the_joins_banner_says_what_stops_the_joins(sample_window):
-    banner = sample_window.ui.banner_joins
-    fine = banner.text()
-    table = sample_window.ui.tableWidget_join
-    rows = {table.item(row, 0).text(): row for row in range(table.rowCount())}
-    sample_window.ui.shell.set_current(steps.FORMS)  # Away from the Joins page.
-
-    table.cellWidget(rows["VS"], 4).setCurrentText("2")  # AE has order 2 too.
-    QApplication.processEvents()
-
-    assert fine == ""
-    assert banner.kind() == "error"
-    assert banner.text().startswith("Join order 2 is assigned to multiple forms")
-    assert banner.text().endswith("can't be exported until this is fixed.")
-    # A state of the page, not news: no toast, though it is an error on a
-    # page other than the open one, and the status bar keeps the Preview
-    # page's "Cannot run" hint.
-    host = sample_window.findChild(ToastHost)
-    assert host is None or host.toasts() == []
-    assert sample_window.ui.shell.status_bar.message().startswith("Cannot run:")
-
-
 def test_a_common_item_the_forms_dont_join_on_gets_their_own_columns(sample_window):
     """AE and VS join on Subject and Site. Selecting Visit as well gives them
     AE.Visit and VS.Visit, which Order & rename and the filters offer, until a
@@ -114,8 +92,8 @@ def test_a_common_item_the_forms_dont_join_on_gets_their_own_columns(sample_wind
     assert "AE.Visit" in window.ui.banner_joins.text()
 
     table = window.ui.tableWidget_join
-    rows = {table.item(row, 0).text(): row for row in range(table.rowCount())}
-    table.cellWidget(rows["VS"], 3).setCurrentText("Visit")
+    rows = {table.item(row, 1).text(): row for row in range(table.rowCount())}
+    table.cellWidget(rows["VS"], 4).setCurrentText("Visit")
     QApplication.processEvents()
 
     assert "AE.Visit" in order_rows() and "VS.Visit" not in order_rows()
@@ -132,12 +110,120 @@ def test_a_join_edit_keeps_a_comparison_row_still_being_filled_in(sample_window)
     rows = filters.rowCount()
 
     table = window.ui.tableWidget_join
-    form_rows = {table.item(row, 0).text(): row for row in range(table.rowCount())}
+    form_rows = {table.item(row, 1).text(): row for row in range(table.rowCount())}
     table.cellWidget(form_rows["AE"], 5).setCurrentText("Inner join")
     QApplication.processEvents()
 
     # The join type changes no column, so the filter tables stay as they are.
     assert filters.rowCount() == rows
+
+
+def _join_forms(window):
+    table = window.ui.tableWidget_join
+    return [table.item(row, 1).text() for row in range(table.rowCount())]
+
+
+def _selected_join_rows(window):
+    table = window.ui.tableWidget_join
+    return [index.row() for index in table.selectionModel().selectedRows()]
+
+
+def _join_combos_enabled(window, row):
+    table = window.ui.tableWidget_join
+    return [table.cellWidget(row, column).isEnabled() for column in range(2, 6)]
+
+
+def test_the_join_rows_follow_the_join_order(sample_window):
+    window = sample_window
+    table = window.ui.tableWidget_join
+    numbers = [table.item(row, 0).text() for row in range(table.rowCount())]
+    window.report.update_join_list(
+        [("VS", ["Subject"], 2, "Left join"), ("AE", ["Subject"], 3, "Left join")]
+    )
+
+    window.update_join_table_ui()
+
+    assert numbers == ["1", "2", "3"]
+    assert _join_forms(window) == ["DM", "VS", "AE"]
+    assert _join_combos_enabled(window, 0) == [False, False, False, False]
+    assert _join_combos_enabled(window, 1) == [True, True, True, True]
+
+
+def test_move_up_moves_the_selected_form_and_keeps_it_selected(sample_window):
+    window = sample_window
+    window.ui.tableWidget_join.selectRow(2)  # VS
+
+    window.ui.pushButton_join_up.click()
+
+    assert _join_forms(window) == ["DM", "VS", "AE"]
+    assert _selected_join_rows(window) == [1]
+    orders = {
+        form: join["order"] for form, join in window.report.get_join_list_dict().items()
+    }
+    assert orders == {"DM": 1, "AE": 3, "VS": 2}
+
+
+def test_the_move_buttons_follow_the_selected_row(sample_window):
+    window = sample_window
+    table = window.ui.tableWidget_join
+    up, down = window.ui.pushButton_join_up, window.ui.pushButton_join_down
+
+    def states():
+        return up.isEnabled(), down.isEnabled()
+
+    table.clearSelection()
+    none = states()
+    table.selectRow(0)
+    first = states()
+    table.selectRow(1)
+    middle = states()
+    table.selectRow(2)
+    last = states()
+
+    assert none == (False, False)
+    assert first == (False, True)
+    assert middle == (True, True)
+    assert last == (True, False)
+
+
+def test_moving_the_first_form_down_joins_it_on_subject(sample_window):
+    window = sample_window
+    table = window.ui.tableWidget_join
+    table.selectRow(0)  # DM
+
+    window.ui.pushButton_join_down.click()
+
+    assert _join_forms(window) == ["AE", "DM", "VS"]
+    assert table.cellWidget(1, 2).currentText() == "Subject"
+    assert _join_combos_enabled(window, 0) == [False, False, False, False]
+    assert window.report.get_join_list_dict()["DM"] == {
+        "items": ["Subject"],
+        "order": 2,
+        "how": "Left join",
+    }
+
+
+def test_a_join_combo_taking_the_focus_selects_its_row(sample_window):
+    table = sample_window.ui.tableWidget_join
+    table.clearSelection()
+
+    QApplication.sendEvent(
+        table.cellWidget(2, 3),
+        QFocusEvent(QEvent.Type.FocusIn, Qt.FocusReason.MouseFocusReason),
+    )
+
+    assert _selected_join_rows(sample_window) == [2]
+
+
+def test_a_newly_selected_form_joins_last_on_subject(sample_window):
+    window = sample_window
+    available = window.ui.listWidget_form_available
+    available.setCurrentItem(available.findItems("LB", Qt.MatchFlag.MatchExactly)[0])
+
+    window.click_select_form()
+
+    assert _join_forms(window) == ["DM", "AE", "VS", "LB"]
+    assert window.ui.tableWidget_join.cellWidget(3, 2).currentText() == "Subject"
 
 
 def test_the_source_footnote_says_what_was_read(sample_window):

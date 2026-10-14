@@ -123,15 +123,16 @@ def test_badges_follow_filter_edits(sample_window):
 def test_badges_follow_item_join_and_rename_edits(sample_window):
     ui = sample_window.ui
     joins, renames = ui.tableWidget_join, ui.tableWidget_rename
-    forms = {joins.item(row, 0).text(): row for row in range(joins.rowCount())}
+    forms = {joins.item(row, 1).text(): row for row in range(joins.rowCount())}
     _, items_before = _badge(sample_window, "formitems")
 
     def pick_a_form_item():
         ui.listWidget_form_item_available.item(0).setSelected(True)
         sample_window.click_select_form_item()
 
-    def share_a_join_order():
-        joins.cellWidget(forms["VS"], 4).setCurrentText("2")  # As AE has.
+    def clear_the_last_forms_join_items():
+        for column in (2, 3, 4):
+            joins.cellWidget(forms["VS"], column).setCurrentText("")
 
     def rename_the_first_column():
         renames.item(0, 1).setText("Renamed")
@@ -142,9 +143,10 @@ def test_badges_follow_item_join_and_rename_edits(sample_window):
 
     picked = _after(sample_window, pick_a_form_item, "formitems")
     assert picked == (StepState.NONE, items_before + 1)
-    assert _after(sample_window, share_a_join_order, "joins") == (StepState.ERROR, None)
+    cleared = _after(sample_window, clear_the_last_forms_join_items, "joins")
+    assert cleared == (StepState.ERROR, None)
     tip = ui.shell.sidebar.item("joins").toolTip()
-    assert "Join order 2 is assigned to multiple forms: AE, VS" in tip
+    assert "Form 'VS' needs at least one join item because it is not first." in tip
     # Copying the original names undoes the sample's one rename.
     assert _after(sample_window, copy_the_original_names, "order") == (
         StepState.NONE,

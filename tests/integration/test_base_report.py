@@ -16,6 +16,7 @@ from clinical_reporting import (
 )
 from clinical_reporting.coalescing import KEEP_EARLIER, REFUSE, CoalescedItem, Fill
 from clinical_reporting.report import CLReport
+from clinical_reporting.sample_data import configure_sample_report, sample_forms
 from clinical_reporting.settings_store import write_settings_json
 from clinical_reporting.stacking import Match, StackedForm
 from clinical_reporting.workflow import WorkflowInputError
@@ -84,6 +85,23 @@ def test_a_saved_setting_runs_on_the_forms():
     assert_frame_equal(base.table, ADULTS_WITH_AES)
     assert base.warnings == ()
     assert base.setting_name == "Adults with AEs"
+
+
+def _demo_setting():
+    report = session.new_report("DEMO01", sample_forms())
+    configure_sample_report(report)
+    return report.settings_to_dict("DEMO01 sample")
+
+
+def test_a_setting_with_tied_join_orders_runs_in_its_form_order():
+    tied = _demo_setting()
+    tied["selected_forms"]["VS"]["join_order"] = 2
+
+    base = build_base_report_from_forms(sample_forms(), tied)
+
+    untouched = build_base_report_from_forms(sample_forms(), _demo_setting())
+    assert list(base.table.columns) == list(untouched.table.columns)
+
 
 
 def test_a_setting_the_forms_lack_parts_of_is_refused():

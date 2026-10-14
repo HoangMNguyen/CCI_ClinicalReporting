@@ -365,18 +365,18 @@ def _tables_page(_shell: AppShell) -> Page:
     )
     table = PlaceholderTableWidget("Select forms first.")
     table.setColumnCount(5)
-    table.setHorizontalHeaderLabels(["Form", "Item 1", "Item 2", "Order", "Type"])
+    table.setHorizontalHeaderLabels(["#", "Form", "Item 1", "Item 2", "Type"])
     rows = [
-        ("DM", "", "", "1"),
-        ("AE", "Subject", "", "2"),
-        ("VS", "Subject", "InstanceName", "3"),
+        ("1", "DM", "", ""),
+        ("2", "AE", "Subject", ""),
+        ("3", "VS", "Subject", "InstanceName"),
     ]
     read_only = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
     table.setRowCount(len(rows))
     for row, values in enumerate(rows):
         for column, value in enumerate(values):
             cell = QTableWidgetItem(value)
-            if column in (0, 3):
+            if column in (0, 1):
                 cell.setFlags(read_only)
             elif row == 0:
                 # The first form joins on nothing: its item cells are unused.
@@ -384,15 +384,16 @@ def _tables_page(_shell: AppShell) -> Page:
             table.setItem(row, column, cell)
         how = QComboBox()
         how.addItems(["Left join", "Inner join"])
+        how.setEnabled(row > 0)
         table.setCellWidget(row, 4, how)
     style_table(table, controls=True)
     configure_columns(
         table,
         [
+            ColumnSpec("fixed", 44),
             ColumnSpec("contents"),
             ColumnSpec(editable=True),
             ColumnSpec(editable=True),
-            ColumnSpec("fixed", 84),
             ColumnSpec("fixed", 140, editable=True),
         ],
     )

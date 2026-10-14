@@ -165,7 +165,11 @@ class CLReport:
         return list(self.available_forms.keys())
 
     def add_selected_form(self, form: str):
-        """Add the selected form to the selected forms dict."""
+        """Add the selected form to the selected forms dict.
+
+        A newly selected form joins last: on ``Subject`` with a left join, or
+        on nothing when it is the only form (it starts the report).
+        """
         # add the form from data to the selected forms dict
         if form in self.data:
             new_form = CLForm(form)
@@ -176,6 +180,17 @@ class CLReport:
             )
             for item in new_form.column_order:
                 new_form.set_form_item_state(item, selected=False)
+            position = 1 + max(
+                (
+                    self._numeric_join_order(other)
+                    for name, other in self.selected_forms.items()
+                    if name != form
+                ),
+                default=0,
+            )
+            new_form.set_join_order(position)
+            new_form.set_join_items([SUBJECT_COLUMN] if position > 1 else [])
+            new_form.set_join_how(JoinHow.LEFT)
             self.selected_forms[form] = new_form
             if form in self.available_forms:
                 # remove the form from available forms
@@ -722,25 +737,36 @@ class CLReport:
             self._set_join(form, items, order, how)
         self.sync_with_selection()
 
+    @staticmethod
+    def _numeric_join_order(form: CLForm) -> int:
+        """A form's join order as a number; anything that isn't one counts as 1."""
+        try:
+            return int(form.get_join_order() or 1)
+        except TypeError, ValueError, OverflowError:
+            return 1
+
+    def _join_ranking(self) -> List[str]:
+        """The selected forms in join order; tied orders keep selection order."""
+        ranked = sorted(
+            self.selected_forms.items(),
+            key=lambda pair: self._numeric_join_order(pair[1]),
+        )
+        return [name for name, _ in ranked]
+
     def normalize_joins(self) -> None:
         """Tidy every selected form's joins with one rule, then re-sync once.
 
-        The join order is clamped to 1..N (N selected forms; anything that
-        isn't a number counts as 1). A form at order 1 joins on nothing, with
-        a left join. Every other form keeps at most three join items, taken
-        from its first three, that are selected common items, each once; an
-        unknown join type becomes a left join. The desktop's join table shows
-        and keeps this whenever it is rebuilt (a selection change or a loaded
-        setting).
+        The selected forms are ranked by join order (anything that isn't a
+        number counts as 1; tied orders keep the selection order) and numbered
+        1..N. The first form joins on nothing, with a left join. Every other
+        form keeps at most three join items, taken from its first three, that
+        are selected common items, each once; an unknown join type becomes a
+        left join. The desktop's join table shows and keeps this whenever it
+        is rebuilt, and every saved setting is tidied this way when applied.
         """
-        last = max(1, len(self.selected_forms))
         common = set(self.selected_common_items)
-        for form_name, form in self.selected_forms.items():
-            try:
-                order = int(form.get_join_order() or 1)
-            except TypeError, ValueError, OverflowError:
-                order = 1
-            order = min(max(1, order), last)
+        for order, form_name in enumerate(self._join_ranking(), start=1):
+            form = self.selected_forms[form_name]
             if order == 1:
                 self._set_join(form_name, [], 1, JoinHow.LEFT)
                 continue
@@ -752,6 +778,41 @@ class CLReport:
             self._set_join(
                 form_name, items, order, how if how in JoinHow.ALL else JoinHow.LEFT
             )
+        self.sync_with_selection()
+
+    def move_join(self, form: str, step: int) -> None:
+        """Move *form* *step* places in the join order, then re-sync once.
+
+        The forms are ranked as :meth:`normalize_joins` ranks them and
+        renumbered 1..N. The form that ends up first joins on nothing; the
+        form that was first joins on ``Subject`` when it is a selected common
+        item (else on nothing), with a left join. Every other form keeps its
+        join items and type. A form that isn't selected, or would move past
+        either end, stays where it is.
+        """
+        ranking = self._join_ranking()
+        if form not in ranking:
+            return
+        index = ranking.index(form)
+        target = index + step
+        if not 0 <= target < len(ranking):
+            return
+        previous_first = ranking[0]
+        ranking[index], ranking[target] = ranking[target], ranking[index]
+        subject = [SUBJECT_COLUMN] if SUBJECT_COLUMN in self.selected_common_items else []
+        for order, form_name in enumerate(ranking, start=1):
+            current = self.selected_forms[form_name]
+            if order == 1:
+                self._set_join(form_name, [], 1, JoinHow.LEFT)
+            elif form_name == previous_first:
+                self._set_join(form_name, list(subject), order, JoinHow.LEFT)
+            else:
+                self._set_join(
+                    form_name,
+                    list(current.get_join_items()),
+                    order,
+                    current.get_join_how(),
+                )
         self.sync_with_selection()
 
     def get_static_filter_items(self):

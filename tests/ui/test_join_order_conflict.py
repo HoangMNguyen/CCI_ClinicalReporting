@@ -82,24 +82,6 @@ def test_join_configuration_message_none_when_valid():
     assert widget._join_configuration_error_message() is None
 
 
-def test_join_configuration_message_describes_shared_order():
-    widget = DummyRunWidget(_report_with_orders({"DM": 2, "VS": 2}))
-    message = widget._join_configuration_error_message()
-    assert message is not None
-    assert message.startswith("Cannot run:")
-    assert message.kind == "warning"
-    assert "order 2" in message
-    assert "DM" in message and "VS" in message
-
-
-def test_refresh_disables_run_and_shows_hint_on_conflict():
-    widget = DummyRunWidget(_report_with_orders({"DM": 2, "VS": 2}))
-    widget._refresh_run_availability()
-    assert widget.button.enabled is False
-    assert widget.label_run_confirmation.text().startswith("Cannot run:")
-    assert widget.label_run_confirmation.text().kind == "warning"
-
-
 def test_refresh_disables_run_and_shows_hint_when_join_item_is_missing():
     widget = DummyRunWidget(_report_with_orders({"DM": 1, "VS": 2}))
 
@@ -119,19 +101,6 @@ def test_refresh_enables_run_when_missing_join_item_is_selected():
     report.selected_forms["VS"].set_join_items(["Subject"])
     widget._refresh_run_availability()
 
-    assert widget.button.enabled is True
-    assert widget.label_run_confirmation.text() == ""
-
-
-def test_refresh_enables_and_clears_own_hint_when_resolved():
-    widget = DummyRunWidget(_report_with_orders({"DM": 2, "VS": 2}))
-    widget._refresh_run_availability()
-    assert widget.button.enabled is False
-
-    # Resolve the conflict and refresh: button re-enabled, stale hint cleared.
-    widget.report.selected_forms["VS"].set_join_order(1)
-    widget.report.selected_forms["DM"].set_join_items(["Subject"])
-    widget._refresh_run_availability()
     assert widget.button.enabled is True
     assert widget.label_run_confirmation.text() == ""
 

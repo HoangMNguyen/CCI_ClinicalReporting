@@ -183,8 +183,6 @@ class _ItemBox(CellComboBox):
 class _ConditionBox(CellComboBox):
     """A later item's condition: none, or a Filters operator."""
 
-    focused = Signal()
-
     def __init__(self, operator: str, parent=None) -> None:
         super().__init__(parent)
         self.addItem(NO_CONDITION, "")
@@ -192,10 +190,6 @@ class _ConditionBox(CellComboBox):
             self.addItem(name, name)
         self.setCurrentIndex(max(self.findData(operator), 0))
         self.setToolTip(CONDITION_TIP)
-
-    def focusInEvent(self, event) -> None:  # noqa: N802 (Qt override)
-        super().focusInEvent(event)
-        self.focused.emit()
 
 
 class _EditorPanel(QWidget):

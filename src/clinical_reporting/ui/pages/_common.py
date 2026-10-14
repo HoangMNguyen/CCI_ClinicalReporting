@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QAbstractItemView, QComboBox
 
 from cci_ui.widgets.tables import ColumnSpec, configure_columns, style_table
@@ -39,12 +39,19 @@ def make_table(
 class CellComboBox(QComboBox):
     """A combo box in a table cell that ignores the wheel unless it has focus.
 
-    Scrolling the table over it must not pick another entry by the way.
+    Scrolling the table over it must not pick another entry by the way. It
+    says when it takes the focus (``focused``), so its row can be selected.
     """
+
+    focused = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def focusInEvent(self, event) -> None:  # noqa: N802 (Qt override)
+        super().focusInEvent(event)
+        self.focused.emit()
 
     def wheelEvent(self, event) -> None:  # noqa: N802 (Qt override)
         if self.hasFocus():

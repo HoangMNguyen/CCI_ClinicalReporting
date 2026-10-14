@@ -216,7 +216,7 @@ def test_the_pencil_marks_the_columns_the_user_can_change(window):
     assert pencils == {
         "Filters": ["Item", "Operator", "Value"],
         "Comparisons": ["Item 1", "Operator", "Item 2"],
-        "Joins": ["Item 1", "Item 2", "Item 3", "Order", "Type"],
+        "Joins": ["Item 1", "Item 2", "Item 3", "Type"],
         "Order & rename": ["Output name"],
         "Form names": ["New name", "Saved names"],
         "Column names": ["New name"],

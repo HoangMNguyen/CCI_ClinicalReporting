@@ -107,7 +107,7 @@ def opened(window, reader, settle):
 def _select_dm_age(window):
     window.report.add_selected_form("DM")
     window.report.selected_forms["DM"].set_form_item_state("Age", selected=True)
-    window.update_all_ui()  # Fills in the join order, as picking in the lists does.
+    window.update_all_ui()  # Shows the selection, as picking in the lists does.
 
 
 def _edit_the_date(window):
