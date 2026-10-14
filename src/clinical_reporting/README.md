@@ -109,9 +109,16 @@ python -m clinical_reporting
     about, and the coalesced item is built from the items left; an overlap
     later data brings to one that refuses them, or its name now given to
     another item of its form, stops the export until it is fixed on the page.
-- The steps sit in a sidebar with status badges. Reading the ZIP, building
-  the preview, and exporting run in the background, and a ZIP or additional
-  file that can't be read, or clashing form names, are explained on the page.
+- The steps sit in a sidebar with status badges. On a narrow window, and in
+  Compact density until you open it (Ctrl+\\), the sidebar is an icon strip
+  with each step's count or mark beside its icon; each density remembers
+  whether you left it open. Reading the ZIP, building the preview, and
+  exporting run in the background, and a ZIP or additional file that can't
+  be read, or clashing form names, are explained on the page.
+- In every table, a pencil after a column's name marks the columns you can
+  change. A name or value you type opens on one click (the pointer turns into
+  a text cursor over it); one that doesn't apply, such as the Value of a
+  filter whose operator takes none, is grey.
 - A base report (a saved setting run on a Corelisting export) can be built
   without the window, giving the workbook the desktop exports byte for byte
   (but for its creation time), so automations, the web version and scripts
@@ -540,7 +547,8 @@ The window is built on the shared design system,
 pages are one module per step in `src/clinical_reporting/ui/pages/`, each
 holding the page's widgets and its behavior (the mixin the window inherits);
 `ui/main_ui.py` lists them in step order (`PAGE_CLASSES`) and puts them in the
-shell: a sidebar of steps (an icon strip on narrow windows), a header, and a
+shell: a sidebar of steps (an icon strip with the steps' badges on narrow
+windows, and in Compact density until opened), a header, and a
 status bar. Each step's sidebar badge (a count, done, optional, or a problem)
 comes from `clinical_reporting/steps.py`, which works it out from the report
 without Qt; problems are mapped to the step that fixes them by validation
@@ -581,6 +589,10 @@ date on shows a read error.)
   while the page's content is shown (not on another page, not in its empty
   state). For a button pass its `click`, which does nothing while the button
   is disabled.
+- **Add a table column the user can change:** give it
+  `ColumnSpec(..., editable=True)` in `make_table`, whether its cells are
+  plain text, dropdowns or fields; pass `make_table(..., controls=True)` when
+  its cells hold dropdowns or fields, so the rows leave them room.
 - **Change the report from a new place:** call `self._report_changed()`
   afterwards, so the sidebar badges and the status bar follow. A new
   validation issue code needs a step in `steps.ISSUE_STEPS` (or a place in
@@ -592,8 +604,10 @@ Then run `python -m pytest -q tests/ui`. Among those tests,
 names and that the pages follow `STEP_KEYS`, `test_resize_behavior.py` that
 no control stretches at the target window sizes (and that the sidebar and
 the Preview panel rearrange on narrow windows, and that long paths in the
-panel's messages wrap instead of widening it), and `test_preview_tool.py`
-pins the step order (update it when you reorder steps).
+panel's messages wrap instead of widening it), `test_editable_columns.py`
+that every table's pencils sit on exactly the columns with something to
+change, and `test_preview_tool.py` pins the step order (update it when you
+reorder steps).
 
 ## Testing notes
 

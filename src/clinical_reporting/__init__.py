@@ -29,7 +29,7 @@ from .validation import (
 # Single source of truth for the release version. ``build_support.py`` reads
 # this string when building the executable, so bumping a release means editing
 # it here and nowhere else.
-__version__ = "2.17"
+__version__ = "2.18"
 
 __all__ = [
     "BaseReport",
