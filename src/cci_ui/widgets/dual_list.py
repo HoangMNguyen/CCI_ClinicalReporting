@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from cci_ui.icons import IconName
+from cci_ui.theme.manager import current, theme_events
 from cci_ui.theme.qss import register_qss
 from cci_ui.widgets.buttons import icon_button
 from cci_ui.widgets.labels import text_label
@@ -126,22 +127,28 @@ class DualListPicker(QWidget):
             buttons.addWidget(button)
         buttons.addStretch(1)
 
-        lists = QHBoxLayout()
-        lists.setSpacing(12)
-        lists.addWidget(self._available_card, 1)
-        lists.addLayout(buttons)
-        lists.addWidget(self._selected_card, 1)
+        self._lists = QHBoxLayout()
+        self._lists.addWidget(self._available_card, 1)
+        self._lists.addLayout(buttons)
+        self._lists.addWidget(self._selected_card, 1)
 
         self.hint_label = text_label(
             "Double-click an item to move it. Ctrl-click to select several.",
             style="caption",
         )
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        layout.addWidget(self.search)
-        layout.addLayout(lists, 1)
-        layout.addWidget(self.hint_label, 0, Qt.AlignmentFlag.AlignLeft)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.addWidget(self.search)
+        self._layout.addLayout(self._lists, 1)
+        self._layout.addWidget(self.hint_label, 0, Qt.AlignmentFlag.AlignLeft)
+
+        theme_events().changed.connect(self._apply_metrics)
+        self._apply_metrics()
+
+    def _apply_metrics(self) -> None:
+        gap = current().metrics.pair_gap
+        self._lists.setSpacing(gap)
+        self._layout.setSpacing(gap)
 
     def available_count(self) -> int:
         return int(self._available_card.count_label.text())

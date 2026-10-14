@@ -56,15 +56,20 @@ def show_tool(
     first_size: Tuple[int, int],
     min_size: Tuple[int, int],
     settings: Optional[QSettings] = None,
+    theme: Optional[ThemeManager] = None,
 ) -> None:
     """Show *window* where it was last time (its sidebar too); saved on close.
 
     *settings* holds the window state (the tool's own settings by default).
+    *theme*, the app's ThemeManager, lets Automatic density measure the
+    screen the window opens on.
     """
     shell = window.shell if window.shell.sidebar is not None else None
     WindowState(app_id, settings).remember(
         window, first_size=first_size, min_size=min_size, shell=shell
     )
+    if theme is not None:
+        theme.measure_screen_of(window)
     window.show()
 
 
@@ -80,7 +85,13 @@ def run_tool(
     """Start the app, show the window *make_window* builds, run until it closes."""
     app, theme = create_app(app_id=app_id, name=name, version=version)
     window = make_window(theme)
-    show_tool(window, app_id=app_id, first_size=first_size, min_size=min_size)
+    show_tool(
+        window,
+        app_id=app_id,
+        first_size=first_size,
+        min_size=min_size,
+        theme=theme,
+    )
     return app.exec()
 
 

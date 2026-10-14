@@ -6,8 +6,8 @@ window and workflow page, and the four tools' app icons. Every tool starts
 with `cci_ui.app.create_app` and builds its window from these pieces in Python
 code (no Qt Designer files), laid out with Qt layouts so the controls follow
 the window's size. Appearance (System, Light, or Dark) and density
-(Comfortable or Compact) are set in the Display popover and shared by all
-four tools.
+(Automatic, Comfortable, or Compact) are set in the Display popover and shared
+by all four tools.
 
 `cci_ui` never imports the tools' packages (`tests/unit/test_layering.py`),
 so every tool can depend on it. Its design values (`theme/tokens.py`,
@@ -18,8 +18,21 @@ so every tool can depend on it. Its design values (`theme/tokens.py`,
 
 Edit `src/cci_ui/theme/tokens.py`: the light and dark colors, the
 Comfortable and Compact sizes, the type scale. The stylesheet is generated
-from it (`theme/qss.py`). Check the result in the
+from it (`theme/qss.py`), and every `Metrics` field is a `${field}` value a
+component's rules can use. Check the result in the
 [gallery](#checking-the-look-the-gallery), in both schemes and densities.
+
+Comfortable is the reference look. Compact shows more on short screens with
+the same text sizes and icons: shorter controls and rows, a lower header bar
+and status bar, a smaller page title, and tighter margins and gaps (side
+panel, two-list picker, page footer). Automatic, the default, picks Compact
+when the screen the tool's window opens on has less than 800 px of usable
+height (`COMPACT_BELOW_HEIGHT` in `theme/manager.py`), and Comfortable
+otherwise. It measures once at launch: `ThemeManager.measure_screen_of(window)`,
+which `show_tool` (given the theme, as `run_tool` gives it) and Clinical
+Reporting's `main()` call after restoring the window and before showing it.
+Moving the window later changes nothing.
+Picking Comfortable or Compact in the popover keeps that choice.
 
 ## Components
 
@@ -29,6 +42,15 @@ pages, the sidebar, banners, ...). A new module goes in the import list in
 page (that puts it under `tests/ui/test_no_stray_windows.py`, which fails
 if building one opens a stray window). Show or hide a child widget only once
 it has a parent; the package docstring explains why.
+
+Tables get their look from `widgets/tables.py`. Give every column the user
+can change (plain-text cells, dropdowns or fields) `ColumnSpec(editable=True)`:
+its header shows a pencil after the label. In such a column, a plain-text cell
+that takes typing opens on one click (Ctrl- and Shift-click still select rows)
+and shows a text cursor; one that doesn't (not enabled or not editable, and
+no dropdown in it) is grey. A table whose cells hold dropdowns or fields
+passes `style_table(..., controls=True)`: its rows are `editor_row_h` tall,
+so the controls keep 2 px above and below.
 
 Text that may hold a path or a typed name needs a label that keeps it in
 bounds. A word-wrapped `QLabel` breaks at spaces, `-` and `/`, but not inside
@@ -57,7 +79,12 @@ whose types the tool lists in `expected_errors` as warnings.
 Every tool's window reopens at the size and position it had when it was
 closed (`cci_ui.window_state.WindowState.remember`); the two with a sidebar
 (Clinical Reporting and CCI Automation) also keep it as wide (and collapsed
-or not) as it was.
+or not) as it was. The sidebar folds to an icon strip on narrow windows. With
+`AppShell(strip_badges=True)` the strip is wider and shows each step's count
+or mark beside its icon; with `collapse_in_compact=True` the sidebar starts
+as the strip in Compact, and each density remembers whether it was open
+(`sidebarCollapsed` and `sidebarCollapsedCompact` in the window state).
+Clinical Reporting and the gallery use both.
 
 Slow work runs off the GUI thread through `cci_ui.tasks` (`run_task`,
 `TaskRunner`), behind the busy overlay.
@@ -86,8 +113,9 @@ python -m cci_ui.gallery --screenshot shots            # every page, light and d
 
 `--screenshot` runs without opening a window and saves one PNG per page and
 scheme (only the `--page` given, if any), which makes it easy to review a
-change to `cci_ui/theme/tokens.py` or a component. The gallery never changes
-the appearance saved for the real tools.
+change to `cci_ui/theme/tokens.py` or a component. `--density` takes
+automatic, comfortable or compact; the file names say which density was on
+screen. The gallery never changes the appearance saved for the real tools.
 
 After a change, run `python -m pytest -q tests/ui`. Clinical Reporting's own
 pages and their checks are described in its
@@ -120,7 +148,7 @@ src/cci_ui/
   theme/palette.py             # Qt palette built from the tokens
   theme/fonts.py               # loads the bundled Inter font
   theme/glyphs.py              # renders icons; writes the stylesheet's arrow/tick images
-  theme/manager.py             # System/Light/Dark and density, shared by all tools
+  theme/manager.py             # System/Light/Dark, Automatic/Comfortable/Compact; shared by all tools
   widgets/buttons.py           # make_button/icon_button: primary, secondary, plain…
   widgets/labels.py            # type-scale labels; ElidedLabel/WrappingLabel for long paths
   widgets/section.py           # Section: titled card of label/field rows
@@ -136,9 +164,9 @@ src/cci_ui/
   widgets/views.py             # lists/tables with placeholder text; EmptyState
   widgets/status.py            # StatusBanner, show_toast, show_error
   widgets/busy.py              # BusyOverlay (blocks input; spinner after 150 ms)
-  widgets/tables.py            # column rules, density rows, table_card, TableToolbar
+  widgets/tables.py            # column rules, editable columns, density rows, table_card, TableToolbar
   widgets/dual_list.py         # DualListPicker (available ⇄ selected lists)
-  widgets/sidebar.py           # Sidebar with status badges; collapses to icons
+  widgets/sidebar.py           # Sidebar with status badges; collapses to icons (with badges, opt-in)
   widgets/shell.py             # AppShell: sidebar, header, pages, status bar, busy overlay
   widgets/workflow_page.py     # WorkflowPage: a small tool's inputs, output, and Run
   tool_window.py               # ToolWindow, show_tool, run_tool: a small tool's window

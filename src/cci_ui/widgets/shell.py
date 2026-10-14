@@ -5,9 +5,12 @@ beside a header and a stack of pages, above a status bar. Below
 ``LAYOUT.sidebar_collapse_below`` window width the sidebar collapses to icons
 (with a dead zone, see :mod:`~cci_ui.widgets.responsive`); the ≡ button or
 Ctrl+\\ toggles it at any width, and that choice holds until the window next
-crosses the threshold. With a sidebar, Ctrl+Tab and Ctrl+PgDown also go to
-the next page, Ctrl+Shift+Tab and Ctrl+PgUp to the previous one. The shell
-also owns the window's busy overlay.
+crosses the threshold. A shell made with *collapse_in_compact* also starts
+as the icon strip in Compact density, whatever the width, and remembers
+the sidebar's state for each density; with *strip_badges* the strip shows
+each item's badge beside its icon. With a sidebar, Ctrl+Tab and Ctrl+PgDown
+also go to the next page, Ctrl+Shift+Tab and Ctrl+PgUp to the previous one.
+The shell also owns the window's busy overlay.
 """
 
 from __future__ import annotations
@@ -29,7 +32,7 @@ from PySide6.QtWidgets import (
 from cci_ui.icons import IconName
 from cci_ui.theme.manager import ThemeManager, current, theme_events
 from cci_ui.theme.qss import register_qss
-from cci_ui.theme.tokens import LAYOUT
+from cci_ui.theme.tokens import LAYOUT, Density
 from cci_ui.widgets.busy import BusyOverlay
 from cci_ui.widgets.display import DisplayButton
 from cci_ui.widgets.labels import ElidedLabel, IconLabel, text_label
@@ -180,6 +183,13 @@ class AppShell(QWidget):
 
     Pass the app's :class:`~cci_ui.theme.manager.ThemeManager` as *theme* for
     the header's Display button; without one (tests) the header has none.
+    *strip_badges* widens the collapsed sidebar to
+    ``LAYOUT.sidebar_badge_strip_w`` and shows each item's badge beside its
+    icon. With *collapse_in_compact* the sidebar starts collapsed in Compact
+    density at any width (the toggle still opens it), and each density keeps
+    its own collapsed state: switching density puts back the state last left
+    in the new one (by default collapsed in Compact; in Comfortable, what the
+    breakpoint picks).
     """
 
     #: Emitted with the page key whenever the current page changes.
@@ -193,6 +203,8 @@ class AppShell(QWidget):
         *,
         title: str,
         with_sidebar: bool = True,
+        strip_badges: bool = False,
+        collapse_in_compact: bool = False,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
@@ -203,6 +215,14 @@ class AppShell(QWidget):
         self._current = ""
         self._context = ""
         self._sidebar_width = LAYOUT.sidebar_w
+        self._strip_badges = strip_badges
+        self._collapse_in_compact = collapse_in_compact and with_sidebar
+        #: The density whose sidebar state is on screen.
+        self._density = current().density
+        #: The collapsed states of the other densities (none yet: the default).
+        self._collapsed_in: Dict[Density, bool] = {}
+        # Comfortable's default waits for the first width to pick a state.
+        self._default_pending = False
         self._breakpoint = Breakpoint(LAYOUT.sidebar_collapse_below)
         # After restore_sidebar(), widths seen until the window has settled
         # only prime the breakpoint, so the restored state isn't overridden.
@@ -232,7 +252,7 @@ class AppShell(QWidget):
         self.sidebar: Optional[Sidebar] = None
         self.splitter: Optional[QSplitter] = None
         if with_sidebar:
-            self.sidebar = Sidebar(title)
+            self.sidebar = Sidebar(title, strip_badges=strip_badges)
             self.sidebar.currentChanged.connect(self.set_current)
             self.sidebar.toggleRequested.connect(self.toggle_sidebar)
             self.splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -245,6 +265,9 @@ class AppShell(QWidget):
             layout.addWidget(self.splitter)
             self._apply_sidebar_width()
             self._add_shortcut(SIDEBAR_SHORTCUT, self.toggle_sidebar)
+            if self._collapse_in_compact:
+                theme_events().changed.connect(self._on_theme_changed)
+                self._apply_density_state(hold=False)
             for keys in NEXT_PAGE_SHORTCUTS:
                 self._add_shortcut(keys, self.next_page)
             for keys in PREVIOUS_PAGE_SHORTCUTS:
@@ -356,22 +379,92 @@ class AppShell(QWidget):
         self.set_sidebar_collapsed(not self.is_sidebar_collapsed())
 
     def set_sidebar_collapsed(self, collapsed: bool) -> None:
+        self._default_pending = False
         if self.sidebar is None or collapsed == self.sidebar.is_collapsed():
             return
         self.sidebar.set_collapsed(collapsed)
         self._apply_sidebar_width()
 
-    def restore_sidebar(self, width: int, collapsed: bool) -> None:
+    @property
+    def collapse_in_compact(self) -> bool:
+        """Whether each density keeps its own sidebar state (see the class)."""
+        return self._collapse_in_compact
+
+    def sidebar_collapsed_in(self, density: Density) -> Optional[bool]:
+        """Whether the sidebar is collapsed in *density*.
+
+        ``None`` while *density* has no state of its own yet (not used yet,
+        or Comfortable before the first width), so its default applies. A
+        shell without *collapse_in_compact* has one state for every density.
+        """
+        if not self._collapse_in_compact:
+            return self.is_sidebar_collapsed()
+        if density is self._density:
+            return None if self._default_pending else self.is_sidebar_collapsed()
+        return self._collapsed_in.get(density)
+
+    def restore_sidebar(
+        self,
+        width: int,
+        collapsed: Optional[bool],
+        *,
+        compact_collapsed: Optional[bool] = None,
+    ) -> None:
         """Apply a remembered width and collapsed state (before the first show).
 
+        With *collapse_in_compact*, *collapsed* is Comfortable's state and
+        *compact_collapsed* Compact's (``None``: not remembered, so the
+        density's default applies), and the density in use gets its own.
         The state holds while the window opens (see :data:`RESTORE_SETTLE_MS`);
         after that, crossing the breakpoint collapses or expands as usual.
         """
         self.set_sidebar_width(width)
-        self.set_sidebar_collapsed(collapsed)
+        if not self._collapse_in_compact:
+            self.set_sidebar_collapsed(bool(collapsed))
+            self._hold_state()
+            return
+        self._collapsed_in = {}
+        if collapsed is not None:
+            self._collapsed_in[Density.COMFORTABLE] = collapsed
+        if compact_collapsed is not None:
+            self._collapsed_in[Density.COMPACT] = compact_collapsed
+        self._apply_density_state(hold=True)
+
+    def _hold_state(self) -> None:
+        """Keep the sidebar's state while the window opens, whatever its width."""
         self._keep_restored_state = True
         if self.isVisible():  # Already shown: no showEvent will start the wait.
             self._restore_settled.start()
+
+    def _apply_density_state(self, *, hold: bool) -> None:
+        """Give the sidebar the state remembered for the density in use.
+
+        Without one, Compact's default is the strip and Comfortable's is the
+        breakpoint's pick (the first width seen picks, if none was seen yet).
+        A state applied before the window opens holds while it opens.
+        """
+        collapsed = self._collapsed_in.pop(self._density, None)
+        if collapsed is None and self._density is Density.COMPACT:
+            collapsed = True
+        if collapsed is None:
+            self._keep_restored_state = False
+            if self._breakpoint.below is None:
+                self._default_pending = True
+            else:
+                self.set_sidebar_collapsed(self._breakpoint.below)
+            return
+        self.set_sidebar_collapsed(collapsed)
+        if hold or self._breakpoint.below is None:
+            self._hold_state()
+
+    def _on_theme_changed(self) -> None:
+        density = current().density
+        if density is self._density:
+            return  # Only the colors changed.
+        if not self._default_pending:
+            self._collapsed_in[self._density] = self.is_sidebar_collapsed()
+        self._density = density
+        self._apply_density_state(hold=False)
 
     def sidebar_width(self) -> int:
         """Width of the expanded sidebar (what the user last dragged it to)."""
@@ -388,7 +481,11 @@ class AppShell(QWidget):
             return
         handle = self.splitter.handle(1)
         if self.sidebar.is_collapsed():
-            collapsed = LAYOUT.sidebar_collapsed_w
+            collapsed = (
+                LAYOUT.sidebar_badge_strip_w
+                if self._strip_badges
+                else LAYOUT.sidebar_collapsed_w
+            )
             self.sidebar.setFixedWidth(collapsed)
             handle.setEnabled(False)
             # A fixed width alone doesn't move the splitter's divider.

@@ -14,16 +14,22 @@ from PySide6.QtWidgets import (
     QFrame,
     QGraphicsDropShadowEffect,
     QGridLayout,
+    QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from cci_ui.icons import IconName, icon
-from cci_ui.theme.manager import ThemeManager, ThemeMode, current, theme_events
+from cci_ui.theme.manager import (
+    DensityMode,
+    ThemeManager,
+    ThemeMode,
+    current,
+    theme_events,
+)
 from cci_ui.theme.palette import qcolor
 from cci_ui.theme.qss import register_qss
-from cci_ui.theme.tokens import Density
 from cci_ui.widgets.buttons import set_variant
 from cci_ui.widgets.labels import text_label
 from cci_ui.widgets.segmented import Segment, SegmentedControl
@@ -44,9 +50,19 @@ APPEARANCE_SEGMENTS = (
     Segment(ThemeMode.DARK.value, "Dark", IconName.APPEARANCE_DARK),
 )
 DENSITY_SEGMENTS = (
-    Segment(Density.COMFORTABLE.value, "Comfortable"),
-    Segment(Density.COMPACT.value, "Compact"),
+    Segment(
+        DensityMode.AUTOMATIC.value,
+        "Automatic",
+        tooltip="Compact on short screens, Comfortable elsewhere",
+    ),
+    Segment(DensityMode.COMFORTABLE.value, "Comfortable"),
+    Segment(DensityMode.COMPACT.value, "Compact"),
 )
+
+#: The note under the choices; Automatic adds what it picked.
+_SHARED_NOTE = "Shared by all CCI tools."
+_DENSITY_NOTE = "Compact fits more rows on laptop screens."
+_AUTOMATIC_NOTE = "Automatic uses {density} on this screen."
 
 #: Transparent margin around the card, room for its shadow.
 _SHADOW_MARGIN = 12
@@ -84,14 +100,15 @@ class DisplayPopover(QWidget):
         self.appearance = SegmentedControl(APPEARANCE_SEGMENTS, theme.mode.value)
         grid.addWidget(self.appearance, 1, 1)
         grid.addWidget(text_label("Density", tone="secondary"), 2, 0)
-        self.density = SegmentedControl(DENSITY_SEGMENTS, theme.density.value)
+        self.density = SegmentedControl(DENSITY_SEGMENTS, theme.density_mode.value)
         grid.addWidget(self.density, 2, 1)
-        note = text_label(
-            "Shared by all CCI tools. Compact fits more rows on laptop screens.",
-            style="footnote",
-            wrap=True,
-        )
-        grid.addWidget(note, 3, 0, 1, 2)
+        # Both choices fill the column, so their edges line up.
+        expanding = QSizePolicy.Policy.Expanding
+        for control in (self.appearance, self.density):
+            control.setSizePolicy(expanding, QSizePolicy.Policy.Fixed)
+        #: Says the choices are shared, and what Automatic picked.
+        self.note_label = text_label(style="footnote", wrap=True)
+        grid.addWidget(self.note_label, 3, 0, 1, 2)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(*(_SHADOW_MARGIN,) * 4)
@@ -100,18 +117,32 @@ class DisplayPopover(QWidget):
         self.appearance.currentChanged.connect(
             lambda key: theme.set_mode(ThemeMode(key))
         )
-        self.density.currentChanged.connect(lambda key: theme.set_density(Density(key)))
+        self.density.currentChanged.connect(self._on_density_picked)
         theme_events().changed.connect(self._sync)
+        self._sync()
+
+    def _on_density_picked(self, key: str) -> None:
+        self._theme.set_density(DensityMode(key))
+        # Automatic may keep the density on screen, so the theme doesn't
+        # change; the note still does.
         self._sync()
 
     def _sync(self) -> None:
         self.appearance.set_current(self._theme.mode.value)
-        self.density.set_current(self._theme.density.value)
+        self.density.set_current(self._theme.density_mode.value)
+        self.note_label.setText(self._note())
         self._shadow.setColor(qcolor(current().colors.shadow_toast))
         if self.isVisible() and self._anchor is not None:
-            # Density changes the size; stay attached to the button. Wait until
-            # the button itself has been resized for the new density.
+            # Density and the note change the size; stay attached to the
+            # button. Wait until the button itself has been resized for the
+            # new density.
             QTimer.singleShot(0, self._replace)
+
+    def _note(self) -> str:
+        if self._theme.density_mode is DensityMode.AUTOMATIC:
+            picked = self._theme.density.value.capitalize()
+            return f"{_SHARED_NOTE} {_AUTOMATIC_NOTE.format(density=picked)}"
+        return f"{_SHARED_NOTE} {_DENSITY_NOTE}"
 
     def _replace(self) -> None:
         if self.isVisible() and self._anchor is not None:

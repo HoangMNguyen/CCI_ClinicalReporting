@@ -49,11 +49,11 @@ QScrollArea[cciRole="page"] {
 QWidget[cciRole="pageContent"] {
     background: transparent;
 }
+QLabel[cciRole="pageTitle"] {
+    font-size: ${page_title_px}px;
+}
 """
 )
-
-#: Space between the header and the body.
-_HEADER_GAP = 14
 
 
 class _Column(QWidget):
@@ -90,6 +90,8 @@ class Page(QWidget):
         self._max_width = max_width
 
         self.title_label = text_label(title, style="title1")
+        # Sized by density (see the rule above); weight and color from title1.
+        self.title_label.setProperty("cciRole", "pageTitle")
         self.subtitle_label = text_label(subtitle, tone="secondary", wrap=True)
         self._actions_widget = QWidget()
         self.actions = QHBoxLayout(self._actions_widget)
@@ -178,18 +180,23 @@ class Page(QWidget):
         outer.addWidget(self._footer_widget)
 
     def _apply_metrics(self) -> None:
-        margin = current().metrics.page_margin
+        metrics = current().metrics
+        margin = metrics.page_margin
         if self._column is not None:
             self._column.setMaximumWidth(self._max_width + 2 * margin)
             self._column_layout.setContentsMargins(margin, margin, margin, margin)
-            self._column_layout.setSpacing(current().metrics.section_gap)
+            self._column_layout.setSpacing(metrics.section_gap)
             self.footer.setContentsMargins(0, 0, 0, 0)
         else:
-            self._header_margins.setContentsMargins(margin, margin, margin, _HEADER_GAP)
+            self._header_margins.setContentsMargins(
+                margin, margin, margin, metrics.page_header_gap
+            )
             # The footer spaces the body from the bottom edge when there is one.
             bottom = 0 if self._footer_widget.isVisibleTo(self) else margin
             self._body_margins.setContentsMargins(margin, 0, margin, bottom)
-            self.footer.setContentsMargins(margin, 10, margin, 12)
+            self.footer.setContentsMargins(
+                margin, metrics.footer_pad_top, margin, metrics.footer_pad_bottom
+            )
 
     def title(self) -> str:
         return self.title_label.text()

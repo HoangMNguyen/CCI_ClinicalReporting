@@ -20,16 +20,18 @@ def make_table(
     selection: QAbstractItemView.SelectionMode = (
         QAbstractItemView.SelectionMode.SingleSelection
     ),
+    controls: bool = False,
 ) -> PlaceholderTableWidget:
     """A styled table with *headers* and one column rule per header.
 
     *row_numbers* shows row numbers, for tables whose messages refer to rows
-    ("Static filter 2 must have an item").
+    ("Static filter 2 must have an item"). *controls* is for tables whose
+    cells hold dropdowns or fields (see :func:`style_table`).
     """
     table = PlaceholderTableWidget(placeholder)
     table.setColumnCount(len(headers))
     table.setHorizontalHeaderLabels(list(headers))
-    style_table(table, row_numbers=row_numbers, selection=selection)
+    style_table(table, row_numbers=row_numbers, selection=selection, controls=controls)
     configure_columns(table, columns)
     return table
 

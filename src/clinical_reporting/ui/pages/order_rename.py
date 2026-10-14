@@ -93,7 +93,7 @@ class OrderRenamePage(Page):
 
         self.tableWidget_rename = make_table(
             ["Original name", "Output name"],
-            [ColumnSpec("stretch"), ColumnSpec("stretch")],
+            [ColumnSpec("stretch"), ColumnSpec("stretch", editable=True)],
             placeholder="Select forms and items to set the column order.",
             row_numbers=True,
             selection=QAbstractItemView.SelectionMode.ExtendedSelection,

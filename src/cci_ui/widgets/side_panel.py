@@ -23,12 +23,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from cci_ui.theme.manager import repolish
+from cci_ui.theme.manager import current, repolish, theme_events
 from cci_ui.widgets.labels import section_label, text_label
 from cci_ui.widgets.responsive import ResponsiveSplit
-
-#: Space inside each section.
-SECTION_PADDING = 14
 
 
 def labeled_field(label: str, widget: QWidget) -> QVBoxLayout:
@@ -73,6 +70,8 @@ class SidePanel(QFrame):
         layout.setContentsMargins(1, 1, 1, 1)
         layout.addWidget(scroll)
 
+        theme_events().changed.connect(self._apply_metrics)
+
     def add_section(self, title: str) -> QVBoxLayout:
         """Add a section titled *title*; fill the layout it returns."""
         if self._section_widgets:
@@ -81,15 +80,22 @@ class SidePanel(QFrame):
             self._insert(separator)
         section = QWidget()
         layout = QVBoxLayout(section)
-        padding = SECTION_PADDING
-        layout.setContentsMargins(padding, padding, padding, padding)
-        layout.setSpacing(10)
         layout.addWidget(section_label(title))
         self._section_widgets.append(section)
+        self._apply_metrics()
         # At the top of its share when the sections sit side by side.
         self._insert(section, Qt.AlignmentFlag.AlignTop)
         self._arrange()
         return layout
+
+    def _apply_metrics(self) -> None:
+        """Space inside and between the parts of each section, by density."""
+        metrics = current().metrics
+        padding = metrics.panel_pad
+        for section in self._section_widgets:
+            layout = section.layout()
+            layout.setContentsMargins(padding, padding, padding, padding)
+            layout.setSpacing(metrics.panel_gap)
 
     def _insert(
         self, widget: QWidget, alignment: Optional[Qt.AlignmentFlag] = None
@@ -138,4 +144,4 @@ class SidePanel(QFrame):
             repolish(separator)
 
 
-__all__ = ["SECTION_PADDING", "SidePanel", "full_width", "labeled_field"]
+__all__ = ["SidePanel", "full_width", "labeled_field"]

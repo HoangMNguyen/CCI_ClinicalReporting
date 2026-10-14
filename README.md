@@ -155,9 +155,10 @@ Each tool's README has an example.
 
 `src/cci_ui` holds the colors, sizes and type, the components, the icons, the
 small tools' window and workflow page, and the app icons; every window is
-built from it in Python code. Light and dark mode and the Comfortable or
-Compact density are shared by all four tools, and every window reopens where
-it was. Check a change in the gallery, which shows every component:
+built from it in Python code. Light and dark mode and the density
+(Automatic, Comfortable or Compact) are shared by all four tools, and every
+window reopens where it was. Check a change in the gallery, which shows every
+component:
 
 ```bash
 python -m cci_ui.gallery

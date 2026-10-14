@@ -1,7 +1,7 @@
 """Tests for the first batch of components (step 1.3)."""
 
 import pytest
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import (
     QContextMenuEvent,
     QKeySequence,
@@ -17,13 +17,14 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMenu,
     QStackedWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from cci_ui.icons import IconName
 from cci_ui.theme import manager as theme_manager
-from cci_ui.theme.manager import Theme, ThemeMode, current
+from cci_ui.theme.manager import DENSITY_KEY, DensityMode, Theme, ThemeMode, current
 from cci_ui.theme.tokens import COMPACT, LAYOUT, LIGHT, Density, Scheme
 from cci_ui.widgets.buttons import icon_button, make_button, set_variant
 from cci_ui.widgets.display import DisplayPopover
@@ -40,6 +41,7 @@ from cci_ui.widgets.responsive import Breakpoint, ResponsiveSplit
 from cci_ui.widgets.search import SearchField
 from cci_ui.widgets.section import Section
 from cci_ui.widgets.segmented import Segment, SegmentedControl
+from cci_ui.widgets.shell import AppShell
 from cci_ui.widgets.side_panel import SidePanel, full_width, labeled_field
 from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.tables import TableToolbar, style_table, table_card
@@ -486,11 +488,63 @@ def test_display_popover_changes_the_theme(make_manager):
     popover = DisplayPopover(manager)
 
     popover.appearance._group.button(2).click()
-    popover.density._group.button(1).click()
+    popover.density._group.button(2).click()
 
     assert manager.mode is ThemeMode.DARK
+    assert manager.density_mode is DensityMode.COMPACT
     assert manager.density is Density.COMPACT
     assert popover.appearance.current() == "dark"
+
+
+class _ShortScreenWindow:
+    """A main window on a screen 720 pixels tall, where Automatic picks Compact."""
+
+    class _Screen:
+        def availableGeometry(self):  # noqa: N802 (Qt API)
+            return QRect(0, 0, 1366, 720)
+
+    def screen(self):
+        return self._Screen()
+
+
+def test_picking_automatic_in_the_popover_says_what_it_picked(
+    make_manager, ini_settings
+):
+    manager = make_manager()
+    manager.measure_screen_of(_ShortScreenWindow())
+    manager.set_density(DensityMode.COMPACT)
+    popover = DisplayPopover(manager)
+    before = popover.note_label.text()
+
+    automatic = next(
+        button
+        for button in popover.density.findChildren(QToolButton)
+        if button.text() == "Automatic"
+    )
+    automatic.click()
+
+    assert before == (
+        "Shared by all CCI tools. Compact fits more rows on laptop screens."
+    )
+    assert ini_settings.value(DENSITY_KEY) == "automatic"
+    assert manager.density_mode is DensityMode.AUTOMATIC
+    assert popover.density.current() == "automatic"
+    assert popover.note_label.text() == (
+        "Shared by all CCI tools. Automatic uses Compact on this screen."
+    )
+
+
+def test_compact_shrinks_the_header_status_bar_and_page_title(make_manager):
+    manager = make_manager()
+    manager.set_density(DensityMode.COMPACT)
+    shell = _shown(AppShell(manager, title="Gallery", with_sidebar=False), 900, 600)
+    page = Page("Source data")
+    page.title_label.ensurePolished()
+
+    assert shell.header.height() == 36
+    assert shell.status_bar.height() == 20
+    assert page.title_label.font().pixelSize() == 17
+    shell.close()
 
 
 # ---------------------------------------------------------------------------
