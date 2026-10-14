@@ -112,20 +112,20 @@ class SourceDataPage(Page):
 
         self.checkBox_saved_setting = ToggleSwitch()
         self.checkBox_saved_setting.setAccessibleName("Start from a saved setting")
-        self.comboBox_saved_setting = QComboBox()
-        # Shown while the list is empty (the toggle is off); the list's own
-        # first entry repeats it.
-        self.comboBox_saved_setting.setPlaceholderText("Choose a setting…")
         self.pathPicker_settings_folder = PathPicker(
             button_text="Settings folder…", placeholder="No folder chosen"
         )
         self.pushButton_setting_location = self.pathPicker_settings_folder.button
+        self.comboBox_saved_setting = QComboBox()
+        # Shown while the list is empty (the toggle is off); the list's own
+        # first entry repeats it.
+        self.comboBox_saved_setting.setPlaceholderText("Choose a setting…")
         saved_section = Section("Saved settings")
         saved_section.add_row(
             "Start from a saved setting", self.checkBox_saved_setting, label_width=None
         )
-        saved_section.add_row("Setting", self.comboBox_saved_setting)
         saved_section.add_row("Folder", self.pathPicker_settings_folder)
+        saved_section.add_row("Setting", self.comboBox_saved_setting)
         # Items of a loaded setting that the data doesn't have.
         self.label_setting = StatusBanner()
 
