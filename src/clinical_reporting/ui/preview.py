@@ -22,8 +22,8 @@ from typing import List, Optional, Sequence, Tuple
 
 from PySide6.QtCore import QSettings, QTemporaryDir
 
-from cci_ui.theme.manager import ThemeManager, ThemeMode
-from cci_ui.theme.tokens import LAYOUT, Density
+from cci_ui.theme.manager import DensityMode, ThemeManager, ThemeMode
+from cci_ui.theme.tokens import LAYOUT
 from clinical_reporting.ui.main_ui import PAGE_CLASSES
 
 #: Page names on the command line, in step order.
@@ -58,7 +58,9 @@ def _parse(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     parser.add_argument(
         "--theme", choices=[m.value for m in ThemeMode], help="appearance"
     )
-    parser.add_argument("--density", choices=[d.value for d in Density], help="density")
+    parser.add_argument(
+        "--density", choices=[d.value for d in DensityMode], help="density"
+    )
     parser.add_argument(
         "--size",
         type=_sizes,
@@ -129,7 +131,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.theme:
         theme.set_mode(ThemeMode(args.theme))
     if args.density:
-        theme.set_density(Density(args.density))
+        theme.set_density(DensityMode(args.density))
 
     keys = list(PAGE_KEYS) if "all" in args.pages else args.pages
     window = build_preview_window(with_data=not args.empty, theme=theme)

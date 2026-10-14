@@ -1,14 +1,35 @@
 """Tests for applying and remembering the appearance and density choices."""
 
+from PySide6.QtCore import QRect
 from PySide6.QtGui import QPalette
 
 from cci_ui.theme import manager as theme_manager
-from cci_ui.theme.manager import DENSITY_KEY, MODE_KEY, ThemeMode
+from cci_ui.theme.manager import DENSITY_KEY, MODE_KEY, DensityMode, ThemeMode
 from cci_ui.theme.tokens import DARK, LIGHT, Density, Scheme
 
 
 def _window_color(app):
     return app.palette().color(QPalette.ColorRole.Window).name().upper()
+
+
+class _Screen:
+    """A screen with *height* usable pixels."""
+
+    def __init__(self, height):
+        self._height = height
+
+    def availableGeometry(self):  # noqa: N802 (Qt API)
+        return QRect(0, 0, 1366, self._height)
+
+
+class _Window:
+    """A main window that opens on a screen *height* pixels tall."""
+
+    def __init__(self, height):
+        self._screen = _Screen(height)
+
+    def screen(self):
+        return self._screen
 
 
 def test_choices_are_applied_and_survive_a_restart(make_manager, ini_settings):
@@ -66,17 +87,47 @@ def test_unknown_system_scheme_means_light(make_manager):
     assert manager.scheme is Scheme.LIGHT
 
 
-def test_bad_stored_values_fall_back_to_defaults(
-    make_manager, ini_settings, monkeypatch
-):
+def test_bad_stored_values_fall_back_to_defaults(make_manager, ini_settings):
     ini_settings.setValue(MODE_KEY, "sepia")
     ini_settings.setValue(DENSITY_KEY, "tiny")
-    monkeypatch.setattr(theme_manager, "default_density", lambda _app: Density.COMPACT)
 
     manager = make_manager()
 
     assert manager.mode is ThemeMode.SYSTEM
+    assert manager.density_mode is DensityMode.AUTOMATIC
+
+
+def test_density_is_automatic_until_the_user_picks_one(make_manager, ini_settings):
+    never_picked = make_manager()
+    ini_settings.setValue(DENSITY_KEY, "automatic")
+    picked_automatic = make_manager()
+
+    assert never_picked.density_mode is DensityMode.AUTOMATIC
+    assert picked_automatic.density_mode is DensityMode.AUTOMATIC
+
+
+def test_automatic_density_follows_the_screen_the_window_opens_on(make_manager):
+    manager = make_manager()
+    manager.set_density(DensityMode.COMFORTABLE)
+    manager.set_density(DensityMode.AUTOMATIC)
+
+    manager.measure_screen_of(_Window(720))
+    short = manager.density, theme_manager.current().metrics.header_h
+    manager.measure_screen_of(_Window(1040))
+    tall = manager.density, theme_manager.current().metrics.header_h
+
+    assert short == (Density.COMPACT, 36)
+    assert tall == (Density.COMFORTABLE, 44)
+
+
+def test_a_picked_density_ignores_the_screen(make_manager):
+    manager = make_manager()
+    manager.set_density(DensityMode.COMPACT)
+
+    manager.measure_screen_of(_Window(1040))
+
     assert manager.density is Density.COMPACT
+    assert theme_manager.current().metrics.header_h == 36
 
 
 def test_preview_tools_do_not_overwrite_the_users_choice(make_manager, ini_settings):

@@ -22,6 +22,8 @@ def test_screenshot_mode_saves_the_pages_asked_for_and_quits(tmp_path):
             str(tmp_path),
             "--theme",
             "dark",
+            "--density",
+            "automatic",
             "--size",
             "1000x620,1920x1001",
         ],
@@ -38,6 +40,9 @@ def test_screenshot_mode_saves_the_pages_asked_for_and_quits(tmp_path):
     assert len(saved) == 4
     assert all(name.split("-")[0] in {"joins", "preview"} for name in saved)
     assert all("-dark-" in name for name in saved)
+    # Named after the density Automatic picked, whichever the screen gave.
+    densities = {name.split("-")[2] for name in saved}
+    assert densities in ({"comfortable"}, {"compact"})
     assert {name.rsplit("-", 1)[1] for name in saved} == {
         "1000x620.png",
         "1920x1001.png",

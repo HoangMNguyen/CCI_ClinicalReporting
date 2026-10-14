@@ -1,11 +1,12 @@
 """Apply the theme to the running app and keep it in step with user choices.
 
 :class:`ThemeManager` owns the appearance mode (System, Light, Dark) and the
-density (Comfortable, Compact). Both are shared by all CCI tools through
-:func:`shared_settings`, so switching one tool to Dark switches the others
-the next time they start. Custom widgets read the active colors and sizes
-with :func:`current` at paint time and refresh when
-``theme_events().changed`` fires.
+density mode (Automatic, Comfortable, Compact). Both are shared by all CCI
+tools through :func:`shared_settings`, so switching one tool to Dark switches
+the others the next time they start. Automatic picks Compact on short screens
+(:func:`automatic_density`), measured once when a tool starts. Custom widgets
+read the active colors and sizes with :func:`current` at paint time and
+refresh when ``theme_events().changed`` fires.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from enum import Enum
 from typing import Dict, Optional
 
 from PySide6.QtCore import QObject, QSettings, Qt, Signal
+from PySide6.QtGui import QScreen
 from PySide6.QtWidgets import QApplication, QWidget
 
 from cci_ui.theme.glyphs import export_glyphs
@@ -39,7 +41,7 @@ SETTINGS_APPLICATION = "CCI Suite"
 MODE_KEY = "appearance/mode"
 DENSITY_KEY = "appearance/density"
 
-#: Screens with less usable height than this default to Compact density.
+#: Automatic density picks Compact on screens with less usable height than this.
 COMPACT_BELOW_HEIGHT = 800
 
 
@@ -49,6 +51,18 @@ class ThemeMode(str, Enum):
     SYSTEM = "system"
     LIGHT = "light"
     DARK = "dark"
+
+
+class DensityMode(str, Enum):
+    """The density the user picked in the Display settings.
+
+    Comfortable and Compact share their values with :class:`Density`;
+    Automatic picks one of them by the screen (:func:`automatic_density`).
+    """
+
+    AUTOMATIC = "automatic"
+    COMFORTABLE = "comfortable"
+    COMPACT = "compact"
 
 
 @dataclass(frozen=True)
@@ -120,7 +134,11 @@ def set_invalid(widget: QWidget, invalid: bool) -> None:
 
 
 class ThemeManager(QObject):
-    """Applies the palette and stylesheet for the chosen mode and density."""
+    """Applies the palette and stylesheet for the chosen mode and density.
+
+    Automatic density measures the primary screen until the tool's main
+    window is known (:meth:`measure_screen_of`).
+    """
 
     #: Emitted with ``"light"`` or ``"dark"`` when the colors on screen change.
     themeChanged = Signal(str)
@@ -137,7 +155,8 @@ class ThemeManager(QObject):
         self._settings = settings if settings is not None else shared_settings()
         self._persist = persist
         self._mode = self._read_mode()
-        self._density = self._read_density()
+        self._density_mode = self._read_density_mode()
+        self._automatic = automatic_density(app.primaryScreen())
         self._applied: Optional[Theme] = None
         self._applying = False
         app.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
@@ -150,8 +169,16 @@ class ThemeManager(QObject):
         return self._mode
 
     @property
+    def density_mode(self) -> DensityMode:
+        """The density the user picked; Automatic included."""
+        return self._density_mode
+
+    @property
     def density(self) -> Density:
-        return self._density
+        """The density on screen: the user's choice, or Automatic's pick."""
+        if self._density_mode is DensityMode.AUTOMATIC:
+            return self._automatic
+        return Density(self._density_mode.value)
 
     @property
     def scheme(self) -> Scheme:
@@ -170,13 +197,28 @@ class ThemeManager(QObject):
         self._write(MODE_KEY, mode.value)
         self.apply()
 
-    def set_density(self, density: Density) -> None:
-        density = Density(density)
-        if density is self._density:
+    def set_density(self, mode: DensityMode) -> None:
+        """Pick a density mode; a :class:`Density` picks the same mode by value."""
+        mode = DensityMode(mode)
+        if mode is self._density_mode:
             return
-        self._density = density
-        self._write(DENSITY_KEY, density.value)
+        self._density_mode = mode
+        self._write(DENSITY_KEY, mode.value)
         self.apply()
+
+    def measure_screen_of(self, window: QWidget) -> None:
+        """Let Automatic density measure the screen *window* opens on.
+
+        Call once at launch, after the window's geometry is restored and
+        before it shows; re-applies if Automatic now picks the other density.
+        Moving the window to another screen later changes nothing.
+        """
+        automatic = automatic_density(window.screen())
+        if automatic is self._automatic:
+            return
+        self._automatic = automatic
+        if self._density_mode is DensityMode.AUTOMATIC and self._applied is not None:
+            self.apply()
 
     # ------------------------------------------------------------------
     # Applying
@@ -193,9 +235,8 @@ class ThemeManager(QObject):
             # choice would stick (the change signal is ignored while applying).
             self._sync_native_scheme()
             scheme = self.scheme
-            theme = Theme(
-                scheme, self._density, colors_for(scheme), metrics_for(self._density)
-            )
+            density = self.density
+            theme = Theme(scheme, density, colors_for(scheme), metrics_for(density))
             self._app.setPalette(to_qpalette(theme.colors))
             self._app.setStyleSheet(
                 build_stylesheet(theme.colors, theme.metrics, _glyphs_for(theme))
@@ -242,12 +283,14 @@ class ThemeManager(QObject):
         except ValueError:
             return ThemeMode.SYSTEM
 
-    def _read_density(self) -> Density:
-        stored = self._settings.value(DENSITY_KEY, None)
+    def _read_density_mode(self) -> DensityMode:
+        # Missing or not one of ours: Automatic, which is also the default.
         try:
-            return Density(stored) if stored else default_density(self._app)
+            return DensityMode(
+                self._settings.value(DENSITY_KEY, DensityMode.AUTOMATIC.value)
+            )
         except ValueError:
-            return default_density(self._app)
+            return DensityMode.AUTOMATIC
 
     def _write(self, key: str, value: str) -> None:
         if self._persist:
@@ -266,9 +309,12 @@ def _glyphs_for(theme: Theme) -> Optional[Dict[str, str]]:
         return None
 
 
-def default_density(app: QApplication) -> Density:
-    """Compact on short screens (laptops at 125-150%), Comfortable elsewhere."""
-    screen = app.primaryScreen()
+def automatic_density(screen: Optional[QScreen]) -> Density:
+    """What Automatic density picks on *screen*.
+
+    Compact when its usable height is under :data:`COMPACT_BELOW_HEIGHT`
+    (laptops at 125-150%), Comfortable elsewhere or with no screen.
+    """
     if (
         screen is not None
         and screen.availableGeometry().height() < COMPACT_BELOW_HEIGHT
@@ -278,16 +324,18 @@ def default_density(app: QApplication) -> Density:
 
 
 __all__ = [
+    "COMPACT_BELOW_HEIGHT",
     "DENSITY_KEY",
     "MODE_KEY",
     "SETTINGS_APPLICATION",
     "SETTINGS_ORGANIZATION",
+    "DensityMode",
     "Theme",
     "ThemeEvents",
     "ThemeManager",
     "ThemeMode",
+    "automatic_density",
     "current",
-    "default_density",
     "repolish",
     "set_invalid",
     "shared_settings",

@@ -45,5 +45,7 @@ def main() -> int:
     WindowState(APP_ID).remember(
         widget, first_size=FIRST_SIZE, min_size=MIN_SIZE, shell=widget.ui.shell
     )
+    # Automatic density follows the screen the window opens on.
+    theme.measure_screen_of(widget)
     widget.show()
     return app.exec()
