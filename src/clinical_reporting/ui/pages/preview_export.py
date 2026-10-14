@@ -46,18 +46,18 @@ from clinical_reporting.telemetry import (
 )
 from clinical_reporting.ui.dialogs import choose_settings_directory, settings_folder
 from clinical_reporting.ui.preview_model import ReportPreviewModel
-from clinical_reporting.validation import (
-    CANNOT_RUN_PREFIX,
-    EXPORT_BLOCKING_ISSUE_CODES,
-    ReportValidationError,
-    cannot_run_message,
-    report_issues_message,
-)
+from clinical_reporting.validation import CANNOT_RUN_PREFIX, ReportValidationError
+
+from ._common import show_problem
 
 logger = logging.getLogger(__name__)
 
 #: The line under the title until a preview shows its size there.
 SUBTITLE = "Check the rows, then export them to Excel."
+#: The output folder's problem until one is chosen.
+NO_OUTPUT_FOLDER = "Choose the folder to export to."
+#: The setting name's problem while saving is on and it is empty.
+NO_SETTING_NAME = "Give the setting a name."
 
 
 class PreviewExportPage(Page):
@@ -77,6 +77,7 @@ class PreviewExportPage(Page):
         "pathPicker_output_folder",
         "pushButton_output_folder",
         "lineEdit_file_name",
+        "banner_run_state",
         "label_run_confirmation",
         "pushButton_run",
         "checkBox_save_current_setting",
@@ -128,6 +129,9 @@ class PreviewExportPage(Page):
         self.lineEdit_file_name.textChanged.connect(self._show_file_name)
         # A typed name can be one long word; it wraps instead of widening the panel.
         self.file_name_caption = text_label(style="caption", break_long_words=True)
+        # What stops the export now ("Cannot run: Fix Filters first."), kept
+        # current as the report changes; the banner below says results.
+        self.banner_run_state = StatusBanner(dismissible=False, announce=False)
         self.label_run_confirmation = StatusBanner()
         self.pushButton_run = full_width(
             make_button("Export to Excel", variant="primary", icon_name=IconName.EXPORT)
@@ -137,6 +141,7 @@ class PreviewExportPage(Page):
         name_field = labeled_field("File name", self.lineEdit_file_name)
         name_field.addWidget(self.file_name_caption)
         export.addLayout(name_field)
+        export.addWidget(self.banner_run_state)
         export.addWidget(self.label_run_confirmation)
         export.addWidget(self.pushButton_run)
         self._show_file_name()
@@ -199,15 +204,30 @@ class PreviewExportMixin:
         self.ui.checkBox_save_current_setting.stateChanged.connect(
             self.on_save_current_setting_state_changed
         )
+        self.ui.lineEdit_setting_name.textChanged.connect(
+            self._refresh_save_availability
+        )
         self.on_save_current_setting_state_changed()
 
     def on_save_current_setting_state_changed(self) -> None:
         """Enable/disable persistence buttons when the checkbox changes."""
         enabled = self.ui.checkBox_save_current_setting.isChecked()
-        self.ui.pushButton_save_setting.setEnabled(enabled)
         self.ui.pushButton_output_setting.setEnabled(enabled)
         if not enabled:
             self._set_label_text(self.label_save_confirmation, "")
+        self._refresh_save_availability()
+
+    def _refresh_save_availability(self) -> None:
+        """Save setting only while saving is on and the setting has a name.
+
+        The name field is marked while it is empty and saving is on.
+        """
+        on = self.ui.checkBox_save_current_setting.isChecked()
+        named = bool(self.ui.lineEdit_setting_name.text().strip())
+        show_problem(
+            self.ui.lineEdit_setting_name, NO_SETTING_NAME if on and not named else ""
+        )
+        self.ui.pushButton_save_setting.setEnabled(on and named)
 
     # ------------------------------------------------------------------
     # Settings persistence helpers
@@ -215,35 +235,15 @@ class PreviewExportMixin:
     def click_output_setting_folder(self) -> None:
         """Let the user choose the directory used to save settings."""
         if not self.ui.checkBox_save_current_setting.isChecked():
-            self._set_label_text(
-                self.label_save_confirmation,
-                feedback.warning(
-                    "Turn on 'Save these settings for reuse' before choosing a "
-                    "settings folder."
-                ),
-            )
-            return
+            return  # The button is disabled then.
 
         choose_settings_directory(self)
 
     def click_save_setting(self) -> None:
         """Save the current report to disk as a saved setting."""
-        if not self.ui.checkBox_save_current_setting.isChecked():
-            self._set_label_text(
-                self.label_save_confirmation,
-                feedback.warning(
-                    "Turn on 'Save these settings for reuse' before saving."
-                ),
-            )
-            return
-
         settings_name = self.ui.lineEdit_setting_name.text().strip()
-        if not settings_name:
-            self._set_label_text(
-                self.label_save_confirmation,
-                feedback.warning("Please enter a setting name before saving."),
-            )
-            return
+        if not self.ui.checkBox_save_current_setting.isChecked() or not settings_name:
+            return  # The button is disabled then.
 
         # Remember the folder so both settings-folder buttons open there next.
         self.settings_directory = settings_folder(self)
@@ -293,33 +293,29 @@ class PreviewExportMixin:
             self._refresh_saved_settings()
 
     # ------------------------------------------------------------------
-    # Join-configuration guarding
-
-    def _join_configuration_error_message(self) -> Optional[feedback.Message]:
-        """Return validation feedback for join errors that block output."""
-        report = getattr(self, "report", None)
-        if report is None:
-            return None
-        return report_issues_message(report, EXPORT_BLOCKING_ISSUE_CODES)
+    # What stops the export
 
     def _refresh_run_availability(self) -> None:
-        """Enable/disable Export to Excel and surface join-configuration errors.
+        """Export to Excel only when nothing stops it; say what does.
 
-        Called whenever the join configuration changes so the disabled state and
-        the inline hint stay in sync with the current selections.
+        From the window's last validation and the pages' own problems: the
+        steps to fix go in the banner above the button. The output folder is
+        marked until one is chosen.
         """
-        message = self._join_configuration_error_message()
+        issues = getattr(self, "_issues", None)
+        if issues is None:  # A partial window (tests): validate here.
+            issues = self.report.validate() if self.report is not None else []
+        message = steps.cannot_run_message(
+            issues, getattr(self, "_page_problems", {})
+        )
+        has_folder = bool(self.output_folder_name)
+        picker = getattr(self.ui, "pathPicker_output_folder", None)
+        if picker is not None:
+            picker.set_problem("" if has_folder else NO_OUTPUT_FOLDER)
         run_button = getattr(self.ui, "pushButton_run", None)
         if run_button is not None:
-            run_button.setEnabled(message is None)
-        if message is not None:
-            self._set_label_text(self.label_run_confirmation, message)
-        elif (
-            self.label_run_confirmation is not None
-            and self.label_run_confirmation.text().startswith(CANNOT_RUN_PREFIX)
-        ):
-            # Conflict resolved: clear only our own stale hint.
-            self._set_label_text(self.label_run_confirmation, "")
+            run_button.setEnabled(message is None and has_folder)
+        self._set_label_text(getattr(self.ui, "banner_run_state", None), message or "")
 
     # ------------------------------------------------------------------
     # Report preview and export
@@ -329,16 +325,22 @@ class PreviewExportMixin:
 
         if getattr(self, "report", None) is None:
             return feedback.warning(f"{CANNOT_RUN_PREFIX} no report is loaded.")
-        return report_issues_message(self.report)
+        return steps.cannot_run_message(
+            self.report.validate(), getattr(self, "_page_problems", {})
+        )
+
+    def _refuse_to_run(self) -> None:
+        """Clear the preview and the last result: the banner says what stops it."""
+        self.ui.tableView_preview.setModel(None)
+        self._set_label_text(self.label_run_confirmation, "")
+        self._refresh_run_availability()
 
     def preview_report(self) -> None:
         """Generate and display a preview of the report."""
         if defer_if_busy(self, self.preview_report):
             return
-        validation_message = self._report_validation_message()
-        if validation_message is not None:
-            self._set_label_text(self.label_run_confirmation, validation_message)
-            self.ui.tableView_preview.setModel(None)
+        if self._report_validation_message() is not None:
+            self._refuse_to_run()
             return
         self._set_label_text(
             self.label_run_confirmation, feedback.info("Generating preview...")
@@ -381,7 +383,10 @@ class PreviewExportMixin:
         """Explain why building the report failed (preview or export)."""
         if isinstance(exc, ReportValidationError):
             self._set_label_text(
-                self.label_run_confirmation, cannot_run_message(exc.issues)
+                self.label_run_confirmation,
+                steps.cannot_run_message(
+                    exc.issues, getattr(self, "_page_problems", {})
+                ),
             )
             return
         logger.error(what_failed, exc_info=exc)
@@ -394,16 +399,10 @@ class PreviewExportMixin:
         """Run the report and export it to an Excel file."""
         if defer_if_busy(self, self.click_run):
             return
-        validation_message = self._report_validation_message()
-        if validation_message is not None:
-            self._set_label_text(self.label_run_confirmation, validation_message)
-            return
-        # Checked first, so a missing folder doesn't cost a full report build.
         if not self.output_folder_name:
-            self._set_label_text(
-                self.label_run_confirmation,
-                feedback.warning("Please select an output folder first."),
-            )
+            return  # The button is disabled then.
+        if self._report_validation_message() is not None:
+            self._refuse_to_run()
             return
 
         file_name = output_file_name(self.ui.lineEdit_file_name.text())

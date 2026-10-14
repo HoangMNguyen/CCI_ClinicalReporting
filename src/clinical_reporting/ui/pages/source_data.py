@@ -51,7 +51,12 @@ from clinical_reporting.session import (
 )
 from clinical_reporting.ui.dialogs import choose_settings_directory, settings_folder
 
+from ._common import show_problem
+
 logger = logging.getLogger(__name__)
+
+#: The Setting box's problem when the setting picked couldn't be loaded.
+SETTING_NOT_LOADED = "This setting couldn't be loaded; see the message below."
 
 
 class SourceDataPage(Page):
@@ -297,6 +302,10 @@ class SourceDataMixin:
         if folder:
             self.output_folder_name = folder
             self.ui.pathPicker_output_folder.set_path(folder)
+            # Guarded: tests compose this mixin without Preview & export's.
+            refresh_run = getattr(self, "_refresh_run_availability", None)
+            if refresh_run is not None:
+                refresh_run()
 
     def click_cutoff_checkBox(self, state: int) -> None:
         """Enable the date editor and re-apply the cut-off when toggled."""
@@ -473,6 +482,7 @@ class SourceDataMixin:
         self._last_loaded_setting_path = None
         self._pending_saved_setting_reapply = False
         self._set_label_text(self.label_setting, "")
+        show_problem(self.ui.comboBox_saved_setting, "")
         forget_saved_names = getattr(self, "_forget_saved_additional_names", None)
         if forget_saved_names is not None:
             forget_saved_names()
@@ -520,13 +530,11 @@ class SourceDataMixin:
             reconciliation = apply_saved_setting(self.report, stored)
         except Exception as exc:
             logger.exception("Failed to load settings from %s", file_path)
-            self._set_label_text(
-                self.label_save_confirmation,
-                feedback.error(
-                    f"Failed to load settings: {exc}", traceback.format_exc()
-                ),
+            # Said under the Setting box (on_saved_setting_changed marks it).
+            self._setting_load_error = feedback.error(
+                f"Failed to load settings: {exc}", traceback.format_exc()
             )
-            self._set_label_text(self.label_setting, "")
+            self._set_label_text(self.label_setting, self._setting_load_error)
             self._pending_saved_setting_reapply = False
             return False
 
@@ -558,9 +566,14 @@ class SourceDataMixin:
         return True
 
     def on_saved_setting_changed(self, index: int) -> None:
-        """Load the selected saved setting into the report."""
+        """Load the selected saved setting into the report.
+
+        A setting that can't be loaded marks the Setting box, and the banner
+        under it says why.
+        """
         if index < 0:
             return
+        show_problem(self.ui.comboBox_saved_setting, "")
 
         file_path: Optional[str] = self.ui.comboBox_saved_setting.itemData(index)
         if not file_path:
@@ -571,6 +584,8 @@ class SourceDataMixin:
             file_path, update_confirmation=True, offer_saved_names=True
         ):
             self._forget_loaded_setting()
+            self._set_label_text(self.label_setting, self._setting_load_error)
+            show_problem(self.ui.comboBox_saved_setting, SETTING_NOT_LOADED)
             return
 
         self._last_loaded_setting_path = file_path

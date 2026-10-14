@@ -256,8 +256,14 @@ def test_the_preview_shows_its_size_and_the_file_name_it_would_write(
     assert page.subtitle_label.text() == SUBTITLE
 
 
-def test_preview_shortcuts_refresh_and_export(sample_window, settle):
+def test_preview_shortcuts_refresh_and_export(
+    sample_window, settle, monkeypatch, tmp_path
+):
     calls = []
+    monkeypatch.setattr(
+        source_data.QFileDialog, "getExistingDirectory", lambda *_args: str(tmp_path)
+    )
+    sample_window.click_output_file()  # Export to Excel needs a folder.
     sample_window.ui.shell.set_current(steps.PREVIEW)
     settle(sample_window.task_runner)  # Keys are blocked while it builds.
     sample_window.ui.pushButton_refresh_preview.clicked.disconnect()
@@ -368,6 +374,7 @@ def test_ctrl_s_saves_the_setting_and_ctrl_f_searches_the_columns(
     sample_window.ui.pushButton_save_setting.clicked.disconnect()
     sample_window.ui.pushButton_save_setting.clicked.connect(lambda: saved.append(1))
     sample_window.ui.checkBox_save_current_setting.setChecked(True)
+    sample_window.ui.lineEdit_setting_name.setText("DEMO01 sample")
     sample_window.ui.shell.set_current(steps.PREVIEW)
     settle(sample_window.task_runner)
     sample_window.activateWindow()

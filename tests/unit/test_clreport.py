@@ -331,6 +331,18 @@ def test_a_filter_on_a_bare_item_name_needs_a_form_that_selected_it():
     assert report.get_static_filter_items() == [("Pulse", ">", "60")]
 
 
+def test_a_filter_with_a_blank_item_stays_through_a_selection_sync():
+    report = _demo_report("DM")
+    report.set_static_filter_items([("", "=", "")])
+    report.set_dynamic_filter_items([("Subject", "=", ""), ("DM.Gone", "=", "Site")])
+
+    report.sync_with_selection()
+
+    assert report.get_static_filter_items() == [("", "=", "")]
+    # A comparison with both items, one of them not in the report, is parked.
+    assert report.get_dynamic_filter_items() == [("Subject", "=", "")]
+
+
 def test_dynamic_filter_management():
     report = CLReport()
 

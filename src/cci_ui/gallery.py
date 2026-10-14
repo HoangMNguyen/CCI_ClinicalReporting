@@ -62,8 +62,10 @@ from cci_ui.widgets.sidebar import StepState
 from cci_ui.widgets.status import StatusBanner, show_error, show_toast
 from cci_ui.widgets.tables import (
     ColumnSpec,
+    ProblemCellDelegate,
     TableToolbar,
     configure_columns,
+    mark_cell,
     style_table,
     table_card,
 )
@@ -250,7 +252,7 @@ def _members_checklist() -> ChecklistComboBox:
 
 def _inputs_page(_shell: AppShell) -> Page:
     page = Page("Inputs", "Text, choices, dates, and files.", kind=PageKind.FORM)
-    section = Section("Fields", "Invalid combos turn red; disabled fields dim.")
+    section = Section("Fields", "Invalid fields turn red; disabled fields dim.")
     filled = QLineEdit("DEMO01_DSMB")
     placeholder = QLineEdit()
     placeholder.setPlaceholderText("Setting name")
@@ -272,6 +274,9 @@ def _inputs_page(_shell: AppShell) -> Page:
     section.add_row("Nothing ticked", ChecklistComboBox(empty_text="Choose…"))
     section.add_row("Join type", combo)
     section.add_row("Invalid", invalid)
+    no_folder = PathPicker("dir", placeholder="No folder chosen")
+    no_folder.set_problem("Choose the folder to export to.")
+    section.add_row("Missing folder", no_folder)
     section.add_row("Cut-off", date, end_aligned=True)
     page.body.addWidget(section)
 
@@ -387,6 +392,8 @@ def _tables_page(_shell: AppShell) -> Page:
         how.setEnabled(row > 0)
         table.setCellWidget(row, 4, how)
     style_table(table, controls=True)
+    table.setItemDelegate(ProblemCellDelegate(table))
+    mark_cell(table.item(2, 3), "InstanceName isn't a common item of AE and VS.")
     configure_columns(
         table,
         [

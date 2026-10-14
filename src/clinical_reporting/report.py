@@ -629,7 +629,8 @@ class CLReport:
         """Split ``active`` + ``parked`` filters by whether all operands are selected.
 
         Parked filters that duplicate an active one are dropped. Malformed
-        entries are left active so validation still reports them.
+        entries, and filters with a blank operand (a row still being filled
+        in), are left active so validation still reports them.
         """
         active_keys = {
             tuple(item) for item in active if isinstance(item, (list, tuple))
@@ -641,8 +642,10 @@ class CLReport:
         still_active, inactive = [], []
         for item in merged:
             well_formed = isinstance(item, (list, tuple)) and len(item) == 3
-            if well_formed and not all(
-                item[index] in identifiers for index in operand_indexes
+            if (
+                well_formed
+                and all(str(item[index]).strip() for index in operand_indexes)
+                and not all(item[index] in identifiers for index in operand_indexes)
             ):
                 inactive.append(item)
             else:

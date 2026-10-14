@@ -122,6 +122,19 @@ def test_renaming_it_to_the_plain_name_is_a_duplicate_output_name():
     assert "duplicate_output_name" in [issue.code for issue in report.validate()]
 
 
+def test_each_output_column_is_named_by_its_rename_if_it_has_one():
+    report = _report({"DM": [], "AE": ["Subject"]})
+    report.rename_dict = {"AE.Term": "AE term", "DM.Sex": "  "}
+
+    assert report_columns.output_names(report) == {
+        "Subject": "Subject",
+        "Visit": "Visit",
+        "DM.Sex": "DM.Sex",  # A blank rename doesn't name it.
+        "AE.Visit": "AE.Visit",
+        "AE.Term": "AE term",
+    }
+
+
 def test_a_rename_is_parked_while_the_form_joins_on_the_item():
     report = _report({"DM": [], "AE": ["Subject"]})
     report.set_rename_item("AE.Visit", "AE visit")

@@ -6,6 +6,7 @@ from PySide6.QtGui import (
     QContextMenuEvent,
     QKeySequence,
     QMouseEvent,
+    QPalette,
     QStandardItemModel,
 )
 from PySide6.QtTest import QTest
@@ -17,6 +18,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMenu,
     QStackedWidget,
+    QStyleOptionViewItem,
+    QTableWidgetItem,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -28,6 +31,7 @@ from cci_ui.theme.manager import DENSITY_KEY, DensityMode, Theme, ThemeMode, cur
 from cci_ui.theme.tokens import COMPACT, LAYOUT, LIGHT, Density, Scheme
 from cci_ui.widgets.buttons import icon_button, make_button, set_variant
 from cci_ui.widgets.display import DisplayPopover
+from cci_ui.widgets.dual_list import DualListPicker
 from cci_ui.widgets.labels import (
     BREAK_CHANCE,
     ElidedLabel,
@@ -44,7 +48,13 @@ from cci_ui.widgets.segmented import Segment, SegmentedControl
 from cci_ui.widgets.shell import AppShell
 from cci_ui.widgets.side_panel import SidePanel, full_width, labeled_field
 from cci_ui.widgets.status import StatusBanner
-from cci_ui.widgets.tables import TableToolbar, style_table, table_card
+from cci_ui.widgets.tables import (
+    ProblemCellDelegate,
+    TableToolbar,
+    mark_cell,
+    style_table,
+    table_card,
+)
 from cci_ui.widgets.toggle import ToggleSwitch
 from cci_ui.widgets.views import (
     COLUMN_MAX_W,
@@ -852,3 +862,97 @@ def test_no_line_runs_down_the_row_numbers_below_the_last_row(make_manager):
     colors = {image.pixelColor(x, below_rows).name() for x in range(edge - 2, edge + 3)}
 
     assert len(colors) == 1, colors
+
+
+def _marked_table():
+    """A shown two-row table whose cell (0, 1) holds an output name."""
+    table = PlaceholderTableWidget()
+    table.setColumnCount(2)
+    table.setRowCount(2)
+    table.setItemDelegate(ProblemCellDelegate(table))
+    style_table(table)
+    cell = QTableWidgetItem("Age (years)")
+    cell.setToolTip("The column's name in the workbook")
+    table.setItem(0, 1, cell)
+    return _shown(table, 400, 200), cell
+
+
+def _cell_look(table, cell):
+    """The cell's top border pixel (1px in) and the text color it is drawn in."""
+    rect = table.visualItemRect(cell)
+    image = table.viewport().grab().toImage()
+    border = image.pixelColor(rect.center().x(), rect.top() + 1).name().upper()
+    option = QStyleOptionViewItem()
+    table.itemDelegate().initStyleOption(option, table.indexFromItem(cell))
+    text = option.palette.color(QPalette.ColorRole.Text).name().upper()
+    return border, text
+
+
+def test_a_marked_cell_has_a_danger_border_red_text_and_says_why(make_manager):
+    make_manager().apply()
+    table, cell = _marked_table()
+    edits = []
+    table.itemChanged.connect(edits.append)
+    problem = "Output column name 'Age (years)' would be duplicated."
+
+    mark_cell(cell, problem, "The column's name in the workbook")
+
+    assert _cell_look(table, cell) == (LIGHT.danger.hex_rgb, LIGHT.danger_text.hex_rgb)
+    assert cell.toolTip() == problem
+    assert edits == []
+
+
+def test_clearing_a_cell_mark_restores_its_look_and_tooltip(make_manager):
+    make_manager().apply()
+    table, cell = _marked_table()
+    unmarked = _cell_look(table, cell)
+    edits = []
+    table.itemChanged.connect(edits.append)
+    mark_cell(cell, "Output column name 'Age (years)' would be duplicated.")
+
+    mark_cell(cell, "", "The column's name in the workbook")
+
+    assert _cell_look(table, cell) == unmarked
+    assert unmarked[0] != LIGHT.danger.hex_rgb
+    assert cell.toolTip() == "The column's name in the workbook"
+    assert edits == []
+
+
+def test_a_path_pickers_problem_turns_its_path_red_and_outlives_new_paths(
+    make_manager,
+):
+    make_manager().apply()
+    picker = PathPicker("files", placeholder="No folder chosen")
+
+    def look():
+        label = picker.path_label
+        label.ensurePolished()
+        color = label.palette().color(QPalette.ColorRole.WindowText).name().upper()
+        return color, picker.toolTip()
+
+    picker.set_problem("Choose the folder to export to.")
+    marked = look()
+    picker.set_paths([r"C:\exports\a.csv", r"C:\exports\b.csv"])
+    marked_after_paths = look()
+    picker.set_problem("")
+    cleared = look()
+
+    assert marked == (LIGHT.danger_text.hex_rgb, "Choose the folder to export to.")
+    assert marked_after_paths == marked
+    assert cleared == (
+        LIGHT.text_secondary.hex_rgb,
+        "C:\\exports\\a.csv\nC:\\exports\\b.csv",
+    )
+
+
+def test_a_dual_list_marks_its_selected_list_with_the_problem(qapp):
+    picker = DualListPicker(selected_title="Selected form items")
+    card = picker.selected.parentWidget()
+
+    picker.set_selected_problem("Form 'AE' has no selected items.")
+    marked = (card.property("invalid"), card.toolTip())
+    picker.set_selected_problem("")
+    cleared = (card.property("invalid"), card.toolTip())
+
+    assert marked == (True, "Form 'AE' has no selected items.")
+    assert cleared == (False, "")

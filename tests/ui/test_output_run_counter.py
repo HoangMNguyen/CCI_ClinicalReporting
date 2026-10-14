@@ -134,11 +134,9 @@ def test_export_without_an_output_folder_builds_nothing(monkeypatch, tmp_path):
 
     widget.click_run()
 
+    # Export to Excel is disabled then, and the folder marked: nothing to say.
     assert widget.report.builds == 0 and written == []
-    assert (
-        widget.label_run_confirmation.value == "Please select an output folder first."
-    )
-    assert widget.label_run_confirmation.value.kind == "warning"
+    assert widget.label_run_confirmation.value == ""
 
 
 def test_export_with_no_matching_rows_writes_nothing(monkeypatch, tmp_path):

@@ -4,10 +4,6 @@ from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import QApplication, QComboBox, QTableWidget, QTableWidgetItem
 
-from cci_ui.theme import manager as theme_manager
-from cci_ui.theme.manager import Theme, current
-from cci_ui.theme.palette import qcolor
-from cci_ui.theme.tokens import COMFORTABLE, DARK, Density, Scheme
 from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
@@ -18,10 +14,6 @@ class DummyJoinWidget(JoinsMixin, WidgetBaseMixin):
     def __init__(self, report: CLReport, table: QTableWidget):
         self.report = report
         self.ui = types.SimpleNamespace(tableWidget_join=table)
-
-
-def _danger():
-    return qcolor(current().colors.danger_text)
 
 
 def _build_join_table() -> QTableWidget:
@@ -47,11 +39,6 @@ def _build_join_table() -> QTableWidget:
     return table
 
 
-def _clear_vs_items(table):
-    for col in range(2, 5):
-        table.cellWidget(1, col).setCurrentText("")
-
-
 def test_join_keys_are_deduped_in_ui(qapp):
     report = CLReport()
     report.selected_forms = {"DM": CLForm("DM"), "VS": CLForm("VS")}
@@ -69,70 +56,6 @@ def test_join_keys_are_deduped_in_ui(qapp):
     assert table.cellWidget(1, 2).currentText() == "Subject"
     assert table.cellWidget(1, 3).currentText() == ""
     assert table.cellWidget(1, 4).currentText() == "Visit"
-
-
-def test_form_name_is_in_the_danger_color_when_it_needs_a_join_item(qapp):
-    report = CLReport()
-    report.selected_forms = {"DM": CLForm("DM"), "VS": CLForm("VS")}
-    table = _build_join_table()
-    widget = DummyJoinWidget(report, table)
-    _clear_vs_items(table)
-
-    widget.update_join_list()
-
-    assert table.item(1, 1).foreground().color() == _danger()
-
-
-def test_missing_join_item_highlight_clears_when_item_is_selected(qapp):
-    table = _build_join_table()
-    widget = DummyJoinWidget(CLReport(), table)
-    _clear_vs_items(table)
-    widget._highlight_missing_join_items()
-    assert table.item(1, 1).foreground().color() == _danger()
-
-    table.cellWidget(1, 2).setCurrentText("Subject")
-    widget._highlight_missing_join_items()
-
-    assert table.item(1, 1).foreground().style() == Qt.NoBrush
-
-
-def test_missing_join_item_highlight_refreshes_run_availability(qapp):
-    table = _build_join_table()
-    widget = DummyJoinWidget(CLReport(), table)
-    refresh_calls = []
-    widget._refresh_run_availability = lambda: refresh_calls.append(True)
-
-    widget._highlight_missing_join_items()
-
-    assert refresh_calls == [True]
-
-
-def test_first_form_without_join_items_is_not_highlighted(qapp):
-    table = _build_join_table()
-    widget = DummyJoinWidget(CLReport(), table)
-
-    widget._highlight_missing_join_items()
-
-    assert table.item(0, 1).foreground().style() == Qt.NoBrush
-
-
-def test_painting_the_missing_items_uses_the_current_theme_only(qapp, monkeypatch):
-    table = _build_join_table()
-    widget = DummyJoinWidget(CLReport(), table)
-    refresh_calls = []
-    widget._refresh_run_availability = lambda: refresh_calls.append(True)
-    _clear_vs_items(table)
-    monkeypatch.setattr(
-        theme_manager,
-        "_current",
-        Theme(Scheme.DARK, Density.COMFORTABLE, DARK, COMFORTABLE),
-    )
-
-    # What a theme change calls: recolor, without re-running the run checks.
-    widget._paint_missing_join_items()
-
-    assert table.item(1, 1).foreground().color() == qcolor(DARK.danger_text)
-    assert refresh_calls == []
 
 
 def test_the_wheel_leaves_an_unfocused_join_type_alone(sample_window):

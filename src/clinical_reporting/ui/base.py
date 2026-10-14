@@ -12,7 +12,7 @@ quiet signal disconnects.
 from __future__ import annotations
 
 import warnings
-from typing import Optional
+from typing import Dict, List, Optional
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import (
@@ -21,6 +21,7 @@ from clinical_reporting.settings_store import (
     default_settings_folder,
 )
 from clinical_reporting.ui.dialogs import settings_folder, show_settings_folder
+from clinical_reporting.validation import ReportValidationIssue
 
 
 class WidgetBaseMixin:
@@ -47,6 +48,14 @@ class WidgetBaseMixin:
         # True while update_all_ui coordinates a full refresh; narrower
         # helpers use it to skip refreshes the coordinator already covers.
         self._in_coordinated_refresh = False
+        # The report's validation issues as of the last shell refresh, and
+        # the same by the field each names: the pages mark their fields
+        # from these (ui.navigation).
+        self._issues: List[ReportValidationIssue] = []
+        self._issue_fields: Dict[str, List[ReportValidationIssue]] = {}
+        # Problems a page shows that aren't in the report (yet), by step, one
+        # line each: they turn its badge red and stop the export.
+        self._page_problems: Dict[str, List[str]] = {}
 
         # Cache confirmation labels so they can be updated from individual pages
         # without repeatedly resolving attribute names on ``self.ui``.

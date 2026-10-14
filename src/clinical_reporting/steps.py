@@ -50,7 +50,7 @@ from clinical_reporting.additional_names import (
 from clinical_reporting.coalescing import CoalescedItem, Outcome
 from clinical_reporting.models import is_qualified, qualify, split_qualified
 from clinical_reporting.stacking import Match, MatchedItem, StackedForm, layout
-from clinical_reporting.validation import ReportValidationIssue
+from clinical_reporting.validation import CANNOT_RUN_PREFIX, ReportValidationIssue
 
 # The steps, in order. The desktop pages use these as their keys.
 SOURCE = "source"
@@ -259,6 +259,8 @@ def step_statuses(
     source: Optional[str] = None,
     additional_forms: int = 0,
     exported_to: Optional[str] = None,
+    issues: Optional[Sequence[ReportValidationIssue]] = None,
+    page_problems: Optional[Mapping[str, Sequence[str]]] = None,
 ) -> Dict[str, StepStatus]:
     """The badge of every step, keyed by step.
 
@@ -268,6 +270,10 @@ def step_statuses(
         additional_forms: How many forms the additional input added.
         exported_to: Name of the file last exported for this data, if any
             (changes made since don't undo the badge).
+        issues: The report's validation issues, when the caller has them
+            already (else the report is validated here).
+        page_problems: Problems a page shows that aren't in the report yet,
+            by step, one line each; a step with any shows them as its problem.
     """
     statuses = {key: StepStatus() for key in STEP_KEYS}
     statuses[ADDITIONAL] = (
@@ -278,7 +284,7 @@ def step_statuses(
     if source:
         statuses[SOURCE] = StepStatus(DONE, tip=f"Loaded {source}")
     if not report.data:
-        return statuses
+        return _with_page_problems(statuses, page_problems)
 
     selected_forms = report.selected_forms or {}
     statuses[FORMS] = StepStatus(
@@ -303,9 +309,67 @@ def step_statuses(
     if exported_to:
         statuses[PREVIEW] = StepStatus(DONE, tip=f"Last exported {exported_to}")
 
-    for step, issues in _issues_by_step(report.validate()).items():
-        statuses[step] = _problems(issues)
+    found = report.validate() if issues is None else issues
+    for step, step_issues in _issues_by_step(found).items():
+        statuses[step] = _problems(step_issues)
+    return _with_page_problems(statuses, page_problems)
+
+
+def _with_page_problems(
+    statuses: Dict[str, StepStatus],
+    page_problems: Optional[Mapping[str, Sequence[str]]],
+) -> Dict[str, StepStatus]:
+    """*statuses*, each step with page problems showing them instead."""
+    for step, lines in (page_problems or {}).items():
+        if lines:
+            tip = lines[0] if len(lines) == 1 else _plural(len(lines), "problem")
+            statuses[step] = StepStatus(ERROR, tip=tip)
     return statuses
+
+
+def issues_by_field(
+    issues: Iterable[ReportValidationIssue],
+) -> Dict[str, List[ReportValidationIssue]]:
+    """*issues* by the field each names, in order (those without a field left out).
+
+    The pages mark each field with the messages found under it.
+    """
+    by_field: Dict[str, List[ReportValidationIssue]] = {}
+    for issue in issues:
+        if issue.field:
+            by_field.setdefault(issue.field, []).append(issue)
+    return by_field
+
+
+def cannot_run_message(
+    issues: Iterable[ReportValidationIssue],
+    page_problems: Optional[Mapping[str, Sequence[str]]] = None,
+) -> Optional[feedback.Message]:
+    """What stops the report from running, naming the steps to fix, or ``None``.
+
+    For example "Cannot run: Fix Filters and Joins first." Problems no step
+    fixes are said as they are ("Cannot run: Select at least one form before
+    running."). *page_problems* are the pages' own problems by step (see
+    :func:`step_statuses`); the details list every problem by its step.
+    """
+    issues = list(issues)
+    page_problems = page_problems or {}
+    by_step = _issues_by_step(issues)
+    unplaced = [issue.message for issue in issues if issue_step(issue) is None]
+    to_fix = [key for key in STEP_KEYS if page_problems.get(key) or by_step.get(key)]
+    if not to_fix and not unplaced:
+        return None
+    titles = [TITLES[key] for key in to_fix]
+    parts = [*unplaced, *([f"Fix {feedback.and_list(titles)} first."] if to_fix else [])]
+    details = "\n".join(
+        f"{TITLES[key]}: {line}"
+        for key in to_fix
+        for line in [
+            *page_problems.get(key, ()),
+            *(issue.message for issue in by_step.get(key, ())),
+        ]
+    )
+    return feedback.warning(f"{CANNOT_RUN_PREFIX} " + " ".join(parts), details or None)
 
 
 def _stacked_status(report) -> StepStatus:
@@ -373,13 +437,7 @@ def preview_caption(rows: int, columns: int) -> str:
 
 
 def joins_message(report) -> Optional[feedback.Message]:
-    """What the Joins step says about the report's joins, if anything."""
-    issues = [issue for issue in report.validate() if issue_step(issue) == JOINS]
-    if issues:
-        problems = " ".join(issue.message for issue in issues)
-        return feedback.error(
-            f"{problems} The report can't be exported until this is fixed."
-        )
+    """Why the Joins step has no joins to set, or which columns it adds, if any."""
     if len(report.selected_forms or {}) < 2:
         return feedback.info("Joins apply when two or more forms are selected.")
     unjoined = report_columns.unjoined_common_items(report)
@@ -1057,6 +1115,7 @@ __all__ = [
     "StepStatus",
     "additional_applied_message",
     "additional_form_names_message",
+    "cannot_run_message",
     "coalesced_applied_message",
     "coalesced_conflict_message",
     "coalesced_counts",
@@ -1064,6 +1123,7 @@ __all__ = [
     "coalesced_missing_message",
     "coalesced_problems_message",
     "issue_step",
+    "issues_by_field",
     "joins_message",
     "preview_caption",
     "report_summary",

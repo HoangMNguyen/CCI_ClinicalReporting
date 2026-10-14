@@ -36,15 +36,13 @@ from dataclasses import replace
 from functools import partial
 from typing import List, Optional, Sequence, Tuple
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush
 from PySide6.QtWidgets import (
     QComboBox,
-    QCompleter,
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLineEdit,
     QScrollArea,
     QStackedWidget,
     QTableWidgetItem,
@@ -70,7 +68,7 @@ from clinical_reporting.coalescing import (
 )
 from clinical_reporting.session import apply_coalesced_items
 
-from ._common import CellComboBox, make_table
+from ._common import CellComboBox, ItemBox, make_table
 
 #: The Coalesced items table's columns.
 _ITEMS_COLUMNS = (
@@ -123,7 +121,6 @@ NO_CONDITION = "—"
 NOT_BUILT = "—"
 #: "When values overlap": what each choice shows, by its value.
 OVERLAP_CHOICES = {REFUSE: "Refuse", KEEP_EARLIER: "Keep the earlier value"}
-ITEM_TIP = "Pick an item, or type to find one"
 CONDITION_TIP = (
     "Where the value so far meets this condition, this item replaces it. "
     "Empty values are always filled."
@@ -131,53 +128,6 @@ CONDITION_TIP = (
 
 _READ_ONLY = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 _RIGHT = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-
-
-class _FocusEdit(QLineEdit):
-    """A line edit that says when it takes the focus (its row gets selected)."""
-
-    focused = Signal()
-
-    def focusInEvent(self, event) -> None:  # noqa: N802 (Qt override)
-        super().focusInEvent(event)
-        self.focused.emit()
-
-
-class _ItemBox(CellComboBox):
-    """A row's item: the items it can take; typing filters them.
-
-    Text typed that isn't one of them gives way to the item picked when the
-    box loses the focus. Its tooltip names the item whole (a narrow cell cuts
-    a long one).
-    """
-
-    def __init__(self, choices: Sequence[str], item: str, parent=None) -> None:
-        super().__init__(parent)
-        self.setEditable(True)
-        self.setLineEdit(_FocusEdit())
-        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.addItems(list(choices))
-        completer = QCompleter(self.model(), self)
-        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.setCompleter(completer)
-        self.setCurrentIndex(self.findText(item) if item else -1)
-        self.lineEdit().setPlaceholderText("Pick an item")
-        self.lineEdit().setCursorPosition(0)
-        self._show_tip(item)
-        self.currentTextChanged.connect(self._show_tip)
-        self.lineEdit().editingFinished.connect(self._show_picked)
-
-    def _show_tip(self, text: str) -> None:
-        self.setToolTip("\n".join(tip for tip in (text, ITEM_TIP) if tip))
-
-    def _show_picked(self) -> None:
-        index = self.currentIndex()
-        picked = self.itemText(index) if index >= 0 else ""
-        if self.currentText() != picked:
-            self.setEditText(picked)
-        self.lineEdit().setCursorPosition(0)
 
 
 class _ConditionBox(CellComboBox):
@@ -757,7 +707,7 @@ class CoalescedItemsMixin:
                     under = QTableWidgetItem("")
                     under.setFlags(_READ_ONLY)
                     table.setItem(position, column, under)
-                box = _ItemBox(self._coalesced_item_choices(row, position), part.item)
+                box = ItemBox(self._coalesced_item_choices(row, position), part.item)
                 box.setAccessibleName(f"Item {position + 1}")
                 box.currentIndexChanged.connect(
                     partial(self._on_coalesced_part_picked, position)

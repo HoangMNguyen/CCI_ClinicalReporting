@@ -10,9 +10,10 @@ When a join change adds or removes a form's own copy of a common item
 (``AE.Visit``, see :mod:`clinical_reporting.report_columns`), the filter
 tables are rebuilt too, since their item lists change.
 
-A form that needs a join item gets its name in the danger color. The banner
-above the table says why there are no joins to set
-(:func:`clinical_reporting.steps.joins_message`).
+A form after the first that joins on nothing has its Item 1 marked, and an
+unknown join type its Type (from the window's last validation, see
+:mod:`ui.navigation`). The banner above the table says why there are no joins
+to set (:func:`clinical_reporting.steps.joins_message`).
 """
 
 from __future__ import annotations
@@ -21,12 +22,9 @@ from functools import partial
 from typing import List, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush
 from PySide6.QtWidgets import QHBoxLayout, QTableWidgetItem, QWidget
 
 from cci_ui.icons import IconName
-from cci_ui.theme.manager import current, theme_events
-from cci_ui.theme.palette import qcolor
 from cci_ui.widgets.buttons import make_button
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.status import StatusBanner
@@ -34,7 +32,7 @@ from cci_ui.widgets.tables import ColumnSpec, table_card
 from clinical_reporting import report_columns, steps
 from clinical_reporting.models import JoinHow
 
-from ._common import CellComboBox, make_table
+from ._common import CellComboBox, make_table, show_problem
 
 _NUMBER_COLUMN, _FORM_COLUMN = 0, 1
 _ITEM_COLUMNS = (2, 3, 4)
@@ -95,15 +93,13 @@ class JoinsMixin:
     """Behavior for the join configuration controls."""
 
     def _init_joins(self) -> None:
-        """Wire the move buttons; recolor forms missing a join item with the theme."""
+        """Wire the move buttons to the table's selection."""
         self.ui.pushButton_join_up.clicked.connect(self.click_move_join_up)
         self.ui.pushButton_join_down.clicked.connect(self.click_move_join_down)
         self.ui.tableWidget_join.itemSelectionChanged.connect(
             self._update_join_move_buttons
         )
         self._update_join_move_buttons()
-        # A bound method of the window, so Qt drops the connection with it.
-        theme_events().changed.connect(self._paint_missing_join_items)
 
     def update_join_table_ui(self, select: Optional[int] = None) -> None:
         """Tidy the report's joins (``CLReport.normalize_joins``), then show them.
@@ -146,11 +142,11 @@ class JoinsMixin:
                 combo.setEnabled(row > 0)
                 combo.focused.connect(partial(table.selectRow, row))
 
-        self._highlight_missing_join_items()
         self._refresh_joins_banner()
         if select is not None and 0 <= select < table.rowCount():
             table.selectRow(select)
         self._update_join_move_buttons()
+        self._report_changed()  # Draws the marks.
 
     def _put_join_widget(self, row: int, column: int, widget: QWidget) -> None:
         """Put *widget* in a cell, over an empty item so the row can be selected."""
@@ -193,31 +189,34 @@ class JoinsMixin:
         self.update_join_table_ui(select=row + step)
         self._after_join_change(columns_before)
 
-    def _highlight_missing_join_items(self) -> None:
-        """Flag non-first forms without a join item and update Export to Excel."""
-        self._paint_missing_join_items()
+    def _mark_join_problems(self) -> None:
+        """Mark each form's Item 1 and Type with the problems they fix.
 
-        # Join-item dropdown changes can resolve or introduce this error, so
-        # refresh Export to Excel from here too.
-        refresh_run = getattr(self, "_refresh_run_availability", None)
-        if callable(refresh_run):
-            refresh_run()
-
-    def _paint_missing_join_items(self) -> None:
-        """Show non-first forms without a join item in the danger color."""
+        Other join problems can't arise in the window (the table keeps the
+        joins tidy); the badge and Preview & export still say them.
+        """
         table = self.ui.tableWidget_join
-        missing = QBrush(qcolor(current().colors.danger_text))
+        fields = getattr(self, "_issue_fields", {})
+
+        def messages(field: str) -> str:
+            return "\n".join(issue.message for issue in fields.get(field, ()))
+
         for row in range(table.rowCount()):
             form_item = table.item(row, _FORM_COLUMN)
-            if form_item is None:
+            item_combo = table.cellWidget(row, _ITEM_COLUMNS[0])
+            type_combo = table.cellWidget(row, _TYPE_COLUMN)
+            if form_item is None or item_combo is None or type_combo is None:
                 continue
-            has_join_item = any(
-                (combo := table.cellWidget(row, column)) is not None
-                and bool(combo.currentText())
-                for column in _ITEM_COLUMNS
+            form = form_item.text()
+            show_problem(
+                item_combo,
+                "\n".join(
+                    issue.message
+                    for issue in fields.get(f"selected_forms.{form}.join_items", ())
+                    if issue.code == "missing_join_items"
+                ),
             )
-            is_missing = row > 0 and not has_join_item
-            form_item.setForeground(missing if is_missing else QBrush())
+            show_problem(type_combo, messages(f"selected_forms.{form}.join_how"))
 
     def _add_item_dropdown(
         self, row: int, column: int, items: List[str]
@@ -270,7 +269,6 @@ class JoinsMixin:
 
         columns_before = set(report_columns.output_identifiers(self.report))
         self.report.update_join_list(join_list)
-        self._highlight_missing_join_items()
         self._refresh_joins_banner()
         self._after_join_change(columns_before)
 

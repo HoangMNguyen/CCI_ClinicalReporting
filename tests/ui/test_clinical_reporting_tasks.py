@@ -288,9 +288,11 @@ def test_a_preview_that_fails_shows_the_error_with_its_traceback(
     opened.preview_report()
     settle(opened.task_runner)
 
-    shown = opened.shown_messages[-1]
-    assert shown == "Error generating preview: boom"
-    assert shown.kind == "error" and "RuntimeError: boom" in shown.details
+    # The banner under Export (others, like the one saying what stops the
+    # export, are refreshed after it).
+    shown = opened.label_run_confirmation
+    assert shown.text() == "Error generating preview: boom"
+    assert shown.kind() == "error" and "RuntimeError: boom" in shown.details()
 
 
 def test_a_date_picked_in_the_calendar_applies_the_cut_off(opened, reader, settle):

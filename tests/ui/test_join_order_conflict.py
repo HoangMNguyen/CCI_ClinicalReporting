@@ -68,54 +68,19 @@ class _FakeButton:
 class DummyRunWidget(PreviewExportMixin, WidgetBaseMixin):
     """Compose just enough of the widget to exercise the run guard."""
 
-    def __init__(self, report: CLReport):
+    def __init__(self, report: CLReport, folder="out"):
         self.report = report
+        self.output_folder_name = folder
         self.button = _FakeButton()
         self.label_run_confirmation = FakeBanner()
-        self.ui = types.SimpleNamespace(pushButton_run=self.button)
+        self.banner_run_state = FakeBanner()
+        self.ui = types.SimpleNamespace(
+            pushButton_run=self.button, banner_run_state=self.banner_run_state
+        )
 
 
-def test_join_configuration_message_none_when_valid():
-    report = _report_with_orders({"DM": 1, "VS": 2})
-    report.selected_forms["VS"].set_join_items(["Subject"])
-    widget = DummyRunWidget(report)
-    assert widget._join_configuration_error_message() is None
-
-
-def test_refresh_disables_run_and_shows_hint_when_join_item_is_missing():
-    widget = DummyRunWidget(_report_with_orders({"DM": 1, "VS": 2}))
-
-    widget._refresh_run_availability()
-
-    assert widget.button.enabled is False
-    assert "VS" in widget.label_run_confirmation.text()
-    assert "at least one join item" in widget.label_run_confirmation.text()
-
-
-def test_refresh_enables_run_when_missing_join_item_is_selected():
-    report = _report_with_orders({"DM": 1, "VS": 2})
-    widget = DummyRunWidget(report)
-    widget._refresh_run_availability()
-    assert widget.button.enabled is False
-
-    report.selected_forms["VS"].set_join_items(["Subject"])
-    widget._refresh_run_availability()
-
-    assert widget.button.enabled is True
-    assert widget.label_run_confirmation.text() == ""
-
-
-def test_refresh_preserves_unrelated_status_message():
-    report = _report_with_orders({"DM": 1, "VS": 2})
-    report.selected_forms["VS"].set_join_items(["Subject"])
-    widget = DummyRunWidget(report)
-    widget.label_run_confirmation.setText("Preview generated successfully.")
-    widget._refresh_run_availability()
-    assert widget.button.enabled is True
-    assert widget.label_run_confirmation.text() == "Preview generated successfully."
-
-
-def test_report_validation_message_lists_actionable_core_issues():
+def _dm_vs_report(vs_join_items=()):
+    """DM, then VS joined on *vs_join_items*."""
     report = CLReport()
     report.set_data(
         {
@@ -128,16 +93,58 @@ def test_report_validation_message_lists_actionable_core_issues():
     report.update_join_items("DM", [], 1, JoinHow.LEFT)
     report.add_selected_form("VS")
     report.selected_forms["VS"].set_form_item_state("Pulse", selected=True)
-    report.update_join_items("VS", [], 2, JoinHow.LEFT)
+    report.update_join_items("VS", list(vs_join_items), 2, JoinHow.LEFT)
     report.set_common_item_state("Subject", selected=True)
+    return report
 
-    message = DummyRunWidget(report)._report_validation_message()
 
-    assert message is not None
-    assert message.startswith("Cannot run:")
+def test_refresh_disables_run_and_names_the_step_when_a_join_item_is_missing():
+    widget = DummyRunWidget(_dm_vs_report())
+
+    widget._refresh_run_availability()
+
+    assert widget.button.enabled is False
+    assert widget.banner_run_state.text() == "Cannot run: Fix Joins first."
+
+
+def test_refresh_enables_run_when_missing_join_item_is_selected():
+    report = _dm_vs_report()
+    widget = DummyRunWidget(report)
+    widget._refresh_run_availability()
+    assert widget.button.enabled is False
+
+    report.update_join_items("VS", ["Subject"], 2, JoinHow.LEFT)
+    widget._refresh_run_availability()
+
+    assert widget.button.enabled is True
+    assert widget.banner_run_state.text() == ""
+
+
+def test_refresh_disables_run_without_an_output_folder():
+    widget = DummyRunWidget(_dm_vs_report(["Subject"]), folder=None)
+
+    widget._refresh_run_availability()
+
+    assert widget.button.enabled is False
+    assert widget.banner_run_state.text() == ""
+
+
+def test_refresh_preserves_unrelated_status_message():
+    widget = DummyRunWidget(_dm_vs_report(["Subject"]))
+    widget.label_run_confirmation.setText("Preview generated successfully.")
+    widget._refresh_run_availability()
+    assert widget.button.enabled is True
+    assert widget.label_run_confirmation.text() == "Preview generated successfully."
+
+
+def test_report_validation_message_names_the_steps_to_fix():
+    message = DummyRunWidget(_dm_vs_report())._report_validation_message()
+
+    assert message == "Cannot run: Fix Joins first."
     assert message.kind == "warning"
-    assert "VS" in message
-    assert "at least one join item" in message
+    assert message.details == (
+        "Joins: Form 'VS' needs at least one join item because it is not first."
+    )
 
 
 def test_report_errors_are_warnings_when_invalid_and_errors_otherwise():

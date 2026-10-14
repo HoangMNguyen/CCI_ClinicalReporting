@@ -98,14 +98,19 @@ def test_badges_follow_filter_edits(sample_window):
         static.selectRow(0)
         sample_window.static_filter_remove()
 
+    def pick(box, item):
+        box.setCurrentIndex(box.findText(item))
+
     def add_static():
+        # An "=" filter needs a value now, as well as an item.
         sample_window.static_filter_add()
-        static.cellWidget(0, 0).setCurrentText("DM.Age")
+        pick(static.cellWidget(0, 0), "DM.Age")
+        static.item(0, 2).setText("18")
 
     def add_dynamic():
         sample_window.dynamic_filter_add()
-        dynamic.cellWidget(1, 0).setCurrentText("DM.Age")
-        dynamic.cellWidget(1, 2).setCurrentText("Subject")
+        pick(dynamic.cellWidget(1, 0), "DM.Age")
+        pick(dynamic.cellWidget(1, 2), "Subject")
 
     def remove_dynamic():
         dynamic.selectRow(0)

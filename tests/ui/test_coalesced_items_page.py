@@ -16,6 +16,7 @@ from PySide6.QtWidgets import QApplication
 
 from cci_ui.widgets.sidebar import StepState
 from clinical_reporting.coalescing import KEEP_EARLIER, CoalescedItem, Fill
+from clinical_reporting.ui.pages._common import ItemBox
 
 ZIP = "Core_Listings_DEMO01_sample.zip"
 NOT_APPLIED = "Not applied yet. Apply to report to use your changes."
@@ -442,3 +443,18 @@ def test_another_form_starts_its_items_over_but_keeps_a_typed_name(sample_window
 
     assert ui.comboBox_coalesced_name.currentText() == "Origin"
     assert _rows(window) == [("", "starts the value", ""), ("", "—", "")]
+
+
+def test_an_item_box_shows_its_problem_after_its_item(qapp):
+    box = ItemBox(["DM.Age", "DM.Sex"], "DM.Age")
+
+    box.set_problem("DM.Age is in it twice.")
+    marked = (box.property("invalid"), box.toolTip())
+    box.setCurrentIndex(box.findText("DM.Sex"))
+    picked_again = box.toolTip()
+    box.set_problem("")
+    cleared = (box.property("invalid"), box.toolTip())
+
+    assert marked == (True, "DM.Age\nDM.Age is in it twice.")
+    assert picked_again == "DM.Sex\nDM.Age is in it twice."
+    assert cleared == (False, "DM.Sex\nPick an item, or type to find one")

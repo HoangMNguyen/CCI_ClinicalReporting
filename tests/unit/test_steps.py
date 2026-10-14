@@ -110,18 +110,19 @@ def test_one_form_needs_no_join_and_an_export_finishes_the_last_step():
 
 def test_problems_mark_the_step_that_fixes_them():
     report = _report()
-    report.update_join_items("AE", [], 1, JoinHow.LEFT)  # Shares order 1 with DM.
+    report.update_join_items("AE", [], 2, JoinHow.LEFT)  # AE lacks a join item.
 
     joins = steps.step_statuses(report)[steps.JOINS]
 
     assert joins.state == steps.ERROR and joins.count is None
-    assert joins.tip == "Join order 1 is assigned to multiple forms: AE, DM."
+    assert joins.tip == (
+        "Form 'AE' needs at least one join item because it is not first."
+    )
 
-    report.update_join_items("AE", [], 2, JoinHow.LEFT)
     report.add_dynamic_filter_item("DM.Age", "<", "AE.Term")  # AE.Term isn't selected.
 
     statuses = steps.step_statuses(report)
-    assert statuses[steps.JOINS].state == steps.ERROR  # AE now lacks a join item.
+    assert statuses[steps.JOINS].state == steps.ERROR  # AE still lacks one.
     assert statuses[steps.COMPARISONS].state == steps.ERROR
     assert statuses[steps.FILTERS] == StepStatus()
 
@@ -523,21 +524,89 @@ def test_the_preview_caption_says_its_size():
     assert steps.preview_caption(1, 1) == "1 row · 1 column"
 
 
-def test_the_joins_message_explains_what_stops_the_joins():
+def test_the_joins_message_says_why_there_are_no_joins_to_set():
+    # Join problems are marked on the join table now, not said in the message.
     report = _report()
     fine = steps.joins_message(report)
-    report.update_join_items("AE", [], 1, JoinHow.LEFT)  # Shares order 1 with DM.
-    shared = steps.joins_message(report)
+    report.update_join_items("AE", [], 2, JoinHow.LEFT)  # AE lacks a join item.
+    missing_item = steps.joins_message(report)
     report.add_available_form("AE")
     one_form = steps.joins_message(report)
 
-    assert fine is None
-    assert shared.kind == "error"
-    assert shared == (
-        "Join order 1 is assigned to multiple forms: AE, DM. "
-        "The report can't be exported until this is fixed."
+    assert fine is None and missing_item is None
+    assert one_form == "Joins apply when two or more forms are selected."
+    assert one_form.kind == "info"
+
+
+def _issue(code, message, field=None):
+    return ReportValidationIssue(code, message, field)
+
+
+def test_cannot_run_names_the_steps_to_fix():
+    issues = [
+        _issue("missing_join_items", "VS needs a join item.", "x"),
+        _issue("invalid_static_filter", "Static filter 1 needs a value.", "y"),
+    ]
+
+    message = steps.cannot_run_message(issues)
+
+    assert message == "Cannot run: Fix Filters and Joins first."
+    assert message.kind == "warning"
+    assert message.details == (
+        "Filters: Static filter 1 needs a value.\nJoins: VS needs a join item."
     )
-    assert one_form.kind == "info" and "two or more forms" in one_form
+
+
+def test_cannot_run_says_a_problem_no_step_fixes():
+    issues = [_issue("no_selected_forms", "Select at least one form before running.")]
+
+    message = steps.cannot_run_message(issues)
+
+    assert message == "Cannot run: Select at least one form before running."
+    assert message.details is None
+
+
+def test_cannot_run_counts_a_pages_own_problems():
+    issues = [_issue("no_selected_forms", "Select at least one form before running.")]
+
+    message = steps.cannot_run_message(
+        issues, {steps.STACKED: ["DISP: Give it a name."], steps.FILTERS: []}
+    )
+
+    assert message == (
+        "Cannot run: Select at least one form before running. "
+        "Fix Stacked forms first."
+    )
+    assert message.details == "Stacked forms: DISP: Give it a name."
+
+
+def test_nothing_stops_a_report_without_problems():
+    assert steps.cannot_run_message([], {steps.FILTERS: []}) is None
+
+
+def test_a_pages_own_problems_turn_its_badge_red():
+    report = _report()
+
+    one = steps.step_statuses(report, page_problems={steps.FILTERS: ["a"]})
+    two = steps.step_statuses(report, page_problems={steps.STACKED: ["a", "b"]})
+    no_data = steps.step_statuses(CLReport(), page_problems={steps.ADDITIONAL: ["a"]})
+
+    assert one[steps.FILTERS] == StepStatus(steps.ERROR, tip="a")
+    assert two[steps.STACKED] == StepStatus(steps.ERROR, tip="2 problems")
+    assert no_data[steps.ADDITIONAL] == StepStatus(steps.ERROR, tip="a")
+
+
+def test_issues_are_found_by_their_field():
+    first = _issue("a", "one", "static_filter_items.0.2")
+    second = _issue("b", "two", "static_filter_items.0.2")
+    other = _issue("c", "three", "rename_dict.DM.Age")
+
+    by_field = steps.issues_by_field([first, _issue("d", "none"), other, second])
+
+    assert by_field == {
+        "static_filter_items.0.2": [first, second],
+        "rename_dict.DM.Age": [other],
+    }
 
 
 def test_a_saved_settings_missing_forms_and_items_are_listed_by_form():
