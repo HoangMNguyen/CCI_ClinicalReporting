@@ -2,11 +2,9 @@
 
 The sample's EOT (Reason) and DS (Status) forms share Subject, Site and
 Visit, so stacking them leaves Reason and Status out until they are matched,
-here as "Disposition". The page keeps its own stacked forms until "Apply to
-report"; badges refresh once control returns to the event loop.
+here as "Disposition". The page keeps its own stacked forms until the user
+goes to another step; badges refresh once control returns to the event loop.
 """
-
-import json
 
 import pandas as pd
 from PySide6.QtCore import QEvent, QPoint, Qt
@@ -20,7 +18,7 @@ from clinical_reporting.sample_data import STUDY, sample_forms
 from clinical_reporting.stacking import Match, StackedForm
 from clinical_reporting.ui.pages.stacked_forms import TICK_ROLE
 
-NOT_APPLIED = "Not applied yet. Apply to report to use your changes."
+UPDATED = "Stacked forms updated: DISP (48 rows from EOT, DS)."
 DISP = StackedForm(
     "DISP", ("EOT", "DS"), (Match("Disposition", {"EOT": "Reason", "DS": "Status"}),)
 )
@@ -29,6 +27,20 @@ DISP = StackedForm(
 def _open(window):
     window.ui.shell.set_current("stacked")
     QApplication.processEvents()
+
+
+def _leave(window):
+    """Go to another step: the Data steps' changes reach the report."""
+    window.ui.shell.set_current("forms")
+    QApplication.processEvents()
+
+
+def _set_additional_files(window, files, names):
+    """List *files* named *names* on Additional input, then come to this page."""
+    window.ui.shell.set_current("additional")
+    window.additional_inputs = files
+    window.additional_form_names = names
+    _open(window)
 
 
 def _type_name(window, row, text):
@@ -116,7 +128,7 @@ def _type_into(box, text):
 
 
 def _add_files(window, tmp_path, **columns):
-    """Apply one additional file per form: Subject, Site, Visit and its *columns*.
+    """Add one additional file per form: Subject, Site, Visit and its *columns*.
 
     Each form gets one column name or a tuple of them.
     """
@@ -126,9 +138,7 @@ def _add_files(window, tmp_path, **columns):
     for form, names in columns.items():
         names = (names,) if isinstance(names, str) else names
         files[paths[form]] = pd.DataFrame({**rows, **{name: ["x"] for name in names}})
-    window.additional_inputs = files
-    window.additional_form_names = {paths[form]: form for form in columns}
-    window.click_apply_additional_forms()
+    _set_additional_files(window, files, {paths[form]: form for form in columns})
 
 
 def _match_disposition(window):
@@ -195,7 +205,7 @@ def test_a_page_without_a_selected_stacked_form_says_how_to_make_one(sample_wind
     assert not sample_window.ui.pushButton_stacked_remove.isEnabled()
 
 
-def test_names_apply_would_refuse_turn_red_as_they_are_typed(sample_window):
+def test_names_that_cant_be_used_turn_red_as_they_are_typed(sample_window):
     window = sample_window
     _new_stacked_form(window, "DM", "EOT", "DS")
     edit = window.ui.tableWidget_stacked_forms.cellWidget(0, 0)
@@ -297,7 +307,7 @@ def test_a_matched_cell_changes_its_members_item_from_a_dropdown(sample_window):
 
     _pick(ds, "Status")
     picked = (_cell(window, "Reason", 2).currentText(), _grid_rows(window)[-1])
-    state = window.ui.banner_stacked_state.text()
+    in_report = list(window.report.stacked_forms)
     _pick(_cell(window, "Reason", 1), "—")
     cleared = (_cell(window, "Reason", 1).currentText(), _grid_rows(window)[-2:])
     _pick(_cell(window, "Reason", 2), "—")
@@ -305,7 +315,7 @@ def test_a_matched_cell_changes_its_members_item_from_a_dropdown(sample_window):
     assert listed == (["—", "Reason"], "Reason", ["—", "Other items", "Status"], "—")
     assert not heading.isEnabled()
     assert picked == ("Status", "Nothing left out.")
-    assert state == NOT_APPLIED
+    assert in_report == []  # Not until the user goes to another step.
     # The match keeps its name; EOT's Reason is left out again.
     assert cleared == ("—", ["Left out", "Reason"])
     # With no item left, the match goes.
@@ -356,7 +366,7 @@ def test_a_cell_whose_member_lost_its_item_warns_until_one_is_picked(
     _click_item(window, "Reason")
     _click_item(window, "Outcome", Qt.KeyboardModifier.ControlModifier)
     window.click_match_stacked_items()
-    window.click_apply_stacked_forms()
+    _leave(window)
     _add_files(window, tmp_path, OUT="Result")  # The next file renamed Outcome.
     box = _cell(window, "Reason", 2)
     warned = (box.currentText(), box.toolTip(), box.itemIcon(0).isNull())
@@ -370,7 +380,8 @@ def test_a_cell_whose_member_lost_its_item_warns_until_one_is_picked(
         "Result",
         "Pick an item, or type to find one",
     )
-    assert window.ui.banner_stacked_state.text() == NOT_APPLIED
+    # The pick reaches the report when the user goes to another step.
+    assert window.report.stacked_forms[0].matches[0].items["OUT"] == "Outcome"
 
 
 def test_a_member_with_two_items_of_a_match_stops_the_export_until_its_cell_is_cleared(
@@ -382,70 +393,69 @@ def test_a_member_with_two_items_of_a_match_stops_the_export_until_its_cell_is_c
     _click_item(window, "Reason")
     _click_item(window, "Outcome", Qt.KeyboardModifier.ControlModifier)
     window.click_match_stacked_items()
-    window.click_apply_stacked_forms()
+    _leave(window)
     before = _badge(window)
     # The next file also has a Reason column: OUT now gives the match two items.
     _add_files(window, tmp_path, OUT=("Outcome", "Reason"))
-    state = window.ui.banner_stacked_state.text()
     stopped = (_badge(window), [issue.message for issue in window.report.validate()])
     box = _cell(window, "Reason", 2)
-    warned = (box.currentText(), box.toolTip())
+    marked = (box.currentText(), box.property("invalid"), box.toolTip())
 
     _pick(box, "Outcome")  # Picking the item it shows again confirms nothing.
-    again = window.ui.banner_stacked_state.text()
-    _pick(_cell(window, "Reason", 2), "—")
-    cleared = _cell(window, "Reason", 2).currentText()
-    window.click_apply_stacked_forms()
+    box = _cell(window, "Reason", 2)
+    again = (box.property("invalid"), box.toolTip())
+    _pick(box, "—")
+    box = _cell(window, "Reason", 2)
+    cleared = (box.currentText(), bool(box.property("invalid")))
+    _leave(window)
 
-    message = (
-        "ENDS: OUT now has both Reason and Outcome, which the match Reason lines up. "
-        "Choose “—” in OUT's cell or Unmatch it on Stacked forms."
-    )
+    problem = "Pick at most one item from each member: OUT has both Reason and Outcome."
     assert before == (StepState.DONE, None)
-    assert state == f"{message} The report can't be exported until this is fixed."
-    assert state.kind == "error"
-    assert stopped == ((StepState.ERROR, None), [message])
-    assert warned == (
-        "Outcome",
-        "OUT now has Reason and Outcome: which one is unclear. "
-        "Choose “—” or Unmatch to fix it.",
+    assert stopped == (
+        (StepState.ERROR, None),
+        [
+            "ENDS: OUT now has both Reason and Outcome, which the match Reason lines "
+            "up. Choose “—” in OUT's cell or Unmatch it on Stacked forms."
+        ],
     )
-    assert again == state
+    assert marked == ("Outcome", True, problem)
+    assert again == (True, problem)
     # "—" takes Outcome out of the match, so OUT gives its Reason.
-    assert cleared == "Reason"
+    assert cleared == ("Reason", False)
     assert window.report.validate() == []
+    assert _badge(window) == (StepState.DONE, None)
 
 
-def test_apply_refuses_problems_and_lists_them(sample_window):
+def test_a_new_stacked_form_shows_its_missing_name_and_members_in_red(sample_window):
     window = sample_window
     _open(window)
+
     window.click_new_stacked_form()
-    _tick(window, 0, "EOT")
+    table = window.ui.tableWidget_stacked_forms
+    name, members = table.cellWidget(0, 0), table.cellWidget(0, 1)
 
-    window.click_apply_stacked_forms()
-    banner = window.ui.banner_stacked
-
-    assert banner.text() == "Not applied. Fix these 2 problems first, then apply again."
-    assert banner.kind() == "error"
-    assert banner.details() == (
-        "New stacked form: Give it a name.\nNew stacked form: Pick at least two members."
+    assert (name.property("invalid"), name.toolTip()) == (True, "Give it a name.")
+    assert (members.property("invalid"), members.toolTip()) == (
+        True,
+        "Pick at least two members.",
     )
+    assert _badge(window) == (StepState.ERROR, None)
     assert window.report.stacked_forms == []
-    assert window.ui.banner_stacked_state.text() == NOT_APPLIED
 
 
-def test_apply_adds_the_stacked_form_and_keeps_the_selections(sample_window):
+def test_leaving_the_page_adds_the_stacked_form_and_keeps_the_selections(
+    sample_window,
+):
     window = sample_window
     _match_disposition(window)
-    state = window.ui.banner_stacked_state.text()
+    in_report = list(window.report.stacked_forms)
     badge = _badge(window)
 
-    window.click_apply_stacked_forms()
-    QApplication.processEvents()
+    _leave(window)
     forms = window.ui.listWidget_form_available
     (disp,) = forms.findItems("DISP", Qt.MatchFlag.MatchExactly)
 
-    assert state == NOT_APPLIED and badge == (StepState.OPTIONAL, None)
+    assert in_report == [] and badge == (StepState.OPTIONAL, None)
     assert window.report.stacked_forms == [DISP]
     assert list(window.report.data["DISP"].columns) == [
         "Subject",
@@ -455,45 +465,75 @@ def test_apply_adds_the_stacked_form_and_keeps_the_selections(sample_window):
     ]
     assert len(window.report.data["DISP"]) == 48
     assert sorted(window.report.get_selected_forms_list()) == ["AE", "DM", "VS"]
-    assert window.ui.banner_stacked.text() == (
-        "Applied. Stacked forms: DISP (48 rows from EOT, DS)."
-    )
+    assert window.ui.banner_stacked.text() == UPDATED
+    assert window.ui.banner_stacked.kind() == "success"
+    assert window.ui.shell.status_bar.message() == UPDATED
     assert window.ui.banner_stacked_state.text() == ""
     assert _badge(window) == (StepState.DONE, None)
     assert disp.toolTip() == "Stacked from EOT, DS"
 
 
-def test_unapplied_changes_say_so_and_leave_the_badge(sample_window):
+def _hold_with_a_loaded_forms_name(window, tmp_path):
+    """Leave DM over EOT and DS (DM is a loaded form's name), saving on, a folder set."""
+    _new_stacked_form(window, "DM", "EOT", "DS")
+    window.output_folder_name = str(tmp_path)
+    window.ui.pathPicker_output_folder.set_path(str(tmp_path))
+    window.ui.checkBox_save_current_setting.setChecked(True)
+    window.ui.lineEdit_setting_name.setText("DSMB monthly")
+    _leave(window)
+
+
+def test_leaving_with_problems_holds_the_page(sample_window, tmp_path):
     window = sample_window
-    _match_disposition(window)
-    window.click_apply_stacked_forms()
 
-    _type_name(window, 0, "DISPOSITIONS")
+    _hold_with_a_loaded_forms_name(window, tmp_path)
+    name = window.ui.tableWidget_stacked_forms.cellWidget(0, 0)
+    save = window.ui.pushButton_save_setting
 
-    assert window.ui.banner_stacked_state.text() == NOT_APPLIED
-    assert window.report.stacked_forms == [DISP]
+    assert window.report.stacked_forms == []
+    assert window.ui.banner_stacked.text() == ""
+    assert (name.property("invalid"), name.toolTip()) == (
+        True,
+        "DM is already a loaded form.",
+    )
+    assert _badge(window) == (StepState.ERROR, None)
+    assert not window.ui.pushButton_run.isEnabled()
+    assert window.ui.banner_run_state.text() == "Cannot run: Fix Stacked forms first."
+    assert not save.isEnabled()
+    assert save.toolTip() == (
+        "Fix Stacked forms first: its changes aren't in the report yet."
+    )
+
+
+def test_fixing_and_leaving_again_applies(sample_window, tmp_path):
+    window = sample_window
+    _hold_with_a_loaded_forms_name(window, tmp_path)
+
+    _open(window)
+    _type_name(window, 0, "DISP")
+    _leave(window)
+
+    assert window.report.stacked_forms == [StackedForm("DISP", ("EOT", "DS"))]
+    assert window.ui.banner_stacked.text() == UPDATED
     assert _badge(window) == (StepState.DONE, None)
+    assert window.ui.pushButton_run.isEnabled()
+    assert window.ui.banner_run_state.text() == ""
+    assert window.ui.pushButton_save_setting.isEnabled()
 
 
-def test_a_new_zip_keeps_the_stacked_forms_and_asks_for_apply_again(sample_window):
+def test_a_new_zip_brings_the_stacked_forms_along(sample_window):
     window = sample_window
     _match_disposition(window)
-    window.click_apply_stacked_forms()
+    _leave(window)
 
     window.open_input_data("Core_Listings_DEMO02_sample.zip", None, sample_forms())
-    asked = window.ui.banner_stacked_state.text()
-    listed = window.ui.tableWidget_stacked_forms.cellWidget(0, 0).text()
-    dropped = list(window.report.stacked_forms)
-    window.click_apply_stacked_forms()
+    QApplication.processEvents()
 
-    assert asked == (
-        "The new Corelisting ZIP started a new report. Apply the stacked forms "
-        "again to add them to it."
-    )
-    assert listed == "DISP" and dropped == []
+    assert window.ui.tableWidget_stacked_forms.cellWidget(0, 0).text() == "DISP"
     assert window.report.stacked_forms == [DISP]
-    assert "DISP" in window.report.data
+    assert list(window.report.data["DISP"].columns)[-1] == "Disposition"
     assert window.ui.banner_stacked_state.text() == ""
+    assert _badge(window) == (StepState.DONE, None)
 
 
 def test_loading_a_setting_brings_its_stacked_forms_to_the_page(
@@ -501,14 +541,16 @@ def test_loading_a_setting_brings_its_stacked_forms_to_the_page(
 ):
     window = sample_window
     _match_disposition(window)
-    window.click_apply_stacked_forms()
+    _leave(window)
     window.settings_directory = str(tmp_path)
     window.ui.checkBox_save_current_setting.setChecked(True)
     window.ui.lineEdit_setting_name.setText("DSMB monthly")
     window.click_save_setting()
+    _open(window)
     window.ui.tableWidget_stacked_forms.selectRow(0)
     window.click_remove_stacked_form()
-    window.click_apply_stacked_forms()
+    _leave(window)
+    removed = list(window.report.stacked_forms)
     _new_stacked_form(window, "OTHER", "CM", "EX")
     before = window.ui.tableWidget_stacked_forms.rowCount()
 
@@ -517,7 +559,7 @@ def test_loading_a_setting_brings_its_stacked_forms_to_the_page(
     combo.setCurrentIndex(combo.findText("DSMB monthly"))
     table = window.ui.tableWidget_stacked_forms
 
-    assert before == 1
+    assert removed == [] and before == 1
     assert window.report.stacked_forms == [DISP]
     assert table.rowCount() == 1
     assert table.cellWidget(0, 0).text() == "DISP"
@@ -525,44 +567,19 @@ def test_loading_a_setting_brings_its_stacked_forms_to_the_page(
     assert window.ui.banner_stacked_state.text() == ""
 
 
-def test_additional_input_refuses_a_file_named_like_a_stacked_form(sample_window):
+def test_additional_input_holds_a_file_named_like_a_stacked_form(sample_window):
     window = sample_window
     _match_disposition(window)
-    window.click_apply_stacked_forms()
-    window.additional_inputs = {"lab.csv": pd.DataFrame({"Subject": ["01-100"]})}
-    window.additional_form_names = {"lab.csv": "DISP"}
+    _leave(window)
 
-    window.click_apply_additional_forms()
-    banner = window.ui.banner_additional
+    _set_additional_files(
+        window, {"lab.csv": pd.DataFrame({"Subject": ["01-100"]})}, {"lab.csv": "DISP"}
+    )
 
-    assert banner.text() == (
-        "These form names can't be used: DISP. Rename them in the table and try again."
-    )
-    assert (
-        "Conflicts with existing report forms:\n  - DISP: lab.csv" in banner.details()
-    )
+    assert window.update_additional_input_ui() == [
+        "lab.csv: DISP is already a stacked form."
+    ]
     assert list(window.report.data["DISP"].columns)[-1] == "Disposition"
-
-
-def test_saving_with_unapplied_stacked_forms_says_they_werent_saved(
-    sample_window, tmp_path
-):
-    window = sample_window
-    _new_stacked_form(window, "DISP", "EOT", "DS")
-    window.settings_directory = str(tmp_path)
-    window.ui.checkBox_save_current_setting.setChecked(True)
-    window.ui.lineEdit_setting_name.setText("DSMB monthly")
-
-    window.click_save_setting()
-    (saved,) = tmp_path.glob("*.json")
-    message = window.ui.label_save_confirmation.text()
-
-    assert message.kind == "warning"
-    assert message == (
-        f"Settings saved to {saved}. Stacked forms has changes that aren't applied, "
-        "so they weren't saved."
-    )
-    assert "stacked_forms" not in json.loads(saved.read_text(encoding="utf-8"))
 
 
 def test_a_setting_whose_stacked_member_is_missing_says_what_to_add(
@@ -570,11 +587,13 @@ def test_a_setting_whose_stacked_member_is_missing_says_what_to_add(
 ):
     window = sample_window
     lab = str(tmp_path / "lab_results.csv")
-    window.additional_inputs = {lab: pd.DataFrame({"Subject": ["01-100"], "ALT": [3]})}
-    window.additional_form_names = {lab: "LAB"}
-    window.click_apply_additional_forms()
+    _set_additional_files(
+        window,
+        {lab: pd.DataFrame({"Subject": ["01-100"], "ALT": [3]})},
+        {lab: "LAB"},
+    )
     _new_stacked_form(window, "LABS", "LAB", "EOT")
-    window.click_apply_stacked_forms()
+    _leave(window)
     window.settings_directory = str(tmp_path / "settings")
     window.ui.checkBox_save_current_setting.setChecked(True)
     window.ui.lineEdit_setting_name.setText("Monthly labs")
@@ -604,14 +623,12 @@ def test_removing_a_members_file_keeps_it_and_says_what_to_do(sample_window, tmp
     window = sample_window
     _add_files(window, tmp_path, LAB=("Lab Test", "Result", "Unit"))
     _new_stacked_form(window, "LABS", "LB", "LAB")
-    window.click_apply_stacked_forms()
+    _leave(window)
     applied = window.ui.banner_stacked.text()
 
-    window.additional_inputs = {}  # LAB's file removed on Additional input.
-    window.additional_form_names = {}
-    window.click_apply_additional_forms()
+    _set_additional_files(window, {}, {})  # LAB's file removed on Additional input.
 
-    assert applied == "Applied. Stacked forms: LABS (97 rows from LB, LAB)."
+    assert applied == "Stacked forms updated: LABS (97 rows from LB, LAB)."
     # LAB stays a member, so adding its file again brings it back.
     assert window.ui.tableWidget_stacked_forms.cellWidget(0, 1).currentText() == (
         "LB, LAB (not loaded)"
@@ -622,7 +639,7 @@ def test_removing_a_members_file_keeps_it_and_says_what_to_do(sample_window, tmp
     assert window.ui.panel_stacked_items.message() == (
         "LAB isn't loaded. Add its file on Additional input, or untick it in Members."
     )
-    # What the last Apply did is out of date.
+    # What last reached the report is out of date.
     assert window.ui.banner_stacked.text() == ""
 
 

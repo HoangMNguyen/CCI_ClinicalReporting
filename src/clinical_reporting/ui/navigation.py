@@ -71,7 +71,8 @@ class NavigationMixin:
         self._refresh_shell()
 
     def on_page_changed(self, key: str) -> None:
-        """Trigger updates when specific pages become active."""
+        """Apply the Data step just left, then build the preview on its page."""
+        self.apply_data_steps()
         if key == steps.PREVIEW and self.report.data:
             self.preview_report()
 

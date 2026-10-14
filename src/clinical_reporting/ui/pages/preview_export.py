@@ -9,9 +9,9 @@ A saved setting holds the report's settings
 (:meth:`~clinical_reporting.report.CLReport.settings_to_dict`, its applied
 stacked forms and coalesced items included) plus the names given to the
 additional input files on the Additional input page
-(:func:`clinical_reporting.additional_names.add_to_settings`). When the
-Stacked forms or Coalesced items page has changes that aren't applied, the
-save message says they weren't saved.
+(:func:`clinical_reporting.additional_names.add_to_settings`). Save setting
+waits while a Data step is held: its changes can't reach the report, so they
+would be lost (the button's tooltip names the steps to fix).
 """
 
 from __future__ import annotations
@@ -58,6 +58,8 @@ SUBTITLE = "Check the rows, then export them to Excel."
 NO_OUTPUT_FOLDER = "Choose the folder to export to."
 #: The setting name's problem while saving is on and it is empty.
 NO_SETTING_NAME = "Give the setting a name."
+#: Save setting's tooltip (its shortcut), unless a held Data step stops it.
+SAVE_TIP = "Save setting (Ctrl+S)"
 
 
 class PreviewExportPage(Page):
@@ -111,7 +113,7 @@ class PreviewExportPage(Page):
         for keys, button, tooltip in (
             ("F5", self.pushButton_refresh_preview, "Build the preview again (F5)"),
             ("Ctrl+E", self.pushButton_run, "Export to Excel (Ctrl+E)"),
-            ("Ctrl+S", self.pushButton_save_setting, "Save setting (Ctrl+S)"),
+            ("Ctrl+S", self.pushButton_save_setting, SAVE_TIP),
         ):
             button.setToolTip(tooltip)
             self.add_shortcut(keys, button.click)  # Not while it's disabled.
@@ -218,16 +220,20 @@ class PreviewExportMixin:
         self._refresh_save_availability()
 
     def _refresh_save_availability(self) -> None:
-        """Save setting only while saving is on and the setting has a name.
+        """Save setting only while saving is on, the setting has a name, and no
+        Data step is held (its changes would be lost).
 
         The name field is marked while it is empty and saving is on.
         """
         on = self.ui.checkBox_save_current_setting.isChecked()
         named = bool(self.ui.lineEdit_setting_name.text().strip())
+        held = self._held_steps()
         show_problem(
             self.ui.lineEdit_setting_name, NO_SETTING_NAME if on and not named else ""
         )
-        self.ui.pushButton_save_setting.setEnabled(on and named)
+        save = self.ui.pushButton_save_setting
+        save.setEnabled(on and named and not held)
+        save.setToolTip(steps.held_save_tip(held) if on and held else SAVE_TIP)
 
     # ------------------------------------------------------------------
     # Settings persistence helpers
@@ -272,23 +278,10 @@ class PreviewExportMixin:
         except Exception:  # Defensive isolation from telemetry regressions.
             pass
 
-        # A setting keeps what's applied: say so if the Stacked forms or
-        # Coalesced items page has changes that aren't.
-        notes = [
-            note
-            for unapplied, note in (
-                ("_has_unapplied_stacked_forms", steps.STACKED_NOT_SAVED_NOTE),
-                ("_has_unapplied_coalesced_items", steps.COALESCED_NOT_SAVED_NOTE),
-            )
-            if getattr(self, unapplied, lambda: False)()
-        ]
-        if notes:
-            saved = feedback.warning(
-                f"Settings saved to {settings_path}. {' '.join(notes)}"
-            )
-        else:
-            saved = feedback.success(f"Settings saved to {settings_path}")
-        self._set_label_text(self.label_save_confirmation, saved)
+        self._set_label_text(
+            self.label_save_confirmation,
+            feedback.success(f"Settings saved to {settings_path}"),
+        )
         if self.ui.checkBox_saved_setting.isChecked():
             self._refresh_saved_settings()
 

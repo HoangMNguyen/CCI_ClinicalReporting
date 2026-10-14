@@ -180,16 +180,54 @@ def test_the_source_summary_counts_forms_and_rows_and_says_when():
     assert steps.source_summary({"DM": [1]}, read_at).startswith("1 form · 1 row ·")
 
 
-def test_the_additional_input_step_says_what_applying_did():
+def test_the_additional_input_step_says_what_reaching_the_report_did():
     added = steps.additional_applied_message({"LB", "PK"})
     one = steps.additional_applied_message({"LB"})
     removed = steps.additional_applied_message(set())
 
-    assert added == "2 files applied. New forms: LB, PK." and added.kind == "success"
-    assert one.startswith("1 file applied.")
-    assert removed.kind == "success" and "removed" in removed
-    assert steps.ADD_FILES_FIRST.kind == "warning"
-    assert steps.APPLY_ADDITIONAL_AGAIN.kind == "info"
+    assert added == (
+        "Additional input updated: 2 files added to the report. New forms: LB, PK."
+    )
+    assert added.kind == "success"
+    assert one == "Additional input updated: 1 file added to the report. New forms: LB."
+    assert removed == "Additional input: the additional forms were removed from the report."
+    assert removed.kind == "success"
+
+
+def test_an_additional_files_form_name_says_why_it_cant_be_used():
+    name_map = {
+        "/in/lab.csv": "lab.csv",
+        "/in/pk.csv": "P.K",
+        "/in/dm2.csv": "DM",
+        "/in/disp.csv": "DISP",
+        "/in/a.csv": "EXTRA",
+        "/in/b.csv": "EXTRA",
+        "/in/vs2.csv": "VS2",
+    }
+    typed = {"/in/pk.csv": "P.K", "/in/dm2.csv": "DM", "/in/disp.csv": "DISP"}
+
+    found = steps.additional_name_problems(name_map, typed, {"DM", "AE"}, {"DISP"})
+
+    assert found == {
+        "/in/lab.csv": "Give it a form name.",
+        "/in/pk.csv": "A form name can't contain “.”.",
+        "/in/dm2.csv": "DM is already a loaded form.",
+        "/in/disp.csv": "DISP is already a stacked form.",
+        "/in/a.csv": "Another file's form is called EXTRA.",
+        "/in/b.csv": "Another file's form is called EXTRA.",
+        "/in/vs2.csv": "",
+    }
+
+
+def test_save_setting_waits_for_the_held_data_steps():
+    one = steps.held_save_tip([steps.STACKED])
+    two = steps.held_save_tip([steps.COALESCED, steps.ADDITIONAL])
+
+    assert one == "Fix Stacked forms first: its changes aren't in the report yet."
+    assert two == (
+        "Fix Additional input and Coalesced items first: their changes aren't in "
+        "the report yet."
+    )
 
 
 def test_the_stacked_forms_badge_says_how_they_stand():
@@ -229,24 +267,15 @@ def test_the_stacked_forms_step_says_what_applying_did():
     removed = steps.stacked_applied_message(report)
 
     assert applied == (
-        "Applied. Stacked forms: BOTH (2 rows from DM, AE); LABS (not built)."
+        "Stacked forms updated: BOTH (2 rows from DM, AE); LABS (not built)."
     )
     assert applied.kind == "success"
-    assert removed == "The stacked forms were removed from the report."
+    assert removed == "Stacked forms: the stacked forms were removed from the report."
     assert removed.kind == "success"
     assert steps.stacked_missing_message(report) == ""
-    assert steps.STACKED_NOT_APPLIED.kind == "info"
-    assert steps.APPLY_STACKED_AGAIN.kind == "info"
 
 
-def test_the_stacked_forms_step_words_problems_and_members():
-    one = steps.stacked_problems_message(["VISITS: Pick at least two members."])
-    two = steps.stacked_problems_message(["A: Give it a name.", "B: Give it a name."])
-
-    assert one == "Not applied. Fix this problem first, then apply again."
-    assert (one.kind, one.details) == ("error", "VISITS: Pick at least two members.")
-    assert two == "Not applied. Fix these 2 problems first, then apply again."
-    assert two.details == "A: Give it a name.\nB: Give it a name."
+def test_a_stacked_form_says_its_members():
     assert (
         steps.stacked_form_tooltip(StackedForm("VISITS", ("SV", "DSSVLTFU")))
         == "Stacked from SV, DSSVLTFU"
@@ -267,9 +296,10 @@ def test_a_matched_cell_says_why_it_warns():
     stacked = StackedForm("VISITS", ("SV", "DS", "LB"), (match,))
     item = layout(stacked, data).matched[0]
 
+    # SV giving both of the match's items is a problem, marked as one (see
+    # stacking.form_problems), not a warning.
     assert [steps.stacked_cell_warning(item, match, m) for m in stacked.members] == [
-        "SV now has Event Group Name and Event Label: which one is unclear. "
-        "Choose “—” or Unmatch to fix it.",
+        "",
         "DS has no Event Label; its Event Group Name is taken instead",
         "LB has no Event Label",
     ]
@@ -331,30 +361,11 @@ def test_the_coalesced_items_step_says_what_applying_did():
     removed = steps.coalesced_applied_message(report)
 
     assert applied == (
-        "Applied. Coalesced items: Race in DM (1 row filled); Unit in LB (not built)."
+        "Coalesced items updated: Race in DM (1 row filled); Unit in LB (not built)."
     )
     assert applied.kind == "success"
-    assert removed == "The coalesced items were removed from the report."
+    assert removed == "Coalesced items: the coalesced items were removed from the report."
     assert removed.kind == "success"
-    assert steps.COALESCED_NOT_APPLIED.kind == "info"
-    assert steps.APPLY_COALESCED_AGAIN.kind == "info"
-
-
-def test_the_coalesced_items_step_lists_problems_and_every_overlapping_row():
-    one = steps.coalesced_problems_message(["Race in DM: Give it a name."])
-    cut = steps.coalesced_problems_message(
-        ["A in F: 6 rows have a value in B where A already has one: 1, 2 and 4 more."],
-        ["A in F: 6 rows have a value in B where A already has one: 1, 2, 3, 4, 5, 6."],
-    )
-
-    assert one == (
-        "Not applied. Fix this problem first, then apply again.\n"
-        "- Race in DM: Give it a name."
-    )
-    assert (one.kind, one.details) == ("error", None)
-    assert cut.details == (
-        "A in F: 6 rows have a value in B where A already has one: 1, 2, 3, 4, 5, 6."
-    )
 
 
 def test_a_coalesced_item_built_without_an_item_says_so():
@@ -388,48 +399,6 @@ def test_a_coalesced_items_counts_say_where_its_rows_take_their_value():
     assert counts == (
         "DM has 4 rows: 2 keep Race · 1 filled from Race Other · 1 left empty · "
         "1 row overlaps"
-    )
-
-
-def test_a_coalesced_item_being_edited_says_what_stops_it():
-    one = steps.coalesced_item_problems_message(["Give it a name."])
-    two = steps.coalesced_item_problems_message(["Give it a name.", "Pick its form."])
-
-    assert one == "Can't apply yet: Give it a name."
-    assert one.kind == "warning"
-    assert two == "Can't apply yet:\n- Give it a name.\n- Pick its form."
-    assert steps.coalesced_item_problems_message([]) == ""
-
-
-def test_later_overlaps_list_their_first_rows_and_every_row_in_the_details():
-    report = CLReport()
-    report.set_data(
-        {
-            "F": pd.DataFrame(
-                {
-                    "Subject": [f"S{n}" for n in range(1, 8)],
-                    "A": ["x"] * 7,
-                    "B": ["y"] * 7,
-                }
-            ),
-            "G": pd.DataFrame({"Subject": ["S1"]}),
-        }
-    )
-    report.set_coalesced_items([CoalescedItem("F", "A", "A", (Fill("B"),))])
-
-    message = steps.coalesced_conflict_message(report)
-
-    assert message == (
-        "A in F: 7 rows have a value in B where A already has one: S1 (x / y), "
-        "S2 (x / y), S3 (x / y), S4 (x / y), S5 (x / y) and 2 more. Change a "
-        "condition, or keep the earlier value, on Coalesced items. The report "
-        "can't be exported until this is fixed."
-    )
-    assert message.kind == "error"
-    assert message.details == (
-        "A in F: 7 rows have a value in B where A already has one: S1 (x / y), "
-        "S2 (x / y), S3 (x / y), S4 (x / y), S5 (x / y), S6 (x / y), S7 (x / y). "
-        "Change a condition, or keep the earlier value, on Coalesced items."
     )
 
 
@@ -477,8 +446,9 @@ def test_saved_names_a_file_cant_use_are_said_by_file():
 
     assert applied.kind == "warning"
     assert applied == (
-        "2 files applied. New forms: LAB, PK. Saved column names ignored: "
-        "lab.csv has no Visit Dt or ALT (U/L); pk.csv has no Conc."
+        "Additional input updated: 2 files added to the report. New forms: LAB, PK. "
+        "Saved column names ignored: lab.csv has no Visit Dt or ALT (U/L); pk.csv "
+        "has no Conc."
     )
     assert applied.details == (
         "lab.csv: Visit Dt → Visit Date\nlab.csv: ALT (U/L) → ALT\npk.csv: Conc → CONC"
@@ -486,21 +456,21 @@ def test_saved_names_a_file_cant_use_are_said_by_file():
     assert standing.kind == "warning"
     assert standing == (
         "A saved column name can't be used: lab.csv has no Visit Dt. It's "
-        "ignored; the form still applies without it."
+        "ignored; the form is still added without it."
     )
     assert steps.saved_names_ignored_message(ignored).endswith(
-        "They're ignored; the forms still apply without them."
+        "They're ignored; the forms are still added without them."
     )
     assert filled.kind == "warning"
     assert filled == (
         "Saved names from “Monthly” picked for 1 file: lab.csv by its file name. "
         "Some saved column names can't be used and will be ignored: lab.csv has "
-        "no Visit Dt or ALT (U/L). Check them, then Apply to report."
+        "no Visit Dt or ALT (U/L). Check them on Additional input."
     )
     assert picked == (
         "Names from LAB filled in for lab.csv. 2 saved column names can't be used "
-        "and will be ignored: lab.csv has no Visit Dt or ALT (U/L). Check them, "
-        "then Apply to report."
+        "and will be ignored: lab.csv has no Visit Dt or ALT (U/L). Check them; "
+        "they're used when you go to another step."
     )
     many_columns = steps.saved_names_ignored_message(columns)
     assert "lab.csv has no C0, C1, C2, C3, C4 or 2 more." in many_columns

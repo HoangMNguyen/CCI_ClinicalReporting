@@ -14,6 +14,8 @@ from __future__ import annotations
 import warnings
 from typing import Dict, List, Optional
 
+from cci_ui.tasks import defer_if_busy
+from clinical_reporting import steps
 from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import (
     LocalFolderStore,
@@ -22,6 +24,19 @@ from clinical_reporting.settings_store import (
 )
 from clinical_reporting.ui.dialogs import settings_folder, show_settings_folder
 from clinical_reporting.validation import ReportValidationIssue
+
+#: Each Data step's page: what applies its changes when the user leaves it,
+#: and what says whether it has changes the report doesn't use yet.
+_APPLY_STEPS = {
+    steps.ADDITIONAL: "_apply_additional_step",
+    steps.STACKED: "_apply_stacked_step",
+    steps.COALESCED: "_apply_coalesced_step",
+}
+_UNAPPLIED_CHECKS = {
+    steps.ADDITIONAL: "_has_unapplied_additional_inputs",
+    steps.STACKED: "_has_unapplied_stacked_forms",
+    steps.COALESCED: "_has_unapplied_coalesced_items",
+}
 
 
 class WidgetBaseMixin:
@@ -81,6 +96,10 @@ class WidgetBaseMixin:
         """
         self._in_coordinated_refresh = True
         try:
+            # The names additional files can't take follow the data.
+            update_additional = getattr(self, "update_additional_input_ui", None)
+            if update_additional is not None:
+                update_additional()
             self.update_stacked_forms_ui()
             self.update_coalesced_items_ui()
             self.update_forms_ui()
@@ -117,6 +136,59 @@ class WidgetBaseMixin:
         refresh = getattr(self, "_shell_refresh", None)
         if refresh is not None:
             refresh.start()
+
+    # ------------------------------------------------------------------
+    # The Data steps (Additional input, Stacked forms, Coalesced items)
+
+    def _set_page_problems(self, step: str, lines: List[str]) -> None:
+        """Keep what *step*'s page shows as problems, one line each; refresh."""
+        problems = getattr(self, "_page_problems", None)
+        if problems is None:  # A partial window (tests).
+            problems = self._page_problems = {}
+        if lines:
+            problems[step] = list(lines)
+        else:
+            problems.pop(step, None)
+        self._report_changed()
+
+    def _is_open(self, key: str) -> bool:
+        """Whether the page of step *key* is the one shown.
+
+        Windows without the shell (the tests' partial windows) count every
+        page as open: their tests apply the steps themselves.
+        """
+        shell = getattr(self.ui, "shell", None)
+        return shell is None or shell.current() == key
+
+    def _has_unapplied(self, key: str) -> bool:
+        """Whether Data step *key*'s page differs from what the report uses."""
+        check = getattr(self, _UNAPPLIED_CHECKS[key], None)
+        return bool(check()) if check is not None else False
+
+    def _held_steps(self) -> List[str]:
+        """The Data steps whose changes can't reach the report: they have problems."""
+        problems = getattr(self, "_page_problems", {})
+        return [
+            key
+            for key in steps.DATA_STEPS
+            if problems.get(key) and self._has_unapplied(key)
+        ]
+
+    def apply_data_steps(self) -> None:
+        """Bring the changes of every Data step that isn't open to the report.
+
+        Called when the user leaves a page, and when a Data step changes
+        while it isn't open (files that finish loading, a picked setting's
+        saved names, a new Corelisting ZIP). Each step applies only when it
+        has changes and no problems (see the pages' ``_apply_*_step``).
+        """
+        if defer_if_busy(self, self.apply_data_steps):
+            return
+        for key in steps.DATA_STEPS:
+            apply = getattr(self, _APPLY_STEPS[key], None)
+            if apply is not None and not self._is_open(key):
+                apply()
+        self._report_changed()
 
     # ------------------------------------------------------------------
     # Saved-settings storage (shared by the Source data and Preview & export pages)

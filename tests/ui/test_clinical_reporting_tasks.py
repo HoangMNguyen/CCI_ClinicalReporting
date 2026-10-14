@@ -19,6 +19,7 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from cci_ui.theme.tokens import LAYOUT
 from cci_ui.widgets.shell import SIDEBAR_SHORTCUT
 from clinical_reporting import feedback
 from clinical_reporting.ui.pages import preview_export, source_data
@@ -76,6 +77,8 @@ def window(qapp, monkeypatch, tmp_path):
     # Recorded rather than asserted here: a failure inside a Qt callback
     # would only reach sys.excepthook.
     widget._set_label_text = record
+    # The size it opens at: the remove button must be inside it to be clicked.
+    widget.resize(*LAYOUT.first_launch)
     widget.show()
     widget.activateWindow()
     QApplication.processEvents()

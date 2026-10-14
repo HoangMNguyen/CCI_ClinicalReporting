@@ -147,7 +147,7 @@ def test_picking_a_setting_offers_its_saved_names_and_names_the_files():
 def test_re_applying_the_setting_leaves_the_saved_names_alone():
     widget = _OfferingWidget(_Store(_setting_with_saved_names("LAB")))
 
-    # As after "Apply to report" on the Additional input page.
+    # As once the additional files reach the report.
     assert widget._apply_saved_setting_from_path(
         "monthly.json", update_confirmation=False
     )
@@ -218,7 +218,7 @@ def test_choosing_the_settings_folder_is_confirmed(monkeypatch):
     assert shown.kind == "info"
 
 
-def test_files_already_added_are_to_be_checked_and_applied():
+def test_files_already_added_are_to_be_checked():
     stored = _setting_with_saved_names("LAB", "PK")
     widget = _OfferingWidget(_Store(stored))
     widget.added = [
@@ -231,7 +231,7 @@ def test_files_already_added_are_to_be_checked_and_applied():
         "Missing forms: LAB, PK\n"
         "PK comes from an additional file. Add pk_results.csv on Additional "
         "input, and its saved names will be picked for you. The file for LAB is "
-        "added: check its form name on Additional input, then Apply to report."
+        "added: check its form name on Additional input."
     )
 
 

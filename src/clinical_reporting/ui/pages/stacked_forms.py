@@ -1,10 +1,11 @@
 """Stacked forms: new forms made of other forms' rows, one under another.
 
-The page keeps its own stacked forms (the drafts) until "Apply to report":
-:class:`StackedFormsMixin` edits them with :mod:`clinical_reporting.stacking`
-(which decides how the items line up), checks them with
-:func:`~clinical_reporting.stacking.problems` on Apply, and hands them to
-:func:`~clinical_reporting.session.apply_stacked_forms`. Messages and
+The page keeps its own stacked forms (the drafts) and edits them with
+:mod:`clinical_reporting.stacking` (which decides how the items line up).
+They reach the report when the user goes to another step
+(:meth:`StackedFormsMixin._apply_stacked_step`, called by the window's
+``apply_data_steps``, through
+:func:`~clinical_reporting.session.apply_stacked_forms`). Messages and
 warnings are worded in :mod:`clinical_reporting.steps`; the page's own
 labels and hints are here.
 
@@ -21,15 +22,17 @@ labels and hints are here.
   (:func:`~clinical_reporting.stacking.match_choices`) that change one
   member's item at a time (:func:`~clinical_reporting.stacking.set_match_item`).
   Its columns fit what they show, and any column's edge can be dragged.
-- Two banners: what Apply did, and a standing one for the page's state: the
-  drafts differ from the report's ("Not applied yet"), a new Corelisting ZIP
-  started a new report (apply again), data changed since Apply makes a match
-  ambiguous (an error that stops the export), or the report's stacked forms
-  lack a member or a matched item.
+- Each problem :func:`~clinical_reporting.stacking.form_problems` finds is
+  marked live on its field (a name, the Members box, a match's name, a
+  matched cell), and turns the step's badge red. While there are any, the
+  page is held: leaving it changes nothing in the report.
+- Two banners: what reaching the report did, and a standing one for what
+  the report's stacked forms lack (a member or a matched item).
 
 Loading a saved setting (when it changes the report's stacked forms) replaces
-the drafts with the report's; a new ZIP, or removing it, keeps them and asks
-for Apply again (:meth:`StackedFormsMixin._forget_applied_stacked_forms`).
+the drafts with the report's; a new ZIP, or removing it, keeps them, and they
+reach the new report right away
+(:meth:`StackedFormsMixin._forget_applied_stacked_forms`).
 """
 
 from __future__ import annotations
@@ -84,6 +87,7 @@ from cci_ui.widgets.tables import (
     table_card,
 )
 from clinical_reporting import stacking, steps
+from clinical_reporting.feedback import Problem
 from clinical_reporting.session import apply_stacked_forms
 from clinical_reporting.stacking import (
     Match,
@@ -93,7 +97,7 @@ from clinical_reporting.stacking import (
     StackLayout,
 )
 
-from ._common import CellComboBox, make_table
+from ._common import CellComboBox, make_table, show_problem
 
 #: The Stacked forms table's columns: Name, Members, Items, Rows.
 _FORMS_COLUMNS = (
@@ -951,7 +955,6 @@ class StackedFormsPage(Page):
     EXPORTS = (
         "pushButton_stacked_new",
         "pushButton_stacked_remove",
-        "pushButton_stacked_apply",
         "banner_stacked",
         "banner_stacked_state",
         "tableWidget_stacked_forms",
@@ -967,26 +970,22 @@ class StackedFormsPage(Page):
         super().__init__(
             steps.TITLES[self.KEY],
             "Optional. Put the rows of several forms one under another as one new "
-            "form, then apply it to the report.",
+            "form. Your changes reach the report when you go to another step.",
             parent=parent,
         )
         self.pushButton_stacked_new = make_button(
             "New stacked form", icon_name=IconName.ADD
         )
         self.pushButton_stacked_remove = make_button("Remove")
-        self.pushButton_stacked_apply = make_button(
-            "Apply to report", variant="primary"
-        )
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
         toolbar.addWidget(self.pushButton_stacked_new)
         toolbar.addWidget(self.pushButton_stacked_remove)
         toolbar.addStretch(1)
-        toolbar.addWidget(self.pushButton_stacked_apply)
-        # What applying did, or why it couldn't.
+        # What reaching the report did.
         self.banner_stacked = StatusBanner()
-        # The page's state (not applied, apply again, a conflict, something
-        # missing): standing, so it isn't repeated in the status bar.
+        # What the report's stacked forms lack: standing, so it isn't
+        # repeated in the status bar.
         self.banner_stacked_state = StatusBanner(dismissible=False, announce=False)
 
         self.tableWidget_stacked_forms = make_table(
@@ -1052,13 +1051,11 @@ class StackedFormsMixin:
 
     def _init_stacked_forms(self) -> None:
         """Connect the page's controls; it starts with no stacked forms."""
-        # The page's stacked forms, applied or not.
+        # The page's stacked forms, in the report or not yet.
         self._stacked_drafts: List[StackedForm] = []
         # The report's stacked forms when the page last saw them: when they
         # change (a saved setting loaded), the drafts follow.
         self._stacked_seen: List[StackedForm] = []
-        # A new Corelisting ZIP started a new report without them.
-        self._stacked_apply_again = False
         self._stacked_every_open = False
         # The report's loaded data and stacked forms build the table and grid
         # were last filled for: only a change refills them, so other steps'
@@ -1069,7 +1066,6 @@ class StackedFormsMixin:
         self.ui.pushButton_stacked_remove.clicked.connect(
             self.click_remove_stacked_form
         )
-        self.ui.pushButton_stacked_apply.clicked.connect(self.click_apply_stacked_forms)
         self.ui.pushButton_stacked_match.clicked.connect(self.click_match_stacked_items)
         self.ui.pushButton_stacked_unmatch.clicked.connect(
             self.click_unmatch_stacked_items
@@ -1099,19 +1095,18 @@ class StackedFormsMixin:
     # Refresh (called by update_all_ui)
 
     def update_stacked_forms_ui(self) -> None:
-        """Show the drafts over the report's data, and the page's state.
+        """Show the drafts over the report's data, their problems, and the state.
 
         When the report's stacked forms changed (a saved setting was loaded),
         the drafts become the report's. The table and grid are filled again
-        only when the report's data or stacked forms changed; what the last
-        Apply did is then out of date, so its message goes.
+        only when the report's data or stacked forms changed; what last
+        reached the report is then out of date, so its message goes.
         """
         applied = list(self.report.stacked_forms)
         changed = applied != self._stacked_seen
         if changed:
             self._stacked_drafts = list(applied)
             self._stacked_seen = applied
-            self._stacked_apply_again = False
         shown_for = (self.report.loaded_data, self.report.stacked_build)
         if changed or any(
             now is not then for now, then in zip(shown_for, self._stacked_shown_for)
@@ -1119,22 +1114,43 @@ class StackedFormsMixin:
             self._stacked_shown_for = shown_for
             self._set_label_text(self.ui.banner_stacked, "")
             self._fill_stacked_forms_table(self._current_stacked_row())
+        else:
+            self._show_stacked_problems()
         self._show_stacked_state()
 
     def _forget_applied_stacked_forms(self) -> None:
-        """Note that the report no longer has the applied stacked forms.
+        """Note that the report no longer has the stacked forms.
 
-        (A new Corelisting ZIP starts a new report.) The drafts stay; the
-        page asks for Apply again.
+        (A new Corelisting ZIP starts a new report.) The drafts stay, to
+        reach the new report.
         """
-        if self._stacked_seen:
-            self._stacked_apply_again = True
         self._stacked_seen = []
         self._set_label_text(self.ui.banner_stacked, "")
 
     def _has_unapplied_stacked_forms(self) -> bool:
         """Whether the page's stacked forms differ from the report's."""
         return self._stripped_stacked_drafts() != list(self.report.stacked_forms)
+
+    def _apply_stacked_step(self) -> None:
+        """Bring the page's stacked forms to the report (the user left the page).
+
+        Nothing without loaded data or changes. While the page has problems
+        it is held: nothing reaches the report, and its marks say why. What
+        reached it is said in the page's banner, a success the window also
+        shows on the page the user went to.
+        """
+        if not self.report.loaded_data or not self._has_unapplied_stacked_forms():
+            return
+        if self._show_stacked_problems():
+            return
+        drafts = self._stripped_stacked_drafts()
+        apply_stacked_forms(self.report, drafts)
+        self._stacked_drafts = list(drafts)
+        self._stacked_seen = list(self.report.stacked_forms)
+        self.update_all_ui()
+        self._set_label_text(
+            self.ui.banner_stacked, steps.stacked_applied_message(self.report)
+        )
 
     # ------------------------------------------------------------------
     # Slots bound to the page's buttons
@@ -1144,39 +1160,18 @@ class StackedFormsMixin:
         self._stacked_drafts.append(StackedForm("", ()))
         row = len(self._stacked_drafts) - 1
         self._fill_stacked_forms_table(row)
-        self._show_stacked_state()
         edit = self.ui.tableWidget_stacked_forms.cellWidget(row, _NAME_COLUMN)
         if edit is not None:
             edit.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def click_remove_stacked_form(self) -> None:
-        """Remove the selected stacked form from the page (Apply removes it)."""
+        """Remove the selected stacked form from the page."""
         row = self._current_stacked_row()
         if row is None:
             return
         del self._stacked_drafts[row]
         remaining = len(self._stacked_drafts)
         self._fill_stacked_forms_table(min(row, remaining - 1) if remaining else None)
-        self._show_stacked_state()
-
-    def click_apply_stacked_forms(self) -> None:
-        """Apply the page's stacked forms to the report, unless they have problems."""
-        drafts = self._stripped_stacked_drafts()
-        loaded = self.report.loaded_data
-        found = stacking.problems(drafts, loaded.keys(), loaded)
-        if found:
-            self._set_label_text(
-                self.ui.banner_stacked, steps.stacked_problems_message(found)
-            )
-            return
-        apply_stacked_forms(self.report, drafts)
-        self._stacked_drafts = list(drafts)
-        self._stacked_seen = list(self.report.stacked_forms)
-        self._stacked_apply_again = False
-        self.update_all_ui()
-        self._set_label_text(
-            self.ui.banner_stacked, steps.stacked_applied_message(self.report)
-        )
 
     def click_match_stacked_items(self) -> None:
         """Match the selected left-out items into one stacked item.
@@ -1253,7 +1248,6 @@ class StackedFormsMixin:
                     row, _MEMBERS_COLUMN, self._stacked_members_box(row)
                 )
                 self._show_stacked_form_row(row)
-            self._show_stacked_name_problems()
             if select is not None and 0 <= select < table.rowCount():
                 table.selectRow(select)
             else:
@@ -1351,27 +1345,7 @@ class StackedFormsMixin:
             self.ui.label_stacked_items.setText(
                 self._stacked_items_title(self._stacked_drafts[row])
             )
-        self._show_stacked_name_problems()
-        self._show_stacked_state()
-
-    def _show_stacked_name_problems(self) -> None:
-        """Mark each typed name Apply would refuse, with the reason as its tooltip.
-
-        A name not typed yet is left for Apply to point out.
-        """
-        table = self.ui.tableWidget_stacked_forms
-        loaded = self.report.loaded_data.keys()
-        for row, stacked in enumerate(self._stacked_drafts):
-            edit = table.cellWidget(row, _NAME_COLUMN)
-            if edit is None:
-                continue
-            problem = (
-                stacking.name_problem(self._stacked_drafts, row, loaded)
-                if stacked.name.strip()
-                else ""
-            )
-            set_invalid(edit, bool(problem))
-            edit.setToolTip(problem)
+        self._show_stacked_problems()
 
     def _on_stacked_members_opened(self, row: int) -> None:
         self._select_stacked_form(row)
@@ -1388,7 +1362,8 @@ class StackedFormsMixin:
         self._show_stacked_form_row(row)
         if row == self._current_stacked_row():
             self._show_stacked_items(keep=())
-        self._show_stacked_state()
+        else:
+            self._show_stacked_problems()
 
     # ------------------------------------------------------------------
     # The items grid
@@ -1411,6 +1386,7 @@ class StackedFormsMixin:
         if row is None:
             panel.show_message(SELECT_A_STACKED_FORM, head=False)
             self._update_stacked_item_buttons()
+            self._show_stacked_problems()
             return
         stacked = self._stacked_drafts[row]
         self.ui.label_stacked_items.setText(self._stacked_items_title(stacked))
@@ -1425,11 +1401,13 @@ class StackedFormsMixin:
             )
             grid.set_members([])
             self._update_stacked_item_buttons()
+            self._show_stacked_problems()
             return
         if keep is None:
             keep = grid.selected_keys()
         self._fill_stacked_grid(stacked, plan)
         panel.show_grid()
+        self._show_stacked_problems()
         rows = [grid.row_of(kind, key) for kind, key in keep]
         if focus_match is not None:
             rows = [grid.row_of(MATCHED, focus_match)]
@@ -1493,7 +1471,6 @@ class StackedFormsMixin:
                     column,
                     self._match_item_box(plan, match, item, member, column),
                 )
-        self._show_match_name_problems(stacked, plan)
 
         grid.add_section(
             LEFT_OUT,
@@ -1552,26 +1529,7 @@ class StackedFormsMixin:
             return
         stacked = stacking.rename_match(self._stacked_drafts[row], index, name)
         self._stacked_drafts[row] = stacked
-        self._show_match_name_problems(
-            stacked, stacking.layout(stacked, self.report.loaded_data)
-        )
-        self._show_stacked_state()
-
-    def _show_match_name_problems(
-        self, stacked: StackedForm, plan: StackLayout
-    ) -> None:
-        """Mark each match name Apply would refuse, with the reason as its tooltip.
-
-        *plan* is *stacked*'s layout over the loaded data.
-        """
-        grid = self.ui.tableView_stacked_items
-        for index in range(len(stacked.matches)):
-            box = grid.first_widget(grid.row_of(MATCHED, index))
-            if box is None:  # The search hides its row.
-                continue
-            problem = stacking.match_name_problem(stacked, plan, index)
-            set_invalid(box, bool(problem))
-            box.set_tip(problem or MATCH_NAME_TIP)
+        self._show_stacked_problems()
 
     def _on_match_item_picked(
         self, index: int, member: str, column: int, picked: Optional[str]
@@ -1666,7 +1624,7 @@ class StackedFormsMixin:
         )
 
     def _after_stacked_items_edit(self, row: int, focus_match=None) -> None:
-        """Show an edit of the items: the row's counts, the grid, the state."""
+        """Show an edit of the items: the row's counts, the grid, its problems."""
         self._show_stacked_form_row(row)
         search = self.ui.lineEdit_stacked_item_search
         if focus_match is not None and search.text():
@@ -1675,7 +1633,6 @@ class StackedFormsMixin:
             search.clear()
             search.blockSignals(False)
         self._show_stacked_items(keep=(), focus_match=focus_match)
-        self._show_stacked_state()
 
     # ------------------------------------------------------------------
     # The page's state
@@ -1693,14 +1650,80 @@ class StackedFormsMixin:
             for stacked in self._stacked_drafts
         ]
 
+    def _show_stacked_problems(self) -> List[str]:
+        """Mark what stops the drafts from reaching the report; return it.
+
+        Each problem is marked on the field that fixes it, the reason its
+        tooltip: a name, a Members box, and in the shown grid a match's name
+        or a matched cell (rows the search hides have none). The lines,
+        "NAME: problem" each, are the page's problems: they turn the badge
+        red and hold the page. Returns them (none: the drafts can be used).
+        """
+        loaded = self.report.loaded_data
+        found = stacking.form_problems(
+            self._stripped_stacked_drafts(), loaded.keys(), loaded
+        )
+        marks = [_problem_texts(problems) for problems in found]
+        table = self.ui.tableWidget_stacked_forms
+        for row, texts in enumerate(marks):
+            for column, field_name in (
+                (_NAME_COLUMN, "name"),
+                (_MEMBERS_COLUMN, "members"),
+            ):
+                widget = table.cellWidget(row, column)
+                if widget is not None:
+                    show_problem(widget, texts.get(field_name, ""))
+        row = self._current_stacked_row()
+        if row is not None and self.ui.panel_stacked_items.message() == "":
+            self._mark_stacked_grid(self._stacked_drafts[row], marks[row])
+        lines = [
+            f"{stacked.name.strip() or stacking.NEW_STACKED_FORM}: {text}"
+            for stacked, problems in zip(self._stacked_drafts, found)
+            for text in dict.fromkeys(problem.text for problem in problems)
+        ]
+        self._set_page_problems(steps.STACKED, lines)
+        return lines
+
+    def _mark_stacked_grid(self, stacked: StackedForm, texts: Dict[str, str]) -> None:
+        """Mark the grid's match names and matched cells with *texts*, by field.
+
+        A cell without a problem gets its usual tooltip back: its warning, if
+        any, else how to use it.
+        """
+        grid = self.ui.tableView_stacked_items
+        plan = stacking.layout(stacked, self.report.loaded_data)
+        for item in plan.matched:
+            grid_row = grid.row_of(MATCHED, item.index)
+            if grid_row < 0:  # The search hides its row.
+                continue
+            box = grid.first_widget(grid_row)
+            if box is not None:
+                text = texts.get(f"match.{item.index}", "")
+                set_invalid(box, bool(text))
+                box.set_tip(text or MATCH_NAME_TIP)
+            match = stacked.matches[item.index]
+            for column, member in enumerate(plan.present, start=1):
+                box = grid.cell_widget(grid_row, column)
+                if box is None:
+                    continue
+                text = texts.get(f"cell.{item.index}.{member}", "")
+                set_invalid(box, bool(text))
+                box.set_tip(
+                    text
+                    or steps.stacked_cell_warning(item, match, member)
+                    or MATCH_ITEM_TIP
+                )
+
     def _show_stacked_state(self) -> None:
-        """The standing banner: apply again, not applied yet, a conflict, or what's missing."""
-        if self._stacked_apply_again and self._stacked_drafts:
-            state = steps.APPLY_STACKED_AGAIN
-        elif self._has_unapplied_stacked_forms():
-            state = steps.STACKED_NOT_APPLIED
-        else:
-            state = steps.stacked_conflict_message(
-                self.report
-            ) or steps.stacked_missing_message(self.report)
-        self._set_label_text(self.ui.banner_stacked_state, state)
+        """The standing banner: what the report's stacked forms lack, if anything."""
+        self._set_label_text(
+            self.ui.banner_stacked_state, steps.stacked_missing_message(self.report)
+        )
+
+
+def _problem_texts(problems: Sequence[Problem]) -> Dict[str, str]:
+    """Each field's problems, one line each (a text once), by field."""
+    texts: Dict[str, Dict[str, None]] = {}
+    for problem in problems:
+        texts.setdefault(problem.field, {})[problem.text] = None
+    return {field_name: "\n".join(lines) for field_name, lines in texts.items()}

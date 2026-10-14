@@ -1,32 +1,32 @@
 """Coalesced items: one item made from two or more items of a form.
 
-The page keeps its own coalesced items (the drafts) until "Apply to report":
-:class:`CoalescedItemsMixin` edits them, previews each with
-:func:`~clinical_reporting.coalescing.preview`, checks them with
-:func:`~clinical_reporting.coalescing.problems` on Apply, and hands them to
-:func:`~clinical_reporting.session.apply_coalesced_items`. They are made
-from the forms of ``report.stacked_data`` (the loaded forms and the applied
-stacked forms). Messages are worded in :mod:`clinical_reporting.steps`; the
-page's own labels and hints are here.
+The page keeps its own coalesced items (the drafts) until the user goes to
+another step: :class:`CoalescedItemsMixin` edits them, previews each with
+:func:`~clinical_reporting.coalescing.preview`, marks what stops them from
+reaching the report with :func:`~clinical_reporting.coalescing.item_problems`
+as they change, and, when the user leaves the page
+(:meth:`CoalescedItemsMixin._apply_coalesced_step`, called by the window's
+``apply_data_steps``), hands them to
+:func:`~clinical_reporting.session.apply_coalesced_items`. Drafts with a
+problem hold the step: nothing from it reaches the report, and its badge is
+red. They are made from the forms of ``report.stacked_data`` (the loaded
+forms and the stacked forms). Messages are worded in
+:mod:`clinical_reporting.steps`; the page's own labels and hints are here.
 
 - The Coalesced items table: Name | Form | Items, in order | Filled |
   Overlaps | When values overlap, a read-only summary of the drafts ("—"
-  while one can't be built yet).
+  while one can't be built yet); a draft's Name is red with its problems.
 - The editor of the selected draft: its form, name (one of its items' names
-  or a new one; red while Apply would refuse it) and what to do where values
-  overlap; its items in order, each later one with an optional condition
-  (a Filters operator and value tested on the value so far) and the rows it
-  gives; how its form's rows take their value; and what stops it from being
-  applied.
-- Two banners: what Apply did, and a standing one for the page's state: the
-  drafts differ from the report's ("Not applied yet"), a new Corelisting ZIP
-  started a new report (apply again), data changed since Apply makes values
-  overlap or a name clash (an error that stops the export), or the report's
-  coalesced items lack a form or an item.
+  or a new one) and what to do where values overlap; its items in order,
+  each later one with an optional condition (a Filters operator and value
+  tested on the value so far) and the rows it gives; and how its form's rows
+  take their value. Each problem is marked on the field that fixes it.
+- Two banners: what reaching the report did, and a standing one when the
+  report's coalesced items lack a form or an item.
 
 Loading a saved setting (when it changes the report's coalesced items)
-replaces the drafts with the report's; a new ZIP, or removing it, keeps them
-and asks for Apply again
+replaces the drafts with the report's; a new Corelisting ZIP, or removing
+it, keeps them, and they reach the new report as soon as it is loaded
 (:meth:`CoalescedItemsMixin._forget_applied_coalesced_items`).
 """
 
@@ -51,24 +51,25 @@ from PySide6.QtWidgets import (
 )
 
 from cci_ui.icons import IconName
-from cci_ui.theme.manager import current, set_invalid, theme_events
+from cci_ui.theme.manager import current, theme_events
 from cci_ui.theme.palette import qcolor
 from cci_ui.widgets.buttons import make_button
 from cci_ui.widgets.labels import section_label, text_label
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.status import StatusBanner
-from cci_ui.widgets.tables import ColumnSpec, table_card
-from clinical_reporting import coalescing, steps
+from cci_ui.widgets.tables import ColumnSpec, mark_cell, table_card
+from clinical_reporting import coalescing, feedback, steps
 from clinical_reporting.coalescing import (
     CONDITION_OPERATORS,
     KEEP_EARLIER,
     REFUSE,
     CoalescedItem,
     Fill,
+    Outcome,
 )
 from clinical_reporting.session import apply_coalesced_items
 
-from ._common import CellComboBox, ItemBox, make_table
+from ._common import CellComboBox, ItemBox, make_table, show_problem
 
 #: The Coalesced items table's columns.
 _ITEMS_COLUMNS = (
@@ -206,8 +207,6 @@ class _EditorPanel(QWidget):
             buttons.addWidget(button)
         buttons.addStretch(1)
         self.counts = text_label("", tone="secondary", wrap=True)
-        # What stops it from being applied: standing, it follows the edits.
-        self.banner = StatusBanner(dismissible=False, announce=False)
 
         editor = QFrame()
         editor.setProperty("cciRole", "card")
@@ -219,7 +218,6 @@ class _EditorPanel(QWidget):
         editor_layout.addWidget(self._fills_card, 1)
         editor_layout.addLayout(buttons)
         editor_layout.addWidget(self.counts)
-        editor_layout.addWidget(self.banner)
 
         self._message = text_label(tone="secondary", wrap=True)
         self._message.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -278,7 +276,6 @@ class CoalescedItemsPage(Page):
     EXPORTS = (
         "pushButton_coalesced_new",
         "pushButton_coalesced_remove",
-        "pushButton_coalesced_apply",
         "banner_coalesced",
         "banner_coalesced_state",
         "tableWidget_coalesced_items",
@@ -293,33 +290,28 @@ class CoalescedItemsPage(Page):
         "pushButton_coalesced_up",
         "pushButton_coalesced_down",
         "label_coalesced_counts",
-        "banner_coalesced_item",
     )
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
             steps.TITLES[self.KEY],
-            "Optional. Make one item from two or more items of a form, then apply "
-            "it to the report.",
+            "Optional. Make one item from two or more items of a form. Your "
+            "changes reach the report when you go to another step.",
             parent=parent,
         )
         self.pushButton_coalesced_new = make_button(
             "New coalesced item", icon_name=IconName.ADD
         )
         self.pushButton_coalesced_remove = make_button("Remove")
-        self.pushButton_coalesced_apply = make_button(
-            "Apply to report", variant="primary"
-        )
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
         toolbar.addWidget(self.pushButton_coalesced_new)
         toolbar.addWidget(self.pushButton_coalesced_remove)
         toolbar.addStretch(1)
-        toolbar.addWidget(self.pushButton_coalesced_apply)
-        # What applying did, or why it couldn't.
+        # What reaching the report did.
         self.banner_coalesced = StatusBanner()
-        # The page's state (not applied, apply again, a conflict, something
-        # missing): standing, so it isn't repeated in the status bar.
+        # The report's coalesced items lack a form or an item: standing, so
+        # it isn't repeated in the status bar.
         self.banner_coalesced_state = StatusBanner(dismissible=False, announce=False)
 
         self.tableWidget_coalesced_items = make_table(
@@ -355,7 +347,6 @@ class CoalescedItemsPage(Page):
         self.pushButton_coalesced_up = editor.up_button
         self.pushButton_coalesced_down = editor.down_button
         self.label_coalesced_counts = editor.counts
-        self.banner_coalesced_item = editor.banner
 
         # Below the toolbar, the page scrolls when the window is too short
         # for the table and the editor; taller, the editor takes the room.
@@ -412,8 +403,6 @@ class CoalescedItemsMixin:
         # The report's coalesced items when the page last saw them: when they
         # change (a saved setting loaded), the drafts follow.
         self._coalesced_seen: List[CoalescedItem] = []
-        # A new Corelisting ZIP started a new report without them.
-        self._coalesced_apply_again = False
         # The forms and coalesced items build the table was last filled for:
         # only a change refills it, so other steps' updates keep the page's
         # selection.
@@ -422,9 +411,6 @@ class CoalescedItemsMixin:
         self.ui.pushButton_coalesced_new.clicked.connect(self.click_new_coalesced_item)
         self.ui.pushButton_coalesced_remove.clicked.connect(
             self.click_remove_coalesced_item
-        )
-        self.ui.pushButton_coalesced_apply.clicked.connect(
-            self.click_apply_coalesced_items
         )
         self.ui.pushButton_coalesced_add_item.clicked.connect(
             self.click_add_item_to_coalesced
@@ -460,20 +446,19 @@ class CoalescedItemsMixin:
     # Refresh (called by update_all_ui)
 
     def update_coalesced_items_ui(self) -> None:
-        """Show the drafts over the report's forms, and the page's state.
+        """Show the drafts over the report's forms, their problems, what's missing.
 
         When the report's coalesced items changed (a saved setting was
         loaded), the drafts become the report's. The table and editor are
         filled again only when the report's forms or coalesced items build
-        changed; what the last Apply did is then out of date, so its message
-        goes.
+        changed; what the page last brought to the report is then out of
+        date, so its message goes.
         """
         applied = list(self.report.coalesced_items)
         changed = applied != self._coalesced_seen
         if changed:
             self._coalesced_drafts = list(applied)
             self._coalesced_seen = applied
-            self._coalesced_apply_again = False
         shown_for = (self.report.stacked_data, self.report.coalesced_build)
         if changed or any(
             now is not then for now, then in zip(shown_for, self._coalesced_shown_for)
@@ -486,17 +471,34 @@ class CoalescedItemsMixin:
     def _forget_applied_coalesced_items(self) -> None:
         """Note that the report no longer has the applied coalesced items.
 
-        (A new Corelisting ZIP starts a new report.) The drafts stay; the
-        page asks for Apply again.
+        (A new Corelisting ZIP starts a new report.) The drafts stay, and
+        reach the new report once it is loaded (``apply_data_steps``).
         """
-        if self._coalesced_seen:
-            self._coalesced_apply_again = True
         self._coalesced_seen = []
         self._set_label_text(self.ui.banner_coalesced, "")
 
     def _has_unapplied_coalesced_items(self) -> bool:
         """Whether the page's coalesced items differ from the report's."""
         return self._stripped_coalesced_drafts() != list(self.report.coalesced_items)
+
+    def _apply_coalesced_step(self) -> None:
+        """Bring the page's coalesced items to the report (the user left the page).
+
+        Nothing happens without loaded data or changes; with problems the
+        step is held (its marks say why) and nothing from it is used.
+        """
+        if not self.report.loaded_data or not self._has_unapplied_coalesced_items():
+            return
+        if self._show_coalesced_problems(self._show_coalesced_summaries()):
+            return
+        drafts = self._stripped_coalesced_drafts()
+        apply_coalesced_items(self.report, drafts)
+        self._coalesced_drafts = list(drafts)
+        self._coalesced_seen = list(self.report.coalesced_items)
+        self.update_all_ui()
+        self._set_label_text(
+            self.ui.banner_coalesced, steps.coalesced_applied_message(self.report)
+        )
 
     # ------------------------------------------------------------------
     # Slots bound to the page's buttons
@@ -517,7 +519,7 @@ class CoalescedItemsMixin:
         self._show_coalesced_state()
 
     def click_remove_coalesced_item(self) -> None:
-        """Remove the selected coalesced item from the page (Apply removes it)."""
+        """Remove the selected coalesced item (from the report on leaving the page)."""
         row = self._current_coalesced_row()
         if row is None:
             return
@@ -525,29 +527,6 @@ class CoalescedItemsMixin:
         remaining = len(self._coalesced_drafts)
         self._fill_coalesced_items_table(min(row, remaining - 1) if remaining else None)
         self._show_coalesced_state()
-
-    def click_apply_coalesced_items(self) -> None:
-        """Apply the page's coalesced items to the report, unless they have problems."""
-        drafts = self._stripped_coalesced_drafts()
-        data = self.report.stacked_data
-        found = coalescing.problems(drafts, data)
-        if found:
-            self._set_label_text(
-                self.ui.banner_coalesced,
-                steps.coalesced_problems_message(
-                    found, coalescing.problems(drafts, data, shown=None)
-                ),
-            )
-            return
-        apply_coalesced_items(self.report, drafts)
-        self._coalesced_drafts = list(drafts)
-        self._coalesced_seen = list(self.report.coalesced_items)
-        self._coalesced_apply_again = False
-        self.update_all_ui()
-        self._set_label_text(
-            self.ui.banner_coalesced, steps.coalesced_applied_message(self.report)
-        )
-        self._report_changed()
 
     def click_add_item_to_coalesced(self) -> None:
         """Add an empty item at the end of the selected coalesced item."""
@@ -603,7 +582,6 @@ class CoalescedItemsMixin:
                     if column in (_FILLED_COLUMN, _OVERLAPS_COLUMN):
                         cell.setTextAlignment(_RIGHT)
                     table.setItem(row, column, cell)
-            self._show_coalesced_summaries()
             if select is not None and 0 <= select < table.rowCount():
                 table.selectRow(select)
             else:
@@ -612,15 +590,20 @@ class CoalescedItemsMixin:
             table.blockSignals(False)
         self._on_coalesced_item_selected()
 
-    def _show_coalesced_summaries(self) -> None:
-        """Bring each row of the table up to date with its draft."""
+    def _show_coalesced_summaries(self) -> List[Optional[Outcome]]:
+        """Bring each row of the table up to date with its draft.
+
+        Returns what each draft gives, by position (see
+        :func:`~clinical_reporting.coalescing.preview`): ``None`` while it
+        can't be built.
+        """
         table = self.ui.tableWidget_coalesced_items
         drafts = self._coalesced_drafts
         data = self.report.stacked_data
-        for row, draft in enumerate(drafts):
+        outcomes = [coalescing.preview(drafts, row, data) for row in range(len(drafts))]
+        for row, (draft, outcome) in enumerate(zip(drafts, outcomes)):
             if table.item(row, _NAME_COLUMN) is None:
                 continue
-            outcome = coalescing.preview(drafts, row, data)
             texts = {
                 _NAME_COLUMN: draft.name.strip() or coalescing.NEW_COALESCED_ITEM,
                 _FORM_COLUMN: draft.form,
@@ -633,6 +616,62 @@ class CoalescedItemsMixin:
             }
             for column, text in texts.items():
                 table.item(row, column).setText(text)
+        return outcomes
+
+    def _show_coalesced_problems(
+        self, outcomes: Sequence[Optional[Outcome]]
+    ) -> List[str]:
+        """Mark what stops the drafts from reaching the report; return it by line.
+
+        Each draft's Name in the table, and in the editor the selected
+        draft's Form, Name, items, condition values, Rows of the later items
+        whose overlaps it refuses, and When values overlap. The lines
+        ("Race in DM: Give it a name.") are the page's problems: they turn
+        its badge red and hold the step. *outcomes* are what each draft
+        gives (:meth:`_show_coalesced_summaries`).
+        """
+        drafts = self._stripped_coalesced_drafts()
+        found = coalescing.item_problems(drafts, self.report.stacked_data, outcomes)
+        table = self.ui.tableWidget_coalesced_items
+        lines = []
+        for row, (draft, problems) in enumerate(zip(drafts, found)):
+            texts = list(dict.fromkeys(problem.text for problem in problems))
+            lines.extend(f"{coalescing.label(draft)}: {text}" for text in texts)
+            cell = table.item(row, _NAME_COLUMN)
+            if cell is not None:
+                mark_cell(cell, "\n".join(texts))
+        row = self._current_coalesced_row()
+        if row is not None:
+            self._mark_coalesced_editor(found[row])
+        self._set_page_problems(steps.COALESCED, lines)
+        return lines
+
+    def _mark_coalesced_editor(self, problems: Sequence[feedback.Problem]) -> None:
+        """Mark the editor's fields with the selected draft's *problems*."""
+
+        def on(*fields: str) -> str:
+            texts = (problem.text for problem in problems if problem.field in fields)
+            return "\n".join(dict.fromkeys(texts))
+
+        ui = self.ui
+        show_problem(ui.comboBox_coalesced_form, on("form"))
+        show_problem(ui.comboBox_coalesced_name, on("name"))
+        fills = ui.tableWidget_coalesced_fills
+        for position in range(fills.rowCount()):
+            box = fills.cellWidget(position, _ITEM_COLUMN)
+            if isinstance(box, ItemBox):
+                box.set_problem(on(f"item.{position}"))
+            for column, field in (
+                (_VALUE_COLUMN, f"value.{position}"),
+                (_ROWS_COLUMN, f"overlap.{position}"),
+            ):
+                cell = fills.item(position, column)
+                if cell is not None:
+                    mark_cell(cell, on(field))
+        overlaps = dict.fromkeys(
+            problem.text for problem in problems if problem.field.startswith("overlap.")
+        )
+        show_problem(ui.comboBox_coalesced_overlap, "\n".join(overlaps))
 
     def _on_coalesced_item_selected(self) -> None:
         """Show the selected coalesced item in the editor."""
@@ -651,6 +690,7 @@ class CoalescedItemsMixin:
         if row is None:
             panel.show_message(SELECT_A_COALESCED_ITEM)
             self._update_coalesced_part_buttons()
+            self._show_coalesced_outcome()
             return
         panel.show_editor()
         draft = self._coalesced_drafts[row]
@@ -783,42 +823,31 @@ class CoalescedItemsMixin:
         return choices
 
     def _show_coalesced_outcome(self) -> None:
-        """Show what the selected draft gives, its problems, and the page's state."""
+        """Show what the drafts give, their problems, and the page's state.
+
+        The table's summaries, then the selected draft's rows and counts in
+        the editor, then every problem marked on its field.
+        """
+        outcomes = self._show_coalesced_summaries()
         row = self._current_coalesced_row()
-        if row is None:
-            return
-        drafts = self._coalesced_drafts
-        draft = drafts[row]
-        data = self.report.stacked_data
-        outcome = coalescing.preview(drafts, row, data)
-        self.ui.label_coalesced_editor.setText(coalescing.label(draft))
-        table = self.ui.tableWidget_coalesced_fills
-        table.blockSignals(True)
-        try:
-            for position, name in enumerate(draft.items):
-                cell = table.item(position, _ROWS_COLUMN)
-                if cell is not None:
-                    count = None if outcome is None else outcome.rows.get(name)
-                    cell.setText("" if count is None else f"{count:,}")
-        finally:
-            table.blockSignals(False)
-        self.ui.label_coalesced_counts.setText(
-            PICK_ITEMS if outcome is None else steps.coalesced_counts(draft, outcome)
-        )
-        self._set_label_text(
-            self.ui.banner_coalesced_item,
-            steps.coalesced_item_problems_message(
-                coalescing.problems_of(drafts, row, data)
-            ),
-        )
-        # A name not typed yet is left for the problems to point out.
-        problem = (
-            coalescing.name_problem(drafts, row, data) if draft.name.strip() else ""
-        )
-        name_box = self.ui.comboBox_coalesced_name
-        set_invalid(name_box, bool(problem))
-        name_box.setToolTip(problem)
-        self._show_coalesced_summaries()
+        if row is not None:
+            draft = self._coalesced_drafts[row]
+            outcome = outcomes[row]
+            self.ui.label_coalesced_editor.setText(coalescing.label(draft))
+            table = self.ui.tableWidget_coalesced_fills
+            table.blockSignals(True)
+            try:
+                for position, name in enumerate(draft.items):
+                    cell = table.item(position, _ROWS_COLUMN)
+                    if cell is not None:
+                        count = None if outcome is None else outcome.rows.get(name)
+                        cell.setText("" if count is None else f"{count:,}")
+            finally:
+                table.blockSignals(False)
+            self.ui.label_coalesced_counts.setText(
+                PICK_ITEMS if outcome is None else steps.coalesced_counts(draft, outcome)
+            )
+        self._show_coalesced_problems(outcomes)
         self._show_coalesced_state()
 
     def _coalesced_parts(self, row: int) -> List[Fill]:
@@ -982,13 +1011,7 @@ class CoalescedItemsMixin:
         ]
 
     def _show_coalesced_state(self) -> None:
-        """The standing banner: apply again, not applied yet, a conflict, or what's missing."""
-        if self._coalesced_apply_again and self._coalesced_drafts:
-            state = steps.APPLY_COALESCED_AGAIN
-        elif self._has_unapplied_coalesced_items():
-            state = steps.COALESCED_NOT_APPLIED
-        else:
-            state = steps.coalesced_conflict_message(
-                self.report
-            ) or steps.coalesced_missing_message(self.report)
-        self._set_label_text(self.ui.banner_coalesced_state, state)
+        """The standing banner: the forms and items the report's coalesced items lack."""
+        self._set_label_text(
+            self.ui.banner_coalesced_state, steps.coalesced_missing_message(self.report)
+        )

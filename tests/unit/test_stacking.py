@@ -605,51 +605,60 @@ def test_two_matches_holding_one_item_name_are_a_problem():
     ]
 
 
-def test_a_name_s_problem_reads_as_apply_says_it():
-    stacked_forms = [
-        StackedForm("VISITS", ("SV", "DSSVLTFU")),
-        StackedForm(" VISITS ", ("SV", "DSSVLTFU")),
-        StackedForm("SV", ("SV", "DSSVLTFU")),
-        StackedForm("VI.SITS", ("SV", "DSSVLTFU")),
-        StackedForm(" ", ("SV", "DSSVLTFU")),
-        StackedForm("LABS", ("SV", "DSSVLTFU")),
-    ]
-
-    found = [
-        stacking.name_problem(stacked_forms, index, ["SV", "DSSVLTFU"])
-        for index in range(len(stacked_forms))
-    ]
+def test_a_nameless_form_with_one_member_marks_its_name_and_members():
+    found = stacking.form_problems(
+        [StackedForm(" ", ("SV",)), _visits(VISIT_NAME)], ["SV", "DSSVLTFU"], _data()
+    )
 
     assert found == [
-        "Another stacked form is called VISITS.",
-        "Another stacked form is called VISITS.",
-        "SV is already a loaded form.",
-        "A form name can't contain “.”.",
-        "Give it a name.",
-        "",
+        [("name", "Give it a name."), ("members", "Pick at least two members.")],
+        [],
     ]
 
 
-def test_a_match_name_s_problem_reads_as_apply_says_it():
-    data = _data()
+def test_a_duplicated_match_name_marks_each_match_with_it():
     stacked = _visits(
         Match("Visit Name", {"SV": "Event Group Name"}),
         Match("Visit Name", {"DSSVLTFU": "Event Label"}),
         Match("Subject", {"SV": "Visit Status"}),
-        Match(" ", {"DSSVLTFU": "LTFUDAT"}),
     )
-    plan = stacking.layout(stacked, data)
 
-    found = [stacking.match_name_problem(stacked, plan, index) for index in range(4)]
+    (found,) = stacking.form_problems([stacked], ["SV", "DSSVLTFU"], _data())
 
     assert found == [
-        "VISITS already has an item called Visit Name.",
-        "VISITS already has an item called Visit Name.",
-        "VISITS already has an item called Subject.",
-        "Give the matched item a name.",
+        ("match.0", "VISITS already has an item called Visit Name."),
+        ("match.1", "VISITS already has an item called Visit Name."),
+        ("match.2", "VISITS already has an item called Subject."),
     ]
-    fine = _visits(VISIT_NAME)
-    assert stacking.match_name_problem(fine, stacking.layout(fine, data), 0) == ""
+
+
+def test_an_item_two_matches_hold_marks_both_matches():
+    stacked = _visits(VISIT_NAME, Match("Visit Label", {"DSSVLTFU": "Event Label"}))
+
+    (found,) = stacking.form_problems([stacked], ["SV", "DSSVLTFU"])
+
+    text = (
+        "Keep each item in one match: Event Label is in both Visit Name and "
+        "Visit Label."
+    )
+    assert found == [("match.0", text), ("match.1", text)]
+
+
+def test_a_member_with_two_items_of_a_match_marks_its_cell():
+    data = _data()
+    data["SV"]["Event Label"] = ["Day 1", "Day 8"]
+
+    found = stacking.form_problems([_visits(VISIT_NAME)], ["SV", "DSSVLTFU"], data)
+
+    assert found == [
+        [
+            (
+                "cell.0.SV",
+                "Pick at most one item from each member: SV has both "
+                "Event Group Name and Event Label.",
+            )
+        ]
+    ]
 
 
 def test_well_made_stacked_forms_have_no_problems():

@@ -346,11 +346,17 @@ def test_preview_keys_do_nothing_while_there_is_no_data(empty_window):
     assert pressed == []
 
 
+def _leave_additional_input(window):
+    """Go to Additional input and on: its changes reach the report."""
+    window.ui.shell.set_current(steps.ADDITIONAL)
+    window.ui.shell.set_current(steps.SOURCE)
+
+
 def test_the_preview_goes_when_additional_only_data_goes(empty_window, settle):
     window = empty_window
     window.additional_inputs = {"lab.csv": pd.DataFrame({"Subject": ["1", "2"]})}
     window.additional_form_names = {"lab.csv": "PK"}
-    window._apply_additional_inputs_to_report()
+    _leave_additional_input(window)
     window.report.add_selected_form("PK")
     window.report.set_common_item_state("Subject", selected=True)
     window.update_all_ui()
@@ -359,7 +365,7 @@ def test_the_preview_goes_when_additional_only_data_goes(empty_window, settle):
     built = window.ui.tableView_preview.model()
 
     window.additional_inputs.clear()
-    window._apply_additional_inputs_to_report()  # Removes the only forms.
+    _leave_additional_input(window)  # Removes the only forms.
     QApplication.processEvents()
 
     assert built is not None and built.rowCount() == 2

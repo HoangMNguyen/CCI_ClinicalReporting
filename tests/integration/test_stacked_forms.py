@@ -309,9 +309,6 @@ def test_a_setting_whose_match_is_now_an_item_every_member_has_stops_the_report(
     assert steps.step_statuses(report)[steps.STACKED] == steps.StepStatus(
         steps.ERROR, tip=message
     )
-    conflict = steps.stacked_conflict_message(report)
-    assert conflict == f"{message} The report can't be exported until this is fixed."
-    assert conflict.kind == "error"
     with pytest.raises(ReportValidationError):
         report.create_report()
 

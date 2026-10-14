@@ -244,6 +244,8 @@ class SourceDataMixin:
         self.ui.pushButton_remove_input.setEnabled(True)
 
         self.update_all_ui()
+        # The additional files, stacked forms and coalesced items carry over.
+        self.apply_data_steps()
         self._show_input_file()
         self._show_data_read(data)
 
@@ -271,8 +273,8 @@ class SourceDataMixin:
         self._failed_cut_off_reload = None
         self._forget_loaded_setting()
         self._forget_export_results()
-        # The fresh report has no stacked forms or coalesced items; the pages
-        # ask to apply them.
+        # The fresh report has no stacked forms or coalesced items; they
+        # reach it again with the other Data steps.
         forget_stacked_forms = getattr(self, "_forget_applied_stacked_forms", None)
         if forget_stacked_forms is not None:
             forget_stacked_forms()
@@ -290,6 +292,7 @@ class SourceDataMixin:
         self.ui.comboBox_saved_setting.setEnabled(False)
 
         self.update_all_ui()
+        self.apply_data_steps()
 
     def click_output_file(self) -> None:
         """Allow the user to choose the output directory for reports."""
@@ -522,8 +525,8 @@ class SourceDataMixin:
 
         With *offer_saved_names* (the user picked the setting), the names it
         saved for additional input files are handed to the Additional input
-        page. Re-applying the setting after "Apply to report" leaves them, so
-        the user's picks there stay.
+        page. Re-applying the setting once the files reach the report leaves
+        them, so the user's picks there stay.
         """
         try:
             stored = self._settings_store().load(file_path)
@@ -589,6 +592,9 @@ class SourceDataMixin:
             return
 
         self._last_loaded_setting_path = file_path
+        # The saved names it filled in are used now, and the setting's
+        # selections on those forms come back with them.
+        self.apply_data_steps()
 
         setting_name = self.ui.comboBox_saved_setting.currentText()
         if setting_name:

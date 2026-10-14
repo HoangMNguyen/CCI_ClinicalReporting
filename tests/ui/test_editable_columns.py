@@ -178,7 +178,7 @@ def _fill_every_table(window, settle, tmp_path, monkeypatch):
     window.click_add_additional_files()
     settle(window.task_runner)
     ui.tableWidget_update_form_name.item(0, 1).setText("LAB")
-    window.click_apply_additional_forms()
+    _open(window, steps.SOURCE)  # Leaving Additional input adds LAB.
     window.settings_directory = str(tmp_path / "settings")
     ui.checkBox_save_current_setting.setChecked(True)
     ui.lineEdit_setting_name.setText("Lab review")

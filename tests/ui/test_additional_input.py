@@ -4,13 +4,16 @@ import pandas as pd
 from PySide6.QtCore import QItemSelectionModel, QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import (
+    QApplication,
     QListWidget,
     QPushButton,
     QTableWidget,
 )
 from tests.unit.fakes import FakeBanner
 
-from clinical_reporting import data, steps
+from cci_ui.widgets.sidebar import StepState
+from cci_ui.widgets.tables import PROBLEM_ROLE
+from clinical_reporting import data, feedback, steps
 from clinical_reporting.additional_names import Match, SavedFileNames
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
@@ -31,6 +34,7 @@ class DummyWidget(AdditionalInputMixin, WidgetBaseMixin):
         self.additional_form_names = {}
         self.additional_column_names = {}
         self._additional_form_keys = set()
+        self._additional_applied_key = None
         self.report = CLReport()
         self.ui = types.SimpleNamespace(banner_additional=FakeBanner())
         self.update_all_ui_calls = 0
@@ -58,7 +62,6 @@ class DummyAdditionalInputUiWidget(AdditionalInputMixin, WidgetBaseMixin):
         self.ui = types.SimpleNamespace(
             pushButton_additional_file_add=QPushButton(),
             pushButton_additional_file_remove=QPushButton(),
-            pushButton_apply_additional_files=QPushButton(),
             listWidget_additional_file=QListWidget(),
             tableWidget_update_form_name=form_table,
             tableWidget_update_column_name=column_table,
@@ -114,7 +117,7 @@ def test_apply_additional_inputs_preserves_available_selections_only():
     )
     widget.additional_form_names[add_path] = "FormB"
 
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
 
     # Form selection preserved when still available.
     assert "FormA" in widget.report.selected_forms
@@ -157,7 +160,7 @@ def test_apply_additional_inputs_preserves_join_configuration():
     )
     widget.additional_form_names[add_path] = "LAB"
 
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
 
     # The previously configured join order/items/strategy survive the merge.
     ae = widget.report.selected_forms["AE"]
@@ -181,7 +184,7 @@ def test_apply_additional_inputs_drops_stale_join_item():
     )
     widget.additional_form_names[add_path] = "OTHER"
 
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
 
     ae = widget.report.selected_forms["AE"]
     # Order/strategy are retained, but the now-invalid join item is dropped.
@@ -196,12 +199,12 @@ def test_renaming_additional_form_replaces_old_entry():
 
     # Initial apply with explicit form name to avoid dotted default
     widget.additional_form_names[file_path] = "RSC"
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
     assert "RSC" in widget.report.get_available_forms_list()
 
     # Rename to RSC_clean and re-apply; the old name should be removed
     widget.additional_form_names[file_path] = "RSC_clean"
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
 
     forms = widget.report.get_available_forms_list()
     assert "RSC_clean" in forms
@@ -209,52 +212,24 @@ def test_renaming_additional_form_replaces_old_entry():
     assert set(widget.report.data.keys()) == {"RSC_clean"}
 
 
-def test_warn_on_additional_form_conflicts_detects_duplicates():
-    widget = DummyWidget()
-    widget.additional_inputs["/tmp/a.csv"] = pd.DataFrame({"Subject": ["S1"]})
-    widget.additional_inputs["/tmp/b.csv"] = pd.DataFrame({"Subject": ["S2"]})
-    widget.additional_form_names["/tmp/a.csv"] = "DupForm"
-    widget.additional_form_names["/tmp/b.csv"] = "DupForm"
-
-    assert widget._warn_on_additional_form_conflicts(set()) is True
-    shown = widget.ui.banner_additional.value
-    assert "DupForm" in shown and shown.kind == "warning"
-
-
-def test_warn_on_additional_form_conflicts_detects_dots():
-    widget = DummyWidget()
-    widget.additional_inputs["/tmp/a.csv"] = pd.DataFrame({"Subject": ["S1"]})
-    widget.additional_form_names["/tmp/a.csv"] = "Form.With.Dot"
-
-    assert widget._warn_on_additional_form_conflicts(set()) is True
-    assert "Form.With.Dot" in widget.ui.banner_additional.value
-
-
-def test_applying_names_that_repeat_or_hold_a_dot_says_why_in_full():
+def test_names_that_repeat_or_hold_a_dot_hold_the_step():
     widget = DummyWidget()
     for path, name in {"/x/a.csv": "LAB", "/x/b.csv": "LAB", "/x/c.csv": "A.B"}.items():
         widget.additional_inputs[path] = pd.DataFrame({"Subject": ["S1"]})
         widget.additional_form_names[path] = name
 
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
 
-    shown = widget.ui.banner_additional.value
-    assert shown == (
-        "These form names can't be used: A.B, LAB. Rename them in the table and "
-        "try again."
-    )
-    assert shown.details == (
-        "Cannot add forms because some form names are invalid or conflict with "
-        "existing data.\n"
-        "Form names cannot include '.':\n"
-        "  - A.B\n"
-        "Duplicate names in additional forms:\n"
-        "  - LAB: a.csv, b.csv"
-    )
+    assert widget.update_additional_input_ui() == [
+        "a.csv: Another file's form is called LAB.",
+        "b.csv: Another file's form is called LAB.",
+        "c.csv: A form name can't contain “.”.",
+    ]
     assert widget.report.loaded_data == {}
+    assert widget.ui.banner_additional.value == ""
 
 
-def test_apply_additional_inputs_aborts_on_form_name_conflict():
+def test_a_name_a_loaded_form_has_holds_the_step():
     widget = DummyWidget()
     base_df = pd.DataFrame({"Subject": ["S1"], "A1": [1]})
     widget.report.set_data({"FormA": base_df})
@@ -263,46 +238,35 @@ def test_apply_additional_inputs_aborts_on_form_name_conflict():
     widget.additional_inputs[add_path] = pd.DataFrame({"Subject": ["S1"], "B1": [2]})
     widget.additional_form_names[add_path] = "FormA"
 
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
 
     assert set(widget.report.data.keys()) == {"FormA"}
     assert widget.report.data["FormA"].equals(base_df)
     assert widget.update_all_ui_calls == 0
-    shown = widget.ui.banner_additional.value
-    assert shown.startswith("These form names can't be used: FormA.")
-    assert "Conflicts with existing report forms" in shown.details
+    assert widget.update_additional_input_ui() == [
+        "formA.csv: FormA is already a loaded form."
+    ]
 
 
-def test_applying_says_what_it_added_and_nothing_without_files():
+def test_applying_says_what_it_added_and_removed():
     widget = DummyWidget()
-    widget.click_apply_additional_forms()
-    nothing = widget.ui.banner_additional.value
     widget.additional_inputs["/tmp/lab.csv"] = pd.DataFrame({"Subject": ["S1"]})
     widget.additional_form_names["/tmp/lab.csv"] = "LB"
 
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
     applied = widget.ui.banner_additional.value
+    widget._apply_additional_step()  # Nothing changed: nothing to do.
     widget.additional_inputs.clear()
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
 
-    assert nothing == "Add at least one file first." and nothing.kind == "warning"
-    assert applied == "1 file applied. New forms: LB." and applied.kind == "success"
-    assert widget.ui.banner_additional.value.startswith("The additional forms were")
+    assert applied == (
+        "Additional input updated: 1 file added to the report. New forms: LB."
+    )
+    assert applied.kind == "success"
+    assert widget.ui.banner_additional.value == (
+        "Additional input: the additional forms were removed from the report."
+    )
     assert widget.update_all_ui_calls == 2
-
-
-def test_a_new_zip_asks_for_the_applied_files_again():
-    widget = DummyWidget()
-    widget._forget_applied_additional_forms()  # Nothing applied: nothing to say.
-    quiet = widget.ui.banner_additional.value
-    widget._additional_form_keys = {"LB"}
-
-    widget._forget_applied_additional_forms()
-
-    assert quiet == "" and widget._additional_form_keys == set()
-    shown = widget.ui.banner_additional.value
-    assert shown.kind == "info" and "Apply the files again" in shown
-
 
 def test_files_that_cannot_be_read_are_reported_and_the_rest_added(
     qapp, monkeypatch, tmp_path
@@ -344,22 +308,12 @@ def test_a_later_add_that_reads_everything_clears_the_warning(qapp):
 
 def test_a_later_add_keeps_other_messages(qapp):
     widget = DummyAdditionalInputUiWidget()
-    widget.ui.banner_additional.setText(steps.APPLY_ADDITIONAL_AGAIN)
+    added = steps.additional_applied_message({"LB"})
+    widget.ui.banner_additional.setText(added)
 
     widget._add_loaded_additional_files(({"good.csv": pd.DataFrame()}, {}))
 
-    assert widget.ui.banner_additional.value == steps.APPLY_ADDITIONAL_AGAIN
-
-
-def test_a_later_add_clears_the_nothing_to_apply_warning(qapp):
-    widget = DummyAdditionalInputUiWidget()
-    widget.click_apply_additional_forms()
-    warned = widget.ui.banner_additional.value
-
-    widget._add_loaded_additional_files(({"good.csv": pd.DataFrame()}, {}))
-
-    assert warned == steps.ADD_FILES_FIRST
-    assert widget.ui.banner_additional.value == ""
+    assert widget.ui.banner_additional.value == added
 
 
 # --------------------------------------------------------------------------
@@ -512,8 +466,8 @@ def test_picking_an_entry_fills_the_names_and_none_clears_them(qapp):
     assert picked.kind == "warning"
     assert picked == (
         "Names from PK filled in for notes.csv. 1 saved column name can't be used "
-        "and will be ignored: notes.csv has no Conc. Check them, then Apply to "
-        "report."
+        "and will be ignored: notes.csv has no Conc. Check them; they're used "
+        "when you go to another step."
     )
     assert picked.details == "notes.csv: Conc → CONC"
     assert widget.additional_form_names == {}
@@ -744,7 +698,7 @@ def test_names_a_file_cant_use_are_listed_until_it_can(qapp):
     assert nothing_yet == ""
     assert listed == (
         "A saved column name can't be used: notes.csv has no Conc. It's "
-        "ignored; the form still applies without it."
+        "ignored; the form is still added without it."
     )
     assert listed.kind == "warning"
     assert listed.details == "notes.csv: Conc → CONC"
@@ -790,15 +744,15 @@ def test_applying_adds_the_forms_and_says_which_names_were_ignored(qapp):
     widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
     widget.pick(NOTES_PATH, 2)  # PK's names, but notes.csv has no Conc.
 
-    widget.click_apply_additional_forms()
+    widget._apply_additional_step()
     applied = widget.ui.banner_additional.value
     widget.add(PK_PATH)  # A later add leaves the result.
 
     assert set(widget.report.data) == {"LAB", "PK"}
     assert applied.kind == "warning"
     assert applied == (
-        "2 files applied. New forms: LAB, PK. Saved column names ignored: "
-        "notes.csv has no Conc."
+        "Additional input updated: 2 files added to the report. New forms: LAB, "
+        "PK. Saved column names ignored: notes.csv has no Conc."
     )
     assert applied.details == "notes.csv: Conc → CONC"
     assert widget.ui.banner_additional.value == applied
@@ -812,8 +766,10 @@ def test_a_later_add_still_clears_other_warnings_after_an_apply(qapp):
     widget.add(NOTES_PATH)
     widget._offer_saved_additional_names(SAVED_NAMES, "Monthly AE review")
     widget.pick(NOTES_PATH, 2)
-    widget.click_apply_additional_forms()
-    widget.ui.banner_additional.setText(steps.ADD_FILES_FIRST)
+    widget._apply_additional_step()
+    widget.ui.banner_additional.setText(
+        feedback.warning("These files could not be read and were not added: x.csv.")
+    )
     other = "C:/exports/other.csv"
 
     widget.add(other, frames={other: _frame("Other")})  # Nothing to pick.
@@ -881,3 +837,107 @@ def test_the_wheel_only_changes_a_focused_dropdown(qapp):
     assert combo.focusPolicy() == Qt.FocusPolicy.StrongFocus
     assert combo.currentIndex() == 0
     assert not wheel.isAccepted()
+
+
+# --------------------------------------------------------------------------
+# In the window: changes reach the report when the user leaves the page
+
+
+def _lab_file(tmp_path, monkeypatch):
+    lab = tmp_path / "lab_results.csv"
+    lab.write_text("Subject,ALT\n01-100,12\n", encoding="utf-8")
+    monkeypatch.setattr(
+        additional_input_module.QFileDialog,
+        "getOpenFileNames",
+        lambda *_args: ([str(lab)], ""),
+    )
+    return lab
+
+
+def _new_name(window):
+    return window.ui.tableWidget_update_form_name.item(0, 1)
+
+
+def test_an_added_files_form_name_is_marked_until_it_can_be_used(
+    sample_window, settle, tmp_path, monkeypatch
+):
+    window = sample_window
+    _lab_file(tmp_path, monkeypatch)
+    window.ui.shell.set_current(steps.ADDITIONAL)
+    window.click_add_additional_files()
+    settle(window.task_runner)
+    QApplication.processEvents()
+    name = _new_name(window)
+    badge = window.ui.shell.sidebar.item(steps.ADDITIONAL)
+    unnamed = (name.data(PROBLEM_ROLE), name.toolTip(), badge.state())
+
+    name.setText("DM")
+    QApplication.processEvents()
+    taken = name.data(PROBLEM_ROLE)
+    name.setText("LAB")
+    QApplication.processEvents()
+
+    assert unnamed == ("Give it a form name.", "Give it a form name.", StepState.ERROR)
+    assert taken == "DM is already a loaded form."
+    assert name.data(PROBLEM_ROLE) is None and name.toolTip() == ""
+    assert "LAB" not in window.report.data  # Not before the user leaves.
+
+
+def test_leaving_the_page_adds_the_files_forms(
+    sample_window, settle, tmp_path, monkeypatch
+):
+    window = sample_window
+    _lab_file(tmp_path, monkeypatch)
+    window.ui.shell.set_current(steps.ADDITIONAL)
+    window.click_add_additional_files()
+    settle(window.task_runner)
+    _new_name(window).setText("LAB")
+
+    window.ui.shell.set_current(steps.FORMS)
+    QApplication.processEvents()
+
+    assert "LAB" in window.report.data
+    assert window.ui.banner_additional.text() == (
+        "Additional input updated: 1 file added to the report. New forms: LAB."
+    )
+    assert window.ui.shell.sidebar.item(steps.ADDITIONAL).state() == StepState.DONE
+
+
+def test_leaving_with_a_file_still_to_name_holds_the_page(
+    sample_window, settle, tmp_path, monkeypatch
+):
+    window = sample_window
+    _lab_file(tmp_path, monkeypatch)
+    window.ui.shell.set_current(steps.ADDITIONAL)
+    window.click_add_additional_files()
+    settle(window.task_runner)
+    forms_before = set(window.report.data)
+
+    window.ui.shell.set_current(steps.FORMS)
+    QApplication.processEvents()
+
+    assert set(window.report.data) == forms_before
+    assert window.ui.banner_additional.text() == ""
+    assert not window.ui.pushButton_run.isEnabled()
+    assert window.ui.banner_run_state.text() == (
+        "Cannot run: Fix Additional input first."
+    )
+
+
+def test_files_read_after_the_user_left_are_added(
+    sample_window, settle, tmp_path, monkeypatch
+):
+    window = sample_window
+    _lab_file(tmp_path, monkeypatch)
+    # A loaded setting's saved names name the file once it is read.
+    window._offer_saved_additional_names(
+        [SavedFileNames("lab_results.csv", (), "LAB", {})], "Monthly AE review"
+    )
+    window.ui.shell.set_current(steps.ADDITIONAL)
+
+    window.click_add_additional_files()
+    window.ui.shell.set_current(steps.FORMS)  # While the file is read.
+    settle(window.task_runner)
+    QApplication.processEvents()
+
+    assert "LAB" in window.report.data

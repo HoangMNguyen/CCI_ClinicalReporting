@@ -351,7 +351,7 @@ LAB_TABLE = pd.DataFrame(
 )
 NO_VISIT_DT = (
     "A saved column name can't be used: lab_results.csv has no Visit Dt. It's "
-    "ignored; the form still applies without it."
+    "ignored; the form is still added without it."
 )
 
 

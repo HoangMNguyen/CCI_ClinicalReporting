@@ -9,7 +9,7 @@ later) can style it without parsing the text.
 
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from typing import Iterable, NamedTuple, Optional
 
 KINDS = ("info", "success", "warning", "error")
 
@@ -88,9 +88,22 @@ def short_list(names: Iterable[str], shown: int = 5) -> str:
     return f"{', '.join(names[:shown])} and {len(names) - shown} more"
 
 
+class Problem(NamedTuple):
+    """One problem and the field that fixes it.
+
+    *field* names the field in the terms of the module that found it (for
+    example ``"name"``, or ``"match.1"`` for a stacked form's second match);
+    the page marks that field with *text*.
+    """
+
+    field: str
+    text: str
+
+
 __all__ = [
     "KINDS",
     "Message",
+    "Problem",
     "and_list",
     "error",
     "info",

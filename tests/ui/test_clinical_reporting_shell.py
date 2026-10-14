@@ -229,10 +229,13 @@ def test_results_on_the_open_page_show_no_toast(sample_window):
     assert sample_window.ui.shell.status_bar.message_kind() == "error"
 
 
-def test_a_new_zip_forgets_the_old_additional_forms_and_results(sample_window):
+def test_a_new_zip_brings_the_additional_forms_and_forgets_the_results(
+    sample_window,
+):
     sample_window.additional_inputs = {"lab.csv": pd.DataFrame({"Subject": ["1"]})}
     sample_window.additional_form_names = {"lab.csv": "PK"}  # Not a DEMO01 form.
-    sample_window._apply_additional_inputs_to_report()
+    sample_window.ui.shell.set_current(steps.ADDITIONAL)
+    sample_window.ui.shell.set_current(steps.SOURCE)  # Leaving adds PK.
     QApplication.processEvents()
     applied = _badge(sample_window, "additional")
     sample_window._set_label_text(
@@ -246,11 +249,12 @@ def test_a_new_zip_forgets_the_old_additional_forms_and_results(sample_window):
     QApplication.processEvents()
 
     assert applied == (StepState.DONE, None)
-    assert _badge(sample_window, "additional") == (StepState.OPTIONAL, None)
+    # The files' forms come along to the new report.
+    assert "PK" in sample_window.report.data
+    assert _badge(sample_window, "additional") == (StepState.DONE, None)
     assert sample_window.ui.label_run_confirmation.text() == ""
-    # The newest message left: apply the additional files again.
-    assert sample_window.ui.shell.status_bar.message().startswith(
-        "The new Corelisting ZIP started a new report."
+    assert sample_window.ui.shell.status_bar.message() == (
+        "Additional input updated: 1 file added to the report. New forms: PK."
     )
     assert sample_window.windowTitle() == "DEMO02 — Clinical Reporting"
 
