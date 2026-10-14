@@ -48,7 +48,7 @@ from PySide6.QtWidgets import (
 from cci_ui.icons import IconName, icon
 from cci_ui.theme.manager import current, repolish, theme_events
 from cci_ui.theme.palette import qcolor
-from cci_ui.theme.qss import register_qss
+from cci_ui.theme.qss import HEADER_LABEL_PX, HEADER_LABEL_WEIGHT, register_qss
 from cci_ui.widgets.buttons import button_group, icon_button
 from cci_ui.widgets.labels import text_label
 
@@ -81,8 +81,6 @@ _RESIZE_MODES = {
 _EDIT_MARK = 12
 #: Space between the label and the pencil.
 _EDIT_MARK_GAP = 4
-#: The header label's font size (the stylesheet's ``QHeaderView::section``).
-_LABEL_FONT_PX = 12
 #: A cell the user can type in is both.
 _TYPING = Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsEnabled
 #: Ctrl- and Shift-clicks select rows; they never open a cell.
@@ -113,8 +111,8 @@ class ColumnSpec:
 def _label_font(font: QFont) -> QFont:
     """The font the stylesheet gives header labels, in *font*'s family."""
     label = QFont(font)
-    label.setPixelSize(_LABEL_FONT_PX)
-    label.setWeight(QFont.Weight.DemiBold)
+    label.setPixelSize(HEADER_LABEL_PX)
+    label.setWeight(QFont.Weight(HEADER_LABEL_WEIGHT))
     return label
 
 

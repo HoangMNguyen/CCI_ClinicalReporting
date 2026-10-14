@@ -311,7 +311,7 @@ BODY_PX = 13
 TYPE_SCALE: Mapping[str, TextStyle] = MappingProxyType(
     {
         "largeTitle": TextStyle(26, 700),
-        "title1": TextStyle(22, 700),  # page titles; size: Metrics.page_title_px
+        "title1": TextStyle(22, 700),  # page titles, sized by Metrics.page_title_px
         "title2": TextStyle(17, 600),
         "title3": TextStyle(15, 600),
         "headline": TextStyle(13, 600),

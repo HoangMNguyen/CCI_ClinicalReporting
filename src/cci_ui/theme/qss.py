@@ -27,6 +27,11 @@ from cci_ui.theme.tokens import TYPE_SCALE, ColorTokens, Metrics
 
 _fragments: List[str] = []
 
+#: Table header labels' text (``QHeaderView::section``); an editable
+#: column's pencil is placed after a label drawn with them.
+HEADER_LABEL_PX = 12
+HEADER_LABEL_WEIGHT = 600
+
 _BASE = """
 QMainWindow, QDialog {
     background: ${bg_window};
@@ -211,8 +216,8 @@ QHeaderView {
 QHeaderView::section {
     background: ${bg_surface};
     color: ${text_secondary};
-    font-size: 12px;
-    font-weight: 600;
+    font-size: ${header_label_px}px;
+    font-weight: ${header_label_weight};
     padding: 0 10px;
     min-height: ${row_h}px;
     border: none;
@@ -416,6 +421,8 @@ def _values(colors: ColorTokens, metrics: Metrics) -> Dict[str, object]:
     # Segments sit inside a 2px track, so they are 4px shorter than controls.
     values["segment_h"] = metrics.control_h - 4
     values["accent_disabled"] = colors.accent.with_alpha(0.45).qss
+    values["header_label_px"] = HEADER_LABEL_PX
+    values["header_label_weight"] = HEADER_LABEL_WEIGHT
     return values
 
 
@@ -450,4 +457,9 @@ def build_stylesheet(
     return string.Template("\n".join(parts)).substitute(values)
 
 
-__all__ = ["build_stylesheet", "register_qss"]
+__all__ = [
+    "HEADER_LABEL_PX",
+    "HEADER_LABEL_WEIGHT",
+    "build_stylesheet",
+    "register_qss",
+]

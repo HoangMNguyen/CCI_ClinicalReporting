@@ -30,6 +30,7 @@ from cci_ui.icons import IconName, icon
 from cci_ui.theme.manager import current, theme_events
 from cci_ui.theme.palette import qcolor
 from cci_ui.theme.qss import register_qss
+from cci_ui.theme.tokens import LAYOUT
 from cci_ui.widgets.buttons import icon_button
 from cci_ui.widgets.labels import escape_ampersands, text_label
 
@@ -61,6 +62,8 @@ QFrame[cciRole="sidebarRule"] {
 _ICON = 16
 _BADGE_ICON = 14
 _PAD = 8
+#: Space on each side of the items in the collapsed strip.
+_STRIP_MARGIN = 8
 _DOT = 7
 #: Gap between the icon and its badge in the collapsed badge strip.
 _STRIP_GAP = 4
@@ -154,7 +157,12 @@ class SidebarItem(QAbstractButton):
         if not self._collapsed:
             width = 180
         else:
-            width = 56 if self._strip_badges else 40
+            strip = (
+                LAYOUT.sidebar_badge_strip_w
+                if self._strip_badges
+                else LAYOUT.sidebar_collapsed_w
+            )
+            width = strip - 2 * _STRIP_MARGIN
         return QSize(width, current().metrics.sidebar_row)
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802 (Qt override)
@@ -416,9 +424,8 @@ class Sidebar(QFrame):
         tip = "Show sidebar (Ctrl+\\)" if collapsed else "Hide sidebar (Ctrl+\\)"
         self.toggle_button.setToolTip(tip)
         self.toggle_button.setAccessibleName(tip)
-        self._list_layout.setContentsMargins(
-            8 if collapsed else 10, 0, 8 if collapsed else 10, 12
-        )
+        side = _STRIP_MARGIN if collapsed else 10
+        self._list_layout.setContentsMargins(side, 0, side, 12)
         for index, (label, rule) in enumerate(
             zip(self._section_labels, self._section_rules)
         ):
