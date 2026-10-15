@@ -130,6 +130,7 @@ class FormItemsPage(_SelectionPage):
         "pushButton_select_all_form_item",
         "pushButton_remove_form_item",
         "pushButton_remove_all_form_item",
+        "picker_form_items",
     )
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
@@ -146,6 +147,7 @@ class FormItemsPage(_SelectionPage):
         self.pushButton_select_all_form_item = self.picker.add_all_button
         self.pushButton_remove_form_item = self.picker.remove_button
         self.pushButton_remove_all_form_item = self.picker.remove_all_button
+        self.picker_form_items = self.picker
 
 
 def _compile_search_pattern(pattern_text: str) -> Optional[re.Pattern[str]]:
@@ -409,6 +411,19 @@ class FormItemsMixin:
     Mirrors the common-item behavior but keeps the form name prefix to
     disambiguate items originating from different forms.
     """
+
+    def _mark_form_item_problems(self) -> None:
+        """Mark the selected items' list red while a selected form adds nothing.
+
+        From the window's last validation. Other selection problems can't
+        arise in the window; the badge and Preview & export still say them.
+        """
+        problems = [
+            issue.message
+            for issue in getattr(self, "_issues", ())
+            if issue.code == "form_has_no_columns"
+        ]
+        self.ui.picker_form_items.set_selected_problem("\n".join(problems))
 
     def _init_form_items(self) -> None:
         """Connect signals for selecting items that belong to specific forms."""

@@ -62,8 +62,10 @@ from cci_ui.widgets.sidebar import StepState
 from cci_ui.widgets.status import StatusBanner, show_error, show_toast
 from cci_ui.widgets.tables import (
     ColumnSpec,
+    ProblemCellDelegate,
     TableToolbar,
     configure_columns,
+    mark_cell,
     style_table,
     table_card,
 )
@@ -250,7 +252,7 @@ def _members_checklist() -> ChecklistComboBox:
 
 def _inputs_page(_shell: AppShell) -> Page:
     page = Page("Inputs", "Text, choices, dates, and files.", kind=PageKind.FORM)
-    section = Section("Fields", "Invalid combos turn red; disabled fields dim.")
+    section = Section("Fields", "Invalid fields turn red; disabled fields dim.")
     filled = QLineEdit("DEMO01_DSMB")
     placeholder = QLineEdit()
     placeholder.setPlaceholderText("Setting name")
@@ -272,6 +274,9 @@ def _inputs_page(_shell: AppShell) -> Page:
     section.add_row("Nothing ticked", ChecklistComboBox(empty_text="Choose…"))
     section.add_row("Join type", combo)
     section.add_row("Invalid", invalid)
+    no_folder = PathPicker("dir", placeholder="No folder chosen")
+    no_folder.set_problem("Choose the folder to export to.")
+    section.add_row("Missing folder", no_folder)
     section.add_row("Cut-off", date, end_aligned=True)
     page.body.addWidget(section)
 
@@ -365,18 +370,18 @@ def _tables_page(_shell: AppShell) -> Page:
     )
     table = PlaceholderTableWidget("Select forms first.")
     table.setColumnCount(5)
-    table.setHorizontalHeaderLabels(["Form", "Item 1", "Item 2", "Order", "Type"])
+    table.setHorizontalHeaderLabels(["#", "Form", "Item 1", "Item 2", "Type"])
     rows = [
-        ("DM", "", "", "1"),
-        ("AE", "Subject", "", "2"),
-        ("VS", "Subject", "InstanceName", "3"),
+        ("1", "DM", "", ""),
+        ("2", "AE", "Subject", ""),
+        ("3", "VS", "Subject", "InstanceName"),
     ]
     read_only = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
     table.setRowCount(len(rows))
     for row, values in enumerate(rows):
         for column, value in enumerate(values):
             cell = QTableWidgetItem(value)
-            if column in (0, 3):
+            if column in (0, 1):
                 cell.setFlags(read_only)
             elif row == 0:
                 # The first form joins on nothing: its item cells are unused.
@@ -384,15 +389,18 @@ def _tables_page(_shell: AppShell) -> Page:
             table.setItem(row, column, cell)
         how = QComboBox()
         how.addItems(["Left join", "Inner join"])
+        how.setEnabled(row > 0)
         table.setCellWidget(row, 4, how)
     style_table(table, controls=True)
+    table.setItemDelegate(ProblemCellDelegate(table))
+    mark_cell(table.item(2, 3), "InstanceName isn't a common item of AE and VS.")
     configure_columns(
         table,
         [
+            ColumnSpec("fixed", 44),
             ColumnSpec("contents"),
             ColumnSpec(editable=True),
             ColumnSpec(editable=True),
-            ColumnSpec("fixed", 84),
             ColumnSpec("fixed", 140, editable=True),
         ],
     )
@@ -601,13 +609,26 @@ PAGES: Sequence[GalleryPage] = (
 )
 
 
+def _sample_help(key: str) -> str:
+    """The help panel's sample text for page *key* (Markdown)."""
+    return (
+        f"## What this page shows\n\nThe **{key}** components.\n\n"
+        "## Step by step\n\n1. Look at each component.\n2. Try it.\n"
+    )
+
+
 def build_gallery(theme: ThemeManager) -> Tuple[QMainWindow, AppShell]:
     """The gallery window with one page per component group."""
     window = QMainWindow()
     window.setWindowTitle("CCI design system")
-    # The step-list strip: numbers beside the icons, an icon strip in Compact.
+    # The step-list strip: numbers beside the icons, an icon strip in Compact;
+    # the "?" button opens a sample of the help panel.
     shell = AppShell(
-        theme, title="Design system", strip_badges=True, collapse_in_compact=True
+        theme,
+        title="Design system",
+        strip_badges=True,
+        collapse_in_compact=True,
+        help_text=_sample_help,
     )
     shell.set_context("Gallery")
     shell.status_bar.set_summary(

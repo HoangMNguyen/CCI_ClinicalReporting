@@ -15,11 +15,11 @@ A match keeps the item each member gave it, so a warning can name an item a
 member no longer has, but names decide what lines up: a member added later
 joins a match when it has an item with one of the match's names, and a name a
 match holds is the match's in every member (a match never splits a same-name
-group). Data that changes after Apply can make a match ambiguous (a member
-with two of its items, a match named like an item every member now has); the
-stacked form is then still built, but :func:`build_all` reports a conflict
-and validation stops the report until the match is fixed, so no stacked item
-quietly takes other values.
+group). Data that changes after a stacked form reached the report can make a
+match ambiguous (a member with two of its items, a match named like an item
+every member now has); the stacked form is then still built, but
+:func:`build_all` reports a conflict and validation stops the report until
+the match is fixed, so no stacked item quietly takes other values.
 
 :class:`~clinical_reporting.report.CLReport` builds its stacked forms whenever
 its data is set (:func:`build_all`), so every later step treats them as forms.
@@ -178,10 +178,11 @@ class Built:
         default_factory=dict
     )
     #: Why each stacked form can't be used as the data now is, keyed by stacked
-    #: form: the data changed since Apply so that a match is named like an item
-    #: every member has, two matches share a name, or a member has two items of
-    #: one match; or an edited setting has two matches holding one item name.
-    #: Validation stops the report until it is fixed on the page.
+    #: form: the data changed since it reached the report so that a match is
+    #: named like an item every member has, two matches share a name, or a
+    #: member has two items of one match; or an edited setting has two matches
+    #: holding one item name. Validation stops the report until it is fixed on
+    #: the page.
     conflicts: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
     #: ``(member, item, item used)`` for each matched item a present member no
     #: longer has but replaces with another item of the match, keyed by stacked
@@ -293,7 +294,7 @@ def _build(plan: StackLayout, data: Mapping[str, pd.DataFrame]) -> pd.DataFrame:
     parts = []
     for member in plan.present:
         # Each stacked item's column in this member. (A match named like an
-        # item in every member, possible once the data changed after Apply,
+        # item in every member, possible once the data changed afterwards,
         # gives way to that item; build_all reports it as a conflict, which
         # stops the report until it is fixed.)
         sources: Dict[str, str] = {name: name for name in every}
@@ -363,11 +364,11 @@ def build_all(
 def _conflicts(stacked: StackedForm, plan: StackLayout) -> Tuple[str, ...]:
     """What makes *stacked* ambiguous over the data *plan* lays it out on.
 
-    Apply refuses these (:func:`problems`); they come back when the data is
-    set again with changed items (a saved setting, a new cut-off or export,
-    additional inputs), or from an edited setting. Each would otherwise
-    quietly put other values under a stacked item, or leave one out, so they
-    stop the report instead.
+    The page holds these back (:func:`form_problems`); they come back when
+    the data is set again with changed items (a saved setting, a new cut-off
+    or export, additional inputs), or from an edited setting. Each would
+    otherwise quietly put other values under a stacked item, or leave one
+    out, so they stop the report instead.
     """
     name = stacked.name
     every = {group.name for group in plan.every}
@@ -400,25 +401,26 @@ def _conflicts(stacked: StackedForm, plan: StackLayout) -> Tuple[str, ...]:
             )
     for item_name, holders in _shared_item_names(stacked).items():
         two = len(holders) == 2
+        names = [stacked.matches[index].name for index in holders]
         found.append(
-            f"{name}: the matches {feedback.and_list(holders)} "
+            f"{name}: the matches {feedback.and_list(names)} "
             f"{'both' if two else 'all'} line up {item_name}. Unmatch "
             f"{'one of them' if two else 'all but one'} on Stacked forms."
         )
     return tuple(found)
 
 
-def _shared_item_names(stacked: StackedForm) -> Dict[str, List[str]]:
-    """Item names more than one match holds, with those matches' names.
+def _shared_item_names(stacked: StackedForm) -> Dict[str, List[int]]:
+    """Item names more than one match holds, with those matches' indexes.
 
     The page only matches left-out items, so only an edited setting gets
     here; the later matches would otherwise lose the item quietly.
     """
-    holders: Dict[str, List[str]] = {}
-    for match in stacked.matches:
+    holders: Dict[str, List[int]] = {}
+    for index, match in enumerate(stacked.matches):
         for item_name in match.names:
-            holders.setdefault(item_name, []).append(match.name)
-    return {item: names for item, names in holders.items() if len(names) > 1}
+            holders.setdefault(item_name, []).append(index)
+    return {item: indexes for item, indexes in holders.items() if len(indexes) > 1}
 
 
 # ---------------------------------------------------------------------------
@@ -651,7 +653,29 @@ def set_match_item(
 
 
 # ---------------------------------------------------------------------------
-# The Apply check
+# Problems
+
+
+def form_problems(
+    stacked_forms: Sequence[StackedForm],
+    loaded_form_names: Collection[str],
+    data: Optional[Mapping[str, pd.DataFrame]] = None,
+) -> List[List[feedback.Problem]]:
+    """What stops each of *stacked_forms* from reaching the report, by field.
+
+    One list per stacked form, in order. Each problem names the field that
+    fixes it: ``"name"``, ``"members"``, ``"match.I"`` (the name of the match
+    at index I) or ``"cell.I.MEMBER"`` (MEMBER's cell in that match). A
+    problem about several matches (an item name two of them hold) comes once
+    for each. *loaded_form_names* are the forms as loaded (Corelisting and
+    additional inputs). With *data* (those forms), the checks that need the
+    members' items run too: a match named like an item in every member, and
+    a member with two items of one match.
+    """
+    return [
+        [feedback.Problem(field, text) for text, fields in issues for field in fields]
+        for _name, issues in _checked(stacked_forms, loaded_form_names, data)
+    ]
 
 
 def problems(
@@ -659,53 +683,32 @@ def problems(
     loaded_form_names: Collection[str],
     data: Optional[Mapping[str, pd.DataFrame]] = None,
 ) -> List[str]:
-    """What stops *stacked_forms* from being applied, one line each.
+    """What stops *stacked_forms* from reaching the report, one line each.
 
     Each line starts with its stacked form's name ("New stacked form" while
-    it has none). *loaded_form_names* are the forms as loaded (Corelisting
-    and additional inputs). With *data* (those forms), the checks that need
-    the members' items run too: a match named like an item in every member,
-    and a member with two items of one match.
+    it has none); the checks are :func:`form_problems`'s, each problem said
+    once however many fields it marks.
     """
+    return [
+        f"{name or NEW_STACKED_FORM}: {text}"
+        for name, issues in _checked(stacked_forms, loaded_form_names, data)
+        for text, _fields in issues
+    ]
+
+
+def _checked(
+    stacked_forms: Sequence[StackedForm],
+    loaded_form_names: Collection[str],
+    data: Optional[Mapping[str, pd.DataFrame]],
+) -> List[Tuple[str, List[Tuple[str, Tuple[str, ...]]]]]:
+    """Each stacked form's trimmed name and :func:`_issues`."""
     loaded = set(loaded_form_names)
     names = [stacked.name.strip() for stacked in stacked_forms]
     counts = Counter(name for name in names if name)
-    found = []
-    for stacked, name in zip(stacked_forms, names):
-        label = name or NEW_STACKED_FORM
-        found.extend(
-            f"{label}: {issue}"
-            for issue in _issues(stacked, name, loaded, counts, data)
-        )
-    return found
-
-
-def name_problem(
-    stacked_forms: Sequence[StackedForm],
-    index: int,
-    loaded_form_names: Collection[str],
-) -> str:
-    """What's wrong with the name of the stacked form at *index*, or "".
-
-    As :func:`problems` says it (without the stacked form's name in front),
-    for a page that marks the name as it is typed.
-    """
-    names = [stacked.name.strip() for stacked in stacked_forms]
-    counts = Counter(name for name in names if name)
-    return _name_issue(names[index], set(loaded_form_names), counts)
-
-
-def match_name_problem(stacked: StackedForm, plan: StackLayout, index: int) -> str:
-    """What's wrong with the name of the match at *index*, or "".
-
-    As :func:`problems` says it, over *stacked*'s :func:`layout` *plan* (a
-    match can't take the name of an item every member has).
-    """
-    return _match_name_issue(
-        stacked,
-        stacked.matches[index].name.strip(),
-        {group.name for group in plan.every},
-    )
+    return [
+        (name, _issues(stacked, name, loaded, counts, data))
+        for stacked, name in zip(stacked_forms, names)
+    ]
 
 
 def _name_issue(
@@ -740,40 +743,48 @@ def _issues(
     loaded: Collection[str],
     stacked_names: Mapping[str, int],
     data: Optional[Mapping[str, pd.DataFrame]],
-) -> List[str]:
-    issues = []
+) -> List[Tuple[str, Tuple[str, ...]]]:
+    """What's wrong with *stacked*: each problem's text and the fields it marks."""
+    issues: List[Tuple[str, Tuple[str, ...]]] = []
     issue = _name_issue(name, loaded, stacked_names)
     if issue:
-        issues.append(issue)
+        issues.append((issue, ("name",)))
     if len(stacked.members) < 2:
-        issues.append("Pick at least two members.")
+        issues.append(("Pick at least two members.", ("members",)))
     # A member named like a stacked form and a loaded form is the loaded form
     # (the stacked form's name is the problem then, reported on its own).
     issues.extend(
-        f"{member} is a stacked form, so it can't be a member."
+        (f"{member} is a stacked form, so it can't be a member.", ("members",))
         for member in stacked.members
         if member in stacked_names and member not in loaded
     )
 
     plan = layout(stacked, data) if data is not None else None
     every = {group.name for group in plan.every} if plan else set()
-    for match in stacked.matches:
+    for index, match in enumerate(stacked.matches):
         issue = _match_name_issue(stacked, match.name.strip(), every)
         if issue:
-            issues.append(issue)
+            issues.append((issue, (f"match.{index}",)))
     for item_name, holders in _shared_item_names(stacked).items():
         both = "both " if len(holders) == 2 else ""
+        names = [stacked.matches[index].name for index in holders]
         issues.append(
-            f"Keep each item in one match: {item_name} is in "
-            f"{both}{feedback.and_list(holders)}."
+            (
+                f"Keep each item in one match: {item_name} is in "
+                f"{both}{feedback.and_list(names)}.",
+                tuple(f"match.{index}" for index in holders),
+            )
         )
     if plan:
         for item in plan.matched:
             for member, have in item.doubled.items():
                 both = "both " if len(have) == 2 else ""
                 issues.append(
-                    "Pick at most one item from each member: "
-                    f"{member} has {both}{feedback.and_list(have)}."
+                    (
+                        "Pick at most one item from each member: "
+                        f"{member} has {both}{feedback.and_list(have)}.",
+                        (f"cell.{item.index}.{member}",),
+                    )
                 )
     return issues
 
@@ -899,11 +910,10 @@ __all__ = [
     "add_match",
     "build",
     "build_all",
+    "form_problems",
     "from_settings",
     "layout",
     "match_choices",
-    "match_name_problem",
-    "name_problem",
     "problems",
     "remove_matches",
     "rename_match",

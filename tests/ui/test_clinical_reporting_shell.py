@@ -47,6 +47,25 @@ def test_the_sidebar_lists_every_step_and_shows_where_you_are(sample_window):
     assert shell.display_button is not None
 
 
+def test_the_help_starts_closed_and_follows_the_open_step(sample_window):
+    shell = sample_window.ui.shell
+    shell.set_current("source")
+    closed = shell.is_help_visible()
+    width = sample_window.width()
+
+    shell.help_button.click()
+    QApplication.processEvents()
+    on_source = shell.help_panel.title.text()
+    overview = shell.help_panel.body.toPlainText().startswith("How a report is made")
+    shell.set_current("joins")
+
+    assert closed is False
+    assert on_source == "Help: Source data" and overview
+    assert shell.help_panel.title.text() == "Help: Joins"
+    assert shell.is_help_visible()
+    assert sample_window.width() == width  # The pages make room for it.
+
+
 def test_next_goes_to_the_following_step(sample_window):
     shell = sample_window.ui.shell
     shell.set_current("joins")
@@ -98,14 +117,19 @@ def test_badges_follow_filter_edits(sample_window):
         static.selectRow(0)
         sample_window.static_filter_remove()
 
+    def pick(box, item):
+        box.setCurrentIndex(box.findText(item))
+
     def add_static():
+        # An "=" filter needs a value now, as well as an item.
         sample_window.static_filter_add()
-        static.cellWidget(0, 0).setCurrentText("DM.Age")
+        pick(static.cellWidget(0, 0), "DM.Age")
+        static.item(0, 2).setText("18")
 
     def add_dynamic():
         sample_window.dynamic_filter_add()
-        dynamic.cellWidget(1, 0).setCurrentText("DM.Age")
-        dynamic.cellWidget(1, 2).setCurrentText("Subject")
+        pick(dynamic.cellWidget(1, 0), "DM.Age")
+        pick(dynamic.cellWidget(1, 2), "Subject")
 
     def remove_dynamic():
         dynamic.selectRow(0)
@@ -123,15 +147,16 @@ def test_badges_follow_filter_edits(sample_window):
 def test_badges_follow_item_join_and_rename_edits(sample_window):
     ui = sample_window.ui
     joins, renames = ui.tableWidget_join, ui.tableWidget_rename
-    forms = {joins.item(row, 0).text(): row for row in range(joins.rowCount())}
+    forms = {joins.item(row, 1).text(): row for row in range(joins.rowCount())}
     _, items_before = _badge(sample_window, "formitems")
 
     def pick_a_form_item():
         ui.listWidget_form_item_available.item(0).setSelected(True)
         sample_window.click_select_form_item()
 
-    def share_a_join_order():
-        joins.cellWidget(forms["VS"], 4).setCurrentText("2")  # As AE has.
+    def clear_the_last_forms_join_items():
+        for column in (2, 3, 4):
+            joins.cellWidget(forms["VS"], column).setCurrentText("")
 
     def rename_the_first_column():
         renames.item(0, 1).setText("Renamed")
@@ -142,9 +167,10 @@ def test_badges_follow_item_join_and_rename_edits(sample_window):
 
     picked = _after(sample_window, pick_a_form_item, "formitems")
     assert picked == (StepState.NONE, items_before + 1)
-    assert _after(sample_window, share_a_join_order, "joins") == (StepState.ERROR, None)
+    cleared = _after(sample_window, clear_the_last_forms_join_items, "joins")
+    assert cleared == (StepState.ERROR, None)
     tip = ui.shell.sidebar.item("joins").toolTip()
-    assert "Join order 2 is assigned to multiple forms: AE, VS" in tip
+    assert "Form 'VS' needs at least one join item because it is not first." in tip
     # Copying the original names undoes the sample's one rename.
     assert _after(sample_window, copy_the_original_names, "order") == (
         StepState.NONE,
@@ -222,10 +248,13 @@ def test_results_on_the_open_page_show_no_toast(sample_window):
     assert sample_window.ui.shell.status_bar.message_kind() == "error"
 
 
-def test_a_new_zip_forgets_the_old_additional_forms_and_results(sample_window):
+def test_a_new_zip_brings_the_additional_forms_and_forgets_the_results(
+    sample_window,
+):
     sample_window.additional_inputs = {"lab.csv": pd.DataFrame({"Subject": ["1"]})}
     sample_window.additional_form_names = {"lab.csv": "PK"}  # Not a DEMO01 form.
-    sample_window._apply_additional_inputs_to_report()
+    sample_window.ui.shell.set_current(steps.ADDITIONAL)
+    sample_window.ui.shell.set_current(steps.SOURCE)  # Leaving adds PK.
     QApplication.processEvents()
     applied = _badge(sample_window, "additional")
     sample_window._set_label_text(
@@ -239,11 +268,12 @@ def test_a_new_zip_forgets_the_old_additional_forms_and_results(sample_window):
     QApplication.processEvents()
 
     assert applied == (StepState.DONE, None)
-    assert _badge(sample_window, "additional") == (StepState.OPTIONAL, None)
+    # The files' forms come along to the new report.
+    assert "PK" in sample_window.report.data
+    assert _badge(sample_window, "additional") == (StepState.DONE, None)
     assert sample_window.ui.label_run_confirmation.text() == ""
-    # The newest message left: apply the additional files again.
-    assert sample_window.ui.shell.status_bar.message().startswith(
-        "The new Corelisting ZIP started a new report."
+    assert sample_window.ui.shell.status_bar.message() == (
+        "Additional input updated: 1 file added to the report. New forms: PK."
     )
     assert sample_window.windowTitle() == "DEMO02 — Clinical Reporting"
 

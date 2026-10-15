@@ -20,12 +20,39 @@ python -m clinical_reporting
   search filters.
 - Join, rename, comparison, and filter configuration tables tailored for
   clinical datasets.
+  - The Joins table lists the selected forms in join order: the first
+    starts the report, each one below joins it on Item 1–3. Select a form,
+    then Move up or Move down to change its place. A newly selected form
+    goes last and joins on Subject with a left join; a form moved out of
+    first place joins on Subject.
   - The Joins step keeps every form's joins tidy, a loaded setting's
-    included: join orders run from 1 to the number of selected forms (one
-    out of range moves to the nearest end, one that isn't a number becomes
-    1); a form at order 1 joins on nothing, with a left join; any other form
-    joins on at most three items, its first three, keeping only selected
-    common items, each once; an unknown join type becomes a left join.
+    included: the forms are ranked by join order (one that isn't a number
+    counts as 1; tied orders keep the selection order) and numbered 1 to the
+    number of selected forms; the first joins on nothing, with a left join;
+    any other form joins on at most three items, its first three, keeping
+    only selected common items, each once; an unknown join type becomes a
+    left join.
+- Every step marks each problem on the field or cell that fixes it: a red
+  border (and red text when it has text), the reason as its tooltip, and a
+  red badge on the step. A missing value is red as soon as its field is
+  there (a new filter row shows its empty Item and Value red); a wrong one
+  as it is typed. While any step has a problem, the report can't be
+  previewed or exported (Preview & export says which steps to fix). A filter
+  whose operator needs a value needs one, in the window and in
+  `build_base_report` alike.
+- Additional input, Stacked forms and Coalesced items (the Data steps) have
+  no Apply button: their changes reach the report when you go to another
+  step. A Data step with a problem is held: nothing from it reaches the
+  report until it is fixed, and Save setting waits, since its changes would
+  be lost. Changes made while the step isn't open (files that finish loading
+  after you left, names a picked setting fills in, a new Corelisting ZIP)
+  reach the report right away.
+- Removing an input takes along what it leaves with nothing to be made from:
+  removing the Corelisting ZIP drops the stacked forms all of whose members
+  are its forms, and the coalesced items of its forms or of those stacked
+  forms (`session.without_removed_forms`). Once no input is left at all (no
+  ZIP and no additional files), every stacked form and coalesced item goes
+  at once, from the pages and the report.
 - Save/load settings plus quick run helpers for generating reports.
 - Form names cannot include `.` because it is reserved for the form/item
   separator. Additional inputs default to the file name and must be renamed
@@ -39,18 +66,18 @@ python -m clinical_reporting
   - A file with the same name (from any folder), or else the same column
     headers, gets its names picked and filled in, as long as the match is
     unambiguous.
-  - Check the names, or pick another entry or None, then click Apply to
-    report; the setting's selections on those forms come back.
+  - Check the names, or pick another entry or None; when they reach the
+    report, the setting's selections on those forms come back.
   - Names you typed yourself are never replaced by a pick, nor cleared by
     picking None.
   - A "Still to add" banner on Additional input lists the setting's files
     that aren't added yet. When the setting is loaded, its "Missing forms"
     warning on Source data says which files to add, or which added files to
-    check and apply.
+    check.
   - Saved column names a file can't use, because its export renamed or
-    dropped the column, are ignored and never stop Apply to report. The
-    message after the pick, a standing banner, and the Apply result list
-    them ("lab.csv has no Visit Dt"); renaming a column to the saved name
+    dropped the column, are ignored and never stop the file's form from
+    being added. The message after the pick, a standing banner, and the
+    result list them ("lab.csv has no Visit Dt"); renaming a column to the saved name
     by hand clears them.
 - On the Stacked forms page, put the rows of two or more loaded forms
   (Corelisting forms or applied additional inputs, never another stacked
@@ -69,12 +96,12 @@ python -m clinical_reporting
     and the grid scrolls sideways when they don't fit. Drag any column edge
     to resize it, or double-click it to fit it again; a dragged width holds
     until the app closes.
-  - A stacked form or match name Apply would refuse (taken, a loaded form's,
-    with a dot, or a blank match name) turns red as you type, with the reason
-    as its tooltip.
-  - Apply to report adds the stacked forms. A saved setting keeps the applied
-    ones and rebuilds them whenever the data is loaded or changes (a new ZIP
-    starts a new report, so apply them again). A member or matched item the
+  - A stacked form's Name, Members, match names and matched cells turn red
+    with what they lack (no name, fewer than two members, a taken name, a
+    member giving two of a match's items), the reason as their tooltip.
+  - The stacked forms reach the report when you go to another step. A saved
+    setting keeps them and rebuilds them whenever the data is loaded or
+    changes (a new ZIP brings them along). A member or matched item the
     data lacks is warned about; a loaded setting's "Missing forms" warning
     also names the members that aren't loaded, whether the stacked form is
     built or not (one named like a loaded form names none). A stacked form
@@ -96,19 +123,22 @@ python -m clinical_reporting
     only be coalesced under its own name, so the forms still join on it.
   - A row overlaps where the value so far is neither empty nor meeting the
     later item's condition, and that item has a value too: one of the two
-    would be lost. Apply refuses overlaps, naming the first rows (every row in
-    the details), unless When values overlap is set to Keep the earlier
-    value. As you edit, the page shows how the form's rows take their value
-    and what Apply would refuse; a name Apply would refuse turns red, with
-    the reason as its tooltip.
-  - Apply to report adds the coalesced items, made after the stacked forms:
-    a member's coalesced item doesn't reach its stacked form (coalesce the
-    stacked form itself). A saved setting keeps the applied ones and rebuilds
-    them whenever the data is loaded or changes (a new ZIP starts a new
-    report, so apply them again). A form or item the data lacks is warned
+    would be lost. Overlaps are a problem (the later item's Rows cell and
+    When values overlap turn red, naming the first rows) unless When values
+    overlap is set to Keep the earlier value. As you edit, the page shows how
+    the form's rows take their value, and marks each problem on its field.
+  - The coalesced items reach the report when you go to another step, made
+    after the stacked forms: a member's coalesced item doesn't reach its
+    stacked form (coalesce the stacked form itself). A saved setting keeps
+    them and rebuilds them whenever the data is loaded or changes (a new ZIP
+    brings them along). A form or item the data lacks is warned
     about, and the coalesced item is built from the items left; an overlap
     later data brings to one that refuses them, or its name now given to
     another item of its form, stops the export until it is fixed on the page.
+- The "?" button at the top right, left of the ◐ Display button, opens help
+  beside the pages: plain-language instructions for the open step (on
+  Source data, also an overview of the whole app). It follows the step you
+  open; drag its edge to make it wider. It always starts closed.
 - The steps sit in a sidebar with status badges. On a narrow window, and in
   Compact density until you open it (Ctrl+\\), the sidebar is an icon strip
   with each step's count or mark beside its icon; each density remembers
@@ -424,9 +454,10 @@ has their name (also the validation issue `stacked_form_name_clash`, which
 applied (`conflicts`, the validation issue `stacked_form_conflict`, refused
 the same way); and members or matched items the data lacks or replaces
 (`reconcile_with_current_data()` reports those as missing forms and items).
-`stacking.problems(stacked_forms, loaded_form_names, data)` is the Apply
-check, one line per problem; `name_problem` and `match_name_problem` word one
-name's problem the same way.
+`stacking.problems(stacked_forms, loaded_form_names, data)` lists what keeps
+stacked forms from reaching the report, one line per problem;
+`stacking.form_problems` gives the same per stacked form, each with the field
+that fixes it (`name`, `members`, `match.I`, `cell.I.MEMBER`).
 
 ### Coalesced items
 
@@ -440,7 +471,7 @@ race = CoalescedItem(
     first="Race",
     fills=(Fill("Race Other Specify", "=", "Other"),),  # a Filters operator and value
 )
-coalescing.problems([race], report.stacked_data)  # the Apply check; [] when it fits
+coalescing.problems([race], report.stacked_data)  # what holds it back; [] when it fits
 session.apply_coalesced_items(report, [race])  # rebuilds report.data, keeps selections
 report.data["DM"]  # Race in place of Race and Race Other Specify
 outcome = coalescing.build(race, report.stacked_data["DM"])  # rows by item, overlaps
@@ -455,10 +486,12 @@ the coalesced item is built from the items left), and conflicts: overlaps in
 one that refuses them (`on_overlap=REFUSE`, the default; `KEEP_EARLIER` keeps
 the earlier value instead), or its name now given to another item of its
 form. Conflicts are the validation issue `coalesced_item_conflict`, which
-`create_report()` refuses. `coalescing.problems(items, data)` is the Apply
-check, one line per problem (`shown=None` names every overlapping row);
-`problems_of`, `name_problem` and `preview` say the same of one coalesced
-item, for a page that shows one at a time.
+`create_report()` refuses. `coalescing.problems(items, data)` lists what
+keeps coalesced items from reaching the report, one line per problem
+(`shown=None` names every overlapping row); `coalescing.item_problems` gives
+the same per item, each with the field that fixes it (`form`, `name`,
+`item.K`, `value.K`, `overlap.K`), and `preview` builds one for a page that
+shows one at a time.
 
 ### Persisting a saved setting
 
@@ -647,10 +680,11 @@ src/clinical_reporting/
   workflow.py                  # the tools' workflows: OutputFile, input errors, reading inputs
   validation.py                # executable-report validation; "Cannot run" messages
   steps.py                     # the steps: titles, badges, and what they say
+  help_text.py                 # the help shown beside each step (Markdown)
   data.py                      # Corelisting ZIP, CSV, Excel, additional inputs (paths or uploads)
   additional_names.py          # additional inputs' form/column names kept with a saved setting
   stacking.py                  # stacked forms: how they line up, building them, their settings key
-  coalescing.py                # coalesced items: building them, the Apply check, their settings key
+  coalescing.py                # coalesced items: building them, their problems, their settings key
   export.py                    # xlsx/csv/bytes rendering
   telemetry.py                 # reports saves to the usage counter (off unless configured)
   sample_data.py               # made-up DEMO01 data for previews and tests
@@ -662,14 +696,14 @@ src/clinical_reporting/
     pages/                     # one module per step: its widgets and behavior mixin
       source_data.py           # Corelisting ZIP, cut-off date, and saved settings
       additional_input.py      # additional inputs, form and column names, saved names
-      stacked_forms.py         # stacked forms: members, matches, and Apply
-      coalesced_items.py       # coalesced items: items, conditions, overlaps, and Apply
+      stacked_forms.py         # stacked forms: members, matches, and their marks
+      coalesced_items.py       # coalesced items: items, conditions, overlaps, and their marks
       selection.py             # forms, common items, and form items
       filters.py               # filters and comparisons
-      joins.py                 # join order, type, and items
+      joins.py                 # join order (Move up/down), type, and items
       order_rename.py          # output order and renames
       preview_export.py        # preview, export, and save a setting
-      _common.py               # what the pages share: the table helper, the cell combo box
+      _common.py               # what the pages share: the table helper, cell combo and item boxes, marks
     preview.py                 # python -m clinical_reporting.ui.preview
     base.py                    # window-level mixin: shared state, refresh coordinators, helpers
     dialogs.py                 # dialogs shared by more than one page

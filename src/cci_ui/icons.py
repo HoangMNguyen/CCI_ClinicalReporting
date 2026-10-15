@@ -47,6 +47,7 @@ class IconName:
     APPEARANCE_SYSTEM = "monitor"
     APPEARANCE_LIGHT = "sun"
     APPEARANCE_DARK = "moon"
+    HELP = "circle-question-mark"
     # Status
     SUCCESS = "circle-check"
     WARNING = "triangle-alert"

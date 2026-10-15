@@ -9,11 +9,7 @@ from pandas.testing import assert_frame_equal
 from clinical_reporting import session, steps
 from clinical_reporting.models import JoinHow
 from clinical_reporting.stacking import Match, StackedForm
-from clinical_reporting.validation import (
-    EXPORT_BLOCKING_ISSUE_CODES,
-    ReportValidationError,
-    report_issues_message,
-)
+from clinical_reporting.validation import ReportValidationError
 
 VISITS = StackedForm(
     "VISITS",
@@ -254,7 +250,9 @@ def test_a_stacked_form_named_like_a_loaded_form_stops_the_report():
     assert [(i.code, i.message, i.field) for i in report.validate()] == [
         ("stacked_form_name_clash", message, "stacked_forms")
     ]
-    assert report_issues_message(report, EXPORT_BLOCKING_ISSUE_CODES) is not None
+    assert steps.cannot_run_message(report.validate()) == (
+        "Cannot run: Fix Stacked forms first."
+    )
     assert steps.step_statuses(report)[steps.STACKED] == steps.StepStatus(
         steps.ERROR, tip=message
     )
@@ -305,13 +303,12 @@ def test_a_setting_whose_match_is_now_an_item_every_member_has_stops_the_report(
     assert _conflicts(report) == [(CONFLICT, message, "stacked_forms")]
     # The selections stay for once the match is renamed.
     assert report.selected_forms["VISITS"].get_selected_form_items() == ["Visit Name"]
-    assert report_issues_message(report, EXPORT_BLOCKING_ISSUE_CODES) is not None
+    assert steps.cannot_run_message(report.validate()) == (
+        "Cannot run: Fix Stacked forms first."
+    )
     assert steps.step_statuses(report)[steps.STACKED] == steps.StepStatus(
         steps.ERROR, tip=message
     )
-    conflict = steps.stacked_conflict_message(report)
-    assert conflict == f"{message} The report can't be exported until this is fixed."
-    assert conflict.kind == "error"
     with pytest.raises(ReportValidationError):
         report.create_report()
 
@@ -360,7 +357,9 @@ def test_an_additional_member_with_two_items_of_one_match_stops_the_report():
         "lines up. Choose “—” in LAB's cell or Unmatch it on Stacked forms."
     )
     assert _conflicts(report) == [(CONFLICT, message, "stacked_forms")]
-    assert report_issues_message(report, EXPORT_BLOCKING_ISSUE_CODES) is not None
+    assert steps.cannot_run_message(report.validate()) == (
+        "Cannot run: Select at least one form before running. Fix Stacked forms first."
+    )
 
 
 def test_a_member_that_now_gives_another_of_the_matchs_items_is_warned_about():

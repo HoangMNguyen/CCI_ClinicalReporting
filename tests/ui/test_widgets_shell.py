@@ -808,6 +808,63 @@ def test_shell_shows_the_current_page_and_a_display_button_with_a_theme(
     assert bare.current_page() is None
 
 
+def _help(key):
+    return f"## {key} help\n\n1. **First** step."
+
+
+def test_the_help_button_shows_the_open_pages_help_beside_it(make_manager, shown):
+    shell = shown(_shell(make_manager, help_text=_help), 1300, 700)
+    before = shell.is_help_visible()
+
+    QTest.mouseClick(shell.help_button, Qt.MouseButton.LeftButton)
+    QApplication.processEvents()
+    opened = (
+        shell.is_help_visible(),
+        shell.help_panel.title.text(),
+        shell.help_panel.body.toMarkdown().startswith("## source help"),
+        shell.help_panel.x() > shell.stack.x() + shell.stack.width() - 1,
+    )
+    shell.set_current("joins")
+    followed = shell.help_panel.title.text(), shell.help_panel.body.toPlainText()
+    QTest.mouseClick(shell.help_button, Qt.MouseButton.LeftButton)
+
+    assert not before
+    assert opened == (True, "Help: Source data", True, True)
+    assert followed == ("Help: Joins", "joins help\nFirst step.")
+    assert not shell.is_help_visible() and not shell.help_button.isChecked()
+
+
+def test_closing_the_help_unchecks_its_button(make_manager, shown):
+    shell = shown(_shell(make_manager, help_text=_help), 1300, 700)
+    shell.help_button.click()
+
+    shell.help_panel.close_button.click()
+
+    assert not shell.is_help_visible() and not shell.help_button.isChecked()
+
+
+def test_the_help_keeps_the_width_it_was_dragged_to(make_manager, shown):
+    shell = shown(_shell(make_manager, help_text=_help), 1300, 700)
+    shell.help_button.click()
+    QApplication.processEvents()
+    splitter = shell.help_panel.parentWidget()
+    total = sum(splitter.sizes())
+    splitter.setSizes([total - 420, 420])
+    splitter.splitterMoved.emit(total - 420, 1)  # As a drag of the edge.
+
+    shell.help_button.click()
+    shell.help_button.click()
+    QApplication.processEvents()
+
+    assert shell.help_panel.width() == 420
+
+
+def test_a_shell_without_help_text_has_no_help_button(make_manager):
+    shell = _shell(make_manager)
+
+    assert shell.help_button is None and shell.help_panel is None
+
+
 def test_status_bar_shows_a_summary_and_the_latest_message(qapp):
     status_bar = AppStatusBar()
 

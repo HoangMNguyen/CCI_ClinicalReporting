@@ -79,4 +79,24 @@ def output_identifiers(report: "CLReport") -> List[str]:
     return identifiers
 
 
-__all__ = ["forms_in_join_order", "output_identifiers", "unjoined_common_items"]
+def output_names(report: "CLReport") -> Dict[str, str]:
+    """Each output column's name in the workbook, by its identifier.
+
+    Its rename when that is a non-blank text, else the identifier itself.
+    """
+    renames = getattr(report, "rename_dict", None) or {}
+    names: Dict[str, str] = {}
+    for identifier in output_identifiers(report):
+        rename = renames.get(identifier)
+        names[identifier] = (
+            rename if isinstance(rename, str) and rename.strip() else identifier
+        )
+    return names
+
+
+__all__ = [
+    "forms_in_join_order",
+    "output_identifiers",
+    "output_names",
+    "unjoined_common_items",
+]

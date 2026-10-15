@@ -51,7 +51,12 @@ from clinical_reporting.session import (
 )
 from clinical_reporting.ui.dialogs import choose_settings_directory, settings_folder
 
+from ._common import show_problem
+
 logger = logging.getLogger(__name__)
+
+#: The Setting box's problem when the setting picked couldn't be loaded.
+SETTING_NOT_LOADED = "This setting couldn't be loaded; see the message below."
 
 
 class SourceDataPage(Page):
@@ -112,20 +117,20 @@ class SourceDataPage(Page):
 
         self.checkBox_saved_setting = ToggleSwitch()
         self.checkBox_saved_setting.setAccessibleName("Start from a saved setting")
-        self.comboBox_saved_setting = QComboBox()
-        # Shown while the list is empty (the toggle is off); the list's own
-        # first entry repeats it.
-        self.comboBox_saved_setting.setPlaceholderText("Choose a setting…")
         self.pathPicker_settings_folder = PathPicker(
             button_text="Settings folder…", placeholder="No folder chosen"
         )
         self.pushButton_setting_location = self.pathPicker_settings_folder.button
+        self.comboBox_saved_setting = QComboBox()
+        # Shown while the list is empty (the toggle is off); the list's own
+        # first entry repeats it.
+        self.comboBox_saved_setting.setPlaceholderText("Choose a setting…")
         saved_section = Section("Saved settings")
         saved_section.add_row(
             "Start from a saved setting", self.checkBox_saved_setting, label_width=None
         )
-        saved_section.add_row("Setting", self.comboBox_saved_setting)
         saved_section.add_row("Folder", self.pathPicker_settings_folder)
+        saved_section.add_row("Setting", self.comboBox_saved_setting)
         # Items of a loaded setting that the data doesn't have.
         self.label_setting = StatusBanner()
 
@@ -239,6 +244,8 @@ class SourceDataMixin:
         self.ui.pushButton_remove_input.setEnabled(True)
 
         self.update_all_ui()
+        # The additional files, stacked forms and coalesced items carry over.
+        self.apply_data_steps()
         self._show_input_file()
         self._show_data_read(data)
 
@@ -250,30 +257,35 @@ class SourceDataMixin:
         """Remove the selected Corelisting ZIP and its forms from the report.
 
         Additional inputs are independent of the Corelisting ZIP, so forms
-        already applied from the Additional input page remain available.
+        already applied from the Additional input page remain available. The
+        stacked forms and coalesced items made only from the ZIP's forms go
+        with it; with no additional files either, every one goes.
         """
         if defer_if_busy(self, self.click_remove_input):
             return
         if not self._input_file_path:
             return
 
-        self.report = without_base_data(
-            self.report, getattr(self, "_additional_form_keys", set())
-        )
+        additional_keys = getattr(self, "_additional_form_keys", set())
+        removed = set(self.report.loaded_data) - set(additional_keys)
+        built_stacked = list(self.report.stacked_forms)
+        self.report = without_base_data(self.report, additional_keys)
         self.study_name = None
         self._input_file_path = None
         self._applied_cut_off_date = None
         self._failed_cut_off_reload = None
         self._forget_loaded_setting()
         self._forget_export_results()
-        # The fresh report has no stacked forms or coalesced items; the pages
-        # ask to apply them.
+        # The fresh report has no stacked forms or coalesced items; those
+        # still made from an additional file reach it again with the other
+        # Data steps.
         forget_stacked_forms = getattr(self, "_forget_applied_stacked_forms", None)
         if forget_stacked_forms is not None:
             forget_stacked_forms()
         forget_coalesced = getattr(self, "_forget_applied_coalesced_items", None)
         if forget_coalesced is not None:
             forget_coalesced()
+        self._drop_data_steps_without_input(removed, built_stacked)
 
         self._show_input_file()
         self._show_data_read(None)
@@ -285,6 +297,7 @@ class SourceDataMixin:
         self.ui.comboBox_saved_setting.setEnabled(False)
 
         self.update_all_ui()
+        self.apply_data_steps()
 
     def click_output_file(self) -> None:
         """Allow the user to choose the output directory for reports."""
@@ -297,6 +310,10 @@ class SourceDataMixin:
         if folder:
             self.output_folder_name = folder
             self.ui.pathPicker_output_folder.set_path(folder)
+            # Guarded: tests compose this mixin without Preview & export's.
+            refresh_run = getattr(self, "_refresh_run_availability", None)
+            if refresh_run is not None:
+                refresh_run()
 
     def click_cutoff_checkBox(self, state: int) -> None:
         """Enable the date editor and re-apply the cut-off when toggled."""
@@ -473,6 +490,7 @@ class SourceDataMixin:
         self._last_loaded_setting_path = None
         self._pending_saved_setting_reapply = False
         self._set_label_text(self.label_setting, "")
+        show_problem(self.ui.comboBox_saved_setting, "")
         forget_saved_names = getattr(self, "_forget_saved_additional_names", None)
         if forget_saved_names is not None:
             forget_saved_names()
@@ -512,21 +530,19 @@ class SourceDataMixin:
 
         With *offer_saved_names* (the user picked the setting), the names it
         saved for additional input files are handed to the Additional input
-        page. Re-applying the setting after "Apply to report" leaves them, so
-        the user's picks there stay.
+        page. Re-applying the setting once the files reach the report leaves
+        them, so the user's picks there stay.
         """
         try:
             stored = self._settings_store().load(file_path)
             reconciliation = apply_saved_setting(self.report, stored)
         except Exception as exc:
             logger.exception("Failed to load settings from %s", file_path)
-            self._set_label_text(
-                self.label_save_confirmation,
-                feedback.error(
-                    f"Failed to load settings: {exc}", traceback.format_exc()
-                ),
+            # Said under the Setting box (on_saved_setting_changed marks it).
+            self._setting_load_error = feedback.error(
+                f"Failed to load settings: {exc}", traceback.format_exc()
             )
-            self._set_label_text(self.label_setting, "")
+            self._set_label_text(self.label_setting, self._setting_load_error)
             self._pending_saved_setting_reapply = False
             return False
 
@@ -558,9 +574,14 @@ class SourceDataMixin:
         return True
 
     def on_saved_setting_changed(self, index: int) -> None:
-        """Load the selected saved setting into the report."""
+        """Load the selected saved setting into the report.
+
+        A setting that can't be loaded marks the Setting box, and the banner
+        under it says why.
+        """
         if index < 0:
             return
+        show_problem(self.ui.comboBox_saved_setting, "")
 
         file_path: Optional[str] = self.ui.comboBox_saved_setting.itemData(index)
         if not file_path:
@@ -571,9 +592,14 @@ class SourceDataMixin:
             file_path, update_confirmation=True, offer_saved_names=True
         ):
             self._forget_loaded_setting()
+            self._set_label_text(self.label_setting, self._setting_load_error)
+            show_problem(self.ui.comboBox_saved_setting, SETTING_NOT_LOADED)
             return
 
         self._last_loaded_setting_path = file_path
+        # The saved names it filled in are used now, and the setting's
+        # selections on those forms come back with them.
+        self.apply_data_steps()
 
         setting_name = self.ui.comboBox_saved_setting.currentText()
         if setting_name:

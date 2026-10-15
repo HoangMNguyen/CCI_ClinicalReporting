@@ -22,6 +22,13 @@ def _lab_results():
     )
 
 
+def _leave_additional_input(window):
+    """Go to Additional input and on to Forms: its changes reach the report."""
+    window.ui.shell.set_current(steps.ADDITIONAL)
+    window.ui.shell.set_current(steps.FORMS)
+    QApplication.processEvents()
+
+
 def _start_again(window):
     """A new run: the sample ZIP again, and no additional files."""
     window.additional_inputs.clear()
@@ -39,7 +46,7 @@ def _save_monthly_setting(window, tmp_path):
     window.additional_form_names[first] = "LAB"
     window.additional_column_names[(first, "Subject ID")] = "Subject"
     window.additional_column_names[(first, "Visit Dt")] = "Visit Date"
-    window.click_apply_additional_forms()
+    _leave_additional_input(window)
     window.report.add_selected_form("LAB")
     window.report.selected_forms["LAB"].set_form_item_state("Visit Date", selected=True)
     window.update_all_ui()
@@ -75,8 +82,7 @@ def test_saved_names_come_back_for_a_saved_settings_files(sample_window, tmp_pat
     dropdown = (picker.isEnabled(), picker.currentText())
     all_added = window.ui.banner_saved_names.text()
     names = (dict(window.additional_form_names), dict(window.additional_column_names))
-    window.click_apply_additional_forms()
-    QApplication.processEvents()
+    _leave_additional_input(window)
 
     assert json.loads(text)[SETTINGS_KEY] == [
         {
@@ -123,26 +129,24 @@ def test_saved_names_a_new_export_cant_use_are_ignored_with_a_warning(
 
     window._add_loaded_additional_files(({dated: export}, {}))
     standing = window.ui.banner_ignored_names.text()
-    window.click_apply_additional_forms()
-    QApplication.processEvents()
+    _leave_additional_input(window)
     applied = window.ui.banner_additional.text()
     missing = window.ui.label_setting.text()
     columns = window.ui.tableWidget_update_column_name
     rows = [columns.item(row, 0).text() for row in range(columns.rowCount())]
     columns.item(rows.index("Visit Date (dd)"), 1).setText("Visit Date")
     fixed = window.ui.banner_ignored_names.text()
-    window.click_apply_additional_forms()
-    QApplication.processEvents()
+    _leave_additional_input(window)
 
     assert standing.kind == "warning"
     assert "lab_results.csv has no Visit Dt." in standing
-    assert "the form still applies" in standing
+    assert "the form is still added" in standing
     # The form is added all the same; the setting misses the item it lacks.
     assert "LAB" in window.report.data
     assert applied.kind == "warning"
     assert applied == (
-        "1 file applied. New forms: LAB. Saved column names ignored: "
-        "lab_results.csv has no Visit Dt."
+        "Additional input updated: 1 file added to the report. New forms: LAB. "
+        "Saved column names ignored: lab_results.csv has no Visit Dt."
     )
     assert missing == "Missing items in LAB: Visit Date"
     # Renamed by hand, the column is back, and so is the setting's item.

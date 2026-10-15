@@ -104,14 +104,14 @@ def test_the_window_exports_what_the_base_report_gives(
     )
     window.click_add_additional_files()
     settle(window.task_runner)
+    # Source data is open: the file reaches the report once it is read.
     picked = dict(window.additional_form_names)
-    window.click_apply_additional_forms()
     window.output_folder_name = str(out)
     window.ui.lineEdit_file_name.setText("")
     window.click_run()
     settle(window.task_runner)
 
-    # The setting waited for LAB, whose saved names were picked; applying the
+    # The setting waited for LAB, whose saved names were picked; adding the
     # file applied the setting again, its VS join tidied.
     assert missing.startswith("Missing forms: LAB")
     assert picked == {str(lab_path.resolve()): "LAB"}

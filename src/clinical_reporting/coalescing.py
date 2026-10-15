@@ -304,7 +304,7 @@ def build_all(
                 lines.extend(
                     f"{label(item)}: {line} Change a condition, or keep the "
                     "earlier value, on Coalesced items."
-                    for line in _overlap_lines(present, outcome, shown)
+                    for _, line in _overlap_lines(present, outcome, shown)
                 )
         forms[item.form] = outcome.frame
         outcomes[position] = outcome
@@ -319,7 +319,7 @@ def build_all(
 
 
 # ---------------------------------------------------------------------------
-# The Apply check
+# What stops coalesced items from reaching the report
 
 
 def label(item: CoalescedItem) -> str:
@@ -334,53 +334,57 @@ def problems(
     *,
     shown: Optional[int] = 5,
 ) -> List[str]:
-    """What stops *items* from being applied over *data*, one line each.
+    """What stops *items* from reaching the report over *data*, one line each.
 
     *data* holds the forms coalesced items are made from (the loaded forms
     and the stacked forms). Each line starts with the coalesced item, as
-    "Race in DM: ". A common item can only be coalesced under its own name,
-    so the forms still join on it; with one form loaded there are no joins,
-    and no item is held to its name. An overlap's line names its first
-    *shown* rows (every row with ``None``).
+    "Race in DM: "; a problem marked on several of its fields is said once.
+    A common item can only be coalesced under its own name, so the forms
+    still join on it; with one form loaded there are no joins, and no item
+    is held to its name. An overlap's line names its first *shown* rows
+    (every row with ``None``).
     """
-    found = []
-    for item, (issues, buildable) in zip(items, _checks(items, data)):
-        if buildable:
-            issues = [*issues, *_refused_overlaps(item, data, shown)]
-        found.extend(f"{label(item)}: {issue}" for issue in issues)
-    return found
+    return [
+        f"{label(item)}: {text}"
+        for item, found in zip(items, item_problems(items, data, shown=shown))
+        for text in dict.fromkeys(problem.text for problem in found)
+    ]
 
 
-def problems_of(
+def item_problems(
     items: Sequence[CoalescedItem],
-    position: int,
     data: Mapping[str, pd.DataFrame],
+    outcomes: Sequence[Optional[Outcome]] = (),
     *,
     shown: Optional[int] = 5,
-) -> List[str]:
-    """What stops the coalesced item at *position* among *items* being applied.
+) -> List[List[feedback.Problem]]:
+    """What stops each of *items* from reaching the report, on its fields.
 
-    As :func:`problems` says it, without its name in front: for a page that
-    shows one coalesced item at a time.
+    One list per coalesced item, in :func:`problems`' order. A problem's
+    field is ``"form"``, ``"name"``, ``"item.k"`` (its item in row *k*, row
+    0 its first item), ``"value.k"`` (row *k*'s condition value) or
+    ``"overlap.k"`` (the rows row *k* overlaps, while it refuses overlaps);
+    a problem with an item is on every row holding it. *outcomes* holds what
+    :func:`preview` gave for each, by position, so the overlaps aren't built
+    again; without one, the item is built over *data*.
     """
-    issues, buildable = _checks(items, data)[position]
-    if buildable:
-        issues = [*issues, *_refused_overlaps(items[position], data, shown)]
-    return issues
-
-
-def name_problem(
-    items: Sequence[CoalescedItem], position: int, data: Mapping[str, pd.DataFrame]
-) -> str:
-    """What's wrong with the name of the coalesced item at *position*, or "".
-
-    As :func:`problems` says it (without the coalesced item's name in front),
-    for a page that marks the name as it is typed.
-    """
-    item = items[position]
-    if item.form not in data:
-        return ""
-    return _name_issue(item, set(data[item.form].columns), _names(items))
+    found = []
+    for position, (item, (issues, buildable)) in enumerate(
+        zip(items, _checks(items, data))
+    ):
+        if buildable and item.on_overlap == REFUSE:
+            outcome = outcomes[position] if position < len(outcomes) else None
+            if outcome is None:
+                outcome = build(item, data[item.form])
+            issues = [
+                *issues,
+                *(
+                    feedback.Problem(f"overlap.{row}", line)
+                    for row, line in _overlap_lines(item, outcome, shown)
+                ),
+            ]
+        found.append(issues)
+    return found
 
 
 def preview(
@@ -389,7 +393,7 @@ def preview(
     """What the coalesced item at *position* among *items* gives over *data*.
 
     ``None`` while it can't be built: no form, fewer than two items, an item
-    its form lacks or another coalesced item holds (see :func:`problems_of`).
+    its form lacks or another coalesced item holds (see :func:`item_problems`).
     """
     _, buildable = _checks(items, data)[position]
     if not buildable:
@@ -407,7 +411,7 @@ def _names(items: Sequence[CoalescedItem]) -> Counter:
 
 def _checks(
     items: Sequence[CoalescedItem], data: Mapping[str, pd.DataFrame]
-) -> List[Tuple[List[str], bool]]:
+) -> List[Tuple[List[feedback.Problem], bool]]:
     """Each coalesced item's problems but its overlaps, and if it can be built."""
     names = _names(items)
     common = set(common_items(data)) if len(data) > 1 else set()
@@ -426,48 +430,64 @@ def _issues(
     names: Mapping[Tuple[str, str], int],
     common: Collection[str],
     holders: Dict[Tuple[str, str], int],
-) -> Tuple[List[str], bool]:
+) -> Tuple[List[feedback.Problem], bool]:
+    Problem = feedback.Problem
     item = items[position]
     if not item.form:
-        return ["Pick its form."], False
+        return [Problem("form", "Pick its form.")], False
     if item.form not in data:
-        return [f"{item.form} isn't loaded."], False
+        return [Problem("form", f"{item.form} isn't loaded.")], False
     columns = set(data[item.form].columns)
     picked = [name for name in item.items if name.strip()]
     counts = Counter(picked)
+
+    def on_rows_of(name: str, text: str) -> List[feedback.Problem]:
+        """*text* on every row holding the item *name*."""
+        return [
+            Problem(f"item.{row}", text)
+            for row, held in enumerate(item.items)
+            if held == name
+        ]
+
     issues = []
     if len(item.items) < 2:
-        issues.append("Pick at least two items.")
-    if len(picked) < len(item.items):
-        issues.append("Pick an item in each row.")
+        issues.append(Problem("item.1", "Pick at least two items."))
     issues.extend(
-        f"{item.form} has no {name}." for name in counts if name not in columns
+        Problem(f"item.{row}", "Pick an item in each row.")
+        for row, name in enumerate(item.items)
+        if not name.strip()
     )
+    for name in counts:
+        if name not in columns:
+            issues.extend(on_rows_of(name, f"{item.form} has no {name}."))
+    for name, count in counts.items():
+        if count > 1:
+            issues.extend(on_rows_of(name, f"{name} is in it twice."))
     issues.extend(
-        f"{name} is in it twice." for name, count in counts.items() if count > 1
-    )
-    issues.extend(
-        f"Give the condition for {fill.item} a value."
-        for fill in item.fills
+        Problem(f"value.{row}", f"Give the condition for {fill.item} a value.")
+        for row, fill in enumerate(item.fills, start=1)
         if fill.operator and not str(fill.value).strip()
     )
     for picked_name in counts:
         holder = holders.setdefault((item.form, picked_name), position)
         if holder != position:
             other = items[holder].name.strip() or NEW_COALESCED_ITEM
-            issues.append(f"{picked_name} is already in {other}.")
+            issues.extend(
+                on_rows_of(picked_name, f"{picked_name} is already in {other}.")
+            )
     # Overlaps only count once it can be built as it stands.
     buildable = not issues
     name_issue = _name_issue(item, columns, names)
     if name_issue:
-        issues.append(name_issue)
+        issues.append(Problem("name", name_issue))
     name = item.name.strip()
-    issues.extend(
-        f"{picked_name} is a common item: name the coalesced item {picked_name}, "
-        f"or leave {picked_name} out."
-        for picked_name in counts
-        if picked_name in common and picked_name != name
-    )
+    for picked_name in counts:
+        if picked_name in common and picked_name != name:
+            text = (
+                f"{picked_name} is a common item: name the coalesced item "
+                f"{picked_name}, or leave {picked_name} out."
+            )
+            issues.extend([*on_rows_of(picked_name, text), Problem("name", text)])
     return issues, buildable
 
 
@@ -484,25 +504,17 @@ def _name_issue(
     return ""
 
 
-def _refused_overlaps(
-    item: CoalescedItem, data: Mapping[str, pd.DataFrame], shown: Optional[int]
-) -> List[str]:
-    """The overlaps that stop *item* from being applied, one line per item."""
-    if item.on_overlap != REFUSE:
-        return []
-    return _overlap_lines(item, build(item, data[item.form]), shown)
-
-
 def _overlap_lines(
     item: CoalescedItem, outcome: Outcome, shown: Optional[int]
-) -> List[str]:
-    """The overlaps of *outcome*, one line per later item.
+) -> List[Tuple[int, str]]:
+    """The overlaps of *outcome*, one line per later item, with its row.
 
-    Each names its first *shown* rows, or every row with ``None``.
+    The row is the later item's place in *item* (1 for its first fill).
+    Each line names its first *shown* rows, or every row with ``None``.
     """
     name = item.name.strip() or item.first
     lines = []
-    for fill in item.fills:
+    for row, fill in enumerate(item.fills, start=1):
         rows = [
             _row_label(overlap)
             for overlap in outcome.overlaps
@@ -513,7 +525,11 @@ def _overlap_lines(
         have = "1 row has" if len(rows) == 1 else f"{len(rows):,} rows have"
         listed = feedback.short_list(rows, len(rows) if shown is None else shown)
         lines.append(
-            f"{have} a value in {fill.item} where {name} already has one: {listed}."
+            (
+                row,
+                f"{have} a value in {fill.item} where {name} already has one: "
+                f"{listed}.",
+            )
         )
     return lines
 
@@ -644,10 +660,9 @@ __all__ = [
     "build",
     "build_all",
     "from_settings",
+    "item_problems",
     "label",
-    "name_problem",
     "preview",
     "problems",
-    "problems_of",
     "to_settings",
 ]

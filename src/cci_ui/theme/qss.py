@@ -162,6 +162,9 @@ QLineEdit[invalid="true"] {
     color: ${danger_text};
     border-color: ${danger};
 }
+QFrame[cciRole="card"][invalid="true"] {
+    border-color: ${danger};
+}
 QComboBox QAbstractItemView {
     background: ${bg_surface};
     border: 1px solid ${border_card};
@@ -394,13 +397,17 @@ QCalendarWidget QToolButton#qt_calendar_nextmonth {
 }
 """
 
-# Tone rules come after the type scale so ``tone`` can recolor any text style.
+# Tone rules come after the type scale so ``tone`` can recolor any text style;
+# an invalid label comes last so its danger color wins over both.
 _TONES = """
 QLabel[tone="secondary"] {
     color: ${text_secondary};
 }
 QLabel[tone="tertiary"] {
     color: ${text_tertiary};
+}
+QLabel[invalid="true"] {
+    color: ${danger_text};
 }
 """
 

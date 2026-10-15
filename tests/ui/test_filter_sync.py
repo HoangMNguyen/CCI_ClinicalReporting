@@ -1,9 +1,8 @@
-"""Tests for the filter table -> report synchronisation logic.
+"""The filter tables and the report's filters, kept in step.
 
-The searchable-combo UX rebuilds the report's filters from the table on every
-edit, skipping rows whose item field is still empty ("an unfilled filter row
-applies nothing"). Most of these exercise that pure rebuild logic with
-lightweight fakes; the last one uses the sample window.
+Every edit stores every row of the table in the report, in table order, a row
+still being filled in too (validation marks what it lacks). Most tests use the
+sample window.
 """
 
 import pandas as pd
@@ -16,69 +15,11 @@ from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.pages.filters import FiltersMixin
 
 
-class _Combo:
-    def __init__(self, text):
-        self._text = text
-
-    def currentText(self):
-        return self._text
-
-
-class _ValueItem:
-    def __init__(self, text):
-        self._text = text
-
-    def text(self):
-        return self._text
-
-
-class _StaticTable:
-    """Fake static filter table: (item combo, operator combo, value item) per row."""
-
-    def __init__(self, rows):
-        self._rows = rows  # list of (item, operator, value)
-
-    def rowCount(self):
-        return len(self._rows)
-
-    def cellWidget(self, row, col):
-        item, operator, _ = self._rows[row]
-        if col == 0:
-            return _Combo(item)
-        if col == 1:
-            return _Combo(operator)
-        return None
-
-    def item(self, row, col):
-        _, _, value = self._rows[row]
-        return _ValueItem(value) if col == 2 else None
-
-
-class _DynamicTable:
-    """Fake dynamic filter table: (item1 combo, operator combo, item2 combo) per row."""
-
-    def __init__(self, rows):
-        self._rows = rows  # list of (item1, operator, item2)
-
-    def rowCount(self):
-        return len(self._rows)
-
-    def cellWidget(self, row, col):
-        return _Combo(self._rows[row][col])
-
-
-class _UI:
-    pass
-
-
 class _FilterWidget(FiltersMixin, WidgetBaseMixin):
-    """Minimal stand-in exercising the mixin's sync logic without Qt widgets."""
+    """Minimal stand-in: the mixin's item list, without Qt widgets."""
 
-    def __init__(self, report, *, static_rows=None, dynamic_rows=None):
+    def __init__(self, report):
         self.report = report
-        self.ui = _UI()
-        self.ui.tableWidget_static_filter = _StaticTable(static_rows or [])
-        self.ui.tableWidget_dynamic_filter = _DynamicTable(dynamic_rows or [])
 
 
 def _report_with_items():
@@ -102,50 +43,59 @@ def test_selected_filter_items_are_sorted_common_and_form_items():
     assert widget._selected_filter_items() == ["DM.Age", "Subject", "VS.Pulse"]
 
 
-def test_synchronize_static_filters_keeps_valid_and_skips_empty_rows():
-    report = _report_with_items()
-    widget = _FilterWidget(
-        report,
-        static_rows=[
-            ("Subject", "=", "1"),  # valid -> kept
-            ("", "=", "x"),  # empty item -> skipped
-            ("DM.Age", ">", "18"),  # valid -> kept
-        ],
-    )
-    widget.synchronize_static_filters()
-    assert report.get_static_filter_items() == [
-        ("Subject", "=", "1"),
-        ("DM.Age", ">", "18"),
+def test_every_filter_row_is_stored_in_table_order(sample_window):
+    window = sample_window
+    table = window.ui.tableWidget_static_filter
+
+    window.static_filter_add()
+    added = list(window.report.get_static_filter_items())
+    box = table.cellWidget(1, 0)
+    box.setCurrentIndex(box.findText("Subject"))
+    table.item(1, 2).setText("01-100")
+
+    assert added == [("DM.Age", ">=", "18"), ("", "=", "")]
+    assert window.report.get_static_filter_items() == [
+        ("DM.Age", ">=", "18"),
+        ("Subject", "=", "01-100"),
     ]
 
 
-def test_synchronize_static_filters_all_empty_applies_nothing():
-    report = _report_with_items()
-    widget = _FilterWidget(report, static_rows=[("", "=", ""), ("", "<", "5")])
-    widget.synchronize_static_filters()
-    assert report.get_static_filter_items() == []
+def test_typed_text_that_isnt_an_item_stores_no_item(sample_window):
+    window = sample_window
+    window.static_filter_add()
+
+    window.ui.tableWidget_static_filter.cellWidget(1, 0).setEditText("DM.Ag")
+    window.synchronize_static_filters()
+
+    assert window.report.get_static_filter_items()[1] == ("", "=", "")
 
 
-def test_synchronize_static_filters_drops_invalid_item_text():
-    # A partially typed / unknown item is not a real selection and is not applied.
-    report = _report_with_items()
-    widget = _FilterWidget(report, static_rows=[("DM.Ag", "=", "30")])
-    widget.synchronize_static_filters()
-    assert report.get_static_filter_items() == []
+def test_removing_a_filter_row_keeps_the_rows_in_step(sample_window):
+    window = sample_window
+    table = window.ui.tableWidget_static_filter
+    window.static_filter_add()
+    table.selectRow(0)
+
+    window.static_filter_remove()
+
+    assert window.report.get_static_filter_items() == [("", "=", "")]
+    assert table.rowCount() == 1 and table.cellWidget(0, 0).currentText() == ""
 
 
-def test_synchronize_dynamic_filters_skips_incomplete_rows():
-    report = _report_with_items()
-    widget = _FilterWidget(
-        report,
-        dynamic_rows=[
-            ("DM.Age", ">", "VS.Pulse"),  # complete -> kept
-            ("DM.Age", ">", ""),  # missing item2 -> skipped
-            ("", "=", "VS.Pulse"),  # missing item1 -> skipped
-        ],
-    )
-    widget.synchronize_dynamic_filters()
-    assert report.get_dynamic_filter_items() == [("DM.Age", ">", "VS.Pulse")]
+def test_every_comparison_row_is_stored_in_table_order(sample_window):
+    window = sample_window
+    table = window.ui.tableWidget_dynamic_filter
+
+    window.dynamic_filter_add()
+    added = list(window.report.get_dynamic_filter_items())
+    left = table.cellWidget(1, 0)
+    left.setCurrentIndex(left.findText("DM.Age"))
+
+    assert added == [("AE.End Date", ">=", "AE.Start Date"), ("", "=", "")]
+    assert window.report.get_dynamic_filter_items() == [
+        ("AE.End Date", ">=", "AE.Start Date"),
+        ("DM.Age", "=", ""),
+    ]
 
 
 def test_the_wheel_leaves_an_unfocused_filter_operator_alone(sample_window):

@@ -32,9 +32,18 @@ from clinical_reporting.feedback import one_line
 from clinical_reporting.ui.main_ui import APP_NAME
 
 #: Message kinds that also show as a toast when raised off the open page.
-#: (Warnings and progress stay in the status bar: the Joins page, say,
-#: raises "Cannot run" hints on the Preview page at every change.)
+#: (Warnings and progress stay in the status bar.)
 TOAST_KINDS = frozenset({"success", "error"})
+#: What follows each refresh, in this order (the pages that have them): the
+#: marks on the fields that fix a problem, then the buttons they hold back.
+MARKS = (
+    "_mark_join_problems",
+    "_mark_filter_problems",
+    "_mark_rename_problems",
+    "_mark_form_item_problems",
+    "_refresh_run_availability",
+    "_refresh_save_availability",
+)
 
 
 class NavigationMixin:
@@ -62,19 +71,30 @@ class NavigationMixin:
         self._refresh_shell()
 
     def on_page_changed(self, key: str) -> None:
-        """Trigger updates when specific pages become active."""
+        """Apply the Data step just left, then build the preview on its page."""
+        self.apply_data_steps()
         if key == steps.PREVIEW and self.report.data:
             self.preview_report()
 
     def _refresh_shell(self) -> None:
-        """Bring the badges, header, title, and status summary up to date."""
+        """Bring the badges, header, title, status summary and marks up to date.
+
+        The report is validated once here; the pages mark the fields that fix
+        each problem from the issues kept (``_issues``, ``_issue_fields``),
+        and Export to Excel and Save setting follow.
+        """
         shell = self.ui.shell
         source, exported = self._input_file_path, self._last_export_path
+        issues = self.report.validate()
+        self._issues = issues
+        self._issue_fields = steps.issues_by_field(issues)
         statuses = steps.step_statuses(
             self.report,
             source=os.path.basename(source) if source else None,
             additional_forms=len(self._additional_form_keys),
             exported_to=os.path.basename(exported) if exported else None,
+            issues=issues,
+            page_problems=self._page_problems,
         )
         for key, status in statuses.items():
             shell.sidebar.set_status(
@@ -90,6 +110,10 @@ class NavigationMixin:
         shell.set_context(study or ("" if loaded else steps.NO_DATA))
         self.setWindowTitle(f"{study} — {APP_NAME}" if study else APP_NAME)
         shell.status_bar.set_summary(steps.report_summary(self.report, study))
+        for name in MARKS:
+            mark = getattr(self, name, None)
+            if callable(mark):
+                mark()
 
     def _repeat_message(self) -> None:
         """Show the new message of the banner that sent it (maybe as a toast)."""

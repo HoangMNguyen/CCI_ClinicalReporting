@@ -343,6 +343,11 @@ class Layout:
     panel_w: int = 320
     panel_w_min: int = 280
     panel_w_max: int = 400
+    #: The help panel beside the pages: its first width, and the range the
+    #: user can drag it in.
+    help_w: int = 360
+    help_w_min: int = 280
+    help_w_max: int = 640
     #: Below this content width the Preview panel moves under the grid.
     panel_below_content: int = 900
     #: Total width of the dead zone around each breakpoint, so layouts don't flicker.

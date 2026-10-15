@@ -20,8 +20,8 @@ from cci_ui.widgets.buttons import button_group, icon_button, make_button
 from cci_ui.widgets.labels import text_label
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.search import SearchField
-from cci_ui.widgets.tables import ColumnSpec, table_card
-from clinical_reporting import steps
+from cci_ui.widgets.tables import ColumnSpec, mark_cell, table_card
+from clinical_reporting import report_columns, steps
 from clinical_reporting.ui.table_actions import (
     add_copy_original_name_action,
     copy_original_names_to_new_names,
@@ -192,6 +192,27 @@ class OrderRenameMixin:
             # the rows whose selection was just restored above.
             self._refresh_order_search_status(search_edit.text())
         self._update_order_button_states()
+        self._report_changed()  # Draws the marks.
+
+    def _mark_rename_problems(self) -> None:
+        """Mark each Output name the report can't use, with the reason.
+
+        From the window's last validation (``_issue_fields``): a rename's own
+        problems, and a name two columns would share.
+        """
+        table = self.ui.tableWidget_rename
+        fields = getattr(self, "_issue_fields", {})
+        names = report_columns.output_names(self.report)
+        for row in range(table.rowCount()):
+            original, new_name = table.item(row, 0), table.item(row, 1)
+            if original is None or new_name is None:
+                continue
+            identifier = original.data(Qt.UserRole) or original.text()
+            issues = [
+                *fields.get(f"rename_dict.{identifier}", ()),
+                *fields.get(f"output_name.{names.get(identifier, identifier)}", ()),
+            ]
+            mark_cell(new_name, "\n".join(issue.message for issue in issues))
 
     def search_order_items(self, search_text: str) -> None:
         """Select the first original-name match and display the match count."""

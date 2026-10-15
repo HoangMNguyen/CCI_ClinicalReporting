@@ -19,7 +19,11 @@ from clinical_reporting.models import (
     Operator,
     is_positive_integer,
 )
-from clinical_reporting.report_columns import forms_in_join_order, output_identifiers
+from clinical_reporting.report_columns import (
+    forms_in_join_order,
+    output_identifiers,
+    output_names,
+)
 
 
 @dataclass(frozen=True)
@@ -307,33 +311,53 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 field,
             )
             continue
-        item, operator, _ = raw_filter
-        if operator not in Operator.STATIC:
+        item, operator, value = raw_filter
+        valid_operator = operator in Operator.STATIC
+        if not valid_operator:
             _add_issue(
                 issues,
                 "invalid_static_operator",
                 f"Static filter {index + 1} has an invalid operator: {operator!r}.",
-                field,
+                f"{field}.1",
             )
-        exists, ambiguous = _validate_filter_identifier(
-            item,
-            common_items=selected_common_set,
-            qualified_items=qualified_items,
-            item_forms=item_forms,
-        )
-        if ambiguous:
+        if not str(item).strip():
             _add_issue(
                 issues,
-                "ambiguous_filter_item",
-                f"Static filter item '{item}' is ambiguous; qualify it with a form name.",
-                field,
+                "invalid_static_filter",
+                f"Static filter {index + 1} needs an item.",
+                f"{field}.0",
             )
-        elif not exists:
+        else:
+            exists, ambiguous = _validate_filter_identifier(
+                item,
+                common_items=selected_common_set,
+                qualified_items=qualified_items,
+                item_forms=item_forms,
+            )
+            if ambiguous:
+                _add_issue(
+                    issues,
+                    "ambiguous_filter_item",
+                    f"Static filter item '{item}' is ambiguous; qualify it with a form name.",
+                    f"{field}.0",
+                )
+            elif not exists:
+                _add_issue(
+                    issues,
+                    "missing_filter_item",
+                    f"Static filter item '{item}' is not selected in the report.",
+                    f"{field}.0",
+                )
+        if (
+            valid_operator
+            and operator not in Operator.NULLARY
+            and not str(value).strip()
+        ):
             _add_issue(
                 issues,
-                "missing_filter_item",
-                f"Static filter item '{item}' is not selected in the report.",
-                field,
+                "invalid_static_filter",
+                f"Static filter {index + 1} needs a value.",
+                f"{field}.2",
             )
 
     for index, raw_filter in enumerate(
@@ -354,9 +378,20 @@ def validate_report(report) -> list[ReportValidationIssue]:
                 issues,
                 "invalid_dynamic_operator",
                 f"Dynamic filter {index + 1} has an invalid operator: {operator!r}.",
-                field,
+                f"{field}.1",
             )
-        for operand_name, operand in (("left", item1), ("right", item2)):
+        for position, operand_name, operand in (
+            (0, "left", item1),
+            (2, "right", item2),
+        ):
+            if not str(operand).strip():
+                _add_issue(
+                    issues,
+                    "invalid_dynamic_filter",
+                    f"Dynamic filter {index + 1} needs its {operand_name} item.",
+                    f"{field}.{position}",
+                )
+                continue
             exists, ambiguous = _validate_filter_identifier(
                 operand,
                 common_items=selected_common_set,
@@ -368,28 +403,22 @@ def validate_report(report) -> list[ReportValidationIssue]:
                     issues,
                     "ambiguous_filter_item",
                     f"Dynamic filter {operand_name} item '{operand}' is ambiguous; qualify it with a form name.",
-                    field,
+                    f"{field}.{position}",
                 )
             elif not exists:
                 _add_issue(
                     issues,
                     "missing_filter_item",
                     f"Dynamic filter {operand_name} item '{operand}' is not selected in the report.",
-                    field,
+                    f"{field}.{position}",
                 )
 
     rename_dict = getattr(report, "rename_dict", None) or {}
-    renamed_output: list[str] = []
-    for identifier in logical_output:
-        configured_name = rename_dict.get(identifier, identifier)
-        # Invalid targets are reported below. Keep the original identifier in
-        # duplicate detection so malformed, unhashable values cannot make the
-        # validator itself fail.
-        renamed_output.append(
-            configured_name
-            if isinstance(configured_name, str) and configured_name.strip()
-            else identifier
-        )
+    # Invalid targets are reported below; duplicate detection counts them
+    # under their identifiers (report_columns.output_names).
+    names = output_names(report)
+    renamed_output = [names[identifier] for identifier in logical_output]
+
     for original_name, new_name in rename_dict.items():
         if original_name not in active_identifiers:
             _add_issue(
@@ -414,7 +443,7 @@ def validate_report(report) -> list[ReportValidationIssue]:
             issues,
             "duplicate_output_name",
             f"Output column name '{output_name}' would be duplicated.",
-            "rename_dict",
+            f"output_name.{output_name}",
         )
 
     for identifier in getattr(report, "selected_items_order_list", None) or []:
@@ -440,41 +469,12 @@ def raise_for_report(report) -> None:
 # ---------------------------------------------------------------------------
 # Messages for the user (any front end)
 
-#: How the message listing what stops a report from running starts; the
-#: desktop app recognizes its own hint by it.
+#: How a message saying what stops a report from running starts (here and
+#: in :func:`clinical_reporting.steps.cannot_run_message`).
 CANNOT_RUN_PREFIX = "Cannot run:"
-#: Problems that disable the export as soon as they appear (the join problems,
-#: a stacked form named like a loaded form, and data that makes a stacked form
-#: ambiguous or a coalesced item unusable); the others are reported when the
-#: user previews or exports.
-EXPORT_BLOCKING_ISSUE_CODES = frozenset(
-    {
-        "duplicate_join_order",
-        "missing_join_items",
-        "stacked_form_name_clash",
-        "stacked_form_conflict",
-        "coalesced_item_conflict",
-    }
-)
 
 
 def cannot_run_message(issues: Iterable[ReportValidationIssue]) -> feedback.Message:
     """*issues* as the "Cannot run:" bullet list, as a warning."""
 
     return feedback.warning(f"{CANNOT_RUN_PREFIX}\n{format_issue_messages(issues)}")
-
-
-def report_issues_message(
-    report, issue_codes: Optional[Iterable[str]] = None
-) -> Optional[feedback.Message]:
-    """What stops *report* from running, or ``None`` when nothing does.
-
-    *issue_codes* limits the check to those codes (the export button reacts
-    only to :data:`EXPORT_BLOCKING_ISSUE_CODES`); ``None`` checks everything.
-    """
-
-    issues = report.validate()
-    if issue_codes is not None:
-        codes = set(issue_codes)
-        issues = [issue for issue in issues if issue.code in codes]
-    return cannot_run_message(issues) if issues else None

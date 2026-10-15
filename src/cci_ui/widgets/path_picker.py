@@ -17,6 +17,7 @@ from PySide6.QtCore import QSettings, Signal
 from PySide6.QtWidgets import QFileDialog, QHBoxLayout, QWidget
 
 from cci_ui.icons import IconName
+from cci_ui.theme.manager import set_invalid
 from cci_ui.widgets.buttons import icon_button, make_button
 from cci_ui.widgets.labels import ElidedLabel
 
@@ -61,6 +62,7 @@ class PathPicker(QWidget):
         self._settings = settings
         self._removable = removable
         self._paths: List[str] = []
+        self._problem = ""
 
         self.path_label = ElidedLabel(placeholder=placeholder, tone="secondary")
         self.button = make_button(button_text, icon_name=IconName.OPEN_FOLDER)
@@ -98,13 +100,25 @@ class PathPicker(QWidget):
         self._paths = paths
         several = len(self._paths) > 1
         self.path_label.setText(f"{len(self._paths)} files" if several else self.path())
-        # The label manages its own tooltip for one long path.
-        self.setToolTip("\n".join(self._paths) if several else "")
+        self.setToolTip(self._problem or self._paths_tip())
         self.clear_button.setVisible(self._removable and bool(self._paths))
         self.pathChanged.emit(self.path())
 
     def clear(self) -> None:
         self.set_paths([])
+
+    def set_problem(self, problem: str) -> None:
+        """Mark the path red with *problem* as the tooltip; "" clears the mark.
+
+        The problem stays through path changes until it is cleared.
+        """
+        self._problem = problem
+        set_invalid(self.path_label, bool(problem))
+        self.setToolTip(problem or self._paths_tip())
+
+    def _paths_tip(self) -> str:
+        # The label manages its own tooltip for one long path.
+        return "\n".join(self._paths) if len(self._paths) > 1 else ""
 
     def restore_last_folder(self) -> None:
         """In ``dir`` mode, show the folder chosen last time, if it still exists.

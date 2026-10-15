@@ -19,6 +19,7 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from cci_ui.theme.tokens import LAYOUT
 from cci_ui.widgets.shell import SIDEBAR_SHORTCUT
 from clinical_reporting import feedback
 from clinical_reporting.ui.pages import preview_export, source_data
@@ -76,6 +77,8 @@ def window(qapp, monkeypatch, tmp_path):
     # Recorded rather than asserted here: a failure inside a Qt callback
     # would only reach sys.excepthook.
     widget._set_label_text = record
+    # The size it opens at: the remove button must be inside it to be clicked.
+    widget.resize(*LAYOUT.first_launch)
     widget.show()
     widget.activateWindow()
     QApplication.processEvents()
@@ -107,7 +110,7 @@ def opened(window, reader, settle):
 def _select_dm_age(window):
     window.report.add_selected_form("DM")
     window.report.selected_forms["DM"].set_form_item_state("Age", selected=True)
-    window.update_all_ui()  # Fills in the join order, as picking in the lists does.
+    window.update_all_ui()  # Shows the selection, as picking in the lists does.
 
 
 def _edit_the_date(window):
@@ -288,9 +291,11 @@ def test_a_preview_that_fails_shows_the_error_with_its_traceback(
     opened.preview_report()
     settle(opened.task_runner)
 
-    shown = opened.shown_messages[-1]
-    assert shown == "Error generating preview: boom"
-    assert shown.kind == "error" and "RuntimeError: boom" in shown.details
+    # The banner under Export (others, like the one saying what stops the
+    # export, are refreshed after it).
+    shown = opened.label_run_confirmation
+    assert shown.text() == "Error generating preview: boom"
+    assert shown.kind() == "error" and "RuntimeError: boom" in shown.details()
 
 
 def test_a_date_picked_in_the_calendar_applies_the_cut_off(opened, reader, settle):
