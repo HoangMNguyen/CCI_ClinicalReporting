@@ -47,6 +47,12 @@ python -m clinical_reporting
   be lost. Changes made while the step isn't open (files that finish loading
   after you left, names a picked setting fills in, a new Corelisting ZIP)
   reach the report right away.
+- Removing an input takes along what it leaves with nothing to be made from:
+  removing the Corelisting ZIP drops the stacked forms all of whose members
+  are its forms, and the coalesced items of its forms or of those stacked
+  forms (`session.without_removed_forms`). Once no input is left at all (no
+  ZIP and no additional files), every stacked form and coalesced item goes
+  at once, from the pages and the report.
 - Save/load settings plus quick run helpers for generating reports.
 - Form names cannot include `.` because it is reserved for the form/item
   separator. Additional inputs default to the file name and must be renamed

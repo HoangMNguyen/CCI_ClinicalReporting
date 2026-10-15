@@ -257,30 +257,35 @@ class SourceDataMixin:
         """Remove the selected Corelisting ZIP and its forms from the report.
 
         Additional inputs are independent of the Corelisting ZIP, so forms
-        already applied from the Additional input page remain available.
+        already applied from the Additional input page remain available. The
+        stacked forms and coalesced items made only from the ZIP's forms go
+        with it; with no additional files either, every one goes.
         """
         if defer_if_busy(self, self.click_remove_input):
             return
         if not self._input_file_path:
             return
 
-        self.report = without_base_data(
-            self.report, getattr(self, "_additional_form_keys", set())
-        )
+        additional_keys = getattr(self, "_additional_form_keys", set())
+        removed = set(self.report.loaded_data) - set(additional_keys)
+        built_stacked = list(self.report.stacked_forms)
+        self.report = without_base_data(self.report, additional_keys)
         self.study_name = None
         self._input_file_path = None
         self._applied_cut_off_date = None
         self._failed_cut_off_reload = None
         self._forget_loaded_setting()
         self._forget_export_results()
-        # The fresh report has no stacked forms or coalesced items; they
-        # reach it again with the other Data steps.
+        # The fresh report has no stacked forms or coalesced items; those
+        # still made from an additional file reach it again with the other
+        # Data steps.
         forget_stacked_forms = getattr(self, "_forget_applied_stacked_forms", None)
         if forget_stacked_forms is not None:
             forget_stacked_forms()
         forget_coalesced = getattr(self, "_forget_applied_coalesced_items", None)
         if forget_coalesced is not None:
             forget_coalesced()
+        self._drop_data_steps_without_input(removed, built_stacked)
 
         self._show_input_file()
         self._show_data_read(None)

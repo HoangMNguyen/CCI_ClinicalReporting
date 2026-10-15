@@ -30,9 +30,10 @@ labels and hints are here.
   the report's stacked forms lack (a member or a matched item).
 
 Loading a saved setting (when it changes the report's stacked forms) replaces
-the drafts with the report's; a new ZIP, or removing it, keeps them, and they
-reach the new report right away
-(:meth:`StackedFormsMixin._forget_applied_stacked_forms`).
+the drafts with the report's; a new ZIP keeps them, and they reach the new
+report right away (:meth:`StackedFormsMixin._forget_applied_stacked_forms`).
+Removing an input drops those it leaves with nothing to stack: all of them
+once no input is left (see ``WidgetBaseMixin._drop_data_steps_without_input``).
 """
 
 from __future__ import annotations
@@ -1126,6 +1127,15 @@ class StackedFormsMixin:
         """
         self._stacked_seen = []
         self._set_label_text(self.ui.banner_stacked, "")
+
+    def _replace_stacked_drafts(self, drafts: Sequence[StackedForm]) -> None:
+        """Make *drafts* the page's stacked forms (an input was removed).
+
+        What last reached the report is out of date, so its message goes.
+        """
+        self._stacked_drafts = list(drafts)
+        self._set_label_text(self.ui.banner_stacked, "")
+        self._fill_stacked_forms_table(None)
 
     def _has_unapplied_stacked_forms(self) -> bool:
         """Whether the page's stacked forms differ from the report's."""

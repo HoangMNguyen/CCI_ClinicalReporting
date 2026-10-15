@@ -322,7 +322,12 @@ class AdditionalInputMixin:
         self.apply_data_steps()
 
     def click_remove_additional_files(self) -> None:
-        """Remove selected additional input files from the list."""
+        """Remove selected additional input files from the list.
+
+        Their forms leave the report when the user goes to another step. The
+        last input gone (no Corelisting ZIP either), the stacked forms and
+        coalesced items go at once: nothing is left to make them from.
+        """
         widget = getattr(self.ui, "listWidget_additional_file", None)
         if widget is None:
             return
@@ -351,6 +356,7 @@ class AdditionalInputMixin:
 
         self._refresh_additional_tables()
         self._update_additional_buttons_state()
+        self._drop_data_steps_without_input()
 
     # ------------------------------------------------------------------
     # UI helpers

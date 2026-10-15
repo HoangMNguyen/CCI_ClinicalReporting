@@ -132,7 +132,8 @@ file is added once you add that file on Additional input.
 - Choosing another ZIP starts a new report. Your additional files, stacked \
 forms and coalesced items carry over to it.
 - The **Remove file** button next to the ZIP takes it out of the report. \
-Forms from additional files stay.
+Forms from additional files stay. Stacked forms and coalesced items made only \
+from the ZIP's forms go with it; with no additional files either, they all go.
 """
 
 _ADDITIONAL = """\
@@ -174,7 +175,8 @@ another entry or None.
 - A saved column name the file doesn't have is ignored, and the form is still \
 added. Renaming the column by hand puts it back.
 - **Remove** takes the selected files out. Their forms leave the report when \
-you go to another step.
+you go to another step. With no ZIP loaded, removing the last file also \
+removes every stacked form and coalesced item at once.
 """
 
 _STACKED = """\

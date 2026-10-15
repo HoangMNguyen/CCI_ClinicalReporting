@@ -25,9 +25,11 @@ forms and the stacked forms). Messages are worded in
   report's coalesced items lack a form or an item.
 
 Loading a saved setting (when it changes the report's coalesced items)
-replaces the drafts with the report's; a new Corelisting ZIP, or removing
-it, keeps them, and they reach the new report as soon as it is loaded
-(:meth:`CoalescedItemsMixin._forget_applied_coalesced_items`).
+replaces the drafts with the report's; a new Corelisting ZIP keeps them, and
+they reach the new report as soon as it is loaded
+(:meth:`CoalescedItemsMixin._forget_applied_coalesced_items`). Removing an
+input drops those it leaves with nothing to be made from: all of them once
+no input is left (see ``WidgetBaseMixin._drop_data_steps_without_input``).
 """
 
 from __future__ import annotations
@@ -476,6 +478,15 @@ class CoalescedItemsMixin:
         """
         self._coalesced_seen = []
         self._set_label_text(self.ui.banner_coalesced, "")
+
+    def _replace_coalesced_drafts(self, drafts: Sequence[CoalescedItem]) -> None:
+        """Make *drafts* the page's coalesced items (an input was removed).
+
+        What last reached the report is out of date, so its message goes.
+        """
+        self._coalesced_drafts = list(drafts)
+        self._set_label_text(self.ui.banner_coalesced, "")
+        self._fill_coalesced_items_table(None)
 
     def _has_unapplied_coalesced_items(self) -> bool:
         """Whether the page's coalesced items differ from the report's."""

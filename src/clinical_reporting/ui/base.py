@@ -12,16 +12,17 @@ quiet signal disconnects.
 from __future__ import annotations
 
 import warnings
-from typing import Dict, List, Optional
+from typing import Collection, Dict, List, Optional, Sequence
 
 from cci_ui.tasks import defer_if_busy
-from clinical_reporting import steps
+from clinical_reporting import session, steps
 from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import (
     LocalFolderStore,
     SettingsStore,
     default_settings_folder,
 )
+from clinical_reporting.stacking import StackedForm
 from clinical_reporting.ui.dialogs import settings_folder, show_settings_folder
 from clinical_reporting.validation import ReportValidationIssue
 
@@ -189,6 +190,52 @@ class WidgetBaseMixin:
             if apply is not None and not self._is_open(key):
                 apply()
         self._report_changed()
+
+    def _drop_data_steps_without_input(
+        self,
+        removed: Collection[str] = (),
+        built_stacked: Sequence[StackedForm] = (),
+    ) -> None:
+        """Drop the stacked forms and coalesced items an input removal left bare.
+
+        Called right after an input is removed. With no input left at all (no
+        Corelisting ZIP, no additional files listed) every one goes, from the
+        pages and from the report, at once. Otherwise those made only from
+        the *removed* forms go from the pages: a removed ZIP's forms, its
+        report having had the stacked forms *built_stacked* (see
+        :func:`clinical_reporting.session.without_removed_forms`).
+        """
+        stacked = list(getattr(self, "_stacked_drafts", ()))
+        coalesced = list(getattr(self, "_coalesced_drafts", ()))
+        no_input = not getattr(self, "_input_file_path", None) and not getattr(
+            self, "additional_inputs", None
+        )
+        if no_input:
+            kept_stacked, kept_coalesced = [], []
+            # The report still has the files' forms until the user leaves
+            # Additional input: what was made from them goes now.
+            report_changed = bool(
+                self.report.stacked_forms or self.report.coalesced_items
+            )
+            if self.report.coalesced_items:
+                session.apply_coalesced_items(self.report, [])
+            if self.report.stacked_forms:
+                session.apply_stacked_forms(self.report, [])
+        elif removed:
+            kept_stacked, kept_coalesced = session.without_removed_forms(
+                removed, stacked, coalesced, built_stacked
+            )
+            report_changed = False
+        else:
+            return
+        replace_stacked = getattr(self, "_replace_stacked_drafts", None)
+        if replace_stacked is not None and kept_stacked != stacked:
+            replace_stacked(kept_stacked)
+        replace_coalesced = getattr(self, "_replace_coalesced_drafts", None)
+        if replace_coalesced is not None and kept_coalesced != coalesced:
+            replace_coalesced(kept_coalesced)
+        if report_changed:
+            self.update_all_ui()
 
     # ------------------------------------------------------------------
     # Saved-settings storage (shared by the Source data and Preview & export pages)
