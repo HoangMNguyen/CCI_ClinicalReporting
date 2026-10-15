@@ -12,6 +12,9 @@ pencil after the label (:class:`EditableColumnsHeader`). In such a column, a
 plain-text cell that can be typed in opens on one click and shows an I-beam
 pointer, and a cell that can't (no dropdown or field in it, not editable or
 not enabled) is grey.
+
+A cell holding a problem (:func:`mark_cell`) is drawn with a red border and
+red text by a :class:`ProblemCellDelegate`, and says why in its tooltip.
 """
 
 from __future__ import annotations
@@ -32,15 +35,17 @@ from PySide6.QtCore import (
     Qt,
     QTimer,
 )
-from PySide6.QtGui import QFont, QFontMetrics, QPainter
+from PySide6.QtGui import QFont, QFontMetrics, QPainter, QPalette, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFrame,
     QHBoxLayout,
     QHeaderView,
     QStyle,
+    QStyledItemDelegate,
     QStyleOptionHeaderV2,
     QTableView,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -85,6 +90,8 @@ _EDIT_MARK_GAP = 4
 _TYPING = Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsEnabled
 #: Ctrl- and Shift-clicks select rows; they never open a cell.
 _SELECTING = Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+#: The item data role holding a cell's problem (see :func:`mark_cell`).
+PROBLEM_ROLE = Qt.ItemDataRole.UserRole + 100
 
 
 @dataclass(frozen=True)
@@ -313,6 +320,54 @@ class _TypingCells(QObject):
         painter.end()
 
 
+class ProblemCellDelegate(QStyledItemDelegate):
+    """Draws a cell holding a problem (:data:`PROBLEM_ROLE`) in the danger colors.
+
+    Its text is drawn in the danger text color and a 1px danger border goes
+    inside the cell, over the selection and the grey of unused cells. The
+    colors are read at paint time, so they follow theme changes.
+    """
+
+    def initStyleOption(self, option, index) -> None:  # noqa: N802 (Qt override)
+        super().initStyleOption(option, index)
+        if index.data(PROBLEM_ROLE):
+            option.palette.setColor(
+                QPalette.ColorRole.Text, qcolor(current().colors.danger_text)
+            )
+
+    def paint(self, painter, option, index) -> None:
+        super().paint(painter, option, index)
+        if not index.data(PROBLEM_ROLE):
+            return
+        painter.save()
+        painter.setPen(QPen(qcolor(current().colors.danger), 1))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRect(option.rect.adjusted(1, 1, -2, -2))
+        painter.restore()
+
+
+def mark_cell(item: QTableWidgetItem, problem: str, tip: str = "") -> None:
+    """Mark *item* with *problem* ("" clears it); its tooltip says why, else *tip*.
+
+    Its table needs a :class:`ProblemCellDelegate` to draw the mark. Changes
+    nothing when the cell already shows them, and never emits ``itemChanged``
+    (edit handlers listen to it).
+    """
+    marked = problem or None
+    tooltip = problem or tip
+    if item.data(PROBLEM_ROLE) == marked and item.toolTip() == tooltip:
+        return
+    # The model still reports the change, so the view repaints the cell.
+    table = item.tableWidget()
+    blocked = table.blockSignals(True) if table is not None else False
+    try:
+        item.setData(PROBLEM_ROLE, marked)
+        item.setToolTip(tooltip)
+    finally:
+        if table is not None:
+            table.blockSignals(blocked)
+
+
 def configure_columns(view: QTableView, specs: Sequence[ColumnSpec]) -> None:
     """Apply one :class:`ColumnSpec` per column, in order.
 
@@ -465,11 +520,14 @@ class TableToolbar(QWidget):
 
 
 __all__ = [
+    "PROBLEM_ROLE",
     "ColumnSpec",
     "EditableColumnsHeader",
+    "ProblemCellDelegate",
     "TableToolbar",
     "configure_columns",
     "is_editable_column",
+    "mark_cell",
     "style_table",
     "table_card",
 ]

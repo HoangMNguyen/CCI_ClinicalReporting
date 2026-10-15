@@ -11,7 +11,9 @@ It holds:
   applying additional inputs, stacked forms or coalesced items. Rebuilding
   creates fresh ``CLForm`` objects, so the user's selections are captured
   first and the ones that still exist are re-applied afterwards.
-- Starting a report from Corelisting data and swapping that data out.
+- Starting a report from Corelisting data and swapping that data out; once
+  it is removed, the stacked forms and coalesced items made only from its
+  forms go with it (:func:`without_removed_forms`).
 - Applying a saved setting (:func:`apply_saved_setting`): its selections are
   lined up with the report's data, and its joins, renames, filters and
   column order are tidied to match.
@@ -30,7 +32,17 @@ that change a report run on the main thread.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Collection, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Collection,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 import pandas as pd
 
@@ -115,7 +127,8 @@ def new_report(study_name: Optional[str], data: Dict[str, pd.DataFrame]) -> CLRe
 def _additional_forms(
     report: CLReport, additional_keys: Collection[str]
 ) -> Dict[str, pd.DataFrame]:
-    data = getattr(report, "data", {}) or {}
+    """*report*'s additional-input forms as loaded (before any coalescing)."""
+    data = getattr(report, "loaded_data", {}) or {}
     return {key: value for key, value in data.items() if key in additional_keys}
 
 
@@ -241,6 +254,36 @@ def without_base_data(report: CLReport, additional_keys: Collection[str]) -> CLR
     return fresh
 
 
+def without_removed_forms(
+    removed: Collection[str],
+    stacked_forms: Sequence[StackedForm],
+    coalesced_items: Sequence[CoalescedItem],
+    built_stacked: Iterable[StackedForm] = (),
+) -> Tuple[List[StackedForm], List[CoalescedItem]]:
+    """*stacked_forms* and *coalesced_items* less those made only from *removed*.
+
+    Once the *removed* forms go (a Corelisting ZIP's, when it is removed), a
+    stacked form all of whose members were among them has nothing left to
+    stack, and a coalesced item of a removed form, or of such a stacked form
+    (one of *stacked_forms* or of *built_stacked*, the report's), nothing to
+    be made from: they go too. One with nothing picked yet stays.
+    """
+    removed = set(removed)
+
+    def made_only_from_removed(stacked: StackedForm) -> bool:
+        return bool(stacked.members) and set(stacked.members) <= removed
+
+    gone = removed | {
+        stacked.name.strip()
+        for stacked in (*stacked_forms, *built_stacked)
+        if made_only_from_removed(stacked)
+    }
+    return (
+        [stacked for stacked in stacked_forms if not made_only_from_removed(stacked)],
+        [item for item in coalesced_items if not item.form or item.form not in gone],
+    )
+
+
 def build_report(report: CLReport) -> Optional[pd.DataFrame]:
     """Run *report* and return its rows, or ``None`` if nothing matched.
 
@@ -278,4 +321,5 @@ __all__ = [
     "replace_base_data",
     "restore_selection",
     "without_base_data",
+    "without_removed_forms",
 ]

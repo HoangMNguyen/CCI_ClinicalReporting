@@ -9,12 +9,9 @@ import sys
 import pytest
 import shiboken6
 from PySide6.QtCore import SIGNAL
-from PySide6.QtGui import QPalette
-from PySide6.QtWidgets import QApplication
 
-from cci_ui.theme.manager import ThemeMode, current, theme_events
+from cci_ui.theme.manager import ThemeMode, theme_events
 from clinical_reporting import feedback
-from clinical_reporting.models import JoinHow
 from clinical_reporting.ui.preview import PAGE_KEYS
 from clinical_reporting.ui.window import Widget
 
@@ -84,21 +81,3 @@ def test_the_sample_report_exports(sample_window, settle, tmp_path):
 
     assert [path.suffix for path in tmp_path.iterdir()] == [".xlsx"]
     assert sample_window.ui.label_run_confirmation.kind() == "success"
-
-
-def test_duplicate_join_orders_draw_in_the_danger_color(sample_window):
-    sample_window.report.update_join_items("VS", ["Subject"], 2, JoinHow.LEFT)
-    sample_window.update_all_ui()  # AE and VS now share join order 2.
-    sample_window.ui.shell.set_current("joins")
-    QApplication.processEvents()
-    table = sample_window.ui.tableWidget_join
-    rows = {table.item(row, 0).text(): row for row in range(table.rowCount())}
-
-    def order_color(form):
-        combo = table.cellWidget(rows[form], 4)
-        combo.ensurePolished()
-        return combo.palette().color(QPalette.ColorRole.ButtonText).name().upper()
-
-    danger = current().colors.danger_text.hex_rgb
-    assert order_color("AE") == danger and order_color("VS") == danger
-    assert order_color("DM") != danger

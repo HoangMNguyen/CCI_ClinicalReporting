@@ -25,6 +25,7 @@ from cci_ui.widgets import (  # noqa: F401  (imported for their stylesheet rules
     checklist,
     display,
     dual_list,
+    help_panel,
     labels,
     page,
     path_picker,

@@ -13,6 +13,7 @@ from clinical_reporting.coalescing import (
     Fill,
     Overlap,
 )
+from clinical_reporting.feedback import Problem
 
 
 def _dm():
@@ -236,19 +237,81 @@ def test_a_name_is_given_and_free_in_its_form():
     ]
 
 
-def test_one_coalesced_items_problems_read_as_apply_says_them():
-    items = [
-        _race(name="Age"),
-        CoalescedItem("DM", "Ethnicity", "Ethnicity", (Fill("Race Other Specify"),)),
+def test_a_new_coalesced_items_problems_are_on_its_empty_items_and_name():
+    new = CoalescedItem("DM", "", "", (Fill(""),))
+
+    assert coalescing.item_problems([new], _forms()) == [
+        [
+            Problem("item.0", "Pick an item in each row."),
+            Problem("item.1", "Pick an item in each row."),
+            Problem("name", "Give it a name."),
+        ]
     ]
 
-    assert coalescing.problems_of(items, 1, _forms()) == [
-        "Race Other Specify is already in Age."
+
+def test_a_problem_with_an_item_is_on_every_row_holding_it():
+    forms = {
+        "DM": pd.DataFrame({"Subject": ["101-001"], "Visit": ["V1"], "V2": ["U1"]}),
+        "AE": pd.DataFrame({"Subject": ["101-001"], "Visit": ["V2"]}),
+    }
+    items = [
+        CoalescedItem("DM", "Any Visit", "Visit", (Fill("V2"), Fill("V2"))),
+        CoalescedItem("DM", "Other", "Site", (Fill("V2"),)),
     ]
-    assert coalescing.name_problem(items, 0, _forms()) == (
-        "DM already has an item called Age."
+    common = (
+        "Visit is a common item: name the coalesced item Visit, or leave Visit out."
     )
-    assert coalescing.name_problem(items, 1, _forms()) == ""
+
+    assert coalescing.item_problems(items, forms) == [
+        [
+            Problem("item.1", "V2 is in it twice."),
+            Problem("item.2", "V2 is in it twice."),
+            Problem("item.0", common),
+            Problem("name", common),
+        ],
+        [
+            Problem("item.0", "DM has no Site."),
+            Problem("item.1", "V2 is already in Any Visit."),
+        ],
+    ]
+
+
+def test_a_condition_without_a_value_is_on_its_value():
+    item = _race(Fill("Race Other Specify", "=", "  "))
+
+    assert coalescing.item_problems([item], _forms()) == [
+        [Problem("value.1", "Give the condition for Race Other Specify a value.")]
+    ]
+
+
+def test_a_refused_overlap_is_on_the_rows_of_the_later_item():
+    forms = {"DM": _three_items()}
+
+    assert coalescing.item_problems([RACE_THREE], forms) == [
+        [
+            Problem(
+                "overlap.1",
+                "2 rows have a value in Race Other Specify where Race already has "
+                "one: 101-005 (White / Caucasian), 101-006 (White / Other).",
+            ),
+            Problem(
+                "overlap.2",
+                "1 row has a value in Race Free Text where Race already has one: "
+                "101-007 (Hispanic / Mixed).",
+            ),
+        ]
+    ]
+    kept = replace(RACE_THREE, on_overlap=KEEP_EARLIER)
+    assert coalescing.item_problems([kept], forms) == [[]]
+
+
+def test_overlaps_come_from_the_outcomes_given():
+    # Its first four rows don't overlap.
+    outcome = coalescing.build(RACE_THREE, _three_items()[:4])
+
+    found = coalescing.item_problems([RACE_THREE], {"DM": _three_items()}, [outcome])
+
+    assert found == [[]]
 
 
 def test_a_preview_is_what_a_coalesced_item_gives_once_it_can_be_built():

@@ -23,7 +23,7 @@ from cci_ui.theme.manager import ThemeManager
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.shell import AppShell
 from cci_ui.widgets.views import EmptyState
-from clinical_reporting import steps
+from clinical_reporting import help_text, steps
 
 from .pages.additional_input import AdditionalInputPage
 from .pages.coalesced_items import CoalescedItemsPage
@@ -68,8 +68,13 @@ class ClinicalReportingUi:
         #: The pages in step order.
         self.pages: List[Page] = [page_class() for page_class in PAGE_CLASSES]
         # The collapsed sidebar shows each step's badge; Compact starts collapsed.
+        # The "?" button shows the open step's help beside it.
         self.shell = AppShell(
-            theme, title=APP_NAME, strip_badges=True, collapse_in_compact=True
+            theme,
+            title=APP_NAME,
+            strip_badges=True,
+            collapse_in_compact=True,
+            help_text=help_text.help_markdown,
         )
         for page in self.pages:
             self.shell.add_page(

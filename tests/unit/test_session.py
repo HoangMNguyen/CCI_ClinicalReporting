@@ -3,8 +3,10 @@
 import pandas as pd
 
 from clinical_reporting import session
+from clinical_reporting.coalescing import CoalescedItem, Fill
 from clinical_reporting.report import CLReport
 from clinical_reporting.session import capture_selection, restore_selection
+from clinical_reporting.stacking import StackedForm
 
 
 def _forms():
@@ -48,6 +50,28 @@ def test_replacing_base_data_keeps_additional_forms_and_selections():
     assert report.selected_forms["DM"].get_selected_form_items() == ["Age"]
 
 
+def _labs_with_hb_text():
+    """Labs, whose Hb Text says what Hb doesn't, coalesced into Hb."""
+    report = CLReport()
+    labs = pd.DataFrame(
+        {"Subject": ["001", "002"], "Hb": ["12", None], "Hb Text": [None, "<5"]}
+    )
+    report.set_data({**_forms(), "Labs": labs})
+    report.set_coalesced_items([CoalescedItem("Labs", "Hb", "Hb", (Fill("Hb Text"),))])
+    return report
+
+
+def test_the_additional_forms_go_on_as_loaded_not_as_coalesced():
+    fresh = session.without_base_data(_labs_with_hb_text(), additional_keys={"Labs"})
+    report = _labs_with_hb_text()
+
+    session.replace_base_data(report, _forms(), additional_keys={"Labs"})
+
+    # Its own Hb Text is still there, for the coalesced item to be made again.
+    assert list(fresh.data["Labs"].columns) == ["Subject", "Hb", "Hb Text"]
+    assert list(report.data["Labs"]["Hb"]) == ["12", "<5"]
+
+
 def test_without_base_data_keeps_only_additional_forms():
     report = CLReport()
     report.set_data(
@@ -63,6 +87,33 @@ def test_without_base_data_keeps_only_additional_forms():
     assert set(fresh.data) == {"Labs"} and set(fresh.selected_forms) == {"Labs"}
     assert fresh.static_filter_items == []
     assert session.without_base_data(report, additional_keys=set()).data == {}
+
+
+def _item(form):
+    return CoalescedItem(form, "Value", "Value", (Fill("Value Other"),))
+
+
+def test_what_is_made_only_from_removed_forms_goes_with_them():
+    disp = StackedForm("DISP", ("EOT", "DS"))
+    mixed = StackedForm("MIX", ("DS", "LAB"))
+    new = StackedForm("", ())  # Nothing picked yet.
+    # The report's stacked form, renamed DISP on the page but not yet applied.
+    applied = StackedForm("OLD", ("EOT", "DS"))
+    items = [
+        _item("DM"),
+        _item("DISP"),
+        _item("OLD"),
+        _item("MIX"),
+        _item("LAB"),
+        CoalescedItem("", "", ""),
+    ]
+
+    stacked, coalesced = session.without_removed_forms(
+        {"DM", "EOT", "DS"}, [disp, mixed, new], items, built_stacked=[applied]
+    )
+
+    assert stacked == [mixed, new]
+    assert coalesced == [_item("MIX"), _item("LAB"), CoalescedItem("", "", "")]
 
 
 def test_build_report_returns_none_when_nothing_matches():

@@ -69,6 +69,9 @@ class _AdditionalInputWidget(AdditionalInputMixin):
     def _update_additional_buttons_state(self):
         pass
 
+    def apply_data_steps(self):
+        pass  # The window's: brings the Data steps to the report.
+
 
 def _assert_dialog_remembers_selection(monkeypatch, module, widget, click_method):
     initial_directories = []

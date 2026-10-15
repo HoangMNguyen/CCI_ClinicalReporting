@@ -2,13 +2,18 @@
 
 :class:`AdditionalInputMixin` wires the page's buttons to load CSV/Excel
 files, manage the selected list, and rename forms/columns. Reading the files
-runs in the background (:func:`cci_ui.tasks.run_task`). The banner on the
-page says what applying did (the wording is in
-:mod:`clinical_reporting.steps`), which files couldn't be read, and which
-form names clash (with the loaded forms, each other, or a stacked form);
-after a new Corelisting ZIP it asks to apply the files again. Applying
-starts from the report's forms as loaded (``CLReport.loaded_data``), so the
-report rebuilds its stacked forms from the new set.
+runs in the background (:func:`cci_ui.tasks.run_task`). The files, with
+their names, reach the report when the user goes to another step
+(:meth:`~AdditionalInputMixin._apply_additional_step`, called by the window's
+``apply_data_steps``); files that finish loading after the user left, and
+names a picked setting fills in, reach it right away. A New name the report
+can't use (none typed, a ".", a loaded or stacked form's name, another
+file's) is marked red with the reason, and holds the step: nothing from it
+reaches the report until it is fixed. The banner on the page says what
+reaching the report did (the wording is in :mod:`clinical_reporting.steps`)
+and which files couldn't be read. Applying starts from the report's forms as
+loaded (``CLReport.loaded_data``), so the report rebuilds its stacked forms
+from the new set; a new Corelisting ZIP brings the files' forms along.
 
 A saved setting keeps the form and column names given to its additional
 files (:mod:`clinical_reporting.additional_names`). The Form names table's
@@ -23,7 +28,7 @@ pick, nor cleared by picking None. A second banner, "Still to add", lists
 the setting's files that no listed file stands for yet. A third lists the
 picked names a file can't use: column names saved for headers it doesn't
 have. Applying never stops for those; it adds the forms without them, and
-its result says so. Nothing is applied until "Apply to report".
+its result says so.
 """
 
 from __future__ import annotations
@@ -52,7 +57,7 @@ from cci_ui.widgets.labels import section_label
 from cci_ui.widgets.page import Page
 from cci_ui.widgets.path_picker import downloads_folder
 from cci_ui.widgets.status import StatusBanner
-from cci_ui.widgets.tables import ColumnSpec, table_card
+from cci_ui.widgets.tables import ColumnSpec, mark_cell, table_card
 from cci_ui.widgets.views import PlaceholderListWidget
 from clinical_reporting import feedback, steps
 from clinical_reporting.additional_names import (
@@ -104,7 +109,6 @@ class AdditionalInputPage(Page):
     EXPORTS = (
         "pushButton_additional_file_add",
         "pushButton_additional_file_remove",
-        "pushButton_apply_additional_files",
         "banner_additional",
         "banner_saved_names",
         "banner_ignored_names",
@@ -116,24 +120,20 @@ class AdditionalInputPage(Page):
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(
             steps.TITLES[self.KEY],
-            "Optional. Add CSV or Excel files, rename their forms and columns, "
-            "then apply them to the report.",
+            "Optional. Add CSV or Excel files and rename their forms and columns. "
+            "Your changes reach the report when you go to another step.",
             parent=parent,
         )
         self.pushButton_additional_file_add = make_button(
             "Add files…", icon_name=IconName.ADD
         )
         self.pushButton_additional_file_remove = make_button("Remove")
-        self.pushButton_apply_additional_files = make_button(
-            "Apply to report", variant="primary"
-        )
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
         toolbar.addWidget(self.pushButton_additional_file_add)
         toolbar.addWidget(self.pushButton_additional_file_remove)
         toolbar.addStretch(1)
-        toolbar.addWidget(self.pushButton_apply_additional_files)
-        # What applying did, or why it couldn't.
+        # What reaching the report did, or which files couldn't be read.
         self.banner_additional = StatusBanner()
         # The loaded setting's files not added yet: a standing list, so it
         # stays until they are added and isn't repeated in the status bar.
@@ -203,20 +203,20 @@ class AdditionalInputMixin:
         # The forms the loaded setting selects (None: count every saved form).
         self._saved_names_forms: Optional[Set[str]] = None
         self._saved_names_message: Optional[feedback.Message] = None
-        # The last "Apply to report" result, which a later add keeps even
-        # when it is a warning.
+        # The last result of reaching the report, which a later add keeps
+        # even when it is a warning.
         self._additional_applied_message: Optional[feedback.Message] = None
+        # The files and names as they last reached the report (see
+        # _additional_draft_key); None: not since the report was new.
+        self._additional_applied_key = None
 
         add_button = getattr(self.ui, "pushButton_additional_file_add", None)
         remove_button = getattr(self.ui, "pushButton_additional_file_remove", None)
-        apply_button = getattr(self.ui, "pushButton_apply_additional_files", None)
 
         if add_button is not None:
             add_button.clicked.connect(self.click_add_additional_files)
         if remove_button is not None:
             remove_button.clicked.connect(self.click_remove_additional_files)
-        if apply_button is not None:
-            apply_button.clicked.connect(self.click_apply_additional_forms)
 
         if hasattr(self.ui, "listWidget_additional_file"):
             self.ui.listWidget_additional_file.itemSelectionChanged.connect(
@@ -315,12 +315,19 @@ class AdditionalInputMixin:
             and banner.kind() == "warning"
             and banner.text() != getattr(self, "_additional_applied_message", None)
         ):
-            # What went wrong before (unreadable files, nothing to apply, a
-            # name clash) is old news; a result or the "apply again" hint isn't.
+            # What went wrong before (unreadable files) is old news; a result
+            # isn't.
             self._set_label_text(banner, "")
+        # The user may have gone to another step while the files were read.
+        self.apply_data_steps()
 
     def click_remove_additional_files(self) -> None:
-        """Remove selected additional input files from the list."""
+        """Remove selected additional input files from the list.
+
+        Their forms leave the report when the user goes to another step. The
+        last input gone (no Corelisting ZIP either), the stacked forms and
+        coalesced items go at once: nothing is left to make them from.
+        """
         widget = getattr(self.ui, "listWidget_additional_file", None)
         if widget is None:
             return
@@ -349,6 +356,7 @@ class AdditionalInputMixin:
 
         self._refresh_additional_tables()
         self._update_additional_buttons_state()
+        self._drop_data_steps_without_input()
 
     # ------------------------------------------------------------------
     # UI helpers
@@ -400,6 +408,7 @@ class AdditionalInputMixin:
             table.setItem(row, 1, item_updated)
         self._fill_saved_names_column(table, paths)
         table.blockSignals(False)
+        self.update_additional_input_ui()
 
     def _populate_column_name_table(self) -> None:
         """Populate tableWidget_update_column_name with column headers for selected files."""
@@ -483,6 +492,7 @@ class AdditionalInputMixin:
             self.additional_form_names.pop(file_path, None)
 
         self._populate_column_name_table()
+        self.update_additional_input_ui()
 
     def _on_form_table_selection_changed(self) -> None:
         """Refresh the column table when the selected form changes."""
@@ -519,10 +529,6 @@ class AdditionalInputMixin:
             getattr(self.ui, "tableWidget_update_column_name", None), persist
         )
         self._show_ignored_saved_names()
-
-    def click_apply_additional_forms(self) -> None:
-        """Apply the additional inputs to the report when requested."""
-        self._apply_additional_inputs_to_report()
 
     # ------------------------------------------------------------------
     # Saved names from a loaded setting
@@ -781,8 +787,8 @@ class AdditionalInputMixin:
         banner lists only the files for those (``None``: every saved form).
 
         The Source data page calls this when the user picks a saved setting,
-        not when it re-applies the setting after "Apply to report", so the
-        picks made in between stay.
+        not when it re-applies the setting once the files reach the report, so
+        the picks made in between stay.
         """
         if not hasattr(self, "additional_form_names"):
             return  # A partial window (in tests) without this page's state.
@@ -889,6 +895,7 @@ class AdditionalInputMixin:
         self._populate_column_name_table()
         self._show_saved_names_banners()
         self._show_saved_names_message(message)
+        self.update_additional_input_ui()
 
     def _form_table_row(self, file_path: str) -> int:
         """The Form names row showing *file_path*, or -1."""
@@ -905,32 +912,65 @@ class AdditionalInputMixin:
     def _forget_applied_additional_forms(self) -> None:
         """Note that the report no longer has the applied additional forms.
 
-        (A new Corelisting ZIP starts a new report.) The files stay listed;
-        the banner says to apply them again.
+        (A new Corelisting ZIP starts a new report.) The files stay listed,
+        and reach the new report with the other Data steps.
         """
-        if self._additional_form_keys:
-            self._set_label_text(
-                self.ui.banner_additional, steps.APPLY_ADDITIONAL_AGAIN
-            )
         self._additional_form_keys = set()
         self._additional_input_signature = {}
+        self._additional_applied_key = None
 
     def _collect_additional_form_names(self) -> Dict[str, str]:
         """Return a mapping of file path -> form name for additional inputs."""
         return additional_form_names(self.additional_inputs, self.additional_form_names)
 
-    def _warn_on_additional_form_conflicts(self, existing_forms: Set[str]) -> bool:
-        """Say (in the banner) if additional forms' names clash; True if they do."""
-        conflict = steps.additional_form_names_message(
-            self._collect_additional_form_names(), existing_forms
+    def _additional_draft_key(self) -> tuple:
+        """The listed files and their names, to tell whether they changed."""
+        return (
+            tuple((path, id(frame)) for path, frame in self.additional_inputs.items()),
+            tuple(sorted(self.additional_form_names.items())),
+            tuple(sorted(self.additional_column_names.items())),
         )
-        if conflict is None:
-            return False
-        self._set_label_text(self.ui.banner_additional, conflict)
-        return True
 
-    def _apply_additional_inputs_to_report(self) -> None:
-        """Merge additional inputs into the current report and refresh UI."""
+    def _has_unapplied_additional_inputs(self) -> bool:
+        """Whether the listed files or their names differ from the report's."""
+        return self._additional_draft_key() != self._additional_applied_key and bool(
+            self.additional_inputs or self._additional_form_keys
+        )
+
+    def update_additional_input_ui(self) -> List[str]:
+        """Mark each New name the report can't use; return the page's problems.
+
+        The problems (one line per file) hold the step and turn its badge red.
+        """
+        loaded = set(getattr(self.report, "loaded_data", {}) or {})
+        loaded -= set(self._additional_form_keys)
+        stacked = {form.name for form in self.report.stacked_forms}
+        found = steps.additional_name_problems(
+            self._collect_additional_form_names(),
+            self.additional_form_names,
+            loaded,
+            stacked,
+        )
+        table = getattr(self.ui, "tableWidget_update_form_name", None)
+        if table is not None:
+            for row in range(table.rowCount()):
+                item = table.item(row, 1)
+                if item is not None:
+                    mark_cell(item, found.get(item.data(Qt.UserRole), ""))
+        lines = [f"{Path(path).name}: {text}" for path, text in found.items() if text]
+        self._set_page_problems(steps.ADDITIONAL, lines)
+        return lines
+
+    def _apply_additional_step(self) -> None:
+        """Bring the listed files, with their names, to the report.
+
+        Nothing when they haven't changed, or while a name can't be used (the
+        page marks it). With no files left, their forms leave the report.
+        """
+        if not self._has_unapplied_additional_inputs():
+            return
+        if self.update_additional_input_ui():
+            return
         # Ensure a report object exists.
         if not hasattr(self, "report") or self.report is None:
             self.report = CLReport()
@@ -941,24 +981,6 @@ class AdditionalInputMixin:
         # the merge rebuilds fresh CLForm objects with defaults.
         selection_state = capture_selection(self.report)
 
-        # The names the additional forms can't take: the forms as loaded
-        # (``data`` also holds the stacked forms, rebuilt from these), less
-        # the ones the last apply added.
-        base_data = dict(getattr(self.report, "loaded_data", {}) or {})
-        for form_key in getattr(self, "_additional_form_keys", set()):
-            base_data.pop(form_key, None)
-
-        # A stacked form's name is taken too.
-        stacked_names = {stacked.name for stacked in self.report.stacked_forms}
-        if self._warn_on_additional_form_conflicts(set(base_data) | stacked_names):
-            return
-
-        if not self.additional_inputs and not self._additional_form_keys:
-            self._set_label_text(
-                self.ui.banner_additional,
-                steps.ADD_FILES_FIRST,
-            )
-            return
         applied = apply_additional_inputs(
             self.report,
             self.additional_inputs,
@@ -971,6 +993,7 @@ class AdditionalInputMixin:
 
         self._additional_form_keys = set(applied.forms)
         self._additional_input_signature = new_signature
+        self._additional_applied_key = self._additional_draft_key()
         # The forms are added even when some picked names can't be used.
         self._additional_applied_message = steps.additional_applied_message(
             applied.forms, self._ignored_saved_names()

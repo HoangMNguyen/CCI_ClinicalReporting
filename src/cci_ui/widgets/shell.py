@@ -10,7 +10,10 @@ as the icon strip in Compact density, whatever the width, and remembers
 the sidebar's state for each density; with *strip_badges* the strip shows
 each item's badge beside its icon. With a sidebar, Ctrl+Tab and Ctrl+PgDown
 also go to the next page, Ctrl+Shift+Tab and Ctrl+PgUp to the previous one.
-The shell also owns the window's busy overlay.
+A shell made with *help_text* has a "?" button left of the Display button
+that opens a help panel beside the pages (pushing them aside), showing the
+help for the page shown; the user can drag its edge, and the width holds
+until the shell goes. The shell also owns the window's busy overlay.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSplitter,
     QStackedWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -34,7 +38,9 @@ from cci_ui.theme.manager import ThemeManager, current, theme_events
 from cci_ui.theme.qss import register_qss
 from cci_ui.theme.tokens import LAYOUT, Density
 from cci_ui.widgets.busy import BusyOverlay
+from cci_ui.widgets.buttons import icon_button
 from cci_ui.widgets.display import DisplayButton
+from cci_ui.widgets.help_panel import HelpPanel
 from cci_ui.widgets.labels import ElidedLabel, IconLabel, text_label
 from cci_ui.widgets.responsive import Breakpoint
 from cci_ui.widgets.sidebar import Sidebar
@@ -189,7 +195,8 @@ class AppShell(QWidget):
     density at any width (the toggle still opens it), and each density keeps
     its own collapsed state: switching density puts back the state last left
     in the new one (by default collapsed in Compact; in Comfortable, what the
-    breakpoint picks).
+    breakpoint picks). *help_text* gives the help (Markdown) for a page key;
+    with it the header has a "?" button that shows it in a side panel.
     """
 
     #: Emitted with the page key whenever the current page changes.
@@ -205,6 +212,7 @@ class AppShell(QWidget):
         with_sidebar: bool = True,
         strip_badges: bool = False,
         collapse_in_compact: bool = False,
+        help_text: Optional[Callable[[str], str]] = None,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
@@ -233,6 +241,15 @@ class AppShell(QWidget):
         self._restore_settled.timeout.connect(self._end_restore)
 
         self.header = AppHeader()
+        self._help_text = help_text
+        self.help_button: Optional[QToolButton] = None
+        self.help_panel: Optional[HelpPanel] = None
+        self._help_splitter: Optional[QSplitter] = None
+        self._help_width = LAYOUT.help_w
+        if help_text is not None:
+            self.help_button = icon_button(IconName.HELP, "Help for this step")
+            self.help_button.setCheckable(True)
+            self.header.add_trailing(self.help_button)
         self.display_button: Optional[DisplayButton] = None
         if theme is not None:
             self.display_button = DisplayButton(theme)
@@ -244,7 +261,27 @@ class AppShell(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         main_layout.addWidget(self.header)
-        main_layout.addWidget(self.stack, 1)
+        if help_text is None:
+            main_layout.addWidget(self.stack, 1)
+        else:
+            self.help_panel = HelpPanel()
+            self.help_panel.setMinimumWidth(LAYOUT.help_w_min)
+            self.help_panel.setMaximumWidth(LAYOUT.help_w_max)
+            self._help_splitter = QSplitter(Qt.Orientation.Horizontal)
+            self._help_splitter.setChildrenCollapsible(False)
+            self._help_splitter.addWidget(self.stack)
+            self._help_splitter.addWidget(self.help_panel)
+            self._help_splitter.setStretchFactor(0, 1)
+            self._help_splitter.setStretchFactor(1, 0)
+            main_layout.addWidget(self._help_splitter, 1)
+            # Hidden only now it has a parent (see cci_ui.widgets).
+            self.help_panel.hide()
+            self.help_button.toggled.connect(self.set_help_visible)
+            self.help_panel.closeRequested.connect(
+                lambda: self.help_button.setChecked(False)
+            )
+            self._help_splitter.splitterMoved.connect(self._remember_help_width)
+            self.currentPageChanged.connect(self._show_help)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -339,6 +376,41 @@ class AppShell(QWidget):
             self._current = key
             self._update_header()
             self.currentPageChanged.emit(key)
+
+    # ------------------------------------------------------------------
+    # Help
+
+    def set_help_visible(self, visible: bool) -> None:
+        """Show or hide the help panel (the "?" button follows)."""
+        if self.help_panel is None:
+            return
+        blocked = self.help_button.blockSignals(True)
+        self.help_button.setChecked(visible)
+        self.help_button.blockSignals(blocked)
+        if not visible:
+            self.help_panel.hide()
+            return
+        self._show_help(self._current)
+        self.help_panel.show()
+        total = self._help_splitter.width()
+        room = total - self.stack.minimumSizeHint().width()
+        width = min(self._help_width, max(LAYOUT.help_w_min, room))
+        self._help_splitter.setSizes([total - width, width])
+
+    def is_help_visible(self) -> bool:
+        return self.help_panel is not None and self.help_panel.isVisible()
+
+    def _show_help(self, key: str) -> None:
+        """Fill the help panel with page *key*'s help, while it is open."""
+        if self.help_button is None or not self.help_button.isChecked():
+            return
+        self.help_panel.set_content(
+            f"Help: {self._page_titles.get(key, '')}", self._help_text(key)
+        )
+
+    def _remember_help_width(self, *_args) -> None:
+        if self.help_panel.isVisible():
+            self._help_width = self.help_panel.width()
 
     def next_page(self) -> None:
         """Show the page after the current one (none after the last)."""

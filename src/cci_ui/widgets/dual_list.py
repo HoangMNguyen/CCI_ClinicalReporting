@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from cci_ui.icons import IconName
-from cci_ui.theme.manager import current, theme_events
+from cci_ui.theme.manager import current, set_invalid, theme_events
 from cci_ui.theme.qss import register_qss
 from cci_ui.widgets.buttons import icon_button
 from cci_ui.widgets.labels import text_label
@@ -155,6 +155,11 @@ class DualListPicker(QWidget):
 
     def selected_count(self) -> int:
         return int(self._selected_card.count_label.text())
+
+    def set_selected_problem(self, problem: str) -> None:
+        """Outline the selected list in red, *problem* its tooltip; "" clears it."""
+        set_invalid(self._selected_card, bool(problem))
+        self._selected_card.setToolTip(problem)
 
 
 __all__ = ["DualListPicker"]

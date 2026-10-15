@@ -84,7 +84,16 @@ or not) as it was. The sidebar folds to an icon strip on narrow windows. With
 or mark beside its icon; with `collapse_in_compact=True` the sidebar starts
 as the strip in Compact, and each density remembers whether it was open
 (`sidebarCollapsed` and `sidebarCollapsedCompact` in the window state).
-Clinical Reporting and the gallery use both.
+Clinical Reporting and the gallery use both. With `AppShell(help_text=...)`
+(Markdown for a page key) the header has a "?" button, left of the Display
+button, that opens a `HelpPanel` beside the pages with the open page's help;
+its edge can be dragged, and the width holds until the shell goes. It always
+starts closed.
+
+A field with a problem is marked with `set_invalid` (combo boxes, line edits,
+cards, labels) and the reason as its tooltip; a table cell with
+`tables.mark_cell` (its table needs a `ProblemCellDelegate`, which draws a
+red border and red text).
 
 Slow work runs off the GUI thread through `cci_ui.tasks` (`run_task`,
 `TaskRunner`), behind the busy overlay.
@@ -164,10 +173,11 @@ src/cci_ui/
   widgets/views.py             # lists/tables with placeholder text; EmptyState
   widgets/status.py            # StatusBanner, show_toast, show_error
   widgets/busy.py              # BusyOverlay (blocks input; spinner after 150 ms)
-  widgets/tables.py            # column rules, editable columns, density rows, table_card, TableToolbar
+  widgets/tables.py            # column rules, editable columns, density rows, table_card, TableToolbar, cell marks
   widgets/dual_list.py         # DualListPicker (available ⇄ selected lists)
   widgets/sidebar.py           # Sidebar with status badges; collapses to icons (with badges, opt-in)
-  widgets/shell.py             # AppShell: sidebar, header, pages, status bar, busy overlay
+  widgets/shell.py             # AppShell: sidebar, header, pages, status bar, busy overlay, help
+  widgets/help_panel.py        # HelpPanel: a page's help (Markdown) beside the pages
   widgets/workflow_page.py     # WorkflowPage: a small tool's inputs, output, and Run
   tool_window.py               # ToolWindow, show_tool, run_tool: a small tool's window
   files.py                     # save_output: a workflow's workbook into the chosen folder

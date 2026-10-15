@@ -4,6 +4,8 @@ from tests.unit.fakes import DummyTable
 
 from clinical_reporting.models import CLForm
 from clinical_reporting.report import CLReport
+from clinical_reporting.sample_data import sample_forms
+from clinical_reporting.session import new_report
 
 
 @pytest.fixture
@@ -192,6 +194,108 @@ def test_every_selected_forms_joins_are_tidied_with_one_rule():
     }
 
 
+def _demo_report(*forms):
+    report = new_report("DEMO01", sample_forms())
+    for form in forms:
+        report.add_selected_form(form)
+    return report
+
+
+def test_a_newly_selected_form_joins_last_on_subject():
+    report = _demo_report("DM", "AE", "VS")
+
+    report.normalize_joins()
+
+    assert report.get_join_list_dict() == {
+        "DM": {"items": [], "order": 1, "how": "Left join"},
+        "AE": {"items": ["Subject"], "order": 2, "how": "Left join"},
+        "VS": {"items": ["Subject"], "order": 3, "how": "Left join"},
+    }
+
+
+def test_a_form_selected_after_a_removal_still_joins_last():
+    report = _demo_report("DM", "AE", "VS", "CM")
+    report.remove_selected_form("DM")
+    report.remove_selected_form("AE")
+
+    report.add_selected_form("LB")
+    report.normalize_joins()
+
+    assert {
+        form: join["order"] for form, join in report.get_join_list_dict().items()
+    } == {"VS": 1, "CM": 2, "LB": 3}
+
+
+def test_tied_join_orders_are_renumbered_in_selection_order():
+    report = _demo_report("DM", "AE", "VS")
+    report.update_join_list(
+        [
+            ("DM", [], 2, "Left join"),
+            ("AE", ["Subject"], 2, "Inner join"),
+            ("VS", ["Subject"], 5, "Left join"),
+        ]
+    )
+
+    report.normalize_joins()
+
+    assert report.get_join_list_dict() == {
+        "DM": {"items": [], "order": 1, "how": "Left join"},
+        "AE": {"items": ["Subject"], "order": 2, "how": "Inner join"},
+        "VS": {"items": ["Subject"], "order": 3, "how": "Left join"},
+    }
+
+
+def test_moving_a_form_up_swaps_it_with_the_form_before():
+    report = _demo_report("DM", "AE", "VS")
+    report.update_join_items("VS", ["Subject"], 3, "Inner join")
+
+    report.move_join("VS", -1)
+
+    assert report.get_join_list_dict() == {
+        "DM": {"items": [], "order": 1, "how": "Left join"},
+        "AE": {"items": ["Subject"], "order": 3, "how": "Left join"},
+        "VS": {"items": ["Subject"], "order": 2, "how": "Inner join"},
+    }
+
+
+def test_the_form_moved_out_of_first_place_joins_on_subject():
+    report = _demo_report("DM", "AE", "VS")
+    report.set_common_item_state("Site", selected=True)
+    report.update_join_items("AE", ["Site"], 2, "Inner join")
+
+    report.move_join("DM", 1)
+
+    assert report.get_join_list_dict() == {
+        "DM": {"items": ["Subject"], "order": 2, "how": "Left join"},
+        "AE": {"items": [], "order": 1, "how": "Left join"},
+        "VS": {"items": ["Subject"], "order": 3, "how": "Left join"},
+    }
+
+
+def test_a_form_at_either_end_does_not_move_past_it():
+    report = _demo_report("DM", "AE", "VS")
+    report.normalize_joins()
+    before = report.get_join_list_dict()
+
+    report.move_join("DM", -1)
+    report.move_join("VS", 1)
+    report.move_join("LB", -1)  # Not selected.
+
+    assert report.get_join_list_dict() == before
+
+
+def test_without_subject_the_form_moved_out_of_first_place_joins_on_nothing():
+    report = _demo_report("DM", "AE")
+    report.set_common_item_state("Subject", selected=False)
+
+    report.move_join("AE", -1)
+
+    assert report.get_join_list_dict() == {
+        "DM": {"items": [], "order": 2, "how": "Left join"},
+        "AE": {"items": [], "order": 1, "how": "Left join"},
+    }
+
+
 def test_static_filter_management():
     report = CLReport()
     form = CLForm("DM")
@@ -225,6 +329,18 @@ def test_a_filter_on_a_bare_item_name_needs_a_form_that_selected_it():
     report.add_static_filter_item("Weight", "=", "70")  # No form selected it.
 
     assert report.get_static_filter_items() == [("Pulse", ">", "60")]
+
+
+def test_a_filter_with_a_blank_item_stays_through_a_selection_sync():
+    report = _demo_report("DM")
+    report.set_static_filter_items([("", "=", "")])
+    report.set_dynamic_filter_items([("Subject", "=", ""), ("DM.Gone", "=", "Site")])
+
+    report.sync_with_selection()
+
+    assert report.get_static_filter_items() == [("", "=", "")]
+    # A comparison with both items, one of them not in the report, is parked.
+    assert report.get_dynamic_filter_items() == [("Subject", "=", "")]
 
 
 def test_dynamic_filter_management():

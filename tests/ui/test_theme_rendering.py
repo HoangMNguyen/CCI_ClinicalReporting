@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDateEdit,
+    QFrame,
     QLabel,
     QLineEdit,
     QStyle,
@@ -95,6 +96,39 @@ def test_set_invalid_draws_a_line_edit_in_the_danger_color_and_back(themed_app):
 
     set_invalid(edit, False)
     assert text_color() == LIGHT.text_primary.hex_rgb
+
+
+def test_set_invalid_draws_a_label_in_the_danger_text_color_over_its_tone(themed_app):
+    _apply_light(themed_app)
+    label = QLabel("No folder chosen")
+    label.setProperty("textStyle", "body")
+    label.setProperty("tone", "secondary")
+
+    set_invalid(label, True)
+    invalid = _text_color(label)
+    set_invalid(label, False)
+    valid = _text_color(label)
+
+    assert (invalid, valid) == (LIGHT.danger_text.hex_rgb, LIGHT.text_secondary.hex_rgb)
+
+
+def test_set_invalid_draws_a_card_border_in_the_danger_color_and_back(themed_app):
+    _apply_light(themed_app)
+    card = QFrame()
+    card.setProperty("cciRole", "card")
+    card.resize(200, 120)
+
+    def top_edge():
+        card.ensurePolished()
+        return card.grab().toImage().pixelColor(100, 0).name().upper()
+
+    set_invalid(card, True)
+    invalid = top_edge()
+    set_invalid(card, False)
+    valid = top_edge()
+    shiboken6.delete(card)
+
+    assert (invalid, valid) == (LIGHT.danger.hex_rgb, LIGHT.border_card.hex_rgb)
 
 
 def _cut_off_cells(view):

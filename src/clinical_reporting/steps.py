@@ -5,20 +5,19 @@ A report is built in eleven steps, from loading the data to exporting it
 each step, what its sidebar badge shows: nothing, a count (forms selected,
 filters added, ...), done, optional, a warning, or a problem. Problems come
 from :func:`clinical_reporting.validation.validate_report` by issue code
-(:data:`ISSUE_STEPS`), so every front end points the user to the step that
-fixes each one. The other functions word what the steps show:
-:func:`report_summary` (the line under the window), :func:`source_summary`,
-:func:`setting_missing_lines` (what a loaded setting needs that the data
-lacks), :func:`preview_caption`, :func:`joins_message`, the Additional input
-step's messages (:func:`additional_applied_message`,
-:func:`additional_form_names_message`, the constants, and the
-``saved_names_*`` wording for the names a loaded setting saved for its
-additional files; see :mod:`clinical_reporting.additional_names`), the
-Stacked forms step's (the ``stacked_*`` ones and :data:`STACKED_NOT_APPLIED`,
-:data:`APPLY_STACKED_AGAIN`, :data:`STACKED_NOT_SAVED_NOTE`; see
-:mod:`clinical_reporting.stacking`), and the Coalesced items step's (the
-``coalesced_*`` ones and :data:`COALESCED_NOT_APPLIED`,
-:data:`APPLY_COALESCED_AGAIN`, :data:`COALESCED_NOT_SAVED_NOTE`; see
+(:data:`ISSUE_STEPS`), and from the pages themselves (a Data step's changes
+that can't reach the report yet), so every front end points the user to the
+step that fixes each one (:func:`cannot_run_message`). The other functions
+word what the steps show: :func:`report_summary` (the line under the
+window), :func:`source_summary`, :func:`setting_missing_lines` (what a loaded
+setting needs that the data lacks), :func:`preview_caption`,
+:func:`joins_message`, the Additional input step's messages
+(:func:`additional_applied_message`, :func:`additional_name_problems`,
+:func:`additional_form_names_message`, and the ``saved_names_*`` wording
+for the names a loaded setting saved for its additional files; see
+:mod:`clinical_reporting.additional_names`), the Stacked forms step's (the
+``stacked_*`` ones; see :mod:`clinical_reporting.stacking`), and the
+Coalesced items step's (the ``coalesced_*`` ones; see
 :mod:`clinical_reporting.coalescing`).
 """
 
@@ -48,9 +47,14 @@ from clinical_reporting.additional_names import (
     SavedFileNames,
 )
 from clinical_reporting.coalescing import CoalescedItem, Outcome
-from clinical_reporting.models import is_qualified, qualify, split_qualified
+from clinical_reporting.models import (
+    FORM_ITEM_SEPARATOR,
+    is_qualified,
+    qualify,
+    split_qualified,
+)
 from clinical_reporting.stacking import Match, MatchedItem, StackedForm, layout
-from clinical_reporting.validation import ReportValidationIssue
+from clinical_reporting.validation import CANNOT_RUN_PREFIX, ReportValidationIssue
 
 # The steps, in order. The desktop pages use these as their keys.
 SOURCE = "source"
@@ -98,46 +102,17 @@ TITLES = {
 #: Steps with nothing to show until data is loaded; their pages say so
 #: (:data:`NO_DATA`, :data:`NO_DATA_HINT`) instead.
 NEEDS_DATA = frozenset(STEP_KEYS) - {SOURCE, ADDITIONAL}
+#: The steps that change the report's data. Each reaches the report when the
+#: user leaves it; one with problems is held (nothing from it is used).
+DATA_STEPS = (ADDITIONAL, STACKED, COALESCED)
 
 #: What the window says before any data is loaded.
 NO_DATA = "No data loaded"
 #: How to load some.
 NO_DATA_HINT = f"Choose a Corelisting ZIP on {TITLES[SOURCE]} to start a report."
 
-#: The Additional input step, applied with no files.
-ADD_FILES_FIRST = feedback.warning("Add at least one file first.")
-#: The Additional input step, once a new Corelisting ZIP dropped its forms.
-APPLY_ADDITIONAL_AGAIN = feedback.info(
-    "The new Corelisting ZIP started a new report. Apply the files again to add "
-    "their forms to it."
-)
-#: The Stacked forms step, while the page's stacked forms differ from the report's.
-STACKED_NOT_APPLIED = feedback.info(
-    "Not applied yet. Apply to report to use your changes."
-)
-#: The Stacked forms step, once a new Corelisting ZIP started a new report.
-APPLY_STACKED_AGAIN = feedback.info(
-    "The new Corelisting ZIP started a new report. Apply the stacked forms again "
-    "to add them to it."
-)
-#: Added to the save message when the Stacked forms step has unapplied changes.
-STACKED_NOT_SAVED_NOTE = (
-    f"{TITLES[STACKED]} has changes that aren't applied, so they weren't saved."
-)
-#: The Coalesced items step, while the page's coalesced items differ from the
-#: report's.
-COALESCED_NOT_APPLIED = feedback.info(
-    "Not applied yet. Apply to report to use your changes."
-)
-#: The Coalesced items step, once a new Corelisting ZIP started a new report.
-APPLY_COALESCED_AGAIN = feedback.info(
-    "The new Corelisting ZIP started a new report. Apply the coalesced items "
-    "again to add them to it."
-)
-#: Added to the save message when the Coalesced items step has unapplied changes.
-COALESCED_NOT_SAVED_NOTE = (
-    f"{TITLES[COALESCED]} has changes that aren't applied, so they weren't saved."
-)
+#: How names filled in on Additional input end their message.
+NAMES_USED_ON_LEAVING = "Check them; they're used when you go to another step."
 #: The first entry of a file's Saved names dropdown: no saved names used.
 SAVED_NAMES_NONE = "None"
 #: The tooltip of a Saved names dropdown while there are none to pick.
@@ -259,6 +234,8 @@ def step_statuses(
     source: Optional[str] = None,
     additional_forms: int = 0,
     exported_to: Optional[str] = None,
+    issues: Optional[Sequence[ReportValidationIssue]] = None,
+    page_problems: Optional[Mapping[str, Sequence[str]]] = None,
 ) -> Dict[str, StepStatus]:
     """The badge of every step, keyed by step.
 
@@ -268,6 +245,10 @@ def step_statuses(
         additional_forms: How many forms the additional input added.
         exported_to: Name of the file last exported for this data, if any
             (changes made since don't undo the badge).
+        issues: The report's validation issues, when the caller has them
+            already (else the report is validated here).
+        page_problems: Problems a page shows that aren't in the report yet,
+            by step, one line each; a step with any shows them as its problem.
     """
     statuses = {key: StepStatus() for key in STEP_KEYS}
     statuses[ADDITIONAL] = (
@@ -278,7 +259,7 @@ def step_statuses(
     if source:
         statuses[SOURCE] = StepStatus(DONE, tip=f"Loaded {source}")
     if not report.data:
-        return statuses
+        return _with_page_problems(statuses, page_problems)
 
     selected_forms = report.selected_forms or {}
     statuses[FORMS] = StepStatus(
@@ -303,9 +284,70 @@ def step_statuses(
     if exported_to:
         statuses[PREVIEW] = StepStatus(DONE, tip=f"Last exported {exported_to}")
 
-    for step, issues in _issues_by_step(report.validate()).items():
-        statuses[step] = _problems(issues)
+    found = report.validate() if issues is None else issues
+    for step, step_issues in _issues_by_step(found).items():
+        statuses[step] = _problems(step_issues)
+    return _with_page_problems(statuses, page_problems)
+
+
+def _with_page_problems(
+    statuses: Dict[str, StepStatus],
+    page_problems: Optional[Mapping[str, Sequence[str]]],
+) -> Dict[str, StepStatus]:
+    """*statuses*, each step with page problems showing them instead."""
+    for step, lines in (page_problems or {}).items():
+        if lines:
+            tip = lines[0] if len(lines) == 1 else _plural(len(lines), "problem")
+            statuses[step] = StepStatus(ERROR, tip=tip)
     return statuses
+
+
+def issues_by_field(
+    issues: Iterable[ReportValidationIssue],
+) -> Dict[str, List[ReportValidationIssue]]:
+    """*issues* by the field each names, in order (those without a field left out).
+
+    The pages mark each field with the messages found under it.
+    """
+    by_field: Dict[str, List[ReportValidationIssue]] = {}
+    for issue in issues:
+        if issue.field:
+            by_field.setdefault(issue.field, []).append(issue)
+    return by_field
+
+
+def cannot_run_message(
+    issues: Iterable[ReportValidationIssue],
+    page_problems: Optional[Mapping[str, Sequence[str]]] = None,
+) -> Optional[feedback.Message]:
+    """What stops the report from running, naming the steps to fix, or ``None``.
+
+    For example "Cannot run: Fix Filters and Joins first." Problems no step
+    fixes are said as they are ("Cannot run: Select at least one form before
+    running."). *page_problems* are the pages' own problems by step (see
+    :func:`step_statuses`); the details list every problem by its step.
+    """
+    issues = list(issues)
+    page_problems = page_problems or {}
+    by_step = _issues_by_step(issues)
+    unplaced = [issue.message for issue in issues if issue_step(issue) is None]
+    to_fix = [key for key in STEP_KEYS if page_problems.get(key) or by_step.get(key)]
+    if not to_fix and not unplaced:
+        return None
+    titles = [TITLES[key] for key in to_fix]
+    parts = [
+        *unplaced,
+        *([f"Fix {feedback.and_list(titles)} first."] if to_fix else []),
+    ]
+    details = "\n".join(
+        f"{TITLES[key]}: {line}"
+        for key in to_fix
+        for line in [
+            *page_problems.get(key, ()),
+            *(issue.message for issue in by_step.get(key, ())),
+        ]
+    )
+    return feedback.warning(f"{CANNOT_RUN_PREFIX} " + " ".join(parts), details or None)
 
 
 def _stacked_status(report) -> StepStatus:
@@ -373,13 +415,7 @@ def preview_caption(rows: int, columns: int) -> str:
 
 
 def joins_message(report) -> Optional[feedback.Message]:
-    """What the Joins step says about the report's joins, if anything."""
-    issues = [issue for issue in report.validate() if issue_step(issue) == JOINS]
-    if issues:
-        problems = " ".join(issue.message for issue in issues)
-        return feedback.error(
-            f"{problems} The report can't be exported until this is fixed."
-        )
+    """Why the Joins step has no joins to set, or which columns it adds, if any."""
     if len(report.selected_forms or {}) < 2:
         return feedback.info("Joins apply when two or more forms are selected.")
     unjoined = report_columns.unjoined_common_items(report)
@@ -398,22 +434,72 @@ def joins_message(report) -> Optional[feedback.Message]:
 def additional_applied_message(
     forms: Collection[str], ignored: Sequence[IgnoredName] = ()
 ) -> feedback.Message:
-    """What applying the additional files did: the forms added (one per file).
+    """What reaching the report did for the additional files: the forms added.
 
-    *ignored* are saved column names the files couldn't use (see
-    :func:`clinical_reporting.additional_names.ignored_names`). They make
-    the message a warning, though the forms were added all the same.
+    One form per file. *ignored* are saved column names the files couldn't
+    use (see :func:`clinical_reporting.additional_names.ignored_names`). They
+    make the message a warning, though the forms were added all the same.
     """
     if not forms:
-        return feedback.success("The additional forms were removed from the report.")
+        return feedback.success(
+            f"{TITLES[ADDITIONAL]}: the additional forms were removed from the report."
+        )
     added = ", ".join(sorted(forms))
-    text = f"{_plural(len(forms), 'file')} applied. New forms: {added}."
+    text = (
+        f"{TITLES[ADDITIONAL]} updated: {_plural(len(forms), 'file')} added to the "
+        f"report. New forms: {added}."
+    )
     if ignored:
         return feedback.warning(
             f"{text} Saved column names ignored: {_lacking(ignored)}.",
             _ignored_details(ignored),
         )
     return feedback.success(text)
+
+
+def additional_name_problems(
+    name_map: Mapping[str, str],
+    typed: Mapping[str, str],
+    loaded: Collection[str],
+    stacked: Collection[str],
+) -> Dict[str, str]:
+    """Why each additional file's form name can't be used, by path ("" if it can).
+
+    *name_map* is each file's form name as it would be added (``{path: form
+    name}``; the file name when none was typed), *typed* the names typed in.
+    *loaded* are the other forms loaded, *stacked* the stacked forms' names.
+    """
+    counts = Counter(name_map.values())
+    found: Dict[str, str] = {}
+    for path, name in name_map.items():
+        if FORM_ITEM_SEPARATOR in name:
+            found[path] = (
+                "Give it a form name."
+                if not typed.get(path, "").strip()
+                else f"A form name can't contain “{FORM_ITEM_SEPARATOR}”."
+            )
+        elif name in loaded:
+            found[path] = f"{name} is already a loaded form."
+        elif name in stacked:
+            found[path] = f"{name} is already a stacked form."
+        elif counts[name] > 1:
+            found[path] = f"Another file's form is called {name}."
+        else:
+            found[path] = ""
+    return found
+
+
+def held_save_tip(held: Collection[str]) -> str:
+    """Why Save setting waits: the Data steps *held* (their changes can't apply).
+
+    For example "Fix Stacked forms first: its changes aren't in the report yet."
+    """
+    titles = [TITLES[key] for key in DATA_STEPS if key in held]
+    whose = "its" if len(titles) == 1 else "their"
+    return (
+        f"Fix {feedback.and_list(titles)} first: {whose} changes aren't in the "
+        "report yet."
+    )
 
 
 def additional_form_names_message(
@@ -584,11 +670,11 @@ def saved_names_filled_message(
     if ignored:
         return feedback.warning(
             f"{text} Some saved column names can't be used and will be ignored: "
-            f"{_lacking(ignored)}. Check them, then Apply to report.",
+            f"{_lacking(ignored)}. Check them on {TITLES[ADDITIONAL]}.",
             _ignored_details(ignored),
         )
     details = "\n".join(parts) if len(parts) > 5 else None
-    return feedback.info(f"{text} Check them, then Apply to report.", details)
+    return feedback.info(f"{text} Check them on {TITLES[ADDITIONAL]}.", details)
 
 
 def saved_names_picked_message(
@@ -608,13 +694,11 @@ def saved_names_picked_message(
         )
         return feedback.warning(
             f"Names from {name} filled in for {file_name}. {count} can't be "
-            f"used and will be ignored: {_lacking(ignored)}. Check them, then "
-            "Apply to report.",
+            f"used and will be ignored: {_lacking(ignored)}. {NAMES_USED_ON_LEAVING}",
             _ignored_details(ignored),
         )
     return feedback.info(
-        f"Names from {name} filled in for {file_name}. Check them, then Apply "
-        "to report."
+        f"Names from {name} filled in for {file_name}. {NAMES_USED_ON_LEAVING}"
     )
 
 
@@ -644,9 +728,9 @@ def saved_names_ignored_message(ignored: Sequence[IgnoredName]) -> feedback.Mess
     else:
         names, they, them = "Some saved column names", "They're", "them"
     forms = (
-        "the form still applies"
+        "the form is still added"
         if len({name.file_name for name in ignored}) == 1
-        else "the forms still apply"
+        else "the forms are still added"
     )
     return feedback.warning(
         f"{names} can't be used: {_lacking(ignored)}. {they} ignored; {forms} "
@@ -717,7 +801,7 @@ def saved_names_hint(
         return None
     where = TITLES[ADDITIONAL]
     to_add = [form for form in forms if by_form[form] not in added]
-    to_apply = [form for form in forms if by_form[form] in added]
+    to_check = [form for form in forms if by_form[form] in added]
     hints = []
     if len(to_add) == 1:
         hints.append(
@@ -731,15 +815,14 @@ def saved_names_hint(
             f"{feedback.and_list(to_add)} come from additional files. Add {files} on "
             f"{where}, and their saved names will be picked for you."
         )
-    if len(to_apply) == 1:
+    if len(to_check) == 1:
         hints.append(
-            f"The file for {to_apply[0]} is added: check its form name on {where}, "
-            "then Apply to report."
+            f"The file for {to_check[0]} is added: check its form name on {where}."
         )
-    elif to_apply:
+    elif to_check:
         hints.append(
-            f"The files for {feedback.and_list(to_apply)} are added: check their form "
-            f"names on {where}, then Apply to report."
+            f"The files for {feedback.and_list(to_check)} are added: check their "
+            f"form names on {where}."
         )
     return " ".join(hints)
 
@@ -780,17 +863,11 @@ def stacked_not_loaded_hint(missing: Sequence[str]) -> str:
 def stacked_cell_warning(item: MatchedItem, match: Match, member: str) -> str:
     """Why *member*'s cell in a matched row warns, or "" when it doesn't.
 
-    For example "SV now has Event Group Name and Event Label: which one is
-    unclear. Choose “—” or Unmatch to fix it." (a conflict, see
-    :func:`stacked_conflict_message`), "DSSVLTFU has no Event Label; its Event
-    Group Name is taken instead", or "DSSVLTFU has no Event Label".
+    For example "DSSVLTFU has no Event Label; its Event Group Name is taken
+    instead", or "DSSVLTFU has no Event Label". (A member that gives two of
+    the match's items is a problem, not a warning: see
+    :func:`clinical_reporting.stacking.form_problems`.)
     """
-    if member in item.doubled:
-        both = feedback.and_list(item.doubled[member])
-        return (
-            f"{member} now has {both}: which one is unclear. "
-            "Choose “—” or Unmatch to fix it."
-        )
     if member in item.replaced:
         return (
             f"{member} has no {match.items[member]}; "
@@ -802,14 +879,16 @@ def stacked_cell_warning(item: MatchedItem, match: Match, member: str) -> str:
 
 
 def stacked_applied_message(report) -> feedback.Message:
-    """What applying the stacked forms did: each one's rows and members.
+    """What reaching the report did for the stacked forms: each one's rows and members.
 
-    For example "Applied. Stacked forms: VISITS (1,514 rows from SV,
+    For example "Stacked forms updated: VISITS (1,514 rows from SV,
     DSSVLTFU)."; a stacked form that couldn't be built (see
     :func:`stacked_missing_message` and the validation issues) says so.
     """
     if not report.stacked_forms:
-        return feedback.success("The stacked forms were removed from the report.")
+        return feedback.success(
+            f"{TITLES[STACKED]}: the stacked forms were removed from the report."
+        )
     parts = []
     for stacked in report.stacked_forms:
         rows = report.stacked_build.forms.get(stacked.name)
@@ -820,15 +899,7 @@ def stacked_applied_message(report) -> feedback.Message:
         parts.append(
             f"{stacked.name} ({row_count(len(rows))} from {', '.join(present)})"
         )
-    return feedback.success(f"Applied. Stacked forms: {'; '.join(parts)}.")
-
-
-def stacked_problems_message(problems: Sequence[str]) -> feedback.Message:
-    """Applying the stacked forms was refused for these *problems*."""
-    what = "this problem" if len(problems) == 1 else f"these {len(problems)} problems"
-    return feedback.error(
-        f"Not applied. Fix {what} first, then apply again.", "\n".join(problems)
-    )
+    return feedback.success(f"{TITLES[STACKED]} updated: {'; '.join(parts)}.")
 
 
 def stacked_missing_message(report) -> str:
@@ -876,36 +947,17 @@ def stacked_missing_message(report) -> str:
     return feedback.warning(" ".join(sentences))
 
 
-def stacked_conflict_message(report) -> str:
-    """What makes the report's stacked forms ambiguous since they were applied.
-
-    An error, for example "VISITS: SV now has both Event Group Name and Event
-    Label, which the match Visit Name lines up. Choose “—” in SV's cell or
-    Unmatch it on Stacked forms. The report can't be exported until this is
-    fixed."; ``""`` when nothing does (see
-    :attr:`clinical_reporting.stacking.Built.conflicts`).
-    """
-    found = [
-        message
-        for messages in report.stacked_build.conflicts.values()
-        for message in messages
-    ]
-    if not found:
-        return ""
-    return feedback.error(
-        f"{' '.join(found)} The report can't be exported until this is fixed."
-    )
-
-
 def coalesced_applied_message(report) -> feedback.Message:
-    """What applying the coalesced items did: the rows each one filled.
+    """What reaching the report did for the coalesced items: the rows each filled.
 
-    For example "Applied. Coalesced items: Race in DM (12 rows filled)."; a
+    For example "Coalesced items updated: Race in DM (12 rows filled)."; a
     coalesced item that couldn't be built (see :func:`coalesced_missing_message`
     and the validation issues) says so.
     """
     if not report.coalesced_items:
-        return feedback.success("The coalesced items were removed from the report.")
+        return feedback.success(
+            f"{TITLES[COALESCED]}: the coalesced items were removed from the report."
+        )
     parts = []
     for position, item in enumerate(report.coalesced_items):
         outcome = report.coalesced_build.outcomes.get(position)
@@ -914,7 +966,7 @@ def coalesced_applied_message(report) -> feedback.Message:
             continue
         filled = row_count(outcome.filled)
         parts.append(f"{coalescing.label(item)} ({filled} filled)")
-    return feedback.success(f"Applied. Coalesced items: {'; '.join(parts)}.")
+    return feedback.success(f"{TITLES[COALESCED]} updated: {'; '.join(parts)}.")
 
 
 def coalesced_counts(item: CoalescedItem, outcome: Outcome) -> str:
@@ -933,38 +985,6 @@ def coalesced_counts(item: CoalescedItem, outcome: Outcome) -> str:
     ]
     rows = sum(outcome.rows.values()) + outcome.empty
     return f"{item.form} has {row_count(rows)}: {' · '.join(parts)}"
-
-
-def coalesced_item_problems_message(problems: Sequence[str]) -> str:
-    """What stops the coalesced item being edited from being applied, or "".
-
-    A warning listing its *problems*
-    (:func:`clinical_reporting.coalescing.problems_of`).
-    """
-    if not problems:
-        return ""
-    if len(problems) == 1:
-        return feedback.warning(f"Can't apply yet: {problems[0]}")
-    listed = "\n".join(f"- {problem}" for problem in problems)
-    return feedback.warning(f"Can't apply yet:\n{listed}")
-
-
-def coalesced_problems_message(
-    problems: Sequence[str], every_row: Sequence[str] = ()
-) -> feedback.Message:
-    """Applying the coalesced items was refused for these *problems*.
-
-    They are listed, an overlap naming its first rows; *every_row* holds the
-    same problems naming every overlapping row, for the details when that is
-    more (see :func:`clinical_reporting.coalescing.problems`).
-    """
-    what = "this problem" if len(problems) == 1 else f"these {len(problems)} problems"
-    listed = "\n".join(f"- {problem}" for problem in problems)
-    every = list(every_row)
-    return feedback.error(
-        f"Not applied. Fix {what} first, then apply again.\n{listed}",
-        "\n".join(every) if every and every != list(problems) else None,
-    )
 
 
 def coalesced_missing_message(report) -> str:
@@ -997,38 +1017,12 @@ def coalesced_missing_message(report) -> str:
     return feedback.warning(" ".join(sentences))
 
 
-def coalesced_conflict_message(report) -> str:
-    """What makes the report's coalesced items unusable since they were applied.
-
-    An error naming an overlap's first rows, every row in its details, for
-    example "Race in DM: 2 rows have a value in Race Other Specify where Race
-    already has one: 101-004 (White / Caucasian), …. Change a condition, or
-    keep the earlier value, on Coalesced items. The report can't be exported
-    until this is fixed."; ``""`` when nothing does (see
-    :attr:`clinical_reporting.coalescing.Built.conflicts`).
-    """
-    built = report.coalesced_build
-    if not built.conflicts:
-        return ""
-    details = built.conflict_details
-    return feedback.error(
-        f"{' '.join(built.conflicts)} The report can't be exported until this is "
-        "fixed.",
-        "\n".join(details) if details != built.conflicts else None,
-    )
-
-
 __all__ = [
     "ADDITIONAL",
-    "ADD_FILES_FIRST",
-    "APPLY_ADDITIONAL_AGAIN",
-    "APPLY_COALESCED_AGAIN",
-    "APPLY_STACKED_AGAIN",
     "COALESCED",
-    "COALESCED_NOT_APPLIED",
-    "COALESCED_NOT_SAVED_NOTE",
     "COMMON",
     "COMPARISONS",
+    "DATA_STEPS",
     "DONE",
     "ERROR",
     "FILTERS",
@@ -1038,6 +1032,7 @@ __all__ = [
     "ISSUE_STEPS",
     "JOINS",
     "NEEDS_DATA",
+    "NAMES_USED_ON_LEAVING",
     "NONE",
     "NO_DATA",
     "NO_DATA_HINT",
@@ -1048,8 +1043,6 @@ __all__ = [
     "SAVED_NAMES_UNAVAILABLE_TIP",
     "SOURCE",
     "STACKED",
-    "STACKED_NOT_APPLIED",
-    "STACKED_NOT_SAVED_NOTE",
     "STEP_KEYS",
     "TITLES",
     "UNPLACED_ISSUE_CODES",
@@ -1057,13 +1050,14 @@ __all__ = [
     "StepStatus",
     "additional_applied_message",
     "additional_form_names_message",
+    "additional_name_problems",
+    "cannot_run_message",
     "coalesced_applied_message",
-    "coalesced_conflict_message",
     "coalesced_counts",
-    "coalesced_item_problems_message",
     "coalesced_missing_message",
-    "coalesced_problems_message",
+    "held_save_tip",
     "issue_step",
+    "issues_by_field",
     "joins_message",
     "preview_caption",
     "report_summary",
@@ -1085,10 +1079,8 @@ __all__ = [
     "stacked_applied_message",
     "stacked_cell_warning",
     "stacked_clear_tooltip",
-    "stacked_conflict_message",
     "stacked_form_tooltip",
     "stacked_missing_message",
     "stacked_not_loaded_hint",
-    "stacked_problems_message",
     "step_statuses",
 ]

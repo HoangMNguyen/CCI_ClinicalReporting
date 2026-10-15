@@ -7,14 +7,11 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from clinical_reporting import coalescing, session
+from clinical_reporting import coalescing, session, steps
 from clinical_reporting.coalescing import KEEP_EARLIER, CoalescedItem, Fill
 from clinical_reporting.models import JoinHow
 from clinical_reporting.stacking import StackedForm
-from clinical_reporting.validation import (
-    EXPORT_BLOCKING_ISSUE_CODES,
-    ReportValidationError,
-)
+from clinical_reporting.validation import ReportValidationError
 
 RACE = CoalescedItem("DM", "Race", "Race", (Fill("Race Other Specify", "=", "Other"),))
 VISITS = StackedForm("VISITS", ("SV", "UV"))
@@ -205,7 +202,9 @@ def test_later_overlaps_stop_the_report_until_the_earlier_value_is_kept():
         "one: 001 (White / Caucasian). Change a condition, or keep the earlier "
         "value, on Coalesced items."
     ]
-    assert "coalesced_item_conflict" in EXPORT_BLOCKING_ISSUE_CODES
+    assert steps.cannot_run_message(report.validate()) == (
+        "Cannot run: Fix Coalesced items first."
+    )
     with pytest.raises(ReportValidationError):
         report.create_report()
 

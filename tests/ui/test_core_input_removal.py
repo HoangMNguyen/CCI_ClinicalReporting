@@ -1,12 +1,17 @@
 """Tests for removing the selected Corelisting ZIP from the workspace."""
 
 import pandas as pd
+import pytest
+from PySide6.QtWidgets import QComboBox
 from tests.unit.fakes import FakePathPicker, FakeSection, FakeTableView
 
 from clinical_reporting.report import CLReport
 from clinical_reporting.ui.base import WidgetBaseMixin
 from clinical_reporting.ui.pages.preview_export import PreviewExportMixin
 from clinical_reporting.ui.pages.source_data import SourceDataMixin
+
+# The saved-setting dropdown is a real one: removing the ZIP clears its mark.
+pytestmark = pytest.mark.usefixtures("qapp")
 
 
 class _TextWidget:
@@ -21,18 +26,6 @@ class _TextWidget:
         self.enabled = enabled
 
 
-class _ComboBox:
-    def __init__(self):
-        self.cleared = False
-        self.enabled = True
-
-    def clear(self):
-        self.cleared = True
-
-    def setEnabled(self, enabled):
-        self.enabled = enabled
-
-
 class _Ui:
     def __init__(self):
         self.pathPicker_input_file = FakePathPicker("corelisting.zip")
@@ -40,7 +33,8 @@ class _Ui:
         self.tableView_preview = FakeTableView()
         self.banner_input_file = _TextWidget()
         self.pushButton_remove_input = _TextWidget()
-        self.comboBox_saved_setting = _ComboBox()
+        self.comboBox_saved_setting = QComboBox()
+        self.comboBox_saved_setting.addItem("monthly", "monthly.json")
 
 
 class _RemovalWidget(SourceDataMixin, PreviewExportMixin, WidgetBaseMixin):
@@ -94,8 +88,8 @@ def test_remove_input_clears_core_data_and_preserves_additional_forms():
     assert widget.ui.pathPicker_input_file.path() == ""
     assert widget.ui.banner_input_file.text == ""
     assert widget.ui.pushButton_remove_input.enabled is False
-    assert widget.ui.comboBox_saved_setting.cleared is True
-    assert widget.ui.comboBox_saved_setting.enabled is False
+    assert widget.ui.comboBox_saved_setting.count() == 0
+    assert not widget.ui.comboBox_saved_setting.isEnabled()
     assert widget.update_all_ui_calls == 1
     # update_all_ui now refreshes the item-dependent tables itself, so the
     # removal path must not stack a second refresh on top of it.

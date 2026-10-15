@@ -8,10 +8,8 @@ from clinical_reporting.pipeline import ReportEngine
 from clinical_reporting.report import CLReport
 from clinical_reporting.validation import (
     CANNOT_RUN_PREFIX,
-    EXPORT_BLOCKING_ISSUE_CODES,
     ReportValidationError,
     cannot_run_message,
-    report_issues_message,
 )
 
 
@@ -93,6 +91,69 @@ def test_duplicate_rename_targets_are_rejected():
     assert "duplicate_output_name" in _issue_codes(report)
 
 
+def _issues(report: CLReport, code: str) -> list[tuple]:
+    return [
+        (issue.code, issue.message, issue.field)
+        for issue in report.validate()
+        if issue.code == code
+    ]
+
+
+def _all_issues(report: CLReport) -> list[tuple]:
+    return [(issue.code, issue.message, issue.field) for issue in report.validate()]
+
+
+def test_a_filter_needs_an_item_and_a_value():
+    report = _valid_two_form_report()
+    report.set_static_filter_items(
+        [("", "=", "1"), ("DM.Age", "=", ""), ("DM.Age", "is Null", "")]
+    )
+
+    assert _all_issues(report) == [
+        (
+            "invalid_static_filter",
+            "Static filter 1 needs an item.",
+            "static_filter_items.0.0",
+        ),
+        (
+            "invalid_static_filter",
+            "Static filter 2 needs a value.",
+            "static_filter_items.1.2",
+        ),
+    ]
+
+
+def test_a_comparison_needs_both_items():
+    report = _valid_two_form_report()
+    report.set_dynamic_filter_items([("", ">", ""), ("DM.Age", ">", "VS.Pulse")])
+
+    assert _all_issues(report) == [
+        (
+            "invalid_dynamic_filter",
+            "Dynamic filter 1 needs its left item.",
+            "dynamic_filter_items.0.0",
+        ),
+        (
+            "invalid_dynamic_filter",
+            "Dynamic filter 1 needs its right item.",
+            "dynamic_filter_items.0.2",
+        ),
+    ]
+
+
+def test_a_duplicated_output_name_names_it_in_its_field():
+    report = _valid_two_form_report()
+    report.rename_dict = {"DM.Age": "Value", "VS.Pulse": "Value"}
+
+    assert _issues(report, "duplicate_output_name") == [
+        (
+            "duplicate_output_name",
+            "Output column name 'Value' would be duplicated.",
+            "output_name.Value",
+        )
+    ]
+
+
 def test_validation_issues_are_serialization_friendly():
     report = CLReport()
     payload = [issue.to_dict() for issue in report.validate()]
@@ -103,16 +164,10 @@ def test_validation_issues_are_serialization_friendly():
 
 def test_cannot_run_messages_list_what_blocks_the_report():
     report = _valid_two_form_report()
-    assert report_issues_message(report) is None
-
     report.selected_forms["VS"].set_join_items([])  # VS needs a join item.
     report.selected_forms["DM"].set_form_item_state("Missing", selected=True)
-    message = report_issues_message(report)
-    joins_only = report_issues_message(report, EXPORT_BLOCKING_ISSUE_CODES)
+
+    message = cannot_run_message(report.validate())
 
     assert message.kind == "warning" and message.startswith(f"{CANNOT_RUN_PREFIX}\n- ")
     assert len(message.splitlines()) == 1 + len(report.validate())
-    assert joins_only == cannot_run_message(
-        [i for i in report.validate() if i.code == "missing_join_items"]
-    )
-    assert joins_only.kind == "warning"

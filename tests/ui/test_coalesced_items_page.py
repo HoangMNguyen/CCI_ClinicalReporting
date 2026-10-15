@@ -3,11 +3,10 @@
 Six subjects have Race "Other" and say which in Race Other Specify; one has
 no Race but a Race Other Specify. Coalescing the two with the condition
 ``= Other`` fills all seven without an overlap; without the condition, the
-six "Other" rows overlap. The page keeps its own coalesced items until
-"Apply to report"; badges refresh once control returns to the event loop.
+six "Other" rows overlap. The page keeps its own coalesced items until the
+user goes to another step; a problem is marked on the field that fixes it.
+Badges and marks refresh once control returns to the event loop.
 """
-
-import json
 
 import pandas as pd
 from PySide6.QtCore import Qt
@@ -15,10 +14,12 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from cci_ui.widgets.sidebar import StepState
+from cci_ui.widgets.tables import PROBLEM_ROLE
 from clinical_reporting.coalescing import KEEP_EARLIER, CoalescedItem, Fill
+from clinical_reporting.ui.pages import source_data
+from clinical_reporting.ui.pages._common import ItemBox
 
 ZIP = "Core_Listings_DEMO01_sample.zip"
-NOT_APPLIED = "Not applied yet. Apply to report to use your changes."
 RACE = CoalescedItem("DM", "Race", "Race", (Fill("Race Other Specify", "=", "Other"),))
 
 
@@ -58,6 +59,21 @@ def _open(window):
     QApplication.processEvents()
 
 
+def _leave(window):
+    """Go to another step: the page's changes reach the report."""
+    window.ui.shell.set_current("forms")
+    QApplication.processEvents()
+
+
+def _invalid(widget):
+    return widget.property("invalid") is True
+
+
+def _mark(cell):
+    """A table cell's problem and tooltip."""
+    return cell.data(PROBLEM_ROLE), cell.toolTip()
+
+
 def _pick(box, text):
     box.setCurrentIndex(box.findText(text))
 
@@ -94,24 +110,25 @@ def _badge(window):
     return item.state(), item.count()
 
 
-def test_a_coalesced_item_takes_the_place_of_its_items_once_applied(sample_window):
+def test_a_coalesced_item_takes_the_place_of_its_items_once_the_page_is_left(
+    sample_window,
+):
     window = sample_window
     ui = window.ui
     _open(window)
     _new_race(window)
-    before = (ui.banner_coalesced_state.text(), _badge(window))
+    before = (list(window.report.coalesced_items), _badge(window))
     editor = (
         ui.label_coalesced_editor.text(),
         ui.comboBox_coalesced_name.currentText(),
         ui.label_coalesced_counts.text(),
         _column(ui.tableWidget_coalesced_fills, 4),
         _cells(ui.tableWidget_coalesced_items, 0),
-        ui.banner_coalesced_item.text(),
     )
 
-    window.click_apply_coalesced_items()
+    _leave(window)
 
-    assert before == (NOT_APPLIED, (StepState.OPTIONAL, None))
+    assert before == ([], (StepState.OPTIONAL, None))
     assert editor == (
         "Race in DM",
         "Race",
@@ -119,7 +136,6 @@ def test_a_coalesced_item_takes_the_place_of_its_items_once_applied(sample_windo
         "0 left empty · 0 rows overlap",
         ["2", "7"],
         ["Race", "DM", "Race, Race Other Specify", "7", "0", "Refuse"],
-        "",
     )
     assert window.report.coalesced_items == [RACE]
     dm = window.report.data["DM"]
@@ -136,11 +152,40 @@ def test_a_coalesced_item_takes_the_place_of_its_items_once_applied(sample_windo
         "Asian",
     ]
     assert ui.banner_coalesced.text() == (
-        "Applied. Coalesced items: Race in DM (7 rows filled)."
+        "Coalesced items updated: Race in DM (7 rows filled)."
     )
     assert ui.banner_coalesced.kind() == "success"
     assert ui.banner_coalesced_state.text() == ""
     assert _badge(window) == (StepState.DONE, None)
+
+
+def test_a_new_coalesced_item_shows_its_empty_items_and_name_in_red(sample_window):
+    window = sample_window
+    ui = window.ui
+    fills = ui.tableWidget_coalesced_fills
+    _open(window)
+
+    window.click_new_coalesced_item()
+    first, second = fills.cellWidget(0, 1), fills.cellWidget(1, 1)
+    name = ui.comboBox_coalesced_name
+
+    assert (_invalid(first), first.toolTip()) == (True, "Pick an item in each row.")
+    assert (_invalid(second), second.toolTip()) == (True, "Pick an item in each row.")
+    assert (_invalid(name), name.toolTip()) == (True, "Give it a name.")
+    assert _mark(ui.tableWidget_coalesced_items.item(0, 0)) == (
+        "Pick an item in each row.\nGive it a name.",
+        "Pick an item in each row.\nGive it a name.",
+    )
+    assert _badge(window) == (StepState.ERROR, None)
+    assert window.report.coalesced_items == []
+
+
+def _choose_output_folder(window, monkeypatch, folder):
+    monkeypatch.setattr(
+        source_data.QFileDialog, "getExistingDirectory", lambda *_args: str(folder)
+    )
+    window.click_output_file()
+    QApplication.processEvents()
 
 
 OVERLAPS = (
@@ -150,40 +195,59 @@ OVERLAPS = (
 )
 
 
-def test_overlaps_refuse_apply_until_the_earlier_values_are_kept(sample_window):
+def test_a_refused_overlap_is_marked_and_holds_the_page_until_kept(
+    sample_window, monkeypatch, tmp_path
+):
     window = sample_window
     ui = window.ui
+    fills = ui.tableWidget_coalesced_fills
+    overlap = ui.comboBox_coalesced_overlap
     _open(window)
+    window.click_select_all_form()
+    _choose_output_folder(window, monkeypatch, tmp_path)
     _new_race(window, operator="")
     editor = (
         ui.label_coalesced_counts.text(),
-        ui.banner_coalesced_item.text(),
+        _mark(fills.item(1, 4)),
+        (_invalid(overlap), overlap.toolTip()),
         _cells(ui.tableWidget_coalesced_items, 0),
     )
 
-    window.click_apply_coalesced_items()
-    banner = ui.banner_coalesced
-    refused = (banner.text(), banner.kind(), banner.details())
-    applied_then = list(window.report.coalesced_items)
-    _pick(ui.comboBox_coalesced_overlap, "Keep the earlier value")
-    kept = (ui.banner_coalesced_item.text(), _cells(ui.tableWidget_coalesced_items, 0))
-    window.click_apply_coalesced_items()
+    _leave(window)
+    held = (
+        list(window.report.coalesced_items),
+        ui.banner_coalesced.text(),
+        _badge(window),
+        ui.pushButton_run.isEnabled(),
+        ui.banner_run_state.text(),
+    )
+    ui.shell.set_current("coalesced")
+    _pick(overlap, "Keep the earlier value")
+    kept = (
+        _mark(fills.item(1, 4)),
+        (_invalid(overlap), overlap.toolTip()),
+        _cells(ui.tableWidget_coalesced_items, 0),
+    )
+    _leave(window)
 
+    refused = f"{OVERLAPS} and 1 more."
     assert editor == (
         "DM has 9 rows: 8 keep Race · 1 filled from Race Other Specify · "
         "0 left empty · 6 rows overlap",
-        f"Can't apply yet: {OVERLAPS} and 1 more.",
+        (refused, refused),
+        (True, refused),
         ["Race", "DM", "Race, Race Other Specify", "1", "6", "Refuse"],
     )
-    assert refused == (
-        "Not applied. Fix this problem first, then apply again.\n"
-        f"- Race in DM: {OVERLAPS} and 1 more.",
-        "error",
-        f"Race in DM: {OVERLAPS}, 101-007 (Other / Lao).",
-    )
-    assert applied_then == []
-    assert kept == (
+    assert held == (
+        [],
         "",
+        (StepState.ERROR, None),
+        False,
+        "Cannot run: Fix Coalesced items first.",
+    )
+    assert kept == (
+        (None, ""),
+        (False, ""),
         ["Race", "DM", "Race, Race Other Specify", "1", "6", "Keep the earlier value"],
     )
     assert window.report.coalesced_items == [
@@ -195,7 +259,11 @@ def test_overlaps_refuse_apply_until_the_earlier_values_are_kept(sample_window):
         "Ainu",
         "Asian",
     ]
-    assert banner.text() == "Applied. Coalesced items: Race in DM (1 row filled)."
+    assert ui.banner_coalesced.text() == (
+        "Coalesced items updated: Race in DM (1 row filled)."
+    )
+    assert ui.pushButton_run.isEnabled()
+    assert ui.banner_run_state.text() == ""
 
 
 def _type_name(window, text):
@@ -217,7 +285,6 @@ def test_a_taken_name_turns_red_with_the_reason_as_its_tooltip(sample_window):
     free = (name.property("invalid"), name.toolTip(), ui.label_coalesced_editor.text())
 
     assert taken == (True, "DM already has an item called Age.", "Age in DM")
-    assert ui.banner_coalesced_item.text() == ""
     assert free == (False, "", "Race (all) in DM")
     assert _cells(ui.tableWidget_coalesced_items, 0)[0] == "Race (all)"
 
@@ -295,28 +362,45 @@ def test_items_move_add_and_remove_and_row_one_has_no_condition(sample_window):
     assert _column(fills, 4) == ["", ""]
 
 
-def test_a_new_zip_keeps_the_coalesced_items_and_asks_for_apply_again(sample_window):
+def test_a_new_zip_brings_the_coalesced_items_along(sample_window):
     window = sample_window
     ui = window.ui
     _open(window)
     _new_race(window)
-    window.click_apply_coalesced_items()
+    _leave(window)
 
     window.open_input_data("Core_Listings_DEMO02_sample.zip", None, _forms())
-    asked = ui.banner_coalesced_state.text()
-    listed = _cells(ui.tableWidget_coalesced_items, 0)
-    dropped = (list(window.report.coalesced_items), ui.banner_coalesced.text())
-    window.click_apply_coalesced_items()
 
-    assert asked == (
-        "The new Corelisting ZIP started a new report. Apply the coalesced items "
-        "again to add them to it."
-    )
-    assert listed == ["Race", "DM", "Race, Race Other Specify", "7", "0", "Refuse"]
-    assert dropped == ([], "")
     assert window.report.coalesced_items == [RACE]
     assert "Race Other Specify" not in window.report.data["DM"].columns
-    assert ui.banner_coalesced_state.text() == ""
+    assert _cells(ui.tableWidget_coalesced_items, 0) == [
+        "Race",
+        "DM",
+        "Race, Race Other Specify",
+        "7",
+        "0",
+        "Refuse",
+    ]
+    assert ui.banner_coalesced.text() == (
+        "Coalesced items updated: Race in DM (7 rows filled)."
+    )
+    assert _badge(window) == (StepState.DONE, None)
+
+
+def test_an_item_with_a_problem_has_its_name_marked_in_the_list(sample_window):
+    window = sample_window
+    table = window.ui.tableWidget_coalesced_items
+    _open(window)
+    _new_race(window)
+    window.click_new_coalesced_item()
+
+    table.selectRow(0)
+
+    assert window.ui.label_coalesced_editor.text() == "Race in DM"
+    assert _mark(table.item(0, 0)) == (None, "")
+    problems = "Pick an item in each row.\nGive it a name."
+    assert _mark(table.item(1, 0)) == (problems, problems)
+    assert _badge(window) == (StepState.ERROR, None)
 
 
 def _save_setting(window, folder, name="Race review"):
@@ -324,41 +408,6 @@ def _save_setting(window, folder, name="Race review"):
     window.ui.checkBox_save_current_setting.setChecked(True)
     window.ui.lineEdit_setting_name.setText(name)
     window.click_save_setting()
-
-
-def test_saving_with_unapplied_coalesced_items_says_they_werent_saved(
-    sample_window, tmp_path
-):
-    window = sample_window
-    _open(window)
-    _new_race(window)
-
-    _save_setting(window, tmp_path)
-    (saved,) = tmp_path.glob("*.json")
-    message = window.ui.label_save_confirmation.text()
-
-    assert message.kind == "warning"
-    assert message == (
-        f"Settings saved to {saved}. Coalesced items has changes that aren't "
-        "applied, so they weren't saved."
-    )
-    assert "coalesced_items" not in json.loads(saved.read_text(encoding="utf-8"))
-
-
-def test_saving_with_both_pages_unapplied_names_both(sample_window, tmp_path):
-    window = sample_window
-    _open(window)
-    _new_race(window)
-    window.click_new_stacked_form()
-
-    _save_setting(window, tmp_path)
-    (saved,) = tmp_path.glob("*.json")
-
-    assert window.ui.label_save_confirmation.text() == (
-        f"Settings saved to {saved}. Stacked forms has changes that aren't "
-        "applied, so they weren't saved. Coalesced items has changes that aren't "
-        "applied, so they weren't saved."
-    )
 
 
 def test_loading_a_setting_brings_its_coalesced_items_to_the_page(
@@ -369,23 +418,28 @@ def test_loading_a_setting_brings_its_coalesced_items_to_the_page(
     table = ui.tableWidget_coalesced_items
     _open(window)
     _new_race(window)
-    window.click_apply_coalesced_items()
+    _leave(window)
     _save_setting(window, tmp_path)
+    ui.shell.set_current("coalesced")
     table.selectRow(0)
     window.click_remove_coalesced_item()
-    window.click_apply_coalesced_items()
+    _leave(window)
     removed = (list(window.report.coalesced_items), ui.banner_coalesced.text())
+    ui.shell.set_current("coalesced")
     window.click_new_coalesced_item()
-    before = (_cells(table, 0), ui.banner_coalesced_state.text())
+    before = (_cells(table, 0), _badge(window))
 
     ui.checkBox_saved_setting.setChecked(True)
     combo = ui.comboBox_saved_setting
     combo.setCurrentIndex(combo.findText("Race review"))
 
-    assert removed == ([], "The coalesced items were removed from the report.")
+    assert removed == (
+        [],
+        "Coalesced items: the coalesced items were removed from the report.",
+    )
     assert before == (
         ["New coalesced item", "AE", "", "—", "—", "Refuse"],
-        NOT_APPLIED,
+        (StepState.ERROR, None),
     )
     assert window.report.coalesced_items == [RACE]
     assert table.rowCount() == 1
@@ -403,6 +457,7 @@ def test_loading_a_setting_brings_its_coalesced_items_to_the_page(
         ("Race Other Specify", "=", "Other"),
     ]
     assert ui.banner_coalesced_state.text() == ""
+    assert _badge(window) == (StepState.DONE, None)
 
 
 def test_a_new_coalesced_item_takes_the_form_being_edited(sample_window):
@@ -420,9 +475,10 @@ def test_a_new_coalesced_item_takes_the_form_being_edited(sample_window):
     # Race and Race Other Specify are in the other coalesced item of DM.
     assert [box.itemText(i) for i in range(box.count())] == ["Subject", "Site", "Age"]
     assert _rows(window) == [("", "starts the value", ""), ("", "—", "")]
-    assert ui.banner_coalesced_item.text() == (
-        "Can't apply yet:\n- Pick an item in each row.\n- Give it a name."
-    )
+    assert [
+        (_invalid(fills.cellWidget(row, 1)), fills.cellWidget(row, 1).toolTip())
+        for row in range(2)
+    ] == [(True, "Pick an item in each row.")] * 2
 
 
 def test_another_form_starts_its_items_over_but_keeps_a_typed_name(sample_window):
@@ -442,3 +498,18 @@ def test_another_form_starts_its_items_over_but_keeps_a_typed_name(sample_window
 
     assert ui.comboBox_coalesced_name.currentText() == "Origin"
     assert _rows(window) == [("", "starts the value", ""), ("", "—", "")]
+
+
+def test_an_item_box_shows_its_problem_after_its_item(qapp):
+    box = ItemBox(["DM.Age", "DM.Sex"], "DM.Age")
+
+    box.set_problem("DM.Age is in it twice.")
+    marked = (box.property("invalid"), box.toolTip())
+    box.setCurrentIndex(box.findText("DM.Sex"))
+    picked_again = box.toolTip()
+    box.set_problem("")
+    cleared = (box.property("invalid"), box.toolTip())
+
+    assert marked == (True, "DM.Age\nDM.Age is in it twice.")
+    assert picked_again == "DM.Sex\nDM.Age is in it twice."
+    assert cleared == (False, "DM.Sex\nPick an item, or type to find one")
