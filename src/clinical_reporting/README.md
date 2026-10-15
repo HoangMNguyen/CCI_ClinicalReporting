@@ -136,9 +136,10 @@ python -m clinical_reporting
     later data brings to one that refuses them, or its name now given to
     another item of its form, stops the export until it is fixed on the page.
 - The "?" button at the top right, left of the ◐ Display button, opens help
-  beside the pages: plain-language instructions for the open step (on
-  Source data, also an overview of the whole app). It follows the step you
-  open; drag its edge to make it wider. It always starts closed.
+  beside the pages for the open step: what it is for, how to use it step by
+  step, and what is good to know (on Source data, also the keyboard
+  shortcuts that work on every step). It follows the step you open; drag its
+  edge to make it wider. It always starts closed.
 - The steps sit in a sidebar with status badges. On a narrow window, and in
   Compact density until you open it (Ctrl+\\), the sidebar is an icon strip
   with each step's count or mark beside its icon; each density remembers

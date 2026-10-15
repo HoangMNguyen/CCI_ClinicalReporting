@@ -63,9 +63,12 @@ QFrame[cciRole="statusBar"] {
 
 #: Shortcut that shows or hides the sidebar.
 SIDEBAR_SHORTCUT = "Ctrl+\\"
-#: Shortcuts to the next and previous page (as a tab widget has).
+#: Shortcuts to the next and previous page (as a tab widget has). Not
+#: ``StandardKey.PreviousChild``: that is Ctrl+Shift+Backtab, which shortcut
+#: matching on Windows and on Linux never offers (their keyboard maps give
+#: Ctrl+Shift+Tab and Ctrl+Backtab for the keys), so it would never fire.
 NEXT_PAGE_SHORTCUTS = (QKeySequence.StandardKey.NextChild, "Ctrl+PgDown")
-PREVIOUS_PAGE_SHORTCUTS = (QKeySequence.StandardKey.PreviousChild, "Ctrl+PgUp")
+PREVIOUS_PAGE_SHORTCUTS = ("Ctrl+Shift+Tab", "Ctrl+PgUp")
 #: How long after the window first shows a restored sidebar state holds,
 #: whatever sizes the window passes through while it opens (a window
 #: reopening maximized is first laid out at its normal size).

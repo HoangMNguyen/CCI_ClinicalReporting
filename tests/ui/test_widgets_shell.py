@@ -901,6 +901,7 @@ def test_step_shortcuts_go_to_the_next_and_previous_page(make_manager, shown):
     focus = shell.sidebar.item("source")
     focus.setFocus()
     ctrl = Qt.KeyboardModifier.ControlModifier
+    ctrl_shift = ctrl | Qt.KeyboardModifier.ShiftModifier
     seen = []
 
     for key, modifiers in [
@@ -908,12 +909,16 @@ def test_step_shortcuts_go_to_the_next_and_previous_page(make_manager, shown):
         (Qt.Key.Key_Tab, ctrl),
         (Qt.Key.Key_Tab, ctrl),  # Already on the last page.
         (Qt.Key.Key_PageUp, ctrl),
-        (Qt.Key.Key_Backtab, ctrl | Qt.KeyboardModifier.ShiftModifier),
+        # Ctrl+Shift+Tab, as the Windows and Linux keyboard maps offer it for
+        # shortcuts, then as the key event itself has it.
+        (Qt.Key.Key_Tab, ctrl_shift),
+        (Qt.Key.Key_PageDown, ctrl),
+        (Qt.Key.Key_Backtab, ctrl_shift),
     ]:
         QTest.keyClick(focus, key, modifiers)
         seen.append(shell.current())
 
-    assert seen == ["joins", "preview", "preview", "joins", "source"]
+    assert seen == ["joins", "preview", "preview", "joins", "source", "joins", "source"]
 
 
 def test_small_tool_shell_has_no_sidebar(make_manager):

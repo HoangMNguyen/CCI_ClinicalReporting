@@ -56,11 +56,11 @@ def test_the_help_starts_closed_and_follows_the_open_step(sample_window):
     shell.help_button.click()
     QApplication.processEvents()
     on_source = shell.help_panel.title.text()
-    overview = shell.help_panel.body.toPlainText().startswith("How a report is made")
+    opening = shell.help_panel.body.toPlainText().splitlines()[0]
     shell.set_current("joins")
 
     assert closed is False
-    assert on_source == "Help: Source data" and overview
+    assert on_source == "Help: Source data" and opening == "What this step is for"
     assert shell.help_panel.title.text() == "Help: Joins"
     assert shell.is_help_visible()
     assert sample_window.width() == width  # The pages make room for it.
