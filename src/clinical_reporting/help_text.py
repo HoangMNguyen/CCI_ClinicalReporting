@@ -1,10 +1,9 @@
 """The help the desktop app shows beside each step (no Qt needed).
 
 :data:`HELP` holds, for every step of :data:`clinical_reporting.steps.STEP_KEYS`,
-plain-language instructions in Markdown: what the step is for, what to do
-before it, how to do it, the words it uses, and what is good to know. Source
-data's text starts with an overview of the whole app. The examples use the
-made-up DEMO01 study (:mod:`clinical_reporting.sample_data`).
+plain-language instructions in Markdown, in three sections: what the step is
+for, how to use it step by step (its options explained), and what is good to
+know. Source data's also lists the keyboard shortcuts that work on every step.
 """
 
 from __future__ import annotations
@@ -13,213 +12,121 @@ from typing import Dict
 
 from clinical_reporting import steps
 
-_OVERVIEW = """\
-## How a report is made
-
-A report is built in 12 steps. They are listed in the sidebar on the left, \
-in this order:
-
-1. **Source data**: choose the Corelisting ZIP the report starts from.
-2. **Additional input** (optional): add CSV or Excel files as extra forms.
-3. **Stacked forms** (optional): put the rows of several forms one under \
-another as one new form.
-4. **Coalesced items** (optional): make one item from two or more items of \
-a form.
-5. **Forms**: pick the forms the report uses.
-6. **Common items**: pick the items every form shares, such as Subject.
-7. **Form items**: pick the other items to show from each form.
-8. **Filters**: keep only the rows that match a value.
-9. **Joins**: set how the forms are combined into one table.
-10. **Comparisons**: keep only the rows where one item compares to another.
-11. **Order & rename**: set the column order and the column names.
-12. **Preview & export**: check the rows, export them to Excel, and save \
-your choices.
-
-Additional input, Stacked forms and Coalesced items change the report's data. \
-Your changes on them reach the report when you go to another step.
-
-## Red fields
-
-A field with a **red outline** has a value missing, or one the report can't \
-use. Hover over it to see why. The step's badge in the sidebar turns red too.
-
-While any field is red, the report can't be previewed or exported. \
-Preview & export says which steps to fix.
-
-On Additional input, Stacked forms and Coalesced items, a red field also \
-keeps that step's changes out of the report until you fix it.
-
-## The sidebar badges
-
-Each step in the sidebar can show a badge:
-
-- a **number**: how many you picked (forms, items, filters, ...);
-- a **tick**: the step is done;
-- **optional**: you can skip the step;
-- a **warning**: something needs a look, but the report still runs;
-- a **red mark**: a problem to fix before the report can run.
-
-Hover over a step to see what its badge means. On a narrow window, or in \
-Compact density, the sidebar shows only icons, with each step's badge \
-beside its icon. Press Ctrl+\\\\ to show or hide the sidebar.
-
-## Keyboard shortcuts
-
-- **Ctrl+Tab** or **Ctrl+PgDown**: next step.
-- **Ctrl+Shift+Tab** or **Ctrl+PgUp**: previous step.
-- **Ctrl+\\\\**: show or hide the sidebar.
-- **Ctrl+F**: search (Forms, Common items, Form items, Stacked forms, \
-Order & rename).
-- **F5**: build the preview again (Preview & export).
-- **Ctrl+E**: export to Excel (Preview & export).
-- **Ctrl+S**: save the setting (Preview & export).
-
-## Display settings
-
-The **◐** button at the top right opens the display settings:
-
-- **Appearance**: System (follows your computer), Light or Dark.
-- **Density**: how much fits on the screen. Compact fits more; \
-Comfortable gives more room.
-
-"""
-
 _SOURCE = """\
 ## What this step is for
 
-Every report starts here. You choose the **Corelisting export**: the ZIP \
-file of the study's forms. You can also start from a **saved setting**: \
-the choices you saved for an earlier report.
-
-## Before you start
-
-Have the Corelisting ZIP at hand, for example \
-Core_Listings_DEMO01_20261001.zip.
+Every report starts here. Choose the Corelisting ZIP the report is made from \
+and, if you want, a cut-off date and a saved setting to start from.
 
 ## Step by step
 
 1. Click **Choose ZIP…** and pick the Corelisting ZIP.
-2. To leave out later records, turn on **Apply cut-off date** and set the \
-**Cut-off** date.
-3. To reuse earlier choices, turn on **Start from a saved setting**. Check \
-the **Folder**, or click **Settings folder…** to choose another one. Then \
-pick a setting in **Setting**.
+2. To leave out later records, turn on **Apply cut-off date**, then set the \
+**Cut-off** date. Only records on or before that date are read from the ZIP.
+3. To start from the choices of an earlier report, turn on \
+**Start from a saved setting**:
+    - **Folder**: where the saved settings are kept. Click \
+**Settings folder…** to choose another folder.
+    - **Setting**: pick the saved setting to start from.
 4. Go on to the next step.
-
-## Words used here
-
-- **Corelisting export**: the ZIP file with the study's forms.
-- **Form**: one table of the export, such as DM (demographics) or AE \
-(adverse events).
-- **Cut-off date**: only records on or before this date are read from \
-the ZIP.
-- **Saved setting**: the choices of an earlier report, saved under a name: \
-its forms, items, joins, filters, comparisons, column order and names, \
-stacked forms, coalesced items, and the names given to additional files.
 
 ## Good to know
 
-- The study number comes from the ZIP's name: in \
-Core_Listings_DEMO01_20261001.zip it is DEMO01. The Setting list shows only \
-that study's saved settings.
-- The cut-off date isn't kept in a saved setting. It never cuts rows from \
-additional files.
-- If a saved setting can't be loaded, the Setting box turns red and the \
-message under it says why.
-- If the setting needs forms or items the export doesn't have, a \
+- The study number is read from the ZIP's file name. The **Setting** list \
+shows only that study's saved settings.
+- A saved setting keeps the forms, items, joins, filters, comparisons, column \
+order and names, stacked forms, coalesced items, and the names given to \
+additional files. It doesn't keep the cut-off date.
+- The cut-off date never leaves out rows of additional files.
+- If a saved setting can't be loaded, the **Setting** box turns red and the \
+message below it says why.
+- If the setting needs forms or items the ZIP doesn't have, a \
 **Missing forms** warning lists them. A form that comes from an additional \
 file is added once you add that file on Additional input.
 - Choosing another ZIP starts a new report. Your additional files, stacked \
 forms and coalesced items carry over to it.
-- The **Remove file** button next to the ZIP takes it out of the report. \
-Forms from additional files stay. Stacked forms and coalesced items made only \
-from the ZIP's forms go with it; with no additional files either, they all go.
+- **Remove file** (the × next to the ZIP) takes it out of the report. Forms from \
+additional files stay. Stacked forms and coalesced items made only from the \
+ZIP's forms go with it; with no additional files either, they all go.
+- Keyboard shortcuts on every step: **Ctrl+Tab** or **Ctrl+PgDown** goes to \
+the next step, **Ctrl+Shift+Tab** or **Ctrl+PgUp** to the previous one, and \
+**Ctrl+\\\\** shows or hides the sidebar.
 """
 
 _ADDITIONAL = """\
 ## What this step is for
 
 Add CSV or Excel files to the report. Each file becomes a form, next to the \
-forms of the Corelisting export.
-
-## Before you start
-
-Have the files at hand. Each file should have a column the report can join \
-on, such as Subject.
+forms of the Corelisting ZIP.
 
 ## Step by step
 
 1. Click **Add files…** and pick one or more CSV or Excel files.
-2. In **Form names**, type a **New name** for each file, for example LAB.
-3. To rename a column, select its file, then type a **New name** in \
-**Column names**.
-4. Go to another step. Your files then reach the report as forms.
-
-## Words used here
-
-- **Additional input**: a CSV or Excel file added as a form.
-- **Form**: a table of the report. Each additional file is one form.
-- **Saved names**: the form and column names a saved setting kept for its \
-additional files.
+2. In **Form names**, type each file's form name in **New name**.
+    - **Saved names**: once you've picked a saved setting on Source data that \
+kept names for files, choose the names it kept for this file, or **None** to \
+clear the names it filled in.
+3. To rename a file's columns, select the file in **Form names**, then type \
+the new names in **New name** under **Column names**.
+4. Go to another step. The files then reach the report as forms.
 
 ## Good to know
 
-- Until a file has a form name, its **New name** is red: a file's own name \
-can't be used, because a form name can't contain ".".
-- A form name can't be one a loaded form or a stacked form already has, nor \
-another file's.
-- After you pick a saved setting on Source data, a file that matches one it \
-saved names for gets those names. Check them in **Saved names**, or pick \
-another entry or None.
-- **Still to add** lists the setting's files you haven't added yet.
-- A saved column name the file doesn't have is ignored, and the form is still \
+- A file's **New name** is red until it can be used: while it is empty (a \
+form name can't contain ".", so a file's own name can't be used), when it \
+contains ".", or when a loaded form, a stacked form or another file already \
+has it. Hover over it to see why. While a name is red, none of the files \
+reach the report.
+- After you pick a saved setting, a file that matches one it kept names for \
+(by its file name, or else by its columns) gets those names filled in. Names \
+you typed are never replaced.
+- **Still to add** lists the files the saved setting needs that aren't added \
+yet.
+- A saved column name a file doesn't have is ignored, and the form is still \
 added. Renaming the column by hand puts it back.
+- Right-click column names and choose \
+**Copy Original Item Name to New Item Name** to start from their own names.
 - **Remove** takes the selected files out. Their forms leave the report when \
 you go to another step. With no ZIP loaded, removing the last file also \
 removes every stacked form and coalesced item at once.
+- Files that finish loading after you've gone to another step reach the \
+report right away.
 """
 
 _STACKED = """\
 ## What this step is for
 
-Put the rows of two or more forms one under another, as one new form. For \
-example, stack EOT (end of treatment) and DS (disposition) as DISP, so each \
-subject's end of study is in one form.
-
-## Before you start
-
-Load the Corelisting ZIP, and add on Additional input any file whose form \
-you want to stack.
+Put the rows of two or more forms one under another, as one new form.
 
 ## Step by step
 
 1. Click **New stacked form**.
-2. Type its **Name**, for example DISP.
-3. In **Members**, tick the forms to stack, for example EOT and DS.
-4. Look at the items grid. Items every member has, such as Subject and \
-Visit, are stacked by themselves.
-5. To line up items that have different names, select them in **Left out** \
-(Ctrl-click for several) and click **Match**, for example Reason with \
-Status. Give the match a name.
+2. Type its **Name**.
+3. In **Members**, tick the forms to stack: two or more.
+4. Check the new form's items, below the table:
+    - **In every member**: items all the members have. They are stacked by \
+themselves.
+    - **Matched**: items of different members lined up under one name. Click \
+the name to pick one of the matched names or type a new one. In each \
+member's cell, pick the item that member gives, or **—** for none.
+    - **Left out**: items that not every member has. To line them up, select \
+them (Ctrl-click for several) and click **Match**. To keep a single item, \
+select it and click **Match**, or double-click it.
+5. To undo a match, select it and click **Unmatch**: its items go back to \
+Left out.
 6. Go to another step. The stacked form then reaches the report.
-
-## Words used here
-
-- **Stacked form**: a new form made of the rows of other forms.
-- **Member**: a form whose rows go into the stacked form.
-- **Stacked item**: an item of the stacked form.
-- **Match**: items of different members lined up under one name.
 
 ## Good to know
 
-- A stacked form needs a name and at least two members. Until it has them, \
-its Name and Members are red.
-- In a matched row, each member's cell is a dropdown. Choose **—** when the \
-member gives nothing for that item. **Unmatch** takes the items back to Left \
-out.
-- A cell turns red when a member has two of the match's items: choose one, \
-or **—**.
-- The members stay usable on their own.
+- The **Name**, **Members**, a match's name or a member's cell turn red when \
+they can't be used: no name yet, fewer than two members, a name that's taken, \
+or a member giving two of a match's items. Hover over it to see why. While \
+anything is red, no stacked form reaches the report.
+- Only loaded forms (from the ZIP or from additional files) can be members, \
+not other stacked forms. The members stay usable on their own.
+- A member that isn't loaded is left out, with a warning. It stays ticked in \
+**Members**, so adding its file brings it back.
+- **Search items** (Ctrl+F) narrows the list of items.
 - **Remove** takes the selected stacked form out. It leaves the report when \
 you go to another step.
 """
@@ -228,45 +135,46 @@ _COALESCED = """\
 ## What this step is for
 
 Make one item from two or more items of a form whose values exclude each \
-other. For example, in the stacked form DISP, each row has either a Reason \
-(from EOT) or a Status (from DS): coalesce them into one item, Outcome.
-
-## Before you start
-
-Load the Corelisting ZIP. To coalesce items of a stacked form, set up the \
-stacked form first.
+other: where the first item has no value, a later one gives it.
 
 ## Step by step
 
 1. Click **New coalesced item**.
-2. Pick its **Form**, for example DISP.
-3. Give it a **Name**, for example Outcome.
-4. Pick its items in order: the first gives each row's value, for example \
-Reason; the second fills in after it, for example Status. Click \
-**Add item** for a third.
-5. For a later item, choose a condition if it should also replace values, \
-not only fill empty ones.
-6. Choose what happens **When values overlap**.
-7. Go to another step. The coalesced item then reaches the report.
-
-## Words used here
-
-- **Coalesced item**: one item made from two or more items of a form.
-- **Overlap**: a row where an earlier item already has a value and a later \
-item has one too, so one of the two would be lost.
+2. Pick its **Form**: a loaded form or a stacked form.
+3. In the items table, pick its items in order:
+    - The first row's item gives each row's value to start with.
+    - Each later row's item fills the rows where the value so far is empty. \
+To have it also replace values, choose a condition on the value so far in \
+**Fills where the value so far is empty or**, and type the condition's \
+**Value** if it needs one. **—** means no condition.
+    - **Rows** shows how many rows take their value from each item.
+    - **Add item**, **Remove item**, **Move up** and **Move down** change the \
+list.
+4. Set its **Name**: pick one of its items' names or type a new one.
+5. Choose what happens **When values overlap**, that is, where a later item \
+has a value and the value so far has one too:
+    - **Refuse**: overlapping rows are a problem to fix.
+    - **Keep the earlier value**: the value so far stays.
+6. Go to another step. The coalesced item then reaches the report.
 
 ## Good to know
 
-- The first item gives each row's value. Each later item fills the rows \
-where the value so far is empty, or meets its condition.
-- **Move up** and **Move down** change the order of the items.
-- With **Refuse**, overlapping rows are a problem: the item's **Rows** cell \
-and **When values overlap** turn red. Change a condition, or choose \
-**Keep the earlier value**.
-- Empty items, a missing name, or a condition without a value are red until \
-you fill them in.
-- The coalesced item takes the place of its first item, and its items leave \
-the form.
+- Under the items table, the editor says how the form's rows take their \
+value.
+- The coalesced item takes the place of its first item, and its other items \
+leave the form.
+- An item can be in one coalesced item only. With two or more forms loaded, \
+a common item can only be coalesced under its own name, so the forms still \
+join on it.
+- Coalesced items are made after the stacked forms: a member's coalesced \
+item doesn't reach its stacked form. Coalesce the stacked form instead.
+- A field turns red when it can't be used: no form or one that isn't \
+loaded, fewer than two items, an empty row, an item that's taken or not in \
+the form, no name or a taken one, a condition without a value, or refused \
+overlaps (the **Rows** cell and **When values overlap**). Hover over it to \
+see why. While anything is red, no coalesced item reaches the report.
+- **Remove** takes the selected coalesced item out. It leaves the report when \
+you go to another step.
 """
 
 _FORMS = """\
@@ -274,56 +182,45 @@ _FORMS = """\
 
 Pick the forms the report uses.
 
-## Before you start
-
-Load the Corelisting ZIP on Source data.
-
 ## Step by step
 
-1. Find a form in the list on the left. Type in the search box to narrow \
-the list.
-2. Double-click it, or select it and click the add arrow, to move it to the \
-selected list.
-3. To take a form out, double-click it in the selected list.
-
-## Words used here
-
-- **Form**: one table of the data, such as DM, VS or AE.
+1. Find a form in **Available**. Type in **Search forms** to narrow the list.
+2. Double-click it, or select it and click **›** (Add selected), to move it \
+to **Selected**. Ctrl-click selects several.
+3. To take a form out, double-click it in **Selected**, or select it and \
+click **‹** (Remove selected).
+4. **»** (Add all) and **«** (Remove all) move every form at once.
 
 ## Good to know
 
-- The search is case-insensitive and takes patterns: dm|ae finds DM and AE.
-- The double arrows add or remove all forms at once.
-- A newly selected form joins last, on Subject, with a Left join. Change \
+- The search (Ctrl+F) isn't case-sensitive, and takes patterns: a | between \
+two names finds either.
+- A form you add joins the others last, on Subject, with a Left join. Change \
 that on Joins.
 """
 
 _COMMON = """\
 ## What this step is for
 
-Pick the **common items**: the items every form has, such as Subject, Site \
-and Visit. Each one becomes a column of the report.
-
-## Before you start
-
-Select the forms on Forms.
+Pick the common items: items every form has. Each one becomes a column of \
+the report, and the forms are joined on them.
 
 ## Step by step
 
-1. Double-click an item on the left to add it, or select it and click the \
-add arrow.
-2. Double-click an item on the right to take it out.
-
-## Words used here
-
-- **Common item**: an item every form has.
+1. Double-click an item in **Available**, or select it and click **›** \
+(Add selected). Type in **Search common items** to narrow the list.
+2. To take one out, double-click it in **Selected**, or select it and click \
+**‹** (Remove selected).
+3. **»** (Add all) and **«** (Remove all) move every item at once.
 
 ## Good to know
 
-- Subject is chosen for you.
-- A common item is only one that every loaded form has. An additional file \
-without Visit, for example, takes Visit out of the common items.
-- The forms join on common items (see Joins).
+- Subject is chosen for you when a ZIP is loaded.
+- Only items every loaded form has are listed: an additional file without \
+one of them takes it off the list.
+- A form that doesn't join on a common item (see Joins) also gives the \
+report its own column of it, named with the form.
+- The search (Ctrl+F) isn't case-sensitive, and takes patterns.
 """
 
 _FORM_ITEMS = """\
@@ -331,58 +228,52 @@ _FORM_ITEMS = """\
 
 Pick the other items each selected form adds to the report.
 
-## Before you start
-
-Select the forms on Forms.
-
 ## Step by step
 
-1. Find an item on the left, for example DM.Age. Type in the search box to \
-narrow the list.
-2. Double-click it, or select it and click the add arrow.
-3. Double-click an item on the right to take it out.
-
-## Words used here
-
-- **Form item**: an item of one form. It is named with its form, as \
-FORM.item: DM.Age, AE.Grade, VS.Pulse.
+1. Find an item in **Available**. Each one is named with its form, as \
+FORM.item. Type in **Search form items** to narrow the list.
+2. Double-click it, or select it and click **›** (Add selected).
+3. To take one out, double-click it in **Selected**, or select it and click \
+**‹** (Remove selected).
+4. **»** (Add all) and **«** (Remove all) move every item at once.
 
 ## Good to know
 
-- Each form item becomes a column of the report, named like DM.Age until \
-you rename it on Order & rename.
-- If a selected form adds nothing to the report, the selected list turns \
+- Each item becomes a column named FORM.item, until you rename it on \
+Order & rename.
+- If a selected form adds nothing to the report, the **Selected** list turns \
 red.
+- The search (Ctrl+F) isn't case-sensitive, and takes patterns.
 """
 
 _FILTERS = """\
 ## What this step is for
 
-Keep only the rows that match every **filter**. For example, DM.Age >= 18 \
-keeps adults only.
-
-## Before you start
-
-Pick the items to filter on: Common items and Form items.
+Keep only the rows that match every filter.
 
 ## Step by step
 
 1. Click **+** to add a filter.
-2. Pick its **Item**, for example DM.Age.
-3. Pick its **Operator**, for example >=.
-4. Type its **Value**, for example 18.
-5. To take a filter out, select its row and click **−**.
-
-## Words used here
-
-- **Filter**: a rule a row must meet to stay in the report.
+2. Pick its **Item**. Type in the box to find one.
+3. Pick its **Operator**:
+    - **=** and **!=**: equal to, not equal to.
+    - **>**, **>=**, **<** and **<=**: greater or less than.
+    - **Contains** and **Does not contain**: has the text somewhere, or not.
+    - **In** and **Not in**: one of a list, or none of it. Separate the \
+values with commas.
+    - **is Null** and **is not Null**: empty, or not empty. These take no \
+value.
+4. Type its **Value**.
+5. To take filters out, select their rows and click **−**.
 
 ## Good to know
 
-- Each filter works on its own form, before the forms are joined.
-- An operator that needs a value needs one: the Value stays red until you \
-type it. "is Null" and "is not Null" take no value.
-- A filter row that isn't finished is red until you finish it or remove it.
+- Text is compared without regard to case; values that are numbers are \
+compared as numbers.
+- A filter on a common item works on every form, one on a form's item on \
+that form, before the forms are joined.
+- **Item** and **Value** stay red until they're filled in; hover over them \
+to see why. While a filter is red, the report can't be previewed or exported.
 """
 
 _JOINS = """\
@@ -390,97 +281,73 @@ _JOINS = """\
 
 Set how the selected forms are combined into one table.
 
-## Before you start
-
-Select at least two forms, and their common items.
-
 ## Step by step
 
-1. Look at the order: forms are joined from top to bottom. The first form \
-starts the report.
-2. To change the order, select a form and click **Move up** or \
-**Move down**.
-3. For each form after the first, pick the items it joins on in \
-**Item 1**, **Item 2** and **Item 3**, for example Subject.
-4. Pick its **Type**.
-
-## Words used here
-
-- **Join order**: the order in which the forms are combined.
-- **Join item**: a common item a form is matched on, such as Subject.
+1. Check the order: the forms are joined from top to bottom, and the first \
+form starts the report.
+2. To change the order, select a form and click **Move up** or **Move down**.
+3. For each form below the first, pick the common items it joins on in \
+**Item 1**, **Item 2** and **Item 3**.
+4. Pick its **Type**:
+    - **Left join**: keep every row so far, adding this form's values where \
+they match.
+    - **Inner join**: keep only the rows found in both.
+    - **Right join**: keep every row of this form.
+    - **Outer join**: keep all the rows of both.
 
 ## Good to know
 
-The join types:
-
-- **Left join**: keep every row so far, adding this form's values where \
-they match.
-- **Inner join**: keep only the rows found in both.
-- **Right join**: keep every row of this form.
-- **Outer join**: keep all the rows of both.
-
-A new form joins on Subject with a Left join. A form after the first needs \
-at least one join item: its Item 1 is red until you pick one. The first \
-form's items and type are greyed out: it joins on nothing.
+- The first form's items and type are greyed: it joins on nothing.
+- A form you add joins last, on Subject, with a Left join. A form moved out \
+of first place joins on Subject.
+- A form below the first needs at least one join item: its **Item 1** is red \
+until you pick one.
+- A common item a form doesn't join on stays as that form's own column, \
+named with the form. The message on this step lists them.
 """
 
 _COMPARISONS = """\
 ## What this step is for
 
-Keep only the rows where one item compares to another. For example, \
-AE.End Date >= AE.Start Date keeps adverse events that end on or after they \
-start.
-
-## Before you start
-
-Pick the items to compare: Common items and Form items.
+Keep only the rows where one item compares to another.
 
 ## Step by step
 
 1. Click **+** to add a comparison.
-2. Pick **Item 1**, for example AE.End Date.
-3. Pick the **Operator**, for example >=.
-4. Pick **Item 2**, for example AE.Start Date.
-5. To take one out, select its row and click **−**.
-
-## Words used here
-
-- **Comparison**: a rule that compares two items of the same row.
+2. Pick **Item 1**.
+3. Pick the **Operator**: **=**, **!=**, **>**, **>=**, **<** or **<=**.
+4. Pick **Item 2**.
+5. To take comparisons out, select their rows and click **−**.
 
 ## Good to know
 
 - Comparisons work after the forms are joined, so the two items can come \
 from different forms.
-- A comparison needs both items: they stay red until you pick them.
+- **Item 1** and **Item 2** stay red until you pick them.
 """
 
 _ORDER = """\
 ## What this step is for
 
-Set the order of the report's columns, and give them readable names.
-
-## Before you start
-
-Pick the items on Common items and Form items.
+Set the order of the report's columns, and the names they get in the Excel \
+file.
 
 ## Step by step
 
 1. Select one or more columns. Ctrl-click or Shift-click selects several.
-2. Move them with **Move to top**, **Move up**, **Move down** or \
-**Move to bottom**.
-3. To rename a column, click its **Output name** (the column with the \
-pencil) and type, for example Age (years) for DM.Age.
-
-## Words used here
-
-- **Output name**: the column's name in the Excel file.
+2. Move them with the arrow buttons: **Move to top**, **Move up**, \
+**Move down** or **Move to bottom** (hover over a button to see which).
+3. To rename a column, click its **Output name** and type the new name.
 
 ## Good to know
 
-- Press Ctrl+F to search the columns; **Next match** and \
-**Select all matches** go through the results.
-- An output name made only of spaces, or one another column has, is red.
-- A column without an output name keeps its own name, such as DM.Age.
+- **Search columns** (Ctrl+F) finds columns by their own name; \
+**Next match** and **Select all matches** go through the results.
+- Right-click selected rows and choose \
+**Copy Original Item Name to New Item Name** to start from their own names.
+- An output name made only of spaces, or one another column already has, is \
+red.
+- A column without an output name keeps its own name.
 """
 
 _PREVIEW = """\
@@ -489,40 +356,35 @@ _PREVIEW = """\
 Check the report's rows, export them to Excel, and save your choices for \
 next time.
 
-## Before you start
-
-Go through the steps before. Fix any step with a red badge.
-
 ## Step by step
 
-1. Look at the preview. It is built when you open this step; click \
-**Refresh** (F5) to build it again.
-2. In **Folder**, click **Choose…** and pick where to save the file.
-3. Optionally, type a **File name**.
-4. Click **Export to Excel** (Ctrl+E).
-5. To reuse your choices, turn on **Save these settings for reuse**, type a \
-**Name**, check the **Folder**, and click **Save setting** (Ctrl+S).
-
-## Words used here
-
-- **Saved setting**: your choices, saved under a name to start a later \
-report from (on Source data).
+1. Check the preview. It's built when you open this step; click **Refresh** \
+(F5) to build it again.
+2. Under **Export**:
+    - **Folder**: click **Choose…** and pick where the file goes.
+    - **File name**: optional. The date and time of the export are added to \
+it.
+    - Click **Export to Excel** (Ctrl+E).
+3. To save your choices, under **Save setting**:
+    - Turn on **Save these settings for reuse**.
+    - **Name**: the name the setting is saved under.
+    - **Folder**: click **Choose…** to pick where settings are saved.
+    - Click **Save setting** (Ctrl+S).
 
 ## Good to know
 
 - If something stops the report, the message above **Export to Excel** \
-says "Cannot run" and names the steps to fix.
-- The Folder is red until you choose one.
-- The file's name ends with the date and time of the export, so files \
-never overwrite each other.
-- The setting's Name is red while it is empty. While Additional input, \
-Stacked forms or Coalesced items has changes that can't reach the report, \
-Save setting waits until you fix them.
+starts with "Cannot run" and names the steps to fix.
+- The export **Folder** is red until you choose one, and the setting's \
+**Name** while it's empty.
+- While Additional input, Stacked forms or Coalesced items has changes that \
+can't reach the report, **Save setting** waits until you fix them.
+- Saved settings are offered on Source data for reports of the same study.
 """
 
 #: The help of each step, in Markdown, by step key.
 HELP: Dict[str, str] = {
-    steps.SOURCE: _OVERVIEW + _SOURCE,
+    steps.SOURCE: _SOURCE,
     steps.ADDITIONAL: _ADDITIONAL,
     steps.STACKED: _STACKED,
     steps.COALESCED: _COALESCED,
