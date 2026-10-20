@@ -6,14 +6,18 @@ runs in the background (:func:`cci_ui.tasks.run_task`). The files, with
 their names, reach the report when the user goes to another step
 (:meth:`~AdditionalInputMixin._apply_additional_step`, called by the window's
 ``apply_data_steps``); files that finish loading after the user left, and
-names a picked setting fills in, reach it right away. A New name the report
-can't use (none typed, a ".", a loaded or stacked form's name, another
-file's) is marked red with the reason, and holds the step: nothing from it
-reaches the report until it is fixed. The banner on the page says what
-reaching the report did (the wording is in :mod:`clinical_reporting.steps`)
-and which files couldn't be read. Applying starts from the report's forms as
-loaded (``CLReport.loaded_data``), so the report rebuilds its stacked forms
-from the new set; a new Corelisting ZIP brings the files' forms along.
+names a picked setting fills in, reach it right away. So do they, without
+leaving, once every file the loaded setting needs is listed and no New name
+is red: the change that makes it so (files added, a Saved names pick, a name
+typed, a file removed) brings them in; later ones wait for the user to
+leave. A New name the report can't use (none typed, a ".", a loaded or
+stacked form's name, another file's) is marked red with the reason, and
+holds the step: nothing from it reaches the report until it is fixed. The
+banner on the page says what reaching the report did (the wording is in
+:mod:`clinical_reporting.steps`) and which files couldn't be read. Applying
+starts from the report's forms as loaded (``CLReport.loaded_data``), so the
+report rebuilds its stacked forms from the new set; a new Corelisting ZIP
+brings the files' forms along.
 
 A saved setting keeps the form and column names given to its additional
 files (:mod:`clinical_reporting.additional_names`). The Form names table's
@@ -38,7 +42,7 @@ from pathlib import Path
 from typing import Collection, Dict, List, Optional, Sequence, Set, Tuple
 
 import pandas as pd
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -121,7 +125,8 @@ class AdditionalInputPage(Page):
         super().__init__(
             steps.TITLES[self.KEY],
             "Optional. Add CSV or Excel files and rename their forms and columns. "
-            "Your changes reach the report when you go to another step.",
+            "Your changes reach the report when you go to another step, or once "
+            "every file a saved setting needs is added.",
             parent=parent,
         )
         self.pushButton_additional_file_add = make_button(
@@ -291,25 +296,34 @@ class AdditionalInputMixin:
     ) -> None:
         """List the files read by :meth:`click_add_additional_files`."""
         loaded, failures = result
+        was_ready = self._setting_files_ready()
         self.additional_inputs.update(loaded)
-        picked = self._pick_saved_names(list(loaded))
+        picks, ignored = self._pick_saved_names(list(loaded))
         self._refresh_additional_files_ui()
         self._refresh_additional_tables()
         self._update_additional_buttons_state()
         banner = self.ui.banner_additional
+        unread = None
         if failures:
             names = [Path(path).name for path in failures]
             reasons = [f"{Path(path).name}: {why}" for path, why in failures.items()]
             # One line on the page (it doesn't scroll); the reasons per file
             # are behind "Show details".
-            problem = feedback.warning(
+            unread = feedback.warning(
                 f"These files could not be read and were not added: "
                 f"{feedback.short_list(names)}.",
                 "\n".join(reasons),
             )
-            self._set_label_text(banner, problem)
-        elif picked is not None:
-            self._show_saved_names_message(picked)
+            self._set_label_text(banner, unread)
+        elif picks:
+            self._show_saved_names_message(
+                steps.saved_names_filled_message(
+                    self._saved_names_setting,
+                    picks,
+                    ignored,
+                    still_to_add=bool(self._saved_files_still_to_add()),
+                )
+            )
         elif (
             banner.text()
             and banner.kind() == "warning"
@@ -318,6 +332,7 @@ class AdditionalInputMixin:
             # What went wrong before (unreadable files) is old news; a result
             # isn't.
             self._set_label_text(banner, "")
+        self._put_setting_files_in_if_completed(was_ready, picks=picks, unread=unread)
         # The user may have gone to another step while the files were read.
         self.apply_data_steps()
 
@@ -336,6 +351,7 @@ class AdditionalInputMixin:
         if not selected_items:
             return
 
+        was_ready = self._setting_files_ready()
         removed_paths = []
         choices = getattr(self, "_saved_names_choice", {})
         for item in selected_items:
@@ -357,6 +373,7 @@ class AdditionalInputMixin:
         self._refresh_additional_tables()
         self._update_additional_buttons_state()
         self._drop_data_steps_without_input()
+        self._put_setting_files_in_if_completed(was_ready)
 
     # ------------------------------------------------------------------
     # UI helpers
@@ -485,6 +502,7 @@ class AdditionalInputMixin:
         if not file_path:
             return
 
+        was_ready = self._setting_files_ready()
         new_name = item.text().strip()
         if new_name:
             self.additional_form_names[file_path] = new_name
@@ -493,6 +511,7 @@ class AdditionalInputMixin:
 
         self._populate_column_name_table()
         self.update_additional_input_ui()
+        self._put_setting_files_in_if_completed(was_ready)
 
     def _on_form_table_selection_changed(self) -> None:
         """Refresh the column table when the selected form changes."""
@@ -584,24 +603,30 @@ class AdditionalInputMixin:
         self._show_missing_saved_files()
         self._show_ignored_saved_names()
 
-    def _show_missing_saved_files(self) -> None:
-        """List the loaded setting's files that aren't added yet.
+    def _needed_saved_entries(self) -> List[SavedFileNames]:
+        """The loaded setting's entries for the files it needs.
 
         Only entries for forms the setting selects count: names saved for a
-        file the setting doesn't use aren't missing.
+        file the setting doesn't use aren't needed.
         """
+        used_forms = getattr(self, "_saved_names_forms", None)
+        return [
+            entry
+            for entry in self._saved_names()
+            if entry.form_name and (used_forms is None or entry.form_name in used_forms)
+        ]
+
+    def _saved_files_still_to_add(self) -> List[SavedFileNames]:
+        """The files the loaded setting needs that no listed file stands for."""
+        added = self._saved_names_added()
+        return [entry for entry in self._needed_saved_entries() if entry not in added]
+
+    def _show_missing_saved_files(self) -> None:
+        """List the loaded setting's files that aren't added yet."""
         banner = getattr(self.ui, "banner_saved_names", None)
         if banner is None:
             return
-        used_forms = getattr(self, "_saved_names_forms", None)
-        added = self._saved_names_added()
-        missing = [
-            entry
-            for entry in self._saved_names()
-            if entry.form_name
-            and (used_forms is None or entry.form_name in used_forms)
-            and entry not in added
-        ]
+        missing = self._saved_files_still_to_add()
         setting_name = getattr(self, "_saved_names_setting", "")
         self._set_label_text(
             banner,
@@ -733,10 +758,11 @@ class AdditionalInputMixin:
 
     def _fill_saved_names(
         self, found: Dict[str, Match], paths: Collection[str]
-    ) -> Optional[feedback.Message]:
-        """Fill in the names *found* for *paths*, and say what was picked.
+    ) -> Tuple[List[Tuple[str, Optional[str]]], List[IgnoredName]]:
+        """Fill in the names *found* for *paths*.
 
-        ``None`` when none of *paths* has a match.
+        Returns what was picked, as ``(file name, how it was matched)`` pairs,
+        and the picked names the files can't use.
         """
         picks, ignored = [], []
         for file_path in sorted(paths, key=lambda path: Path(path).name.casefold()):
@@ -745,24 +771,22 @@ class AdditionalInputMixin:
             ignored.extend(self._use_saved_names(file_path, found[file_path].index))
             self._saved_names_choice[file_path] = found[file_path]
             picks.append((Path(file_path).name, found[file_path].by))
-        if not picks:
-            return None
-        return steps.saved_names_filled_message(
-            self._saved_names_setting, picks, ignored
-        )
+        return picks, ignored
 
     def _listed_columns(self) -> Dict[str, List[str]]:
         """Each listed file's column headers, for matching."""
         return {path: named_columns(df) for path, df in self.additional_inputs.items()}
 
-    def _pick_saved_names(self, new_paths: Sequence[str]) -> Optional[feedback.Message]:
-        """Pick saved names for files just added, and say what was picked.
+    def _pick_saved_names(
+        self, new_paths: Sequence[str]
+    ) -> Tuple[List[Tuple[str, Optional[str]]], List[IgnoredName]]:
+        """Pick saved names for files just added; what was picked, as above.
 
         Only added files without names are filled in, and only with entries
-        no listed file uses yet. ``None`` when nothing was picked.
+        no listed file uses yet.
         """
         if not self._saved_names():
-            return None
+            return [], []
         taken = {path: pick.index for path, pick in self._saved_names_choice.items()}
         found = match(self._saved_names(), self._listed_columns(), taken)
         unnamed = [path for path in new_paths if self._current_names(path) == ("", {})]
@@ -806,7 +830,7 @@ class AdditionalInputMixin:
         self._saved_names_choice = {}
         self._saved_names_setting = setting_name
         self._saved_names_forms = None if used_forms is None else set(used_forms)
-        message = None
+        picks, ignored = [], []
         if entries and self.additional_inputs:
             found = match(entries, self._listed_columns())
             eligible = [
@@ -814,11 +838,13 @@ class AdditionalInputMixin:
                 for path, pick in found.items()
                 if path in replaceable or self._has_names_from(path, pick.index)
             ]
-            message = self._fill_saved_names(found, eligible)
+            picks, ignored = self._fill_saved_names(found, eligible)
         # The "Still to add" banner says what isn't picked or added.
         self._refresh_additional_tables()
-        if message is not None:
-            self._show_saved_names_message(message)
+        if picks:
+            self._show_saved_names_message(
+                steps.saved_names_filled_message(setting_name, picks, ignored)
+            )
         else:
             self._clear_saved_names_message()
 
@@ -859,13 +885,16 @@ class AdditionalInputMixin:
         index = combo_index - 1 if combo_index > 0 else None
         if index is not None and index >= len(self._saved_names()):
             return  # A dropdown left from saved names that are gone.
+        was_ready = self._setting_files_ready()
         previous = self._saved_names_choice.get(file_path)
         file_name = Path(file_path).name
+        picked = None
         if index is not None:
             ignored = self._use_saved_names(file_path, index)
             self._saved_names_choice[file_path] = Match(index)
             entry = self._saved_names()[index]
             message = steps.saved_names_picked_message(entry, file_name, ignored)
+            picked = (entry, file_name)
         elif previous is None:
             return  # None again: nothing was picked, the names are the user's.
         else:
@@ -896,6 +925,7 @@ class AdditionalInputMixin:
         self._show_saved_names_banners()
         self._show_saved_names_message(message)
         self.update_additional_input_ui()
+        self._put_setting_files_in_if_completed(was_ready, picked=picked)
 
     def _form_table_row(self, file_path: str) -> int:
         """The Form names row showing *file_path*, or -1."""
@@ -937,20 +967,33 @@ class AdditionalInputMixin:
             self.additional_inputs or self._additional_form_keys
         )
 
-    def update_additional_input_ui(self) -> List[str]:
-        """Mark each New name the report can't use; return the page's problems.
-
-        The problems (one line per file) hold the step and turn its badge red.
-        """
+    def _additional_name_problems(self) -> Dict[str, str]:
+        """Why each listed file's New name can't be used, by path ("" if it can)."""
         loaded = set(getattr(self.report, "loaded_data", {}) or {})
         loaded -= set(self._additional_form_keys)
         stacked = {form.name for form in self.report.stacked_forms}
-        found = steps.additional_name_problems(
+        return steps.additional_name_problems(
             self._collect_additional_form_names(),
             self.additional_form_names,
             loaded,
             stacked,
         )
+
+    def _setting_files_ready(self) -> bool:
+        """Whether every file the loaded setting needs is listed, no New name red.
+
+        False while no loaded setting needs a file.
+        """
+        if not self._needed_saved_entries() or self._saved_files_still_to_add():
+            return False
+        return not any(self._additional_name_problems().values())
+
+    def update_additional_input_ui(self) -> List[str]:
+        """Mark each New name the report can't use; return the page's problems.
+
+        The problems (one line per file) hold the step and turn its badge red.
+        """
+        found = self._additional_name_problems()
         table = getattr(self.ui, "tableWidget_update_form_name", None)
         if table is not None:
             for row in range(table.rowCount()):
@@ -1018,3 +1061,74 @@ class AdditionalInputMixin:
         restore_selection(self.report, selection_state)
 
         self.update_all_ui()
+
+    def _put_setting_files_in_if_completed(
+        self,
+        was_ready: bool,
+        *,
+        picks: Sequence[Tuple[str, Optional[str]]] = (),
+        picked: Optional[Tuple[SavedFileNames, str]] = None,
+        unread: Optional[feedback.Message] = None,
+    ) -> None:
+        """Bring the files to the report at once if this change completed them.
+
+        Called after a change on the page (files added, a Saved names pick, a
+        New name typed, files removed); *was_ready* is
+        :meth:`_setting_files_ready` before it. Only the change into "every
+        file the loaded setting needs is listed, and no New name is red"
+        counts: later ones wait until the user leaves the step. Only on the
+        page open in the window: elsewhere the step reaches the report
+        anyway, and partial windows (tests) apply it themselves. It runs just
+        after the change, so the table it rebuilds isn't the one still
+        handling that change. *picks*, *picked* and *unread* are what the
+        change did, for the message (see :meth:`_put_setting_files_in`).
+        """
+        shell = getattr(self.ui, "shell", None)
+        if was_ready or shell is None or shell.current() != steps.ADDITIONAL:
+            return
+        if not self._setting_files_ready():
+            return
+        QTimer.singleShot(
+            0, self, partial(self._put_setting_files_in, picks, picked, unread)
+        )
+
+    def _put_setting_files_in(
+        self,
+        picks: Sequence[Tuple[str, Optional[str]]] = (),
+        picked: Optional[Tuple[SavedFileNames, str]] = None,
+        unread: Optional[feedback.Message] = None,
+    ) -> None:
+        """Bring the listed files to the report now: the setting's are all in.
+
+        Then the other Data steps, as on leaving. The banner says what
+        completed the files (*picks*: names picked as they were added;
+        *picked*: a Saved names pick, as ``(entry, file name)``), what reached
+        the report, and the files that couldn't be read (*unread*).
+        """
+        if defer_if_busy(
+            self, partial(self._put_setting_files_in, picks, picked, unread)
+        ):
+            return
+        # Something may have changed since the change that completed them.
+        if (
+            not self._setting_files_ready()
+            or not self._has_unapplied_additional_inputs()
+        ):
+            return
+        setting_name = self._saved_names_setting
+        self._apply_additional_step()
+        message = steps.setting_files_in_message(
+            setting_name,
+            self._additional_form_keys,
+            self._ignored_saved_names(),
+            picks=picks,
+            picked=picked,
+        )
+        if unread is not None:
+            details = "\n".join(
+                text for text in (message.details, unread.details) if text
+            )
+            message = feedback.warning(f"{message} {unread}", details or None)
+        self._additional_applied_message = message
+        self._set_label_text(self.ui.banner_additional, message)
+        self.apply_data_steps()

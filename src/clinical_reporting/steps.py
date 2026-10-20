@@ -103,7 +103,8 @@ TITLES = {
 #: (:data:`NO_DATA`, :data:`NO_DATA_HINT`) instead.
 NEEDS_DATA = frozenset(STEP_KEYS) - {SOURCE, ADDITIONAL}
 #: The steps that change the report's data. Each reaches the report when the
-#: user leaves it; one with problems is held (nothing from it is used).
+#: user leaves it (Additional input also at once, when a saved setting's files
+#: are all in); one with problems is held (nothing from it is used).
 DATA_STEPS = (ADDITIONAL, STACKED, COALESCED)
 
 #: What the window says before any data is loaded.
@@ -113,6 +114,11 @@ NO_DATA_HINT = f"Choose a Corelisting ZIP on {TITLES[SOURCE]} to start a report.
 
 #: How names filled in on Additional input end their message.
 NAMES_USED_ON_LEAVING = "Check them; they're used when you go to another step."
+#: How the names picked for some of a saved setting's files end their message.
+SETTING_FILES_TO_COME = (
+    "The files go into the report once the setting's other files are in, or when "
+    "you go to another step."
+)
 #: The first entry of a file's Saved names dropdown: no saved names used.
 SAVED_NAMES_NONE = "None"
 #: The tooltip of a Saved names dropdown while there are none to pick.
@@ -650,31 +656,52 @@ def saved_names_tip(
     return f"Using the names saved for {entry.file_name}."
 
 
+def _pick_parts(picks: Sequence[Tuple[str, Optional[str]]]) -> List[str]:
+    """Each pick as "lab.csv by its file name"."""
+    return [f"{name} {_MATCHED_BY.get(by, '')}".rstrip() for name, by in picks]
+
+
+def _filled_lead(setting_name: str, picks: Sequence[Tuple[str, Optional[str]]]) -> str:
+    """What picking a loaded setting's saved names did, in one sentence."""
+    return (
+        f"Saved names from “{setting_name}” picked for "
+        f"{_plural(len(picks), 'file')}: {feedback.short_list(_pick_parts(picks))}."
+    )
+
+
 def saved_names_filled_message(
     setting_name: str,
     picks: Sequence[Tuple[str, Optional[str]]],
     ignored: Sequence[IgnoredName] = (),
+    *,
+    still_to_add: bool = False,
 ) -> feedback.Message:
     """What picking a loaded setting's saved names for the listed files did.
 
     *picks* are ``(file name, how it was matched)`` pairs. *ignored* are
     saved column names the files can't use (see
     :func:`clinical_reporting.additional_names.ignored_names`), which make
-    the message a warning.
+    the message a warning. With *still_to_add* (the setting needs files not
+    listed yet) it also says when the files go into the report.
     """
-    parts = [f"{name} {_MATCHED_BY.get(by, '')}".rstrip() for name, by in picks]
-    text = (
-        f"Saved names from “{setting_name}” picked for "
-        f"{_plural(len(picks), 'file')}: {feedback.short_list(parts)}."
-    )
+    text = _filled_lead(setting_name, picks)
+    to_come = f" {SETTING_FILES_TO_COME}" if still_to_add else ""
     if ignored:
         return feedback.warning(
             f"{text} Some saved column names can't be used and will be ignored: "
-            f"{_lacking(ignored)}. Check them on {TITLES[ADDITIONAL]}.",
+            f"{_lacking(ignored)}. Check them on {TITLES[ADDITIONAL]}.{to_come}",
             _ignored_details(ignored),
         )
+    parts = _pick_parts(picks)
     details = "\n".join(parts) if len(parts) > 5 else None
-    return feedback.info(f"{text} Check them on {TITLES[ADDITIONAL]}.", details)
+    return feedback.info(
+        f"{text} Check them on {TITLES[ADDITIONAL]}.{to_come}", details
+    )
+
+
+def _picked_lead(entry: SavedFileNames, file_name: str) -> str:
+    """What picking *entry* in *file_name*'s Saved names dropdown did."""
+    return f"Names from {saved_names_label(entry)} filled in for {file_name}."
 
 
 def saved_names_picked_message(
@@ -685,7 +712,7 @@ def saved_names_picked_message(
     A warning when the file can't use some of the entry's column names
     (*ignored*).
     """
-    name = saved_names_label(entry)
+    text = _picked_lead(entry, file_name)
     if ignored:
         count = (
             "1 saved column name"
@@ -693,13 +720,47 @@ def saved_names_picked_message(
             else f"{len(ignored):,} saved column names"
         )
         return feedback.warning(
-            f"Names from {name} filled in for {file_name}. {count} can't be "
-            f"used and will be ignored: {_lacking(ignored)}. {NAMES_USED_ON_LEAVING}",
+            f"{text} {count} can't be used and will be ignored: "
+            f"{_lacking(ignored)}. {NAMES_USED_ON_LEAVING}",
             _ignored_details(ignored),
         )
-    return feedback.info(
-        f"Names from {name} filled in for {file_name}. {NAMES_USED_ON_LEAVING}"
+    return feedback.info(f"{text} {NAMES_USED_ON_LEAVING}")
+
+
+def setting_files_in_message(
+    setting_name: str,
+    forms: Collection[str],
+    ignored: Sequence[IgnoredName] = (),
+    *,
+    picks: Sequence[Tuple[str, Optional[str]]] = (),
+    picked: Optional[Tuple[SavedFileNames, str]] = None,
+) -> feedback.Message:
+    """What reaching the report did once every file a saved setting needs was in.
+
+    On Additional input that happens at once, without leaving the step. The
+    message starts with what completed the files: the saved names picked as
+    files were added (*picks*, as in :func:`saved_names_filled_message`), or
+    an entry picked in a file's Saved names dropdown (*picked*: the entry
+    and the file's name); nothing for a typed name or a removed file.
+    *forms* are the additional forms the report has now. *ignored*, saved
+    column names the files can't use, make it a warning.
+    """
+    if picks:
+        lead, setting = f"{_filled_lead(setting_name, picks)} ", "the setting"
+    elif picked is not None:
+        lead, setting = f"{_picked_lead(*picked)} ", f"“{setting_name}”"
+    else:
+        lead, setting = "", f"“{setting_name}”"
+    text = (
+        f"{lead}Every file {setting} needs is in, so the files were added to the "
+        f"report. New forms: {', '.join(sorted(forms))}."
     )
+    if ignored:
+        return feedback.warning(
+            f"{text} Saved column names ignored: {_lacking(ignored)}.",
+            _ignored_details(ignored),
+        )
+    return feedback.success(text)
 
 
 def saved_names_missing_message(
@@ -1041,6 +1102,7 @@ __all__ = [
     "PREVIEW",
     "SAVED_NAMES_NONE",
     "SAVED_NAMES_UNAVAILABLE_TIP",
+    "SETTING_FILES_TO_COME",
     "SOURCE",
     "STACKED",
     "STEP_KEYS",
@@ -1074,6 +1136,7 @@ __all__ = [
     "saved_names_picked_message",
     "saved_names_tip",
     "selected_item_count",
+    "setting_files_in_message",
     "setting_missing_lines",
     "source_summary",
     "stacked_applied_message",
