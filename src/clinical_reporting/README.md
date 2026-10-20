@@ -46,7 +46,11 @@ python -m clinical_reporting
   report until it is fixed, and Save setting waits, since its changes would
   be lost. Changes made while the step isn't open (files that finish loading
   after you left, names a picked setting fills in, a new Corelisting ZIP)
-  reach the report right away.
+  reach the report right away. On Additional input, so do the files once
+  every file the loaded saved setting needs is added and no New name is red,
+  without leaving the step: the change that makes it so (adding the last
+  file, picking its Saved names, typing the last red name, removing the file
+  with it) brings them in, and later changes wait until you leave.
 - Removing an input takes along what it leaves with nothing to be made from:
   removing the Corelisting ZIP drops the stacked forms all of whose members
   are its forms, and the coalesced items of its forms or of those stacked
@@ -73,7 +77,9 @@ python -m clinical_reporting
   - A "Still to add" banner on Additional input lists the setting's files
     that aren't added yet. When the setting is loaded, its "Missing forms"
     warning on Source data says which files to add, or which added files to
-    check.
+    check. Once the last of them is added (and no New name is red), the
+    files reach the report at once, and the setting's selections on their
+    forms come back.
   - Saved column names a file can't use, because its export renamed or
     dropped the column, are ignored and never stop the file's form from
     being added. The message after the pick, a standing banner, and the
