@@ -68,7 +68,9 @@ kept names for files, choose the names it kept for this file, or **None** to \
 clear the names it filled in.
 3. To rename a file's columns, select the file in **Form names**, then type \
 the new names in **New name** under **Column names**.
-4. Go to another step. The files then reach the report as forms.
+4. Go to another step. The files then reach the report as forms. With a \
+saved setting, they reach it as soon as every file the setting needs is added \
+and no **New name** is red.
 
 ## Good to know
 
@@ -81,7 +83,9 @@ reach the report.
 (by its file name, or else by its columns) gets those names filled in. Names \
 you typed are never replaced.
 - **Still to add** lists the files the saved setting needs that aren't added \
-yet.
+yet. Once the last one is in (added, or picked in **Saved names**) and no \
+**New name** is red, the files reach the report at once, without leaving the \
+step; changes after that wait until you go to another step.
 - A saved column name a file doesn't have is ignored, and the form is still \
 added. Renaming the column by hand puts it back.
 - Right-click column names and choose \

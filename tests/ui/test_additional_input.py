@@ -816,7 +816,7 @@ def test_a_window_without_this_page_ignores_saved_names():
         types.SimpleNamespace(), SAVED_NAMES, "Monthly AE review"
     )
 
-    assert DummyWidget()._pick_saved_names([LAB_PATH]) is None
+    assert DummyWidget()._pick_saved_names([LAB_PATH]) == ([], [])
 
 
 def test_the_wheel_only_changes_a_focused_dropdown(qapp):
