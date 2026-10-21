@@ -7,7 +7,9 @@ import pytest
 from PySide6.QtWidgets import QComboBox
 from tests.unit.fakes import FakeBanner
 
+from clinical_reporting import export_name
 from clinical_reporting.additional_names import SETTINGS_KEY, from_settings
+from clinical_reporting.export_name import ExportName
 from clinical_reporting.report import CLReport
 from clinical_reporting.settings_store import SavedSetting
 from clinical_reporting.ui import dialogs
@@ -90,11 +92,12 @@ def _setting_box():
 
 
 class _OfferingWidget(_SettingsWidget):
-    """A window whose Additional input page takes a setting's saved names."""
+    """A window whose pages take a setting's saved names and export name."""
 
     def __init__(self, store=None):
         super().__init__(store)
         self.offers = []
+        self.filled = []
         self.forgotten = 0
         self.added = []
         self._saved_additional_names = []
@@ -108,6 +111,9 @@ class _OfferingWidget(_SettingsWidget):
 
     def _saved_names_added(self):
         return self.added
+
+    def _fill_saved_export_name(self, saved):
+        self.filled.append(saved)
 
     def _forget_saved_additional_names(self):
         self.forgotten += 1
@@ -161,6 +167,40 @@ def test_a_setting_without_saved_names_offers_none():
     widget.pick(1)
 
     assert widget.offers == [([], "monthly", {"DM"})]
+
+
+def _setting_with_export_name():
+    return export_name.add_to_settings(
+        _setting_with_forms("DM"), "DEMO01 DSMB", add_date_time=False
+    )
+
+
+def test_picking_a_setting_fills_in_its_export_name():
+    widget = _OfferingWidget(_Store(_setting_with_export_name()))
+
+    widget.pick(1)
+
+    assert widget.filled == [ExportName("DEMO01 DSMB", False)]
+
+
+def test_picking_a_setting_without_an_export_name_clears_it():
+    widget = _OfferingWidget(_Store(_setting_with_forms("DM")))
+
+    widget.pick(1)
+
+    assert widget.filled == [None]
+
+
+def test_only_picking_a_setting_fills_in_its_export_name():
+    widget = _OfferingWidget(_Store(_setting_with_export_name()))
+
+    # As once the additional files reach the report.
+    widget._apply_saved_setting_from_path("monthly.json", update_confirmation=False)
+    widget.pick(0)  # "Choose a setting…".
+    widget._store = _Store(error=ValueError("bad json"))
+    widget.pick(1)
+
+    assert widget.filled == []
 
 
 def test_forgetting_the_setting_takes_its_saved_names_away():

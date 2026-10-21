@@ -20,6 +20,7 @@ CORE_MODULES = [
     "clinical_reporting.coalescing",
     "clinical_reporting.data",
     "clinical_reporting.export",
+    "clinical_reporting.export_name",
     "clinical_reporting.feedback",
     "clinical_reporting.filenames",
     "clinical_reporting.models",

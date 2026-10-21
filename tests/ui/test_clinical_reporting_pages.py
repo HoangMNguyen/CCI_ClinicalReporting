@@ -247,12 +247,24 @@ def test_the_preview_shows_its_size_and_the_file_name_it_would_write(
     model = sample_window.ui.tableView_preview.model()
 
     caption = page.subtitle_label.text()
+    unnamed = page.file_name_caption.isHidden()
     sample_window.ui.lineEdit_file_name.setText("DEMO01 DSMB")
+    shown = not page.file_name_caption.isHidden()
     file_name = page.file_name_caption.text()
+    sample_window.ui.checkBox_add_date_time.setChecked(False)
+    unstamped = page.file_name_caption.text()
+    sample_window.ui.lineEdit_file_name.setText(" .xlsx")
+    blanked = page.file_name_caption.isHidden()
     sample_window.ui.tableView_preview.setModel(None)
 
     assert caption == steps.preview_caption(model.rowCount(), model.columnCount())
-    assert re.match(r"Saved as DEMO01 DSMB \d{6}_\d{6}\.xlsx", file_name)
+    assert unnamed and shown
+    assert re.fullmatch(
+        r"Saved as DEMO01 DSMB \d{6}_\d{6}\.xlsx \(date and time of export\)",
+        file_name,
+    )
+    assert unstamped == "Saved as DEMO01 DSMB.xlsx"
+    assert blanked
     assert page.subtitle_label.text() == SUBTITLE
 
 
@@ -263,7 +275,8 @@ def test_preview_shortcuts_refresh_and_export(
     monkeypatch.setattr(
         source_data.QFileDialog, "getExistingDirectory", lambda *_args: str(tmp_path)
     )
-    sample_window.click_output_file()  # Export to Excel needs a folder.
+    sample_window.click_output_file()  # Export to Excel needs a folder,
+    sample_window.ui.lineEdit_file_name.setText("DEMO01 DSMB")  # and a name.
     sample_window.ui.shell.set_current(steps.PREVIEW)
     settle(sample_window.task_runner)  # Keys are blocked while it builds.
     sample_window.ui.pushButton_refresh_preview.clicked.disconnect()
@@ -284,6 +297,29 @@ def test_preview_shortcuts_refresh_and_export(
 
     assert calls == ["refresh", "run"]
     assert "(F5)" in sample_window.ui.pushButton_refresh_preview.toolTip()
+
+
+def test_tab_goes_from_the_file_name_to_its_checkbox_then_export(
+    sample_window, settle, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(
+        source_data.QFileDialog, "getExistingDirectory", lambda *_args: str(tmp_path)
+    )
+    sample_window.click_output_file()
+    ui = sample_window.ui
+    ui.lineEdit_file_name.setText("DEMO01 DSMB")  # Export takes the focus once enabled.
+    ui.shell.set_current(steps.PREVIEW)
+    settle(sample_window.task_runner)
+    sample_window.activateWindow()
+    ui.lineEdit_file_name.setFocus()
+    QApplication.processEvents()
+
+    focused = []
+    for _ in range(2):
+        QTest.keyClick(QApplication.focusWidget(), Qt.Key.Key_Tab)
+        focused.append(QApplication.focusWidget())
+
+    assert focused == [ui.checkBox_add_date_time, ui.pushButton_run]
 
 
 def test_ctrl_f_goes_to_the_search_field(sample_window):
@@ -314,6 +350,9 @@ def test_small_wording_on_the_controls_and_pages(empty_window):
 
     assert ui.pushButton_remove_input.toolTip() == "Remove file"
     assert ui.comboBox_saved_setting.placeholderText() == "Choose a setting…"
+    assert ui.lineEdit_file_name.placeholderText() == "e.g. DEMO01 DSMB"
+    assert ui.checkBox_add_date_time.text() == "Add the date and time"
+    assert ui.checkBox_add_date_time.isChecked()
     assert [page.title() for page in ui.pages] == list(steps.TITLES.values())
 
 

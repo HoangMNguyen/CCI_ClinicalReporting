@@ -18,6 +18,12 @@ to None: a new ZIP, removing the ZIP, turning the toggle off, picking
 "Choose a setting…", or a setting that fails to load. A new ZIP, or removing
 it, also tells the Stacked forms and Coalesced items pages to ask for Apply
 again.
+
+Picking a saved setting also fills in the export's file name and its Add the
+date and time choice on Preview & export, from the ones saved with it
+(:mod:`clinical_reporting.export_name`). A setting saved without a file name,
+as every setting before 2.21 was, clears File name and ticks the box, so the
+export waits for a name. Forgetting the setting leaves them as they are.
 """
 
 from __future__ import annotations
@@ -40,7 +46,7 @@ from cci_ui.widgets.path_picker import PathPicker, downloads_folder
 from cci_ui.widgets.section import Section
 from cci_ui.widgets.status import StatusBanner
 from cci_ui.widgets.toggle import ToggleSwitch
-from clinical_reporting import feedback, steps
+from clinical_reporting import export_name, feedback, steps
 from clinical_reporting.additional_names import from_settings
 from clinical_reporting.data import parse_study_name, read_data_dict_zip_corelisting
 from clinical_reporting.session import (
@@ -530,8 +536,10 @@ class SourceDataMixin:
 
         With *offer_saved_names* (the user picked the setting), the names it
         saved for additional input files are handed to the Additional input
-        page. Re-applying the setting once the files reach the report leaves
-        them, so the user's picks there stay.
+        page, and the export's file name it saved fills in Preview & export
+        (a setting without one clears it). Re-applying the setting once the
+        files reach the report leaves them, so the user's picks and edits
+        stay.
         """
         try:
             stored = self._settings_store().load(file_path)
@@ -562,6 +570,10 @@ class SourceDataMixin:
                 for member in stacked.members
             )
             offer(from_settings(stored), setting_name, used_forms)
+
+        fill = getattr(self, "_fill_saved_export_name", None)
+        if offer_saved_names and fill is not None:
+            fill(export_name.from_settings(stored))
 
         self.update_all_ui()
         self._update_saved_setting_warning(reconciliation)

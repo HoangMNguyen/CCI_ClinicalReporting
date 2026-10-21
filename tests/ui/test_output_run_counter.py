@@ -5,7 +5,9 @@ from __future__ import annotations
 import types
 
 import pandas as pd
+import pytest
 from tests.unit.fakes import FakeBanner, FakeCheckBox
+from xlsxwriter.exceptions import FileCreateError
 
 from clinical_reporting import session
 from clinical_reporting.ui.base import WidgetBaseMixin
@@ -58,6 +60,7 @@ class _RunWidget(WidgetBaseMixin, preview_export.PreviewExportMixin):
         self.label_save_confirmation = FakeBanner()
         self.ui = types.SimpleNamespace(
             lineEdit_file_name=_LineEdit(),
+            checkBox_add_date_time=FakeCheckBox(True),
             lineEdit_setting_name=_LineEdit("baseline"),
             checkBox_save_current_setting=FakeCheckBox(True),
             checkBox_saved_setting=FakeCheckBox(False),
@@ -137,6 +140,112 @@ def test_export_without_an_output_folder_builds_nothing(monkeypatch, tmp_path):
     # Export to Excel is disabled then, and the folder marked: nothing to say.
     assert widget.report.builds == 0 and written == []
     assert widget.label_run_confirmation.value == ""
+
+
+@pytest.mark.parametrize("name", ["", "   ", ".xlsx"])
+def test_export_without_a_file_name_builds_nothing(monkeypatch, tmp_path, name):
+    written = []
+    monkeypatch.setattr(session, "write_xlsx", lambda *args: written.append(args))
+    widget = _RunWidget(tmp_path)
+    widget.ui.lineEdit_file_name = _LineEdit(name)
+
+    widget.click_run()
+
+    # Export to Excel is disabled then, and the name marked: nothing to say.
+    assert widget.report.builds == 0 and written == []
+    assert widget.label_run_confirmation.value == ""
+
+
+def test_export_without_the_date_and_time_writes_just_the_name(monkeypatch, tmp_path):
+    written = []
+    monkeypatch.setattr(session, "write_xlsx", lambda _df, path: written.append(path))
+    widget = _RunWidget(tmp_path)
+    widget.ui.checkBox_add_date_time = FakeCheckBox(False)
+
+    widget.click_run()
+
+    assert written == [str(tmp_path / "report.xlsx")]
+
+
+def _export_over_a_file(monkeypatch, tmp_path, replace):
+    """Export "report.xlsx" into a folder that has one; *replace* answers."""
+    written, asked = [], []
+    monkeypatch.setattr(session, "write_xlsx", lambda _df, path: written.append(path))
+    monkeypatch.setattr(
+        preview_export,
+        "ask_to_replace",
+        lambda _parent, file_name: asked.append(file_name) or replace,
+    )
+    (tmp_path / "report.xlsx").write_bytes(b"old")
+    widget = _RunWidget(tmp_path)
+    widget.ui.checkBox_add_date_time = FakeCheckBox(False)
+    widget.click_run()
+    return widget, asked, written
+
+
+def test_keeping_a_file_already_there_writes_nothing(monkeypatch, tmp_path):
+    widget, asked, written = _export_over_a_file(monkeypatch, tmp_path, False)
+
+    assert asked == ["report.xlsx"]
+    assert widget.report.builds == 0 and written == []
+    assert widget.label_run_confirmation.value == ""
+
+
+def test_replacing_a_file_already_there_writes_it(monkeypatch, tmp_path):
+    widget, asked, written = _export_over_a_file(monkeypatch, tmp_path, True)
+
+    assert asked == ["report.xlsx"]
+    assert written == [str(tmp_path / "report.xlsx")]
+    assert widget.label_run_confirmation.value.kind == "success"
+
+
+def test_a_new_file_is_written_without_asking(monkeypatch, tmp_path):
+    written, asked = [], []
+    monkeypatch.setattr(session, "write_xlsx", lambda _df, path: written.append(path))
+    monkeypatch.setattr(
+        preview_export, "ask_to_replace", lambda *args: asked.append(args) or False
+    )
+    widget = _RunWidget(tmp_path)
+    widget.ui.checkBox_add_date_time = FakeCheckBox(False)
+
+    widget.click_run()
+
+    assert asked == []
+    assert written == [str(tmp_path / "report.xlsx")]
+
+
+def _refused(*_args):
+    raise PermissionError(13, "Permission denied", "report.xlsx")
+
+
+def _refused_to_xlsxwriter(*_args):
+    try:
+        _refused()
+    except OSError as error:
+        raise FileCreateError(error)  # As xlsxwriter would, opening the path itself.
+
+
+@pytest.mark.parametrize("write", [_refused, _refused_to_xlsxwriter])
+def test_a_file_open_in_excel_says_to_close_it(monkeypatch, tmp_path, write):
+    counted = []
+    monkeypatch.setattr(session, "write_xlsx", write)
+    monkeypatch.setattr(
+        preview_export,
+        "record_successful_export",
+        lambda _report_name: counted.append(True),
+    )
+    widget = _RunWidget(tmp_path)
+    widget.ui.checkBox_add_date_time = FakeCheckBox(False)
+
+    widget.click_run()
+
+    message = widget.label_run_confirmation.value
+    assert counted == []
+    assert message == (
+        "Couldn't save report.xlsx. If it's open in Excel, close it, then export again."
+    )
+    assert message.kind == "error"
+    assert "PermissionError" in message.details
 
 
 def test_export_with_no_matching_rows_writes_nothing(monkeypatch, tmp_path):

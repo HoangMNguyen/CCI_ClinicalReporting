@@ -118,7 +118,10 @@ than carrying their own copies:
     `check_study` refuses an export named for another study than the one
     chosen or given (CCI Automation, and Safety Automation's `run(study=...)`).
 - `clinical_reporting.filenames.output_file_name` makes the
-  `<name> YYMMDD_HHMMSS.xlsx` file names.
+  `<name> YYMMDD_HHMMSS.xlsx` file names, or `<name>.xlsx` with
+  `add_date_time=False` (Clinical Reporting's export, with Add the date and
+  time unticked); `output_base_name` gives the name without the date
+  and time or the extension, `""` when nothing usable was typed.
 - `clinical_reporting.data.parse_study_name` reads the study from a file
   name (Clinical Reporting's Source data page and `build_base_report`
   directly; `study_named_by` builds on it).

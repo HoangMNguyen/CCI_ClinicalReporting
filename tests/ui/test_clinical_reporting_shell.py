@@ -184,6 +184,7 @@ def test_badges_follow_item_join_and_rename_edits(sample_window):
 
 def test_an_export_marks_the_last_step_done(sample_window, settle, tmp_path):
     sample_window.output_folder_name = str(tmp_path)
+    sample_window.ui.lineEdit_file_name.setText("DEMO01 DSMB")
 
     sample_window.click_run()
     settle(sample_window.task_runner)

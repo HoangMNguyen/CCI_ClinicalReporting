@@ -12,7 +12,7 @@ import zipfile
 import pandas as pd
 from PySide6.QtWidgets import QApplication
 
-from clinical_reporting import build_base_report_from_forms, session
+from clinical_reporting import build_base_report_from_forms, export_name, session
 from clinical_reporting.additional_names import add_to_settings
 from clinical_reporting.models import JoinHow
 from clinical_reporting.report import CLReport
@@ -54,7 +54,10 @@ def _lab_results(folder):
 
 
 def _parity_setting(folder, lab_path, lab):
-    """The sample report, plus DISP, LAB and a hand-edited VS join; its file."""
+    """The sample report, plus DISP, LAB and a hand-edited VS join; its file.
+
+    It keeps the export name "Parity export", without the date and time.
+    """
     report = CLReport()
     report.set_study_name(STUDY)
     report.set_data({**sample_forms(), "LAB": lab.rename(columns={"ALT (U/L)": "ALT"})})
@@ -74,6 +77,7 @@ def _parity_setting(folder, lab_path, lab):
         {str(lab_path): "LAB"},
         {(str(lab_path), "ALT (U/L)"): "ALT"},
     )
+    export_name.add_to_settings(settings, "Parity export", add_date_time=False)
     # The join as the user left it: applying the setting tidies it.
     assert settings["selected_forms"]["VS"]["join_items"] == ["Visit", "Subject"]
     path = folder / "parity.json"
@@ -107,12 +111,11 @@ def test_the_window_exports_what_the_base_report_gives(
     # Source data is open: the file reaches the report once it is read.
     picked = dict(window.additional_form_names)
     window.output_folder_name = str(out)
-    window.ui.lineEdit_file_name.setText("")
-    window.click_run()
+    window.click_run()  # Under the export name the setting filled in.
     settle(window.task_runner)
 
     # The setting waited for LAB, whose saved names were picked; adding the
-    # file applied the setting again, its VS join tidied.
+    # file applied the setting again, its VS join tidied, its export name kept.
     assert missing.startswith("Missing forms: LAB")
     assert picked == {str(lab_path.resolve()): "LAB"}
     assert window.ui.label_setting.text() == ""
@@ -130,8 +133,10 @@ def test_the_window_exports_what_the_base_report_gives(
         additional_inputs=[lab_path],
     )
     assert base.warnings == ()
+    workbook = base.to_workbook()
+    assert exported.name == workbook.name == "Parity export.xlsx"
     expected = _parts(exported.read_bytes())
-    actual = _parts(base.to_workbook().data)
+    actual = _parts(workbook.data)
     assert sorted(actual) == sorted(expected)
     for name in expected:
         assert actual[name] == expected[name], name

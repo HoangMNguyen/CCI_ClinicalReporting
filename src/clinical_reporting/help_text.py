@@ -35,8 +35,13 @@ and, if you want, a cut-off date and a saved setting to start from.
 - The study number is read from the ZIP's file name. The **Setting** list \
 shows only that study's saved settings.
 - A saved setting keeps the forms, items, joins, filters, comparisons, column \
-order and names, stacked forms, coalesced items, and the names given to \
-additional files. It doesn't keep the cut-off date.
+order and names, stacked forms, coalesced items, the names given to \
+additional files, and the export's **File name** and **Add the date and \
+time**. It doesn't keep the cut-off date.
+- Picking a setting fills in **File name** and **Add the date and time** on \
+Preview & export. A setting saved without a file name (any saved before \
+version 2.21) clears **File name** and ticks **Add the date and time**: type \
+a name before you export.
 - The cut-off date never leaves out rows of additional files.
 - If a saved setting can't be loaded, the **Setting** box turns red and the \
 message below it says why.
@@ -366,8 +371,10 @@ next time.
 (F5) to build it again.
 2. Under **Export**:
     - **Folder**: click **Choose…** and pick where the file goes.
-    - **File name**: optional. The date and time of the export are added to \
-it.
+    - **File name**: the name the file is saved under.
+    - **Add the date and time**: while it's ticked (it starts ticked), the \
+date and time of the export are added to the name. Untick it to save under \
+the same name each time.
     - Click **Export to Excel** (Ctrl+E).
 3. To save your choices, under **Save setting**:
     - Turn on **Save these settings for reuse**.
@@ -379,8 +386,13 @@ it.
 
 - If something stops the report, the message above **Export to Excel** \
 starts with "Cannot run" and names the steps to fix.
-- The export **Folder** is red until you choose one, and the setting's \
-**Name** while it's empty.
+- The export **Folder** is red until you choose one, its **File name** until \
+you type one, and the setting's **Name** while it's empty.
+- If the folder already has a file with that name, **Export to Excel** asks \
+before replacing it. A file that's open in Excel can't be replaced: close it, \
+then export again.
+- **Save setting** also keeps the **File name** and **Add the date and \
+time**, and picking the setting on Source data fills them in again.
 - While Additional input, Stacked forms or Coalesced items has changes that \
 can't reach the report, **Save setting** waits until you fix them.
 - Saved settings are offered on Source data for reports of the same study.

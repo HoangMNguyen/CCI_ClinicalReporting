@@ -35,6 +35,7 @@ def _choose_output_folder(window, monkeypatch, folder):
 def test_a_new_filter_row_shows_what_it_lacks(sample_window, monkeypatch, tmp_path):
     window = sample_window
     _choose_output_folder(window, monkeypatch, tmp_path)
+    window.ui.lineEdit_file_name.setText("DEMO01 DSMB")
     export_before = window.ui.pushButton_run.isEnabled()
     table = window.ui.tableWidget_static_filter
 
@@ -57,6 +58,7 @@ def test_finishing_the_filter_row_clears_its_marks(
 ):
     window = sample_window
     _choose_output_folder(window, monkeypatch, tmp_path)
+    window.ui.lineEdit_file_name.setText("DEMO01 DSMB")
     table = window.ui.tableWidget_static_filter
     window.static_filter_add()
     QApplication.processEvents()
@@ -124,6 +126,7 @@ def test_the_output_folder_is_marked_until_one_is_chosen(
     sample_window, monkeypatch, tmp_path
 ):
     window = sample_window
+    window.ui.lineEdit_file_name.setText("DEMO01 DSMB")
     QApplication.processEvents()
     picker = window.ui.pathPicker_output_folder
     before = (
@@ -138,6 +141,33 @@ def test_the_output_folder_is_marked_until_one_is_chosen(
     assert picker.toolTip() == ""  # One folder: the field shows it.
     assert not _invalid(picker.path_label)
     assert window.ui.pushButton_run.isEnabled()
+
+
+def test_the_file_name_is_marked_until_one_is_typed(
+    sample_window, monkeypatch, tmp_path
+):
+    window = sample_window
+    _choose_output_folder(window, monkeypatch, tmp_path)
+    name, export = window.ui.lineEdit_file_name, window.ui.pushButton_run
+    unnamed = (
+        _invalid(name),
+        name.toolTip(),
+        export.isEnabled(),
+        # Only the field says so: no step to fix, no red badge.
+        window.ui.banner_run_state.text(),
+        _badge(window, "preview") != StepState.ERROR,
+    )
+    nameless = []
+    for text in ("   ", ".xlsx"):
+        name.setText(text)
+        nameless.append((_invalid(name), export.isEnabled()))
+
+    name.setText("DEMO01 DSMB")
+
+    assert unnamed == (True, "Give the file a name.", False, "", True)
+    assert nameless == [(True, False), (True, False)]
+    assert not _invalid(name) and name.toolTip() == ""
+    assert export.isEnabled()
 
 
 def test_saving_needs_a_setting_name(sample_window):

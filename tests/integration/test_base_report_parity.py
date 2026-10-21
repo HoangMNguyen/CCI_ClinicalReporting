@@ -45,7 +45,7 @@ def test_the_workbook_is_the_desktop_export(tmp_path):
 
     workbook = build_base_report_from_forms(
         sample_forms(), settings, study_name="DEMO01"
-    ).to_workbook()
+    ).to_workbook(file_name="golden")
 
     with open(desktop, "rb") as handle:
         expected = _parts(handle.read())

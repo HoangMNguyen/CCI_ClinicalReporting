@@ -8,7 +8,9 @@ data doesn't fit is refused with a :class:`WorkflowInputError` that says what
 is missing, unless ``missing_ok=True``; what the desktop would warn about
 comes back in :attr:`BaseReport.warnings`. :func:`build_base_report` does the
 same from a Corelisting export (a path or an open file), read as the desktop
-reads it, up to an optional cut-off date.
+reads it, up to an optional cut-off date. :meth:`BaseReport.to_workbook` names
+the workbook as the desktop does, from the export file name the setting keeps
+(:mod:`clinical_reporting.export_name`) unless one is given.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ import pandas as pd
 from clinical_reporting import (
     additional_names,
     data,
+    export_name,
     feedback,
     session,
     settings_store,
@@ -34,11 +37,11 @@ from clinical_reporting import (
     validation,
 )
 from clinical_reporting.export import dataframe_to_xlsx_bytes
+from clinical_reporting.filenames import output_base_name, output_file_name
 from clinical_reporting.workflow import (
     OutputFile,
     WorkflowInputError,
     input_name,
-    named_output,
     read_corelisting,
     reading_input,
 )
@@ -57,31 +60,51 @@ class BaseReport:
     columns kept); ``warnings`` are what the desktop would warn about, as
     :class:`~clinical_reporting.feedback.Message` objects (``kind`` is
     ``"warning"``); ``setting_name`` is the setting's name, its file's stem
-    when it has none, or "" for an unnamed dictionary.
+    when it has none, or "" for an unnamed dictionary. ``file_name`` and
+    ``add_date_time`` are the export file name the setting keeps
+    (:mod:`clinical_reporting.export_name`): "" and ``True`` when it keeps
+    none, as every setting saved before 2.21.
     """
 
     table: pd.DataFrame
     warnings: Tuple[feedback.Message, ...]
     setting_name: str
+    file_name: str = ""
+    add_date_time: bool = True
 
     def to_workbook(
-        self, *, file_name: str = "", now: Optional[datetime] = None
+        self,
+        *,
+        file_name: str = "",
+        add_date_time: Optional[bool] = None,
+        now: Optional[datetime] = None,
     ) -> OutputFile:
         """The table as the desktop exports it: a styled workbook, and its name.
 
-        The name is "<file_name> YYMMDD_HHMMSS.xlsx", with the setting's name
-        when *file_name* is empty or blank (just the stamp when that is empty
-        too), and characters not allowed in file names made "_", as on the
-        desktop; *now* stamps it (default: the current time). The bytes are
-        the desktop export's for the same table, but for the creation time; a
-        table without rows, which the desktop doesn't save, is written with
-        its header row.
+        It is named as the desktop names it, from *file_name*, or from the
+        file name the setting keeps when *file_name* is blank or just ".xlsx":
+        "<name> YYMMDD_HHMMSS.xlsx", or "<name>.xlsx" when *add_date_time*
+        (the setting's choice when ``None``) leaves out the date and time.
+        Characters not allowed in file names are made "_"; *now* stamps it
+        (default: the current time). Raises :class:`WorkflowInputError` when
+        neither gives a name, just as the desktop waits for one.
+
+        The bytes are the desktop export's for the same table, but for the
+        creation time; a table without rows, which the desktop doesn't save,
+        is written with its header row.
         """
-        return named_output(
+        name = file_name if output_base_name(file_name) else self.file_name
+        if not output_base_name(name):
+            quoted = f" “{self.setting_name}”" if self.setting_name else ""
+            raise WorkflowInputError(
+                f"Give the workbook a file name: the saved setting{quoted} "
+                "doesn't keep one."
+            )
+        if add_date_time is None:
+            add_date_time = self.add_date_time
+        return OutputFile(
+            output_file_name(name, now=now, add_date_time=add_date_time),
             dataframe_to_xlsx_bytes(self.table),
-            file_name=file_name,
-            default_name=self.setting_name,
-            now=now,
         )
 
 
@@ -219,7 +242,14 @@ def build_base_report_from_forms(
         warnings.append(coalesced)
     if ignored:
         warnings.append(steps.saved_names_ignored_message(ignored))
-    return BaseReport(table, tuple(warnings), setting_name)
+    saved = export_name.from_settings(settings)
+    return BaseReport(
+        table,
+        tuple(warnings),
+        setting_name,
+        file_name=saved.name if saved else "",
+        add_date_time=saved.add_date_time if saved else True,
+    )
 
 
 def build_base_report(

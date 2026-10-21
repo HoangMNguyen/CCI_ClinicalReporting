@@ -58,6 +58,12 @@ python -m clinical_reporting
   ZIP and no additional files), every stacked form and coalesced item goes
   at once, from the pages and the report.
 - Save/load settings plus quick run helpers for generating reports.
+- An export needs a file name: Export to Excel waits, and File name is red,
+  until one is typed. The date and time of the export are added to the name
+  unless Add the date and time is unticked, which saves each export as
+  `<name>.xlsx`. Exporting over a file that's already there asks first
+  (Replace or Cancel); a file open in Excel can't be written, and the message
+  says to close it.
 - Form names cannot include `.` because it is reserved for the form/item
   separator. Additional inputs default to the file name and must be renamed
   to remove dots.
@@ -85,6 +91,12 @@ python -m clinical_reporting
     being added. The message after the pick, a standing banner, and the
     result list them ("lab.csv has no Visit Dt"); renaming a column to the saved name
     by hand clears them.
+- A saved setting also keeps the export's File name and Add the date and
+  time. Picking the setting on Source data fills them in on Preview & export;
+  picking one saved without a file name (every setting saved before 2.21)
+  clears File name and ticks the box, so a name has to be typed before
+  exporting. Applying the setting again later, once its additional files are
+  added, leaves them as they are.
 - On the Stacked forms page, put the rows of two or more loaded forms
   (Corelisting forms or applied additional inputs, never another stacked
   form) one under another as a new form. It then goes through every later
@@ -198,16 +210,30 @@ base = clinical_reporting.build_base_report(
     additional_inputs=["lab_results.csv"],  # optional, by their saved names
 )
 base.setting_name  # "monthly AE review" (its file's stem when it has no name)
+base.file_name  # "DEMO01 AE review": the file name the setting keeps ("" if none)
+base.add_date_time  # True unless the setting keeps Add the date and time unticked
 base.table  # the report's rows: a pandas DataFrame, columns as exported
 base.warnings  # what the desktop would warn about; () when nothing
 base.table.groupby("Site").size()  # an automation builds on the table
 
 workbook = base.to_workbook()  # an OutputFile: .name and .data (bytes)
 Path(workbook.name).write_bytes(workbook.data)
-# workbook.name is "monthly AE review 261011_142233.xlsx": the setting's name
-# and the time. to_workbook(file_name="AE review") names it instead, and
-# now=datetime(...) stamps it with another time.
+# workbook.name is "DEMO01 AE review 261011_142233.xlsx": the file name the
+# setting keeps and the time, or just "DEMO01 AE review.xlsx" if the setting
+# keeps Add the date and time unticked (base.add_date_time is False).
+# to_workbook(file_name="AE review") names it instead, add_date_time=False
+# leaves out the date and time, and now=datetime(...) stamps it with another
+# time.
 ```
+
+The workbook's name is the one the desktop export would get. A setting that
+keeps no file name (every setting saved before 2.21) needs
+`to_workbook(file_name=...)`, just as the desktop waits for a name to be
+typed: without it, `to_workbook()` raises `WorkflowInputError` ("Give the
+workbook a file name: the saved setting “monthly AE review” doesn't keep
+one."). The table is built either way. Without the date and time the name is
+the same every run, so writing it replaces the last workbook, where the
+desktop asks first.
 
 The workbook is byte for byte the desktop export for the same inputs, but for
 the creation time it holds (`docProps/core.xml`). The setting is applied as
@@ -240,7 +266,7 @@ for warning in base.warnings:
     print(warning)  # Missing forms: LAB (the table has no LAB columns)
 ```
 
-Inputs the report can't be made from raise
+Inputs the report, or its workbook, can't be made from raise
 `clinical_reporting.workflow.WorkflowInputError`:
 
 - an export, setting or additional input that can't be found or read, and
@@ -254,7 +280,9 @@ Inputs the report can't be made from raise
   forms and items of its coalesced items, count as forms and items it needs,
   whether they are selected or not;
 - a report that can't run: the desktop's "Cannot run:" list (an overlap later
-  data brings to a coalesced item that refuses them is one).
+  data brings to a coalesced item that refuses them is one);
+- a workbook with no name: `to_workbook()` without `file_name` when the
+  setting keeps none (above).
 
 `warnings` holds, in order, the missing lines, the stacked forms' missing
 members and missing or replaced matched items, the coalesced items' missing
@@ -559,6 +587,18 @@ setting that selects a coalesced item under a new name reports it as a
 missing item there, and re-saving it there drops the coalesced items. A
 damaged entry is skipped and logged.
 
+It may also hold `export_file_name`: the export's file name and whether the
+date and time are added to it, `{"name": "DEMO01 DSMB", "add_date_time":
+false}` (`clinical_reporting.export_name`). Save setting writes it from File
+name and Add the date and time, picking the setting fills them back in, and
+`BaseReport.to_workbook()` names its workbook from it. The name is kept as the
+export uses it, without a typed `.xlsx` and with characters not allowed in
+file names made `_`, so it never names a folder. The key is written only when
+there is a name, so other settings save exactly as before. Versions before
+2.21 ignore it, and re-saving the setting there drops it. A key without a
+usable name is ignored and logged; an `add_date_time` that isn't true or false
+counts as true.
+
 The column order is `selected_items_order_list`, with `order_list_customized`
 set once the Order & rename page changed it (a setting saved before the flag
 existed counts as customized when it has an order). A setting may also keep
@@ -681,7 +721,7 @@ src/clinical_reporting/
   base_report.py               # a saved setting run on an export, as a table and workbook
   settings_store.py            # saved settings as JSON files in a folder; their JSON text
   feedback.py                  # status messages tagged info/success/warning/error
-  filenames.py                 # safe file names; "<name> YYMMDD_HHMMSS.xlsx" outputs
+  filenames.py                 # safe file names; export names, with or without the date and time
   pipeline.py                  # joins, filters, ordering, renames, formatting
   report_columns.py            # the output columns and their names, before running
   workflow.py                  # the tools' workflows: OutputFile, input errors, reading inputs
@@ -692,6 +732,7 @@ src/clinical_reporting/
   additional_names.py          # additional inputs' form/column names kept with a saved setting
   stacking.py                  # stacked forms: how they line up, building them, their settings key
   coalescing.py                # coalesced items: building them, their problems, their settings key
+  export_name.py               # the export's file name kept with a saved setting
   export.py                    # xlsx/csv/bytes rendering
   telemetry.py                 # reports saves to the usage counter (off unless configured)
   sample_data.py               # made-up DEMO01 data for previews and tests

@@ -12,6 +12,7 @@ from clinical_reporting import (
     BaseReport,
     build_base_report,
     build_base_report_from_forms,
+    export_name,
     session,
 )
 from clinical_reporting.coalescing import KEEP_EARLIER, REFUSE, CoalescedItem, Fill
@@ -511,21 +512,70 @@ def test_a_corelisting_export_that_isnt_there_is_refused(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_the_workbook_is_named_after_the_setting_or_the_file_name_given():
-    base = build_base_report_from_forms(_forms(), _settings())
+def test_the_workbook_is_named_as_the_setting_keeps_it(tmp_path):
+    settings = export_name.add_to_settings(
+        _settings(), "AE listing", add_date_time=False
+    )
+    write_settings_json(tmp_path / "adults.json", settings)
+    base = build_base_report_from_forms(_forms(), tmp_path / "adults.json")
     now = datetime(2026, 10, 11, 14, 22, 33)
 
-    assert base.to_workbook(now=now).name == "Adults with AEs 261011_142233.xlsx"
-    assert (
-        base.to_workbook(file_name="AE review", now=now).name
-        == "AE review 261011_142233.xlsx"
+    assert (base.file_name, base.add_date_time) == ("AE listing", False)
+    assert base.to_workbook(now=now).name == "AE listing.xlsx"
+    assert base.to_workbook(file_name="  ", now=now).name == "AE listing.xlsx"
+    assert base.to_workbook(file_name=".xlsx", now=now).name == "AE listing.xlsx"
+    assert base.to_workbook(file_name="AE review").name == "AE review.xlsx"
+    assert base.to_workbook(add_date_time=True, now=now).name == (
+        "AE listing 261011_142233.xlsx"
+    )
+
+
+def test_a_setting_without_a_file_name_needs_one_for_its_workbook():
+    base = build_base_report_from_forms(_forms(), _settings())  # As before 2.21.
+    now = datetime(2026, 10, 11, 14, 22, 33)
+
+    with pytest.raises(WorkflowInputError) as refused:
+        base.to_workbook(now=now)
+
+    assert (base.file_name, base.add_date_time) == ("", True)
+    assert str(refused.value) == (
+        "Give the workbook a file name: the saved setting “Adults with AEs” "
+        "doesn't keep one."
+    )
+    assert base.to_workbook(file_name="AE review", now=now).name == (
+        "AE review 261011_142233.xlsx"
+    )
+    assert base.to_workbook(file_name="AE review", add_date_time=False).name == (
+        "AE review.xlsx"
+    )
+
+
+def test_a_damaged_export_name_still_builds_the_report():
+    settings = {**_settings(), export_name.SETTINGS_KEY: "AE listing"}
+
+    base = build_base_report_from_forms(_forms(), settings)
+
+    assert list(base.table["DM.Age"]) == [30, 45]
+    assert base.file_name == ""
+    with pytest.raises(WorkflowInputError):
+        base.to_workbook()
+
+
+def test_an_unnamed_setting_without_a_file_name_says_so():
+    base = build_base_report_from_forms(_forms(), {**_settings(), "setting_name": ""})
+
+    with pytest.raises(WorkflowInputError) as refused:
+        base.to_workbook()
+
+    assert str(refused.value) == (
+        "Give the workbook a file name: the saved setting doesn't keep one."
     )
 
 
 def test_a_workbook_without_rows_keeps_the_columns():
     base = build_base_report_from_forms(_forms(), _settings(min_age="99"))
 
-    read_back = pd.read_excel(io.BytesIO(base.to_workbook().data))
+    read_back = pd.read_excel(io.BytesIO(base.to_workbook(file_name="AE review").data))
 
     assert list(read_back.columns) == ["Subject", "Site", "DM.Age", "AE.Term"]
     assert len(read_back) == 0

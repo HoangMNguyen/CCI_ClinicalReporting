@@ -68,7 +68,7 @@ _Avoid_: conflict, clash
 ### Reports
 
 **Saved setting**:
-A named, reusable definition of a Clinical Reporting report for one study: which forms and items, how they join, the filters and comparisons, the column order and names, the names given to additional inputs, and how its stacked forms and coalesced items are made. It does not hold the cut-off date.
+A named, reusable definition of a Clinical Reporting report for one study: which forms and items, how they join, the filters and comparisons, the column order and names, the names given to additional inputs, how its stacked forms and coalesced items are made, and the file name its workbook is exported under, with whether the date and time are added to it. It does not hold the cut-off date.
 _Avoid_: configuration, config, template
 
 **Join order**:

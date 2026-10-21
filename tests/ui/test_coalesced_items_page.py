@@ -205,6 +205,7 @@ def test_a_refused_overlap_is_marked_and_holds_the_page_until_kept(
     _open(window)
     window.click_select_all_form()
     _choose_output_folder(window, monkeypatch, tmp_path)
+    ui.lineEdit_file_name.setText("DEMO01 DSMB")
     _new_race(window, operator="")
     editor = (
         ui.label_coalesced_counts.text(),

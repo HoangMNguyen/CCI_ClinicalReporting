@@ -474,10 +474,14 @@ def test_leaving_the_page_adds_the_stacked_form_and_keeps_the_selections(
 
 
 def _hold_with_a_loaded_forms_name(window, tmp_path):
-    """Leave DM over EOT and DS (DM is a loaded form's name), saving on, a folder set."""
+    """Leave DM over EOT and DS (DM is a loaded form's name).
+
+    Saving is on, and the export has a folder and a name.
+    """
     _new_stacked_form(window, "DM", "EOT", "DS")
     window.output_folder_name = str(tmp_path)
     window.ui.pathPicker_output_folder.set_path(str(tmp_path))
+    window.ui.lineEdit_file_name.setText("DSMB monthly")
     window.ui.checkBox_save_current_setting.setChecked(True)
     window.ui.lineEdit_setting_name.setText("DSMB monthly")
     _leave(window)
