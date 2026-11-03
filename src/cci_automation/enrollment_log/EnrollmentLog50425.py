@@ -30,6 +30,10 @@ def EnrollmentLog50425(final_data):
                 columns=DSCA_cols_to_select
             )
             merged_df = pd.merge(sorted_DM_df, DSCA_df, on="Subject", how="left")
+
+            # Trim Cohort to first 8 characters
+            merged_df["Cohort"] = merged_df["Cohort"].str[:8]
+
             index_reference = merged_df.columns.get_loc("Race")
             merged_df.insert(index_reference, "Cohort", merged_df.pop("Cohort"))
         else:
@@ -82,19 +86,31 @@ def EnrollmentLog50425(final_data):
             ]
 
             if cohort_cols:
-                merged_df["Disease Type at Study Enrollment"] = (
+                merged_df["Primary Diagnosis"] = (  # renamed column header
                     merged_df[cohort_cols].bfill(axis=1).iloc[:, 0]
                 )
 
-            if (
-                "Disease Type at Study Enrollment" in merged_df.columns
-                and "Race" in merged_df.columns
-            ):
+            # Pure Python string extraction — no imports needed
+            def extract_parentheses(val):
+                if pd.isna(val):
+                    return val
+                val_str = str(val)
+                start = val_str.find("(")
+                end = val_str.find(")")
+                if start != -1 and end != -1:
+                    return val_str[start + 1 : end]
+                return val_str  # fallback to original if no parentheses found
+
+            merged_df["Primary Diagnosis"] = merged_df["Primary Diagnosis"].apply(
+                extract_parentheses
+            )
+
+            if "Primary Diagnosis" in merged_df.columns and "Race" in merged_df.columns:
                 index_reference = merged_df.columns.get_loc("Race")
                 merged_df.insert(
                     index_reference,
-                    "Disease Type at Study Enrollment",
-                    merged_df.pop("Disease Type at Study Enrollment"),
+                    "Primary Diagnosis",
+                    merged_df.pop("Primary Diagnosis"),
                 )
 
             merged_df = merged_df.drop(
@@ -493,7 +509,7 @@ def EnrollmentLog50425(final_data):
     column_list = [
         "Subject ID#",
         "Cohort",
-        "Disease Type at Study Enrollment",
+        "Primary Diagnosis",
         "Assigned Dose Level",
         "Race",
         "Ethnicity",
